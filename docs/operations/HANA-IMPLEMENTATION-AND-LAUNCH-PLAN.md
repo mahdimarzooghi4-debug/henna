@@ -14,7 +14,7 @@
 | خرید/پرداخت | سبد، مقایسه، quote، سفارش، PSP، عدم موفقیت، refund | قرارداد مالی |
 | فروشنده | onboarding، تأیید ادمین، پنل عملیات، تسویه | حساب، سفارش |
 | سازمان/اعتبار | طرح، import/API، تطبیق، تخصیص، رزرو/مصرف، reporting | الگوی تخصیص و funding |
-| عملیات مشترک | پشتیبانی، اعلان، CMS، داشبورد، لجستیک، گزارش | داده دامنه |
+| عملیات مشترک | پشتیبانی، اعلان، CMS، داشبورد، اتصال API کسب‌وکار مستقل لجستیک حنا، گزارش | داده دامنه و [ADR-004](../adr/ADR-004-HANA-LOGISTICS-INDEPENDENT-INTEGRATION.md)/[ADR-005](../adr/ADR-005-PICKUP-CUSTOMER-DELIVERY-ASSIGNMENT-LOGISTICS.md) |
 | زیرساخت/کیفیت | CI/CD، stage/prod، HA/backup، امنیت، load، DR و runbooks | SLO/بودجه |
 
 ## ترتیب وابستگی، نه ترتیب انتشار
