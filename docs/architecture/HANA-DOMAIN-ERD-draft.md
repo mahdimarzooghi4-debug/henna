@@ -57,6 +57,10 @@ erDiagram
 
 در نمودار، `QUOTE → ORDER` و `SELLER_APPLICATION → SELLER` رابطه منطقی‌اند. طبق ADR-001، هر `ORDER` دقیقاً یک `SELLER` دارد و تمام `ORDER_ITEM`ها به همان فروشنده تعلق دارند؛ `QUOTE` نیز یک فروشنده منتخب دارد. هر خرید از فروشنده دیگر سفارش مستقل می‌سازد. جزئیات cardinality سایر روابط تا تصویب قواعد مرتبط در migration تثبیت نمی‌شود.
 
+## تکمیل دامنه کیف پول و درخواست عودت
+
+طبق [ADR-014](../adr/ADR-014-WALLET-REFUND-OPTIONAL-CASHOUT.md) مدل مفهومی افزون بر ledger و credit فعلی به `WALLET_ACCOUNT`، `WALLET_TRANSACTION`، `REFUND`، `WITHDRAWAL_REQUEST` و `WITHDRAWAL_ATTEMPT` یا معادل نرمال‌شده نیاز دارد. موجودی نقدی قابل استرداد، وجه رزروشده برای برداشت و اعتبار حمایتیِ محدود، **یک موجودی قابل نقدسازی واحد نیستند**. cardinality و migration دقیق بعد از قرارداد مالی تثبیت می‌شوند؛ این یادداشت تأیید قطعی SQL schema نیست.
+
 ## مرز تراکنش‌ها و constraints
 
 | موضوع | قید الزامی |
