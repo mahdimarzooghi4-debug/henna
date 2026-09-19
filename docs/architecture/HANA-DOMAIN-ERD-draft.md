@@ -65,7 +65,7 @@ erDiagram
 | Seller activation | دسترسی پنل فقط پس از تصمیم نهایی و حساب فعال |
 | Organization scope | `organization_id` بر داده و authorization در هر query و عمل حساس |
 | Offer & Inventory | موجودی منفی و رزرو تکراری ممنوع؛ کالای ناموجود از خرید قطعی حذف/نیازمند تصمیم |
-| Quote | `quote_id`، version، `expires_at` و snapshot هزینه ارسال/اقلام؛ سبد اولیه با اقلام قابل تأمین فروشنده منتخب یکی فرض نشود؛ اقلام ناموجود و تأیید آگاهانه مشتری پیش از ایجاد سفارش ثبت/قابل اثبات باشد |
+| Quote | `quote_id`، version، `expires_at` و snapshot هزینه ارسال/اقلام؛ سبد اولیه با اقلام قابل تأمین فروشنده منتخب یکی فرض نشود؛ اقلام ناموجود و تأیید آگاهانه مشتری پیش از ایجاد سفارش ثبت/قابل اثبات باشد؛ انتخاب مشتری برای نگه‌داشتن/حذف اقلام تأمین‌نشده از سبد آینده طبق [ADR-003](../adr/ADR-003-CUSTOMER-CONTROL-UNFULFILLED-CART-ITEMS.md) مستقل ثبت شود |
 | Order | state transition مجاز و immutable monetary snapshot؛ `request_id` یکتا |
 | Payment | `attempt_id` و reference PSP با unique index؛ webhook تکراری بدون تکرار ledger |
 | Ledger | رکورد افزایشی immutable، اصلاح با entry جبرانی؛ کنترل جمع بدهکار/بستانکار |
