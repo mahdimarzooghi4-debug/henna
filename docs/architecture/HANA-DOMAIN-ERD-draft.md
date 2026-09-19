@@ -68,6 +68,7 @@ erDiagram
 | Quote | `quote_id`، version، `expires_at` و snapshot هزینه ارسال/اقلام؛ `delivery_total_irr` و سهم خریدار/فروشنده جدا، شناسه/نسخه تعرفه لجستیک طبق [ADR-006](../adr/ADR-006-LOGISTICS-DELIVERY-FEE-SPLIT.md)؛ سبد اولیه با اقلام قابل تأمین فروشنده منتخب یکی فرض نشود؛ اقلام ناموجود و تأیید آگاهانه مشتری پیش از ایجاد سفارش ثبت/قابل اثبات باشد؛ انتخاب مشتری برای نگه‌داشتن/حذف اقلام تأمین‌نشده از سبد آینده طبق [ADR-003](../adr/ADR-003-CUSTOMER-CONTROL-UNFULFILLED-CART-ITEMS.md) مستقل ثبت شود |
 | Order | state transition مجاز و immutable monetary snapshot؛ `request_id` یکتا |
 | Payment | `attempt_id` و reference PSP با unique index؛ webhook تکراری بدون تکرار ledger |
+| Seller Settlement | سهم حمل فروشنده طبق [ADR-007](../adr/ADR-007-SELLER-DELIVERY-SHARE-DEDUCTED-AT-SETTLEMENT.md) به‌صورت کسر مجزای مرتبط با سفارش و فروشنده، فقط یک بار از تسویه حنا؛ قواعد کسری تسویه/لغو تا تصویب قرارداد باز |
 | Ledger | رکورد افزایشی immutable، اصلاح با entry جبرانی؛ کنترل جمع بدهکار/بستانکار |
 | Credit | reserve/consume/release idempotent، مانده منفی ممنوع، کاربرد شخصی/حقوقی معتبر |
 | Import | batch و record hash/unique scope، گزارش خطای ردیف و عدم اعتبار مضاعف |
