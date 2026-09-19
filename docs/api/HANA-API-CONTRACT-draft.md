@@ -54,7 +54,11 @@ Base path: `/api/v1`. ارتباط HTTPS؛ token/session معتبر؛ مجوز �
   "purchaseType": "PERSONAL",
   "currency": "IRR",
   "itemsTotalIrr": 2650000,
-  "deliveryFeeIrr": 0,
+  "deliveryTotalIrr": 0,
+  "buyerDeliveryShareIrr": 0,
+  "sellerDeliveryShareIrr": 0,
+  "deliveryQuoteId": null,
+  "deliveryTariffVersion": null,
   "discountIrr": 0,
   "creditAppliedIrr": 0,
   "payableIrr": 2650000,
@@ -70,6 +74,10 @@ Base path: `/api/v1`. ارتباط HTTPS؛ token/session معتبر؛ مجوز �
 ## انتخاب روش دریافت و تخصیص مجری ارسال
 
 طبق [ADR-005](../adr/ADR-005-PICKUP-CUSTOMER-DELIVERY-ASSIGNMENT-LOGISTICS.md) انتخاب حضوری در صورت امکان با مشتری است؛ در حالت ارسال، لجستیک حنا تعیین می‌کند که مجری ارسال فروشنده یا ناوگان خودش باشد. `fulfillmentMode` انتخاب معتبر مشتری است ولی `deliveryAssignment` فقط از پاسخ/رویداد معتبر لجستیک تعیین می‌شود، نه ورودی قابل اعتماد مشتری. هزینه و شرایط حمل در quote باید قابل تأیید باشد؛ تغییر مؤثر به بازبینی مجدد نیاز دارد. وضعیت تحویل حضوری جدا از مأموریت حمل ثبت شود.
+
+## قرارداد قیمت ارسال و سهم طرفین
+
+طبق [ADR-006](../adr/ADR-006-LOGISTICS-DELIVERY-FEE-SPLIT.md)، لجستیک حنا مبلغ کل مأموریت را تعیین می‌کند؛ در حالت معمول سهم خریدار و فروشنده ۵۰/۵۰ است. مدل API باید `deliveryTotalIrr`, `buyerDeliveryShareIrr`, `sellerDeliveryShareIrr`, `deliveryQuoteId`, `deliveryTariffVersion` و اعتبار زمانی پیشنهاد را جدا حمل کند. مبلغ قابل پرداخت خریدار فقط سهم خریدار را لحاظ می‌کند؛ سهم فروشنده در settlement و ledger ثبت می‌شود، نه مجدداً از مشتری دریافت. حالت مراجعه حضوری هزینه مأموریت ارسال ندارد. گردکردن اعداد فرد، تعرفه شهر و استثناهای ۵۰/۵۰ تا تصویب قرارداد مالی تعیین‌نشده‌اند.
 
 ## قرارداد فرمان‌های مالی
 
