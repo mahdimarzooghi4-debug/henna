@@ -11,7 +11,7 @@
 | Design System/UX | RTL، کامپوننت، وضعیت خطا، مرجع Figma، سازگاری سناریو | تعیین APP اصلی، rules |
 | هویت/امنیت | حساب، session، هویت مجاز، نقش و کنترل شیء/tenant، audit | سیاست و provider |
 | جغرافیا/کاتالوگ | شهر، zone، فروشنده، پیشنهاد، جست‌وجو، قیمت و موجودی | سیاست پوشش |
-| خرید/پرداخت | سبد، مقایسه، quote، سفارش، PSP، عدم موفقیت، refund؛ ممنوعیت پرداخت در محل و تست رد COD در تمام کانال‌ها | قرارداد مالی و [ADR-009](../adr/ADR-009-NO-CASH-ON-DELIVERY.md) |
+| خرید/پرداخت | سبد، مقایسه، quote، سفارش، PSP، عدم موفقیت، refund؛ ممنوعیت پرداخت در محل و تست رد COD در تمام کانال‌ها؛ لغو مشتری تا پیش از شروع آماده‌سازی با تست race و idempotency طبق ADR-010 | قرارداد مالی و [ADR-009](../adr/ADR-009-NO-CASH-ON-DELIVERY.md) |
 | فروشنده | onboarding، تأیید ادمین، پنل عملیات، تسویه | حساب، سفارش |
 | سازمان/اعتبار | طرح، import/API، تطبیق، تخصیص، رزرو/مصرف، reporting | الگوی تخصیص و funding |
 | عملیات مشترک | پشتیبانی، اعلان، CMS، داشبورد، اتصال API کسب‌وکار مستقل لجستیک حنا، گزارش | داده دامنه و [ADR-004](../adr/ADR-004-HANA-LOGISTICS-INDEPENDENT-INTEGRATION.md)/[ADR-005](../adr/ADR-005-PICKUP-CUSTOMER-DELIVERY-ASSIGNMENT-LOGISTICS.md) |
