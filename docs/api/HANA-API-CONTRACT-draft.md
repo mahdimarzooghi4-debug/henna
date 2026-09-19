@@ -89,7 +89,7 @@ Base path: `/api/v1`. ارتباط HTTPS؛ token/session معتبر؛ مجوز �
 
 ## کیف پول بازپرداخت و درخواست عودت بانکی
 
-طبق [ADR-014](../adr/ADR-014-WALLET-REFUND-OPTIONAL-CASHOUT.md)، endpointهای پیشنهادیِ نیازمند OpenAPI نهایی شامل `GET /me/wallet`، `GET /me/wallet/transactions`، `POST /me/wallet/withdrawal-requests` و `GET /me/wallet/withdrawal-requests/{id}` هستند. درخواست عودت فقط از وجه نقد قابل‌استرداد مجاز است؛ مبلغ رزروشده برای انتقال هم‌زمان قابل خرج نیست؛ اعتبار حمایتی یا تخفیف نباید نقد شود. وضعیت انتقال، خطای بانکی، dedup و احراز مالکیت مقصد باید به‌صورت واقعی در API پیاده شوند.
+طبق [ADR-014](../adr/ADR-014-WALLET-REFUND-OPTIONAL-CASHOUT.md)، endpointهای پیشنهادیِ نیازمند OpenAPI نهایی شامل `GET /me/wallet`، `GET /me/wallet/transactions`، `POST /me/wallet/withdrawal-requests` و `GET /me/wallet/withdrawal-requests/{id}` هستند. درخواست عودت فقط از وجه نقد قابل‌استرداد مجاز است؛ مبلغ رزروشده برای انتقال هم‌زمان قابل خرج نیست؛ اعتبار حمایتی یا تخفیف نباید نقد شود. طبق [ADR-015](../adr/ADR-015-WITHDRAWAL-TO-OWN-VERIFIED-IBAN.md)، مقصد درخواست عودت فقط شبای حساب متعلق به خود مشتری است؛ بررسی مالکیت با سرویس/فرآیند معتبر و auditable لازم است. تطابق فرمت شبا یا نام واردشده به‌تنهایی کافی نیست. وضعیت انتقال، خطای بانکی، dedup و احراز مالکیت مقصد باید به‌صورت واقعی در API پیاده شوند.
 
 ## ممنوعیت پرداخت در محل
 
