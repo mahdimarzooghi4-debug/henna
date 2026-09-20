@@ -194,6 +194,10 @@ export function RegistrationForm() {
     }
   }
 
+  const differences = conflict?.status === "ready"
+    ? sellerFieldDifferences(fields, conflict.fields)
+    : [];
+
   return (
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
@@ -266,12 +270,11 @@ export function RegistrationForm() {
                 <p>آخرین نسخهٔ سرور با نسخهٔ این پنجره مقایسه شد.
                   انتخاب نسخهٔ سرور، تغییرات ذخیره‌نشدهٔ این پنجره
                   را کنار می‌گذارد؛ نگه‌داشتن متن من، آن را خودکار ذخیره نمی‌کند.</p>
-                {sellerFieldDifferences(fields, conflict.fields).length === 0
+                {differences.length === 0
                   ? <p>متن هر شش فیلد یکسان است؛ فقط شمارهٔ نسخه تغییر کرده است.</p>
                   : (
                     <div className="seller-conflict__differences">
-                      {sellerFieldDifferences(fields, conflict.fields)
-                        .map((item) => (
+                      {differences.map((item) => (
                           <div className="seller-conflict__field" key={item.key}>
                             <h4>{item.label}</h4>
                             <div className="seller-conflict__versions">
