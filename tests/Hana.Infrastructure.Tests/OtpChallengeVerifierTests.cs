@@ -40,7 +40,8 @@ public sealed class OtpChallengeVerifierTests
             IssuedAtUtc = issuedAt,
             ExpiresAtUtc = expiresAt,
             FailedAttemptCount = 0,
-            ProviderMessageReference = "ci-test-accepted"
+            ProviderMessageReference = "ci-test-accepted",
+            DeliveryStatus = OtpDeliveryStates.Accepted
         });
         await db.SaveChangesAsync();
         return id;
@@ -165,6 +166,34 @@ public sealed class OtpChallengeVerifierTests
 
         Assert.Single(attempts, value => value == OtpVerificationResult.Verified);
         Assert.Single(attempts, value => value == OtpVerificationResult.Invalid);
+    }
+
+    [Fact]
+    public async Task PendingOrFailedChallengeCannotBeVerifiedEvenWithCorrectCode()
+    {
+        var options = DbOptions();
+        if (options is null) return;
+        var crypto = new OtpCodeCryptography(RandomNumberGenerator.GetBytes(32));
+        var id = await StoreAsync(options, crypto, Now.AddMinutes(-1), Now.AddMinutes(4));
+
+        await using (var db = new HanaIdentityDbContext(options))
+        {
+            var record = await db.OtpChallenges.FindAsync(id);
+            record!.DeliveryStatus = OtpDeliveryStates.Pending;
+            record.ProviderMessageReference = null;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(OtpVerificationResult.Invalid,
+            await VerifyAsync(options, crypto, id, TestCode));
+
+        await using (var db = new HanaIdentityDbContext(options))
+        {
+            var record = await db.OtpChallenges.FindAsync(id);
+            record!.DeliveryStatus = OtpDeliveryStates.Failed;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(OtpVerificationResult.Invalid,
+            await VerifyAsync(options, crypto, id, TestCode));
     }
 
     private sealed class FixedClock(DateTimeOffset utcNow) : IClock

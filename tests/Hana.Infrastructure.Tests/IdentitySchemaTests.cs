@@ -36,6 +36,15 @@ public sealed class IdentitySchemaTests
               AND indexdef ILIKE '%UNIQUE%'
             """).SingleAsync();
         Assert.Equal(1, indexes);
+
+        var deliveryColumn = await db.Database.SqlQueryRaw<int>(
+            """
+            SELECT count(*)::integer AS "Value"
+            FROM information_schema.columns
+            WHERE table_schema='identity' AND table_name='otp_challenges'
+              AND column_name='delivery_status'
+            """).SingleAsync();
+        Assert.Equal(1, deliveryColumn);
     }
 
     [Fact]

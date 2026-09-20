@@ -40,6 +40,8 @@ public sealed class OtpChallengeVerifier(
 
         var now = clock.UtcNow.ToUniversalTime();
         if (challenge is null ||
+            challenge.DeliveryStatus != OtpDeliveryStates.Accepted ||
+            string.IsNullOrWhiteSpace(challenge.ProviderMessageReference) ||
             challenge.ConsumedAtUtc.HasValue ||
             now < challenge.IssuedAtUtc ||
             now >= challenge.ExpiresAtUtc ||

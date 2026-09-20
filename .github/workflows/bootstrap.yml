@@ -41,7 +41,7 @@ jobs:
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
       - name: Confirm repeated migration is harmless
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
-      - name: Test identity domain, OTP concurrency and PostgreSQL schema
+      - name: Test identity domain, OTP issuance/concurrency and PostgreSQL schema
         run: dotnet test Hana.slnx --configuration Release --no-build
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash

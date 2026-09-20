@@ -15,6 +15,30 @@ builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IClock, SystemClock>();
 
+// SMS provider is deliberately UNCONFIGURED by default. A production sender
+// must be implemented against an actual contracted provider and reviewed
+// before replacing this registration. A signing key alone never enables OTP.
+builder.Services.AddSingleton<IOtpSmsSender, UnconfiguredOtpSmsSender>();
+var otpKeyConfigured = false;
+try
+{
+    var base64 = builder.Configuration["Otp:DigestKeyBase64"];
+    if (!string.IsNullOrWhiteSpace(base64))
+    {
+        var secret = Convert.FromBase64String(base64);
+        if (secret.Length >= 32)
+        {
+            builder.Services.AddSingleton(new OtpCodeCryptography(secret));
+            otpKeyConfigured = true;
+        }
+    }
+}
+catch (FormatException)
+{
+    // Invalid secret configuration fails closed. Never log secret material.
+}
+
+
 // Connection string is supplied via secrets/environment, never checked in.
 // The API can still report process liveness without configured PostgreSQL,
 // while database readiness will correctly fail closed.
@@ -25,6 +49,10 @@ if (hasIdentityDb)
     builder.Services.AddDbContext<HanaIdentityDbContext>(
         options => options.UseNpgsql(identityConnectionString));
 }
+
+if (hasIdentityDb && otpKeyConfigured)
+    builder.Services.AddScoped<OtpChallengeIssuer>();
+
 
 // One gate per observed client IP. Reverse proxies must be configured with
 // explicit trusted ForwardedHeaders before their addresses can be honored.
@@ -86,11 +114,14 @@ app.MapGet("/api/v1/system/status", (IClock clock) =>
     .WithName("GetSystemStatus")
     .WithTags("System");
 
-// Fail closed: SMS provider, durable OTP challenge store, verification,
-// resend limits, and real account/session creation are not integrated yet.
-app.MapPost("/api/v1/auth/otp/request", (OtpRequest payload) =>
+// No real SMS adapter is connected: normal deployments still return 503.
+// The request workflow is wired for future provider integration, never mock
+// delivery, and cannot issue a challenge without both DB and secret.
+app.MapPost("/api/v1/auth/otp/request", async (
+        OtpRequest payload, IServiceProvider services,
+        CancellationToken cancellationToken) =>
     {
-        if (!IranianMobileNumber.TryParse(payload.Phone, out _))
+        if (!IranianMobileNumber.TryParse(payload.Phone, out var phone))
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
@@ -98,15 +129,39 @@ app.MapPost("/api/v1/auth/otp/request", (OtpRequest payload) =>
             });
         }
 
-        return Results.Problem(
+        static IResult Unavailable() => Results.Problem(
             statusCode: StatusCodes.Status503ServiceUnavailable,
             title: "خدمت ارسال کد تأیید هنوز فعال نیست.",
-            detail: "ارسال پیامک و احراز هویت در حال راه‌اندازی است؛ کدی ارسال نشده است.");
+            detail: "کدی ارسال نشده یا وضعیت ارسال نامشخص است؛ لطفاً بعداً تلاش کنید.");
+
+        if (!hasIdentityDb || !otpKeyConfigured ||
+            !services.GetRequiredService<IOtpSmsSender>().IsAvailable)
+            return Unavailable();
+
+        try
+        {
+            var issued = await services.GetRequiredService<OtpChallengeIssuer>()
+                .IssueAsync(phone!, cancellationToken);
+            return issued.Status switch
+            {
+                OtpIssueStatus.Accepted =>
+                    Results.Accepted(value: new { challengeId = issued.ChallengeId }),
+                OtpIssueStatus.Cooldown =>
+                    Results.StatusCode(StatusCodes.Status429TooManyRequests),
+                _ => Unavailable()
+            };
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Do not report success on DB/provider errors or leak PII/secret.
+            return Unavailable();
+        }
     })
     .RequireRateLimiting("otp-request")
     .WithName("RequestOtp")
     .WithTags("Identity")
     .ProducesValidationProblem()
+    .Produces(StatusCodes.Status202Accepted)
     .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
     .Produces(StatusCodes.Status429TooManyRequests);
 

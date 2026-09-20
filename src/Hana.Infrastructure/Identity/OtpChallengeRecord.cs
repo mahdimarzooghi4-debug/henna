@@ -16,4 +16,5 @@ public sealed class OtpChallengeRecord
     public int FailedAttemptCount { get; set; }
     public DateTimeOffset? ConsumedAtUtc { get; set; }
     public string? ProviderMessageReference { get; set; }
+    public string DeliveryStatus { get; set; } = OtpDeliveryStates.Pending;
 }
