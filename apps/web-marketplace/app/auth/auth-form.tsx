@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
 import { normalizeDigits } from "../../lib/normalize-digits";
+import { sellerRegistrationPath } from "../../lib/seller-return";
 
 type Stage = "checking" | "phone" | "code" | "authenticated" | "session-unavailable";
 type FormStatus = "idle" | "loading" | "invalid" | "limited" | "unavailable";
@@ -11,7 +12,9 @@ type FormStatus = "idle" | "loading" | "invalid" | "limited" | "unavailable";
 const challengeIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export function AuthForm() {
+export function AuthForm({ returnTo }: {
+  returnTo: typeof sellerRegistrationPath | null;
+}) {
   const [stage, setStage] = useState<Stage>("checking");
   const [phone, setPhone] = useState("");
   const [challengeId, setChallengeId] = useState("");
@@ -24,6 +27,12 @@ export function AuthForm() {
     fetch("/api/auth/session", { cache: "no-store" })
       .then((response) => {
         if (!current) return;
+        if (response.ok && returnTo === sellerRegistrationPath) {
+          // The cookie was validated by the server, not inferred from its
+          // presence. The destination is a compile-time allowlisted path.
+          window.location.replace(sellerRegistrationPath);
+          return;
+        }
         setStage(
           response.ok
             ? "authenticated"
@@ -111,6 +120,8 @@ export function AuthForm() {
           setCode("");
           setChallengeId("");
           setStatus("idle");
+          if (returnTo === sellerRegistrationPath)
+            window.location.replace(sellerRegistrationPath);
           return;
         }
       }
@@ -216,6 +227,11 @@ export function AuthForm() {
           <p className="form-status" role="status">
             ورود انجام شده است. حساب پایه شما فعال است.
           </p>
+          {returnTo === sellerRegistrationPath && (
+            <Link href={sellerRegistrationPath} className="auth-card__secondary">
+              ادامه ثبت‌نام فروشگاه
+            </Link>
+          )}
           <button className="primary-button" type="button" disabled={busy}
             onClick={logout}>
             {busy ? "در حال خروج…" : "خروج از حساب"}
