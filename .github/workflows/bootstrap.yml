@@ -37,11 +37,11 @@ jobs:
         run: dotnet restore Hana.slnx
       - name: Build .NET solution
         run: dotnet build Hana.slnx --configuration Release --no-restore
-      - name: Apply Identity and Seller migrations
+      - name: Apply Identity, Seller and Catalog migrations
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
       - name: Confirm repeated migration is harmless
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
-      - name: Test Identity and Seller domain, OTP and PostgreSQL schema
+      - name: Test Identity, Seller and Catalog domain, API and PostgreSQL schemas
         run: dotnet test Hana.slnx --configuration Release --no-build
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash
@@ -54,6 +54,12 @@ jobs:
             if curl --fail --silent http://127.0.0.1:5184/health/live > /dev/null; then
               curl --fail --silent http://127.0.0.1:5184/api/v1/system/status | grep -q '"phase":"bootstrap"'
               curl --fail --silent http://127.0.0.1:5184/health/ready | grep -q '"ready":true'
+              curl --fail --silent http://127.0.0.1:5184/api/v1/catalog/categories -o /tmp/hana-catalog-categories.json
+              grep -q '"items":' /tmp/hana-catalog-categories.json
+              curl --fail --silent http://127.0.0.1:5184/api/v1/catalog/products -o /tmp/hana-catalog-products.json
+              grep -q '"pageSize":20' /tmp/hana-catalog-products.json
+              catalog_bad=$(curl --silent --output /tmp/hana-catalog-invalid.json --write-out "%{http_code}" 'http://127.0.0.1:5184/api/v1/catalog/products?pageSize=100')
+              test "$catalog_bad" = "400"
               status_invalid=$(curl --silent --output /tmp/hana-invalid.json --write-out "%{http_code}" -H "Content-Type: application/json" -d '{"phone":"123"}' http://127.0.0.1:5184/api/v1/auth/otp/request)
               test "$status_invalid" = "400"
               status_no_provider=$(curl --silent --output /tmp/hana-no-provider.json --write-out "%{http_code}" -H "Content-Type: application/json" -d '{"phone":"09123456789"}' http://127.0.0.1:5184/api/v1/auth/otp/request)
