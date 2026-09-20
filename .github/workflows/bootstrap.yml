@@ -342,6 +342,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-seller-return-smoke.mjs
       - name: Test real seller form conflict reconciliation policy
         run: node --experimental-strip-types --test tests/web-seller-conflict-smoke.mjs
+      - name: Test safe three-way seller field merge after concurrent edits
+        run: node --experimental-strip-types --test tests/web-seller-field-merge-smoke.mjs
       - name: Verify public geography Next gateway over isolated CI HTTPS
         run: node tests/web-geography-gateway-smoke.mjs
 
