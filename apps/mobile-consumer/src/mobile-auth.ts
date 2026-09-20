@@ -1,4 +1,4 @@
-import { isValidIranianMobile, normalizeDigits, normalizeIranianMobile } from "./phone";
+import { isValidIranianMobile, normalizeDigits, normalizeIranianMobile } from "./phone.ts";
 
 // The bearer is opaque and must only be persisted by the native SecureStore adapter.
 // No token is returned to React state, UI, logs or public environment variables.
