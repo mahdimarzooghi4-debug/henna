@@ -15,8 +15,8 @@
 
 **۶۰ دقیقه واقعی از لحظه ثبت تأیید خرابی توسط پشتیبانی حنا آغاز می‌شود.** مبدأ، ثبت مأموریت در پنل فروشگاه، مشاهده ابلاغ، تماس با مشتری یا اعزام مأمور فروشگاه نیست؛ هماهنگی پشتیبانی با فروشگاه باید در همین بازه انجام شود.
 
-` sellerReturnSlaStartAt = supportApprovedAt `  
-` sellerReturnDueAt = supportApprovedAt + 60 minutes `
+`sellerReturnSlaStartAt = supportApprovedAt`  
+`sellerReturnDueAt = supportApprovedAt + 60 minutes`
 
 زمان تأیید باید از سرور و رویداد معتبر پشتیبانی گرفته شود؛ تغییرات بعدی، تأخیر ابلاغ و retry نباید موعد مشتری را به عقب ببرند.
 
