@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../../components/form-field";
 import { normalizeDigits } from "../../../lib/normalize-digits";
@@ -9,7 +9,14 @@ import {
   type SellerFields,
 } from "../../../lib/seller-draft-preflight";
 import { sellerLoginHref } from "../../../lib/seller-return";
+import {
+  chooseSellerDraftCopy, sellerFieldDifferences,
+} from "../../../lib/seller-conflict";
 
+
+type SellerConflict =
+  | { status: "loading" | "unavailable" }
+  | { status: "ready"; fields: SellerFields; revision: number };
 
 export function RegistrationForm() {
   const [fields, setFields] = useState<SellerFields>(emptySellerFields);
@@ -18,6 +25,8 @@ export function RegistrationForm() {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [conflict, setConflict] = useState<SellerConflict | null>(null);
+  const conflictHeading = useRef<HTMLHeadingElement>(null);
   const [access, setAccess] = useState<"checking" | "signedIn" | "signedOut" | "unavailable">("checking");
 
 
@@ -49,17 +58,80 @@ export function RegistrationForm() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (conflict?.status === "ready") conflictHeading.current?.focus();
+  }, [conflict]);
+
   function update(field: keyof SellerFields, value: string) {
-    if (access !== "signedIn" || busy) return;
+    if (access !== "signedIn" || busy || conflict) return;
     setSaved(false);
     setFields((current) => ({ ...current, [field]: value }));
     setInvalidField(null);
     setMessage("");
   }
 
+  async function retrieveCurrentDraft() {
+    // A 409 is NEVER permission to resubmit at an assumed revision 0.
+    // Recheck the authenticated server draft without discarding local edits.
+    setConflict({ status: "loading" });
+    const current = await loadSellerDraft(fetch);
+    if (current.status === "signedOut") {
+      setAccess("signedOut");
+      setConflict(null);
+      setMessage("نشست شما پایان یافته است. اطلاعات این فرم ذخیره نشد؛ پیش از رفتن به ورود، متن واردشده را نگه دارید.");
+    } else if (current.status === "restored") {
+      setConflict({
+        status: "ready", fields: current.fields,
+        revision: current.revision,
+      });
+      setMessage("این پیش‌نویس جای دیگری تغییر کرده است. دو نسخه را مقایسه کنید و صریحاً انتخاب کنید؛ اطلاعات این پنجره پاک نشده است.");
+    } else {
+      // A 404 after 409 could mean the draft was removed. Never overwrite
+      // using revision zero or claim the server copy is safely available.
+      setConflict({ status: "unavailable" });
+      setMessage("پس از تعارض، نسخهٔ فعلی پیش‌نویس تأیید نشد؛ اطلاعات این پنجره حفظ شده اما ذخیرهٔ مجدد تا بازیابی نسخهٔ سرور قفل است.");
+    }
+  }
+
+  async function retryConflict() {
+    if (busy || access !== "signedIn" ||
+      conflict?.status !== "unavailable") return;
+    setBusy(true);
+    try {
+      await retrieveCurrentDraft();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function chooseServerCopy() {
+    if (busy || conflict?.status !== "ready") return;
+    // Only an explicit click can discard this tab's unsaved text.
+    const selected = chooseSellerDraftCopy(fields, conflict, "server");
+    setFields(selected.fields);
+    setRevision(selected.revision);
+    setSaved(selected.saved);
+    setInvalidField(null);
+    setConflict(null);
+    setMessage("آخرین نسخهٔ ذخیره‌شدهٔ سرور بارگذاری شد؛ تغییرات ذخیره‌نشدهٔ این پنجره کنار گذاشته شدند.");
+  }
+
+  function chooseMyCopy() {
+    if (busy || conflict?.status !== "ready") return;
+    // Keep this tab's exact fields, update ONLY the expected revision.
+    // Never automatically save over another tab's newer draft.
+    const selected = chooseSellerDraftCopy(fields, conflict, "mine");
+    setFields(selected.fields);
+    setRevision(selected.revision);
+    setSaved(selected.saved);
+    setInvalidField(null);
+    setConflict(null);
+    setMessage("متن این پنجره نگه داشته شد. هنوز ذخیره نشده است؛ آن را بررسی کنید و برای ذخیرهٔ صریح دکمهٔ فرم را بزنید.");
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || access !== "signedIn") return;
+    if (busy || access !== "signedIn" || conflict) return;
     const phone = normalizeDigits(fields.phone.trim());
     const postalCode = normalizeDigits(fields.postalCode.trim());
     const next = { ...fields, phone, postalCode };
@@ -104,14 +176,16 @@ export function RegistrationForm() {
         }
       }
       setSaved(false);
+      if (response.status === 409) {
+        await retrieveCurrentDraft();
+        return;
+      }
       if (response.status === 401) setAccess("signedOut");
       setMessage(response.status === 401
         ? "نشست شما پایان یافته است. اطلاعات این فرم ذخیره نشد؛ پیش از رفتن به ورود، متن واردشده را نگه دارید."
         : response.status === 400
           ? "اطلاعات یا شماره مسئول فروشگاه معتبر نیست. شماره باید همان شماره تأییدشده حساب باشد."
-          : response.status === 409
-            ? "این پیش‌نویس در پنجرهٔ دیگری تغییر کرده است. اطلاعات این فرم هنوز پاک نشده؛ برای جلوگیری از بازنویسی ناخواسته، قبل از تلاش بعدی متن خود را نگه دارید و صفحه را تازه‌سازی کنید."
-            : "ذخیره اطلاعات تأیید نشد؛ لطفاً دوباره تلاش کنید.");
+          : "ذخیره اطلاعات تأیید نشد؛ لطفاً دوباره تلاش کنید.");
     } catch {
       setSaved(false);
       setMessage("ذخیره اطلاعات تأیید نشد؛ لطفاً دوباره تلاش کنید.");
@@ -119,6 +193,10 @@ export function RegistrationForm() {
       setBusy(false);
     }
   }
+
+  const differences = conflict?.status === "ready"
+    ? sellerFieldDifferences(fields, conflict.fields)
+    : [];
 
   return (
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
@@ -141,33 +219,88 @@ export function RegistrationForm() {
         <div className="seller-fields">
           <FormField id="store-name" label="نام فروشگاه" placeholder="مثلاً سوپرمارکت بهار"
             maxLength={120} value={fields.storeName} error={invalidField === "storeName"} required
-            disabled={busy || access !== "signedIn"} onChange={(e) => update("storeName", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("storeName", e.target.value)} />
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
             maxLength={120} autoComplete="name" value={fields.ownerName} error={invalidField === "ownerName"} required
-            disabled={busy || access !== "signedIn"} onChange={(e) => update("ownerName", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("ownerName", e.target.value)} />
           <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
             className="field__input--phone" value={fields.phone} error={invalidField === "phone"} required
-            disabled={busy || access !== "signedIn"} onChange={(e) => update("phone", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("phone", e.target.value)} />
           <FormField id="city" label="شهر / منطقه" placeholder="شهر و محدوده فعالیت"
             maxLength={120} value={fields.city} error={invalidField === "city"} required
-            disabled={busy || access !== "signedIn"} onChange={(e) => update("city", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("city", e.target.value)} />
           <FormField id="store-address" label="آدرس فروشگاه" placeholder="نشانی کامل فروشگاه"
             maxLength={500} autoComplete="street-address" value={fields.address} error={invalidField === "address"} required
-            disabled={busy || access !== "signedIn"} onChange={(e) => update("address", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("address", e.target.value)} />
           <FormField id="postal-code" label="کدپستی" placeholder="کدپستی ۱۰ رقمی"
             inputMode="numeric" autoComplete="postal-code" maxLength={10}
             className="field__input--phone" value={fields.postalCode}
             error={invalidField === "postalCode"} required
-            disabled={busy || access !== "signedIn"} onChange={(e) => update("postalCode", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("postalCode", e.target.value)} />
         </div>
         <aside className="account-note">
           <p>پس از ثبت اطلاعات، احراز هویت و مدارک صنفی در مرحله بعد تکمیل می‌شود.</p>
         </aside>
         <button className="primary-button" type="submit"
-          disabled={busy || access !== "signedIn"}>
+          disabled={busy || access !== "signedIn" || conflict !== null}>
           {busy ? "در حال ذخیره…" : saved ? "ذخیره تغییرات پیش‌نویس" : "ثبت اطلاعات و ادامه"}
         </button>
+        {conflict && access === "signedIn" && (
+          <section className="seller-conflict"
+            aria-labelledby="seller-conflict-heading">
+            <h3 id="seller-conflict-heading" ref={conflictHeading}
+              tabIndex={-1}>تعارض نسخهٔ پیش‌نویس</h3>
+            {conflict.status === "loading" ? (
+              <p role="status">در حال دریافت آخرین نسخهٔ ذخیره‌شده…</p>
+            ) : conflict.status === "unavailable" ? (
+              <>
+                <p role="alert">
+                  نسخهٔ سرور هنوز قابل اعتماد نیست. متن شما در همین فرم
+                  باقی مانده و برای جلوگیری از بازنویسی، ویرایش و ذخیره
+                  موقتاً متوقف شده‌اند.
+                </p>
+                <button type="button" className="auth-card__secondary"
+                  disabled={busy} onClick={() => void retryConflict()}>
+                  تلاش دوباره برای دریافت نسخهٔ سرور
+                </button>
+              </>
+            ) : (
+              <>
+                <p>آخرین نسخهٔ سرور با نسخهٔ این پنجره مقایسه شد.
+                  انتخاب نسخهٔ سرور، تغییرات ذخیره‌نشدهٔ این پنجره
+                  را کنار می‌گذارد؛ نگه‌داشتن متن من، آن را خودکار ذخیره نمی‌کند.</p>
+                {differences.length === 0
+                  ? <p>متن هر شش فیلد یکسان است؛ فقط شمارهٔ نسخه تغییر کرده است.</p>
+                  : (
+                    <div className="seller-conflict__differences">
+                      {differences.map((item) => (
+                          <div className="seller-conflict__field" key={item.key}>
+                            <h4>{item.label}</h4>
+                            <div className="seller-conflict__versions">
+                              <p><strong>متن این پنجره</strong>
+                                <bdi dir="auto">{item.mine || "—"}</bdi></p>
+                              <p><strong>نسخهٔ ذخیره‌شده</strong>
+                                <bdi dir="auto">{item.onServer || "—"}</bdi></p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                <div className="seller-conflict__actions">
+                  <button type="button" className="seller-conflict__use-server"
+                    disabled={busy} onClick={chooseServerCopy}>
+                    بارگذاری نسخهٔ سرور
+                  </button>
+                  <button type="button" className="seller-conflict__keep-mine"
+                    disabled={busy} onClick={chooseMyCopy}>
+                    نگه‌داشتن متن من؛ ذخیره بعد از بررسی
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        )}
         {message && (
           <p className={["form-status", (invalidField || (!saved && !busy)) &&
             "form-status--error"].filter(Boolean).join(" ")}
