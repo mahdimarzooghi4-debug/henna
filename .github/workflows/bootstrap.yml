@@ -37,11 +37,11 @@ jobs:
         run: dotnet restore Hana.slnx
       - name: Build .NET solution
         run: dotnet build Hana.slnx --configuration Release --no-restore
-      - name: Apply identity migrations
+      - name: Apply Identity and Seller migrations
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
       - name: Confirm repeated migration is harmless
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
-      - name: Test identity domain, OTP issuance/concurrency and PostgreSQL schema
+      - name: Test Identity and Seller domain, OTP and PostgreSQL schema
         run: dotnet test Hana.slnx --configuration Release --no-build
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash
@@ -71,6 +71,11 @@ jobs:
               test "$logout_no_bearer" = "401"
               logout_invalid=$(curl --silent --output /tmp/hana-logout-invalid.json --write-out "%{http_code}" -X DELETE -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" http://127.0.0.1:5184/api/v1/auth/session)
               test "$logout_invalid" = "401"
+              # Seller draft endpoints never accept anonymous submissions.
+              seller_get=$(curl --silent --output /tmp/hana-seller-get.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/seller/registration)
+              test "$seller_get" = "401"
+              seller_put=$(curl --silent --output /tmp/hana-seller-put.json --write-out "%{http_code}" -X PUT -H "Content-Type: application/json" -d '{"storeName":"نمونه","ownerName":"مسئول","phone":"09123456789","city":"تهران","address":"نشانی","postalCode":"1234567890"}' http://127.0.0.1:5184/api/v1/seller/registration)
+              test "$seller_put" = "401"
               exit 0
             fi
             sleep 1
@@ -200,6 +205,12 @@ jobs:
               logout_wrong_origin=$(curl --silent --output /tmp/hana-web-logout.json --write-out "%{http_code}" -X DELETE -H "Origin: https://malicious.test" http://127.0.0.1:3000/api/auth/session)
               echo "CI WEB logout_wrong_origin=$logout_wrong_origin"
               test "$logout_wrong_origin" = "403"
+              seller_csrf=$(curl --silent --output /tmp/hana-seller-csrf.json --write-out "%{http_code}" -X PUT -H "Content-Type: application/json" -H "Origin: https://malicious.test" -d '{}' http://127.0.0.1:3000/api/seller/registration)
+              test "$seller_csrf" = "403"
+              seller_anonymous=$(curl --silent --output /tmp/hana-seller-anonymous.json --write-out "%{http_code}" -X PUT -H "Content-Type: application/json" -H "Origin: http://127.0.0.1:3000" -d '{}' http://127.0.0.1:3000/api/seller/registration)
+              test "$seller_anonymous" = "401"
+              seller_anonymous_get=$(curl --silent --output /tmp/hana-seller-anonymous-get.json --write-out "%{http_code}" http://127.0.0.1:3000/api/seller/registration)
+              test "$seller_anonymous_get" = "401"
               exit 0
             fi
             sleep 1
