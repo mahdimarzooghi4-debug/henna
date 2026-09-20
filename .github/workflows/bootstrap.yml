@@ -255,5 +255,7 @@ jobs:
         run: npm run mobile:typecheck
       - name: Test mobile OTP and SecureStore session semantics (CI-only mocked API/store)
         run: node --experimental-strip-types --test tests/mobile-auth-smoke.mjs
+      - name: Test public mobile buyer catalog client (CI-only mocked transport)
+        run: node --experimental-strip-types --test tests/mobile-catalog-smoke.mjs
       - name: Bundle consumer app for Android
         run: npm run mobile:export:android

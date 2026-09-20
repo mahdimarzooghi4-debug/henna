@@ -1,4 +1,5 @@
 import { isValidIranianMobile, normalizeDigits, normalizeIranianMobile } from "./phone.ts";
+import { safeApiBaseUrl } from "./api-base.ts";
 
 // The bearer is opaque and must only be persisted by the native SecureStore adapter.
 // No token is returned to React state, UI, logs or public environment variables.
@@ -27,20 +28,6 @@ function record(input: unknown): Record<string, unknown> | null {
     ? input as Record<string, unknown> : null;
 }
 
-function safeBaseUrl(raw: string | undefined, allowLocalHttp: boolean): string | null {
-  if (!raw) return null;
-  try {
-    const url = new URL(raw.trim());
-    const localHost = ["localhost", "127.0.0.1", "[::1]", "10.0.2.2"].includes(url.hostname);
-    if ((url.protocol !== "https:" &&
-        !(allowLocalHttp && url.protocol === "http:" && localHost)) ||
-        url.username || url.password || url.search || url.hash ||
-        url.pathname !== "/" || url.origin === "null") return null;
-    return url.origin;
-  } catch {
-    return null;
-  }
-}
 
 /** API transport is injectable solely to test the same production behavior in CI. */
 export class MobileAuthClient {
@@ -56,7 +43,7 @@ export class MobileAuthClient {
     now: () => number = Date.now,
     allowLocalHttp = false,
   ) {
-    this.base = safeBaseUrl(apiBase, allowLocalHttp);
+    this.base = safeApiBaseUrl(apiBase, allowLocalHttp);
     this.store = store;
     this.fetchFn = fetchFn;
     this.now = now;
