@@ -152,6 +152,78 @@ a { color: inherit; }
 .seller-card .account-note { margin-top: 30px; min-height: 76px; display: flex; align-items: center; }
 .seller-card .account-note p { color: var(--hana-teal); margin: 0; }
 .seller-card .primary-button { margin-top: 20px; }
+
+/* Inline recovery for a real 409 on the Figma-approved seller step one.
+   No separate or unapproved registration screen is introduced. */
+.seller-conflict {
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--hana-cream);
+  border: 1px solid var(--hana-border);
+  border-radius: 14px;
+}
+.seller-conflict h3 {
+  font-size: 20px;
+  line-height: 1.7;
+  color: var(--hana-teal);
+  margin: 0 0 8px;
+}
+.seller-conflict > p {
+  color: var(--hana-muted);
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+.seller-conflict__differences { display: grid; gap: 12px; }
+.seller-conflict__field {
+  padding: 12px 14px;
+  background: var(--hana-surface);
+  border: 1px solid var(--hana-border);
+  border-radius: 12px;
+}
+.seller-conflict__field h4 { margin: 0 0 8px; font-size: 14px; }
+.seller-conflict__versions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.seller-conflict__versions p {
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.seller-conflict__versions strong {
+  display: block;
+  color: var(--hana-muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.seller-conflict__versions bdi { white-space: pre-wrap; }
+.seller-conflict__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.seller-conflict__actions button {
+  min-height: 48px;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.seller-conflict__use-server {
+  background: var(--hana-surface);
+  color: var(--hana-teal);
+  border: 1px solid var(--hana-teal);
+}
+.seller-conflict__keep-mine {
+  background: var(--hana-terracotta);
+  color: white;
+  border: 1px solid var(--hana-terracotta);
+}
+.seller-conflict__actions button:disabled { opacity: .6; cursor: wait; }
+
 .bootstrap { width: min(46rem, calc(100% - 32px)); padding: 3rem 1.5rem; margin: 0 auto; line-height: 1.9; }
 .bootstrap__links { display: flex; gap: 16px; flex-wrap: wrap; }
 .bootstrap__links a { color: var(--hana-teal); font-weight: 700; }
@@ -168,6 +240,10 @@ a { color: inherit; }
   .auth-card .account-note { margin-top: 26px; }
   .registration-steps { margin-top: 26px; padding: 16px; gap: 12px; font-size: 12px; }
   .seller-card { margin-top: 26px; padding: 20px 18px 24px; }
+  .seller-conflict { padding: 16px 12px; }
+  .seller-conflict__versions { grid-template-columns: 1fr; }
+  .seller-conflict__actions { display: grid; }
+  .seller-conflict__actions button { width: 100%; }
 }
 @media (max-width: 380px) {
   .registration-steps { grid-template-columns: 1fr; text-align: right; }
