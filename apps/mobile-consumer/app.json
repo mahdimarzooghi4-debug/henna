@@ -7,6 +7,7 @@
     "userInterfaceStyle": "light",
     "version": "0.1.0",
     "newArchEnabled": true,
+    "plugins": ["expo-secure-store"],
     "ios": {
       "supportsTablet": false
     },
@@ -14,7 +15,7 @@
       "edgeToEdgeEnabled": true
     },
     "extra": {
-      "implementationPhase": "design-to-code bootstrap; auth integration pending"
+      "implementationPhase": "Identity 008 native SecureStore session; real SMS adapter pending"
     }
   }
 }
