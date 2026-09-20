@@ -3,8 +3,6 @@ using Hana.Infrastructure.Time;
 using Hana.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
-using Microsoft.AspNetCore.RateLimiting;
-using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,43 +55,15 @@ if (hasIdentityDb && otpKeyConfigured)
 {
     builder.Services.AddScoped<OtpChallengeIssuer>();
     builder.Services.AddScoped<OtpSignInService>();
+    builder.Services.AddScoped<OtpIpRateLimiter>();
 }
 
 
-// One gate per observed client IP. Reverse proxies must be configured with
-// explicit trusted ForwardedHeaders before their addresses can be honored.
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy("otp-request", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 3,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            }));
-
-    // Independent attempt budget so requesting a code does not consume all
-    // verification attempts at the IP limiter. The database additionally
-    // caps incorrect guesses at five per challenge.
-    options.AddPolicy("otp-verify", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            }));
-});
-
+// OTP request and verification IP budgets are enforced atomically in PostgreSQL
+// after input validation and service readiness, not per-process in memory.
+// Never trust X-Forwarded-For unless explicitly configured for trusted proxies.
 var app = builder.Build();
 app.UseExceptionHandler();
-app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
@@ -139,8 +109,9 @@ app.MapGet("/api/v1/system/status", (IClock clock) =>
 // delivery, and cannot issue a challenge without both DB and secret.
 app.MapPost("/api/v1/auth/otp/request", async (
         OtpRequest payload, IServiceProvider services,
-        CancellationToken cancellationToken) =>
+        HttpContext context, CancellationToken cancellationToken) =>
     {
+        context.Response.Headers.CacheControl = "no-store";
         if (!IranianMobileNumber.TryParse(payload.Phone, out var phone))
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
@@ -160,6 +131,11 @@ app.MapPost("/api/v1/auth/otp/request", async (
 
         try
         {
+            if (!await services.GetRequiredService<OtpIpRateLimiter>()
+                .AllowAsync(context.Connection.RemoteIpAddress,
+                    OtpIpAction.Request, cancellationToken))
+                return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
             var issued = await services.GetRequiredService<OtpChallengeIssuer>()
                 .IssueAsync(phone!, cancellationToken);
             return issued.Status switch
@@ -177,7 +153,6 @@ app.MapPost("/api/v1/auth/otp/request", async (
             return Unavailable();
         }
     })
-    .RequireRateLimiting("otp-request")
     .WithName("RequestOtp")
     .WithTags("Identity")
     .ProducesValidationProblem()
@@ -214,6 +189,11 @@ app.MapPost("/api/v1/auth/otp/verify", async (
 
         try
         {
+            if (!await services.GetRequiredService<OtpIpRateLimiter>()
+                .AllowAsync(context.Connection.RemoteIpAddress,
+                    OtpIpAction.Verify, cancellationToken))
+                return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
             var result = await services.GetRequiredService<OtpSignInService>()
                 .SignInAsync(
                     payload.ChallengeId, phone!, payload.Code,
@@ -234,7 +214,6 @@ app.MapPost("/api/v1/auth/otp/verify", async (
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
     })
-    .RequireRateLimiting("otp-verify")
     .WithName("VerifyOtpAndSignIn")
     .WithTags("Identity")
     .ProducesValidationProblem()
