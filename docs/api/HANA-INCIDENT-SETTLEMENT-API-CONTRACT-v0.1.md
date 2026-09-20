@@ -144,7 +144,7 @@ Idempotency-Key: inc-ord42-item7-try1
 | `POST /internal/settlement-payouts/{settlementId}/submit` | worker/finance با مجوز | اجرای guarded پرداخت در چرخه پایان روز کاری ADR-038، **فقط** اگر hold فعال صفر، eligibility مالی و ledger معتبر باشد |
 | `GET /admin/settlement-cycles/{cycleId}` | finance مجاز | `businessDate`, `cycleCutoffAt`, `cycleState`, فروشگاه‌ها و فاکتورهای انتخاب‌شده/held، آمار مبلغ و وضعیت تطبیق؛ بدون مدارک محرمانه مشتری |
 
-در چرخه پایان **هر روز کاری همه فروشگاه‌ها** طبق [ADR-038](../adr/ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)، `businessDate`, `settlementCycleId`, `cycleCutoffAt`, `policyVersion` و وضعیت `PAYOUT_SUBMITTED | PAYOUT_UNKNOWN | PAID` باید قابل پیگیری و تطبیق باشند. hold فاکتور A نباید مانع payout فاکتور B همان فروشنده شود. طبق [ADR-039](../adr/ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-040](../adr/ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، پنجشنبه و جمعه روز کاری عادی این batch هستند؛ تعطیلات رسمی و زمان دقیق cut-off هنوز تعریف اجرایی مصوب ندارند و این API ساعت پیش‌فرضی تعیین نمی‌کند.
+در چرخه پایان **هر روز کاری همه فروشگاه‌ها** طبق [ADR-038](../adr/ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)، `businessDate`, `settlementCycleId`, `cycleCutoffAt`, `policyVersion` و وضعیت `PAYOUT_SUBMITTED | PAYOUT_UNKNOWN | PAID` باید قابل پیگیری و تطبیق باشند. hold فاکتور A نباید مانع payout فاکتور B همان فروشنده شود. طبق [ADR-039](../adr/ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-040](../adr/ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-041](../adr/ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، **تمام روزهای تقویمی شامل پنجشنبه، جمعه و تعطیلات رسمی** روز چرخه batch هستند؛ زمان دقیق cut-off و زمان وصول واقعی بانک هنوز تعریف اجرایی مصوب ندارند و این API ساعت پیش‌فرضی تعیین نمی‌کند.
 
 برای هر فاکتور:
 
@@ -194,4 +194,4 @@ maySubmitPayout =
 
 ## ۷. گیت تثبیت OpenAPI/SQL
 
-تا زمان تصویب روش اثبات مراجعه، قاعده تخصیص تخفیف سبدی، تقویم تعطیلات رسمی و ساعت دقیق پایان روز کاری تسویه ADR-038 تا ADR-040 (با پنجشنبه و جمعه به‌عنوان روز کاری مصوب) و وضعیت کسورات بالاتر از موجودی، فیلدهای مرتبط را **با TODO سیاست و contract tests** علامت بزنید؛ اصل گزارش یک‌ساعته، تماس + مراجعه، بازپرداخت فوری و guard تسویه از همین حالا قابل ساخت‌اند. هیچ endpoint یا status این فایل به معنای deploy شدن سرویس نیست.
+تا زمان تصویب روش اثبات مراجعه، قاعده تخصیص تخفیف سبدی، ساعت دقیق پایان روز و منطقه زمانی تسویه ADR-038 تا ADR-041 (تمام روزهای تقویمی از جمله تعطیل رسمی روز چرخه مصوب‌اند) و وضعیت کسورات بالاتر از موجودی، فیلدهای مرتبط را **با TODO سیاست و contract tests** علامت بزنید؛ اصل گزارش یک‌ساعته، تماس + مراجعه، بازپرداخت فوری و guard تسویه از همین حالا قابل ساخت‌اند. هیچ endpoint یا status این فایل به معنای deploy شدن سرویس نیست.
