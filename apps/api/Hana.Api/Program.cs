@@ -2,6 +2,7 @@ using Hana.Application.Time;
 using Hana.Infrastructure.Time;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
+using Hana.Infrastructure.Catalog;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
@@ -70,6 +71,9 @@ if (hasIdentityDb)
     builder.Services.AddDbContext<HanaSellerDbContext>(options =>
         options.UseNpgsql(identityConnectionString, postgres =>
             postgres.MigrationsHistoryTable("__EFMigrationsHistory", "seller")));
+    builder.Services.AddDbContext<HanaCatalogDbContext>(options =>
+        options.UseNpgsql(identityConnectionString, postgres =>
+            postgres.MigrationsHistoryTable("__EFMigrationsHistory", "catalog")));
 }
 
 if (hasIdentityDb)
@@ -115,12 +119,15 @@ app.MapGet("/health/ready", async (IServiceProvider services,
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
         var sellerDb = scope.ServiceProvider.GetRequiredService<HanaSellerDbContext>();
+        var catalogDb = scope.ServiceProvider.GetRequiredService<HanaCatalogDbContext>();
         var pending = await db.Database.GetPendingMigrationsAsync(cancellationToken);
         var sellerPending = await sellerDb.Database.GetPendingMigrationsAsync(cancellationToken);
-        return pending.Any() || sellerPending.Any() ||
-            !await sellerDb.Database.CanConnectAsync(cancellationToken)
+        var catalogPending = await catalogDb.Database.GetPendingMigrationsAsync(cancellationToken);
+        return pending.Any() || sellerPending.Any() || catalogPending.Any() ||
+            !await sellerDb.Database.CanConnectAsync(cancellationToken) ||
+            !await catalogDb.Database.CanConnectAsync(cancellationToken)
             ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
-            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller" } });
+            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller", "catalog" } });
     }
     catch
     {
@@ -323,6 +330,7 @@ app.MapDelete("/api/v1/auth/session", async (
     .Produces(StatusCodes.Status503ServiceUnavailable);
 
 app.MapSellerRegistration(hasIdentityDb);
+app.MapCatalogRead(hasIdentityDb);
 
 // Migration is an explicit one-off operator action, never a side effect of
 // starting ordinary API replicas. Store the real password only in env/secrets.
@@ -336,6 +344,8 @@ if (args.Contains("--apply-migrations", StringComparer.Ordinal))
     await db.Database.MigrateAsync();
     var sellerDb = scope.ServiceProvider.GetRequiredService<HanaSellerDbContext>();
     await sellerDb.Database.MigrateAsync();
+    var catalogDb = scope.ServiceProvider.GetRequiredService<HanaCatalogDbContext>();
+    await catalogDb.Database.MigrateAsync();
     return;
 }
 
