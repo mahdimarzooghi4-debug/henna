@@ -63,7 +63,7 @@ erDiagram
 
 ## گزارش کسری/خرابی و عکس مشتری
 
-طبق [ADR-021](../adr/ADR-021-ITEM-SHORTAGE-DAMAGE-PHOTO-SELLER-RESOLUTION.md)، `ORDER_INCIDENT` باید `incidentType`, `orderItemId`, `affectedQuantity`, `reportedBy`, `sellerReviewState` و پیوند به `INCIDENT_ATTACHMENT` (عکس) و `ITEM_RETURN` (در صورت دریافت کالای خراب) داشته باشد یا معادل نرمال‌شده آن‌ها را فراهم کند. نتیجه فروشگاه و هر refund به همان قلم/تعداد و ledger مرتبط شوند؛ طبق [ADR-022](../adr/ADR-022-ITEM-ISSUE-REFUND-TO-WALLET-OPTIONAL-WITHDRAWAL.md) بخش نقدی refund کسری/خرابی ابتدا به `WALLET_ACCOUNT` قابل برداشت مشتری می‌رود و بخش اعتبار محدود به همان منبع بازمی‌گردد؛ عودت بانکی فقط با `WITHDRAWAL_REQUEST` جداگانه مشتری است.
+طبق [ADR-021](../adr/ADR-021-ITEM-SHORTAGE-DAMAGE-PHOTO-SELLER-RESOLUTION.md)، `ORDER_INCIDENT` باید `incidentType`, `orderItemId`, `affectedQuantity`,  `reportedBy`, `supportReviewState`, `sellerReturnState` و پیوند به `INCIDENT_ATTACHMENT` (عکس) و `ITEM_RETURN` (در صورت دریافت کالای خراب) داشته باشد یا معادل نرمال‌شده آن‌ها را فراهم کند. تأیید/رد پشتیبانی حنا، ارجاع و هماهنگی با فروشگاه، مأمور/زمان دریافت فیزیکی توسط خود فروشگاه و هر refund به همان قلم/تعداد و ledger مرتبط شوند؛ طبق [ADR-023](../adr/ADR-023-SUPPORT-APPROVAL-SELLER-COLLECTS-DAMAGED-GOODS.md)، مرجوعی کالای خراب نباید `deliveryJobId` جدید در لجستیک حنا ایجاد کند؛ طبق [ADR-022](../adr/ADR-022-ITEM-ISSUE-REFUND-TO-WALLET-OPTIONAL-WITHDRAWAL.md) بخش نقدی refund کسری/خرابی ابتدا به `WALLET_ACCOUNT` قابل برداشت مشتری می‌رود و بخش اعتبار محدود به همان منبع بازمی‌گردد؛ عودت بانکی فقط با `WITHDRAWAL_REQUEST` جداگانه مشتری است.
 
 ## تأیید عدم‌تحویل پس از handoff
 
