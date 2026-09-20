@@ -30,7 +30,7 @@ function harness(answers = [], options = {}) {
     });
   };
   const client = new MobileCatalogClient(
-    options.base ?? "https://api.hana.test",
+    Object.hasOwn(options, "base") ? options.base : "https://api.hana.test",
     fetchFn,
     options.allowLocalHttp ?? false,
   );
