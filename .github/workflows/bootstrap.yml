@@ -78,6 +78,83 @@ jobs:
           cat /tmp/hana-api.log
           exit 1
 
+      - name: Smoke test explicit trusted proxy handling
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Production must ignore spoofed forwarding headers when the direct peer
+          # is NOT in the explicit trust list.
+          ASPNETCORE_ENVIRONMENT=Production \
+          ASPNETCORE_URLS=http://127.0.0.1:5185 \
+          ReverseProxy__Enabled=true \
+          ReverseProxy__TrustedAddresses=192.0.2.10 \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-proxy-untrusted.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5185/health/live > /dev/null; then
+              status=$(curl --silent --output /tmp/hana-proxy-untrusted.json --write-out "%{http_code}" \
+                -H "X-Forwarded-For: 203.0.113.25" \
+                -H "X-Forwarded-Proto: https" \
+                -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" \
+                http://127.0.0.1:5185/api/v1/auth/session)
+              test "$status" = "503"
+              break
+            fi
+            sleep 1
+          done
+          kill "$api_pid" 2>/dev/null || true
+          wait "$api_pid" 2>/dev/null || true
+          trap - EXIT
+
+          # A specifically trusted loopback proxy may supply original HTTPS/IP.
+          ASPNETCORE_ENVIRONMENT=Production \
+          ASPNETCORE_URLS=http://127.0.0.1:5186 \
+          ReverseProxy__Enabled=true \
+          ReverseProxy__TrustedAddresses=127.0.0.1 \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-proxy-trusted.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5186/health/live > /dev/null; then
+              status=$(curl --silent --output /tmp/hana-proxy-trusted.json --write-out "%{http_code}" \
+                -H "X-Forwarded-For: 203.0.113.25" \
+                -H "X-Forwarded-Proto: https" \
+                -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" \
+                http://127.0.0.1:5186/api/v1/auth/session)
+              test "$status" = "401"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hana-proxy-trusted.log
+          exit 1
+
+      - name: Reject unsafe or incomplete forwarded-header configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          ASPNETCORE_ENVIRONMENT=Production \
+          ASPNETCORE_URLS=http://127.0.0.1:5187 \
+          ReverseProxy__Enabled=true \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-proxy-invalid.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q "ReverseProxy:TrustedAddresses" /tmp/hana-proxy-invalid.log
+
+          set +e
+          ASPNETCORE_FORWARDEDHEADERS_ENABLED=true \
+          ASPNETCORE_ENVIRONMENT=Production \
+          ASPNETCORE_URLS=http://127.0.0.1:5188 \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-proxy-unsafe-switch.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q "ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is not allowed" /tmp/hana-proxy-unsafe-switch.log
+
   web:
     runs-on: ubuntu-latest
     env:
