@@ -145,6 +145,16 @@ jobs:
           test "$status" -ne 0
           grep -q "ReverseProxy:TrustedAddresses" /tmp/hana-proxy-invalid.log
 
+          set +e
+          ASPNETCORE_FORWARDEDHEADERS_ENABLED=true \
+          ASPNETCORE_ENVIRONMENT=Production \
+          ASPNETCORE_URLS=http://127.0.0.1:5188 \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-proxy-unsafe-switch.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q "ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is not allowed" /tmp/hana-proxy-unsafe-switch.log
+
   web:
     runs-on: ubuntu-latest
     env:
