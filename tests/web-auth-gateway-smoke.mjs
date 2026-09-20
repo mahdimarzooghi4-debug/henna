@@ -18,6 +18,7 @@ const accountId = "fbf47579-71b4-4b85-996c-842ac497fb12";
 const token = "hn1_" + Buffer.alloc(32, 7).toString("base64url");
 const phone = "09123456789";
 let revoked = false;
+let sellerDraft = null;
 let web;
 let upstream;
 let webLogs = "";
@@ -56,6 +57,20 @@ async function main() {
             expiresAtUtc: new Date(Date.now() + 3_600_000).toISOString(),
           }));
         }
+      } else if (url === "/api/v1/seller/registration" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "GET") {
+        response.writeHead(sellerDraft ? 200 : 404);
+        response.end(JSON.stringify(sellerDraft ?? {}));
+      } else if (url === "/api/v1/seller/registration" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "PUT") {
+        const data = JSON.parse(body);
+        assert.equal(data.phone, phone);
+        assert.equal(request.headers.authorization, `Bearer ${token}`);
+        sellerDraft = { ...data, status: "DRAFT" };
+        response.writeHead(200);
+        response.end(JSON.stringify({ status: "DRAFT" }));
       } else if (url === "/api/v1/auth/session" &&
         request.headers.authorization === `Bearer ${token}` &&
         request.method === "GET" && !revoked) {
@@ -154,6 +169,55 @@ async function main() {
   assert.equal(active.status, 200);
   assert.deepEqual(await active.json(), { authenticated: true, accountId });
 
+  const sellerUrl = base + "/api/seller/registration";
+  const sellerMissing = await fetch(sellerUrl, {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(sellerMissing.status, 404);
+
+  const draft = {
+    storeName: "فروشگاه", ownerName: "مسئول",
+    phone: "۰۹۱۲۳۴۵۶۷۸۹", city: "تهران",
+    address: "نشانی آزمایشی", postalCode: "۱۲۳۴۵۶۷۸۹۰",
+  };
+  const sellerCsrf = await fetch(sellerUrl, {
+    method: "PUT",
+    headers: {
+      Cookie: sessionCookie, Origin: "https://other.test",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(draft),
+  });
+  assert.equal(sellerCsrf.status, 403);
+  const sellerInvalid = await fetch(sellerUrl, {
+    method: "PUT",
+    headers: {
+      Cookie: sessionCookie, Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ...draft, postalCode: "bad" }),
+  });
+  assert.equal(sellerInvalid.status, 400);
+  const sellerSaved = await fetch(sellerUrl, {
+    method: "PUT",
+    headers: {
+      Cookie: sessionCookie, Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(draft),
+  });
+  assert.equal(sellerSaved.status, 200);
+  assert.deepEqual(await sellerSaved.json(), { status: "DRAFT" });
+  assert.equal(sellerSaved.headers.get("cache-control"), "no-store");
+  const sellerRestored = await fetch(sellerUrl, {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(sellerRestored.status, 200);
+  assert.deepEqual(await sellerRestored.json(), {
+    ...draft, phone, postalCode: "1234567890", status: "DRAFT",
+  });
+  assert.ok(!JSON.stringify(sellerDraft).includes(token));
+
   const rejectLogout = await fetch(base + "/api/auth/session", {
     method: "DELETE",
     headers: { Origin: "https://other.test", Cookie: sessionCookie },
@@ -171,7 +235,7 @@ async function main() {
     headers: { Cookie: sessionCookie },
   });
   assert.equal(after.status, 401);
-  console.log("CI-only web auth gateway: 202/400/401/403/200/204, secure HttpOnly cookie, revocation OK");
+  console.log("CI-only web auth + seller draft gateway: 202/400/401/403/404/200/204, secure cookie, seller draft, revocation OK");
 }
 
 try {
