@@ -1,6 +1,6 @@
 # ADR-041 — تسویه فروشگاه‌ها در تعطیلات رسمی نیز انجام می‌شود
 
-**وضعیت:** تصویب‌شده؛ طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) چرخه حنا هر شب ۰۰:۰۰ خودکار شروع می‌شود؛ منطقه زمانی مرجع و زمان وصول واقعی بانکی هنوز نیازمند تعیین مستقل‌اند  
+**وضعیت:** تصویب‌شده؛ طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) چرخه حنا هر شب ۰۰:۰۰ خودکار شروع می‌شود؛ منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) **`Asia/Tehran`** مصوب است؛ زمان وصول واقعی بانکی هنوز نیازمند تعیین مستقل است  
 **تاریخ ثبت:** ۲۰۲۶-۰۹-۲۰  
 **حوزه:** Seller Settlement, Daily Batch, Business Calendar, Public Holidays, Financial Operations  
 **مکمل:** [ADR-038 — تسویه همه فروشگاه‌ها در پایان هر روز کاری](ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)، [ADR-039 — پنجشنبه روز کاری تسویه](ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-040 — جمعه روز کاری تسویه](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-032 — توقف فاکتور دارای پرونده](ADR-032-HOLD-INVOICE-SETTLEMENT-UNTIL-SUPPORT-RESOLVES-ITEM-INCIDENT.md)
@@ -21,7 +21,7 @@
 
 ## مواردی که هنوز تعیین نشده‌اند
 
-- طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، ساعت اجرای خودکار batch **۰۰:۰۰ (نیمه‌شب)** است؛ فقط منطقه زمانی مرجع این ساعت هنوز باز است و نباید تهران/UTC بدون تأیید محصول فرض شود.
+- طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، ساعت اجرای خودکار batch **۰۰:۰۰ (نیمه‌شب)** است؛ منطقه زمانی مرجع این ساعت طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) **`Asia/Tehran`** مصوب است؛ timestampهای سرور/بانک UTC ذخیره شوند.
 - نحوه اتصال بانکی روز تعطیل، زمان واقعی رسیدن وجه به حساب فروشگاه و SLA provider باید از «اجرای چرخه حنا» جدا قراردادبندی شوند.
 - موارد کسورات بالاتر از وجه موجود، شکایت پس از تسویه واقعاً پرداخت‌شده و سایر سیاست‌های مالی باز طبق ADRهای قبلی، با این تصمیم حل نمی‌شوند.
 
@@ -36,4 +36,4 @@
 
 ## تصمیم بعدی
 
-طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، هر شب ساعت **۰۰:۰۰**؛ وصول واقعی بانک وابسته به چرخه بانک است. منطقه زمانی مرجع این ساعت هنوز باز است.
+طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، هر شب ساعت **۰۰:۰۰**؛ وصول واقعی بانک وابسته به چرخه بانک است. منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) **وقت ایران / `Asia/Tehran`** است.
