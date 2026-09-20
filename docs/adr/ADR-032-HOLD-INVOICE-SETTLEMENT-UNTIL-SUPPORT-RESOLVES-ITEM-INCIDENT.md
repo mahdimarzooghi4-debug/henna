@@ -3,7 +3,7 @@
 **وضعیت:** تصویب‌شده توسط مالک محصول؛ طبق [ADR-033](ADR-033-HOLD-DAMAGED-INVOICE-THROUGH-SELLER-COLLECTION-SLA.md) در خرابی تأییدشده با بازپس‌گیری، توقف تسویه تا تعیین نتیجه ساعت جمع‌آوری ادامه دارد؛ آزادسازی فوری hold جمع‌آوری پس از دریافت واقعی به‌موقع طبق [ADR-034](ADR-034-RELEASE-SETTLEMENT-HOLD-ON-EARLY-DAMAGED-RETURN-COLLECTION.md) مصوب است؛ جزئیات تسویه اجراشده همچنان باز است  
 **تاریخ ثبت:** ۲۰۲۶-۰۹-۲۰  
 **حوزه:** Seller Settlement, Item Incident, Hana Support, Refund, Payment Ledger  
-**مکمل:** [ADR-030 — گزارش خرابی تا یک ساعت از دریافت](ADR-030-CUSTOMER-DAMAGE-REPORT-WITHIN-ONE-HOUR-OF-RECEIPT.md)، [ADR-031 — گزارش کسری تا یک ساعت از دریافت](ADR-031-MISSING-ITEM-REPORT-WITHIN-ONE-HOUR-OF-RECEIPT.md)، [ADR-021 — رسیدگی پشتیبانی به کسری/خرابی](ADR-021-ITEM-SHORTAGE-DAMAGE-PHOTO-SELLER-RESOLUTION.md)، [ADR-024 — جبران فوری خرابی](ADR-024-IMMEDIATE-WALLET-REFUND-ON-APPROVED-DAMAGE.md)، [ADR-029 — کسر جریمه از تسویه](ADR-029-DEDUCT-LATE-RETURN-PENALTY-FROM-SELLER-SETTLEMENT.md)، [ADR-008 — فاصله تسویه سوپرمارکتی](ADR-008-GROCERY-ONE-DAY-FULFILLMENT-SETTLEMENT-PENDING.md)
+**مکمل:** [ADR-030 — گزارش خرابی تا یک ساعت از دریافت](ADR-030-CUSTOMER-DAMAGE-REPORT-WITHIN-ONE-HOUR-OF-RECEIPT.md)، [ADR-031 — گزارش کسری تا یک ساعت از دریافت](ADR-031-MISSING-ITEM-REPORT-WITHIN-ONE-HOUR-OF-RECEIPT.md)، [ADR-021 — رسیدگی پشتیبانی به کسری/خرابی](ADR-021-ITEM-SHORTAGE-DAMAGE-PHOTO-SELLER-RESOLUTION.md)، [ADR-024 — جبران فوری خرابی](ADR-024-IMMEDIATE-WALLET-REFUND-ON-APPROVED-DAMAGE.md)، [ADR-029 — کسر جریمه از تسویه](ADR-029-DEDUCT-LATE-RETURN-PENALTY-FROM-SELLER-SETTLEMENT.md)، [ADR-008 — چرخه کوتاه سفارش سوپرمارکتی](ADR-008-GROCERY-ONE-DAY-FULFILLMENT-SETTLEMENT-PENDING.md)، [ADR-038 — تسویه پایان هر روز کاری](ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)
 
 ## تصمیم تصویب‌شده
 
@@ -30,7 +30,7 @@
 - `incidentReportedAt`, `customerReceivedAt`, `supportDecisionAt`, `settlementHoldPlacedAt`, `settlementHoldReleasedAt`, `incidentId`, `orderId`, `sellerId` و علت hold قابل ممیزی باشند.
 - بررسی eligibility و ایجاد hold در مقابل آماده‌سازی/پرداخت تسویه باید با کنترل اتمیک وضعیت و نسخه اجرا شود؛ job تسویه نباید پس از ثبت hold معتبر همان فاکتور وجه را ارسال کند.
 - اگر پرداخت تسویه واقعاً **پیش از ثبت hold** انجام شده باشد، این ADR برداشت بانکی، تسویه منفی یا carry-forward خودکار را تصویب نمی‌کند؛ پرونده باید برای رسیدگی مالی قابل مشاهده باشد.
-- اصل فاصله تسویه سوپرمارکتی طبق ADR-008 باقی است و مبدأ دقیق «یک روز بعد» همچنان باز است؛ hold پرونده، استثنای موقت و قابل ممیزی بر اجرای پرداخت است نه بازتعریف مبدأ روز تسویه.
+- طبق [ADR-038](ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)، تسویه همه فروشگاه‌ها در پایان هر روز کاری حنا برای فاکتورهای مجاز اجرا می‌شود؛ hold پرونده، مانع موقت و قابل ممیزی بر پرداخت **همان فاکتور** است و سایر فاکتورهای مجاز فروشگاه از batch روزانه حذف نمی‌شوند. قاعده قدیم «یک روز بعد» در ADR-008 جایگزین شده است.
 - ثبت تکراری report، retry تصمیم پشتیبانی یا callback تسویه نباید hold تکراریِ بی‌پایان، آزادسازی زودهنگام یا refund مضاعف بسازد.
 
 ## سناریوهای آزمون
