@@ -39,11 +39,13 @@ jobs:
         run: dotnet build Hana.slnx --configuration Release --no-restore
       - name: Verify Catalog migration snapshot matches model
         run: dotnet test Hana.slnx --configuration Release --no-build --filter FullyQualifiedName~CatalogModelSnapshotTests
-      - name: Apply Identity, Seller and Catalog migrations
+      - name: Verify Geography migration snapshot matches model
+        run: dotnet test Hana.slnx --configuration Release --no-build --filter FullyQualifiedName~GeographyModelSnapshotTests
+      - name: Apply Identity, Seller, Catalog and Geography migrations
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
       - name: Confirm repeated migration is harmless
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
-      - name: Test Identity, Seller and Catalog domain, API and PostgreSQL schemas
+      - name: Test Identity, Seller, Catalog and Geography with real PostgreSQL
         run: dotnet test Hana.slnx --configuration Release --no-build
       - name: Verify catalog operator preview and apply CLI
         shell: bash
@@ -70,6 +72,12 @@ jobs:
               grep -q '"items":' /tmp/hana-catalog-categories.json
               curl --fail --silent http://127.0.0.1:5184/api/v1/catalog/products -o /tmp/hana-catalog-products.json
               grep -q '"pageSize":20' /tmp/hana-catalog-products.json
+              curl --fail --silent http://127.0.0.1:5184/api/v1/geography/provinces -o /tmp/hana-geography-provinces.json
+              grep -q '"items":' /tmp/hana-geography-provinces.json
+              city_missing_province=$(curl --silent --output /tmp/hana-geography-invalid.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/geography/cities)
+              test "$city_missing_province" = "400"
+              city_unknown=$(curl --silent --output /tmp/hana-geography-empty.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/geography/cities/123e4567-e89b-42d3-a456-426614174000)
+              test "$city_unknown" = "404"
               catalog_bad=$(curl --silent --output /tmp/hana-catalog-invalid.json --write-out "%{http_code}" 'http://127.0.0.1:5184/api/v1/catalog/products?pageSize=100')
               test "$catalog_bad" = "400"
               status_invalid=$(curl --silent --output /tmp/hana-invalid.json --write-out "%{http_code}" -H "Content-Type: application/json" -d '{"phone":"123"}' http://127.0.0.1:5184/api/v1/auth/otp/request)
