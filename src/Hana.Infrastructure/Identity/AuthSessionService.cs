@@ -18,13 +18,14 @@ public sealed class AuthSessionService(
             return null;
 
         var now = clock.UtcNow.ToUniversalTime();
-        var active = await db.AuthSessions.AsNoTracking()
+        var active = await db.AuthSessions
             .FromSqlInterpolated($"""
                 SELECT * FROM identity.auth_sessions
                 WHERE token_digest = {digest}
                   AND revoked_at_utc IS NULL
                   AND issued_at_utc <= {now} AND expires_at_utc > {now}
                 """)
+            .AsNoTracking()
             .SingleOrDefaultAsync(cancellationToken);
         return active?.AccountId;
     }
