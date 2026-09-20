@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as SecureStore from "expo-secure-store";
 import {
   Alert,
   Image,
@@ -15,60 +16,129 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, space } from "./src/theme";
-import { isValidIranianMobile, normalizeIranianMobile } from "./src/phone";
+import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from "./src/phone";
+import { MobileAuthClient } from "./src/mobile-auth";
 
-type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited" | "sent";
+type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited";
+type ViewState = "checking" | "phone" | "code" | "session" | "offline";
 
 const logo = require("./assets/hana-app-logo.png");
 const backIcon = require("./assets/back.png");
+const tokenKey = "hana.consumer.session.v1";
+const secureOptions = {
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+};
+
+// Expo SecureStore uses iOS Keychain / Android Keystore-backed encrypted storage.
+// Keep the bearer OUT of React state, console, AsyncStorage and Expo public config.
+const auth = new MobileAuthClient(
+  process.env.EXPO_PUBLIC_HANA_API_BASE_URL,
+  {
+    read: () => SecureStore.getItemAsync(tokenKey, secureOptions),
+    write: (token) => SecureStore.setItemAsync(tokenKey, token, secureOptions),
+    remove: () => SecureStore.deleteItemAsync(tokenKey, secureOptions),
+  },
+  fetch,
+  Date.now,
+  __DEV__,
+);
 
 function ConsumerAuthScreen() {
   const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [view, setView] = useState<ViewState>("checking");
   const [status, setStatus] = useState<FormStatus>("idle");
+  const pending = useRef(false);
+  const mounted = useRef(true);
+
+  async function refreshSession() {
+    if (pending.current) return;
+    pending.current = true;
+    setStatus("loading");
+    setView("checking");
+    try {
+      const result = await auth.session();
+      if (!mounted.current) return;
+      setView(result.status === "authenticated" ? "session"
+        : result.status === "guest" ? "phone" : "offline");
+      setStatus(result.status === "unavailable" ? "unavailable" : "idle");
+    } finally {
+      pending.current = false;
+    }
+  }
+
+  useEffect(() => {
+    mounted.current = true;
+    void refreshSession();
+    return () => { mounted.current = false; };
+  }, []);
 
   async function requestCode() {
-    if (status === "loading") return;
-
+    if (pending.current) return;
     const normalized = normalizeIranianMobile(phone);
     setPhone(normalized);
     if (!isValidIranianMobile(normalized)) {
       setStatus("invalid");
       return;
     }
-
-    // EXPO_PUBLIC_* holds ONLY a public API URL, NEVER an SMS provider secret.
-    const apiBase = process.env.EXPO_PUBLIC_HANA_API_BASE_URL?.trim();
-    if (!apiBase || (!__DEV__ && !apiBase.startsWith("https://"))) {
-      setStatus("unavailable");
-      return;
-    }
-
+    pending.current = true;
     setStatus("loading");
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      const response = await fetch(
-        `${apiBase.replace(/\/$/, "")}/api/v1/auth/otp/request`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: normalized }),
-          signal: controller.signal,
-        },
-      );
-      setStatus(
-        response.status === 202
-          ? "sent"
-          : response.status === 400
-            ? "invalid"
-            : response.status === 429
-              ? "limited"
-              : "unavailable",
-      );
-    } catch {
-      setStatus("unavailable");
+      const result = await auth.requestOtp(normalized);
+      if (!mounted.current) return;
+      if (result.status === "accepted") {
+        setChallengeId(result.challengeId);
+        setCode("");
+        setView("code");
+        setStatus("idle");
+      } else {
+        setStatus(result.status);
+      }
     } finally {
-      clearTimeout(timeout);
+      pending.current = false;
+    }
+  }
+
+  async function verifyCode() {
+    if (pending.current || !challengeId) return;
+    pending.current = true;
+    setStatus("loading");
+    try {
+      const result = await auth.verifyOtp(phone, challengeId, code);
+      if (!mounted.current) return;
+      if (result.status === "authenticated") {
+        setCode("");
+        setChallengeId(null);
+        setView("session");
+        setStatus("idle");
+      } else {
+        setStatus(result.status);
+      }
+    } finally {
+      pending.current = false;
+    }
+  }
+
+  async function logout() {
+    if (pending.current) return;
+    pending.current = true;
+    setStatus("loading");
+    try {
+      const result = await auth.logout();
+      if (!mounted.current) return;
+      if (result.status === "signedOut") {
+        setView("phone");
+        setPhone("");
+        setCode("");
+        setChallengeId(null);
+        setStatus("idle");
+      } else {
+        // An outage is not proof of server-side revocation: retain SecureStore.
+        setStatus("unavailable");
+      }
+    } finally {
+      pending.current = false;
     }
   }
 
@@ -110,85 +180,200 @@ function ConsumerAuthScreen() {
           <View style={styles.intro}>
             <Text style={styles.title}>ورود به حنا</Text>
             <Text style={styles.subtitle}>
-              با شماره موبایل وارد شوید یا ثبت‌نام کنید.
+              {view === "session"
+                ? "نشست شما در سرور حنا بررسی شده است."
+                : "با شماره موبایل وارد شوید یا ثبت‌نام کنید."}
             </Text>
           </View>
 
           <View style={styles.card}>
-            <Text nativeID="mobile-phone-label" style={styles.fieldLabel}>
-              شماره موبایل
-            </Text>
-            <TextInput
-              accessibilityLabel="شماره موبایل"
-              style={[styles.input, status === "invalid" && styles.invalidInput]}
-              placeholder="09xxxxxxxxx"
-              placeholderTextColor={colors.muted}
-              textAlign="right"
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              maxLength={11}
-              value={phone}
-              onChangeText={(value) => {
-                setPhone(value);
-                setStatus("idle");
-              }}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="دریافت کد تأیید"
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.primaryButtonPressed,
-                status === "loading" && styles.primaryButtonLoading,
-              ]}
-              onPress={requestCode}
-              disabled={status === "loading"}
-            >
-              <Text style={styles.primaryButtonText}>
-                {status === "loading" ? "در حال بررسی…" : "دریافت کد تأیید"}
-              </Text>
-            </Pressable>
+            {view === "phone" && (
+              <>
+                <Text nativeID="mobile-phone-label" style={styles.fieldLabel}>
+                  شماره موبایل
+                </Text>
+                <TextInput
+                  accessibilityLabel="شماره موبایل"
+                  style={[styles.input, status === "invalid" && styles.invalidInput]}
+                  placeholder="09xxxxxxxxx"
+                  placeholderTextColor={colors.muted}
+                  textAlign="right"
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  maxLength={11}
+                  value={phone}
+                  onChangeText={(value) => {
+                    setPhone(value);
+                    setStatus("idle");
+                  }}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="دریافت کد تأیید"
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    pressed && styles.primaryButtonPressed,
+                    status === "loading" && styles.primaryButtonLoading,
+                  ]}
+                  onPress={requestCode}
+                  disabled={status === "loading"}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {status === "loading" ? "در حال بررسی…" : "دریافت کد تأیید"}
+                  </Text>
+                </Pressable>
+                {status !== "idle" && status !== "loading" && (
+                  <Text accessibilityRole="alert" style={[
+                    styles.formStatus, status === "invalid" && styles.formStatusError,
+                  ]}>
+                    {status === "invalid"
+                      ? "شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد."
+                      : status === "limited"
+                        ? "تعداد درخواست‌ها زیاد است. لطفاً کمی بعد تلاش کنید."
+                        : "سرویس ارسال کد در دسترس نیست؛ دریافت کد تأیید نشده است."}
+                  </Text>
+                )}
 
-            {status !== "idle" && status !== "loading" && (
-              <Text
-                accessibilityRole={status === "invalid" ? "alert" : "text"}
-                style={[
-                  styles.formStatus,
-                  status === "invalid" && styles.formStatusError,
-                ]}
-              >
-                {status === "invalid"
-                  ? "شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد."
-                  : status === "limited"
-                    ? "تعداد درخواست‌ها زیاد است. لطفاً کمی بعد تلاش کنید."
-                    : status === "sent"
-                      ? "درخواست ارسال پذیرفته شد. مرحله واردکردن کد هنوز آماده نیست."
-                      : "سرویس ارسال کد در دسترس نیست؛ کدی ارسال نشد."}
-              </Text>
+                <View style={styles.note}>
+                  <Text style={styles.noteTitle}>یک حساب؛ چند امکان</Text>
+                  <Text style={styles.noteBody}>
+                    پس از ورود، حساب حقیقی یا حقوقی تکمیل می‌شود.
+                  </Text>
+                </View>
+                <View style={styles.footer}>
+                  <Text style={styles.footerLabel}>فروشگاه دارید؟</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="ثبت‌نام فروشگاه"
+                    onPress={() =>
+                      Alert.alert(
+                        "ثبت‌نام فروشگاه",
+                        "ثبت‌نام فروشگاه فقط در نسخه وب حنا ارائه می‌شود. صفحه وب این بخش ساخته شده اما هنوز به بک‌اند متصل نیست."
+                      )
+                    }
+                  >
+                    <Text style={styles.sellerLink}>ثبت‌نام فروشگاه</Text>
+                  </Pressable>
+                </View>
+              </>
             )}
 
-            <View style={styles.note}>
-              <Text style={styles.noteTitle}>یک حساب؛ چند امکان</Text>
-              <Text style={styles.noteBody}>
-                پس از ورود، حساب حقیقی یا حقوقی تکمیل می‌شود.
-              </Text>
-            </View>
+            {view === "code" && (
+              <>
+                {/* Technical OTP step only: its final visual frame needs approved Figma. */}
+                <Text style={styles.fieldLabel}>کد تأیید برای {phone}</Text>
+                <TextInput
+                  accessibilityLabel="کد شش رقمی تأیید"
+                  style={[styles.input, status === "invalid" && styles.invalidInput]}
+                  placeholder="xxxxxx"
+                  placeholderTextColor={colors.muted}
+                  textAlign="right"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={code}
+                  onChangeText={(value) => {
+                    setCode(normalizeDigits(value));
+                    setStatus("idle");
+                  }}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="تأیید کد"
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    pressed && styles.primaryButtonPressed,
+                    status === "loading" && styles.primaryButtonLoading,
+                  ]}
+                  onPress={verifyCode}
+                  disabled={status === "loading"}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {status === "loading" ? "در حال تأیید…" : "تأیید کد"}
+                  </Text>
+                </Pressable>
+                {status !== "idle" && status !== "loading" && (
+                  <Text accessibilityRole="alert" style={[
+                    styles.formStatus, status === "invalid" && styles.formStatusError,
+                  ]}>
+                    {status === "invalid"
+                      ? "کد یا اطلاعات تأیید معتبر نیست."
+                      : status === "limited"
+                        ? "تعداد تلاش‌ها زیاد است؛ بعداً دوباره تلاش کنید."
+                        : "تأیید کد در دسترس نیست؛ ورود انجام نشد."}
+                  </Text>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="ویرایش شماره موبایل"
+                  onPress={() => {
+                    if (pending.current) return;
+                    setChallengeId(null);
+                    setCode("");
+                    setStatus("idle");
+                    setView("phone");
+                  }}
+                >
+                  <Text style={[styles.sellerLink, styles.secondaryLink]}>
+                    ویرایش شماره موبایل
+                  </Text>
+                </Pressable>
+              </>
+            )}
 
-            <View style={styles.footer}>
-              <Text style={styles.footerLabel}>فروشگاه دارید؟</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="ثبت‌نام فروشگاه"
-                onPress={() =>
-                  Alert.alert(
-                    "ثبت‌نام فروشگاه",
-                    "ثبت‌نام فروشگاه فقط در نسخه وب حنا ارائه می‌شود. صفحه وب این بخش ساخته شده اما هنوز به بک‌اند متصل نیست."
-                  )
-                }
-              >
-                <Text style={styles.sellerLink}>ثبت‌نام فروشگاه</Text>
-              </Pressable>
-            </View>
+            {view === "checking" && (
+              <Text style={styles.formStatus}>در حال بررسی نشست در سرور…</Text>
+            )}
+            {view === "offline" && (
+              <>
+                <Text style={styles.formStatus}>
+                  بررسی نشست ممکن نیست؛ اطلاعات امن دستگاه پاک نشده است.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="تلاش مجدد بررسی نشست"
+                  style={styles.primaryButton}
+                  onPress={refreshSession}
+                >
+                  <Text style={styles.primaryButtonText}>تلاش مجدد</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="خروج از نشست موجود"
+                  onPress={logout}
+                  disabled={status === "loading"}
+                >
+                  <Text style={[styles.sellerLink, styles.secondaryLink]}>خروج</Text>
+                </Pressable>
+              </>
+            )}
+            {view === "session" && (
+              <>
+                <Text style={styles.fieldLabel}>نشست شما فعال است.</Text>
+                <Text style={styles.formStatus}>
+                  اعتبار نشست از API حنا استعلام شده است؛ صفحه اصلی هنوز ساخته نشده است.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="خروج از حساب"
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    pressed && styles.primaryButtonPressed,
+                    status === "loading" && styles.primaryButtonLoading,
+                  ]}
+                  onPress={logout}
+                  disabled={status === "loading"}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {status === "loading" ? "در حال خروج…" : "خروج از حساب"}
+                  </Text>
+                </Pressable>
+                {status === "unavailable" && (
+                  <Text accessibilityRole="alert" style={styles.formStatus}>
+                    خروج کامل نشد؛ نشست دستگاه تا تأیید و پاک‌سازی حفظ شده است.
+                  </Text>
+                )}
+              </>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -341,4 +526,5 @@ const styles = StyleSheet.create({
     writingDirection: "rtl",
     lineHeight: 28,
   },
+  secondaryLink: { marginTop: 22, textAlign: "center" },
 });
