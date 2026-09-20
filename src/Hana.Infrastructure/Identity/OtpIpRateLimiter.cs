@@ -1,6 +1,8 @@
 using System.Net;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using NpgsqlTypes;
 
 namespace Hana.Infrastructure.Identity;
 
@@ -45,24 +47,35 @@ public sealed class OtpIpRateLimiter(
         // independently admit the last permit. No in-process counters or
         // spoofable client-provided headers are used. "Value" is EF's scalar
         // result alias; the DB clock, not client time, starts/resets windows.
-        var count = await db.Database.SqlQueryInterpolated<int>($"""
+        await db.Database.OpenConnectionAsync(cancellationToken);
+        await using var command = db.Database.GetDbConnection().CreateCommand();
+        command.CommandText = """
             INSERT INTO identity.otp_ip_windows
                 (partition_digest, action, window_started_at_utc, request_count)
-            VALUES ({digest}, {name}, now(), 1)
+            VALUES (@digest, @action, now(), 1)
             ON CONFLICT (partition_digest, action)
             DO UPDATE SET
                 request_count = CASE
                     WHEN otp_ip_windows.window_started_at_utc <=
                         now() - interval '60 seconds' THEN 1
-                    ELSE LEAST(otp_ip_windows.request_count + 1, {saturatedCount})
+                    ELSE LEAST(otp_ip_windows.request_count + 1, @saturation)
                 END,
                 window_started_at_utc = CASE
                     WHEN otp_ip_windows.window_started_at_utc <=
                         now() - interval '60 seconds' THEN now()
                     ELSE otp_ip_windows.window_started_at_utc
                 END
-            RETURNING request_count AS "Value"
-            """).SingleAsync(cancellationToken);
+            RETURNING request_count
+            """;
+        command.Parameters.Add(new NpgsqlParameter("digest", NpgsqlDbType.Bytea)
+            { Value = digest });
+        command.Parameters.Add(new NpgsqlParameter("action", NpgsqlDbType.Varchar)
+            { Value = name });
+        command.Parameters.Add(new NpgsqlParameter("saturation", NpgsqlDbType.Integer)
+            { Value = saturatedCount });
+        var scalar = await command.ExecuteScalarAsync(cancellationToken);
+        if (scalar is not int count)
+            throw new InvalidOperationException("OTP IP rate window was not persisted.");
 
         // Best-effort bounded retention, using DB time and an indexed cutoff.
         // A failure propagates and the API returns 503, not a false allowance.
