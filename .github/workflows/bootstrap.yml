@@ -219,6 +219,14 @@ jobs:
               test "$seller_anonymous" = "401"
               seller_anonymous_get=$(curl --silent --output /tmp/hana-seller-anonymous-get.json --write-out "%{http_code}" http://127.0.0.1:3000/api/seller/registration)
               test "$seller_anonymous_get" = "401"
+              # Without the required HTTPS upstream configuration, public
+              # catalog gateway must fail closed, not show an empty catalog.
+              for route in categories products products/123e4567-e89b-42d3-a456-426614174000; do
+                result=$(curl --silent --output /tmp/hana-catalog-web.json --write-out "%{http_code}" "http://127.0.0.1:3000/api/catalog/$route")
+                test "$result" = "503"
+              done
+              catalog_invalid=$(curl --silent --output /tmp/hana-catalog-invalid-web.json --write-out "%{http_code}" 'http://127.0.0.1:3000/api/catalog/products?pageSize=51')
+              test "$catalog_invalid" = "400"
               exit 0
             fi
             sleep 1
