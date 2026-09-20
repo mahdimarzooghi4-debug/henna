@@ -149,5 +149,7 @@ jobs:
         working-directory: apps/mobile-consumer
       - name: Typecheck consumer app
         run: npm run mobile:typecheck
+      - name: Test mobile OTP and SecureStore session semantics (CI-only mocked API/store)
+        run: node --experimental-strip-types --test tests/mobile-auth-smoke.mjs
       - name: Bundle consumer app for Android
         run: npm run mobile:export:android
