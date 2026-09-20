@@ -28,7 +28,7 @@ npm run mobile:export:android
 
 ## معیار اعتبارسنجی گام
 
-در `.github/workflows/bootstrap.yml` یک job موبایل برای `expo install --check`، typecheck و export باندل Android افزوده شد. **این خروجی APK/IPA یا تست نصب روی دستگاه نیست**؛ گزارش موفقیت هر اجرای CI باید جداگانه بررسی شود. آزمایش بصری روی Android/iOS و فونت نهایی در گام بعد لازم است.
+در `.github/workflows/bootstrap.yml` یک job موبایل برای `expo install --check`، typecheck و export باندل Android افزوده شد. **این خروجی APK/IPA یا تست نصب روی دستگاه نیست**؛ در [اجرای موفق CI برای commit `4ff5673`](https://github.com/mahdimarzooghi4-debug/henna/actions/runs/35513570904)، jobهای **mobile / web / backend هر سه موفق شدند**، شامل `expo install --check`، typecheck موبایل و export باندل Android. این موفقیت ادعای تست نصب روی دستگاه یا دسترس‌پذیری API احراز هویت نیست. آزمایش بصری روی Android/iOS و فونت نهایی در گام بعد لازم است.
 
 ## اصلاح سازگاری وابستگی‌ها
 
