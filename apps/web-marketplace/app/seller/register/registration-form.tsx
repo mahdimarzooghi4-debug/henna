@@ -92,7 +92,8 @@ export function RegistrationForm() {
   }
 
   async function retryConflict() {
-    if (busy || access !== "signedIn" || conflict) return;
+    if (busy || access !== "signedIn" ||
+      conflict?.status !== "unavailable") return;
     setBusy(true);
     try {
       await retrieveCurrentDraft();
