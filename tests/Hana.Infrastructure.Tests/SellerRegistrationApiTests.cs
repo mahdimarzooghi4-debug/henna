@@ -151,18 +151,31 @@ public sealed class SellerRegistrationApiTests
             (await second.PutAsJsonAsync(
                 url, Fields(secondPhone, "فروشگاه دوم", revision: 0))).StatusCode);
 
+        // Two simultaneous API requests carrying the same revision must
+        // never both succeed, even if handled by different DB contexts.
+        var concurrent = await Task.WhenAll(
+            first.PutAsJsonAsync(url,
+                Fields(firstPhone, "گزینه الف", revision: 2)),
+            first.PutAsJsonAsync(url,
+                Fields(firstPhone, "گزینه ب", revision: 2)));
+        Assert.Single(concurrent, x => x.StatusCode == HttpStatusCode.OK);
+        Assert.Single(concurrent, x => x.StatusCode == HttpStatusCode.Conflict);
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await first.PutAsJsonAsync(url,
+                Fields(firstPhone, "نسخه دیرهنگام", revision: 2))).StatusCode);
+
         var one = await seller.RegistrationDrafts.AsNoTracking()
             .SingleAsync(x => x.AccountId == firstId);
         var two = await seller.RegistrationDrafts.AsNoTracking()
             .SingleAsync(x => x.AccountId == secondId);
-        Assert.Equal("فروشگاه ویرایش‌شده", one.StoreName);
+        Assert.Contains(one.StoreName, new[] { "گزینه الف", "گزینه ب" });
         Assert.Equal(firstPhone, one.Phone);
         Assert.Equal("فروشگاه دوم", two.StoreName);
         Assert.Equal(2, await seller.RegistrationDrafts.CountAsync(
             x => x.AccountId == firstId || x.AccountId == secondId));
         Assert.Equal("DRAFT", one.Status);
         Assert.Equal("DRAFT", two.Status);
-        Assert.Equal(2, one.Revision);
+        Assert.Equal(3, one.Revision);
         Assert.Equal(1, two.Revision);
 
         await identity.AuthSessions
