@@ -1,7 +1,7 @@
 import type { SellerFields } from "./seller-draft-preflight";
 import {
   sellerFieldLabels, sellerFieldDifferences,
-} from "./seller-conflict";
+} from "./seller-conflict.ts";
 
 /**
  * This is a THREE-way comparison: the last persisted snapshot seen by THIS
