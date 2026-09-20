@@ -84,18 +84,28 @@ public sealed class SellerRegistrationApiTests
         second.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", secondToken);
         const string url = "/api/v1/seller/registration";
-        var draft = Fields(firstPhone, "فروشگاه اول");
+        var draft = Fields(firstPhone, "فروشگاه اول", revision: 0);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync(url)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized,
             (await anon.PutAsJsonAsync(url, draft)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await first.GetAsync(url)).StatusCode);
 
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await first.PutAsJsonAsync(url, new
+            {
+                storeName = "مجاز", ownerName = "مسئول", phone = firstPhone,
+                city = "تهران", address = "نشانی", postalCode = "1234567890"
+            })).StatusCode);
+
         var saved = await first.PutAsJsonAsync(url, draft);
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
         Assert.Equal("no-store", saved.Headers.GetValues("Cache-Control").Single());
         using (var body = JsonDocument.Parse(await saved.Content.ReadAsStringAsync()))
+        {
             Assert.Equal("DRAFT", body.RootElement.GetProperty("status").GetString());
+            Assert.Equal(1, body.RootElement.GetProperty("revision").GetInt32());
+        }
 
         var owned = await first.GetAsync(url);
         Assert.Equal(HttpStatusCode.OK, owned.StatusCode);
@@ -108,6 +118,7 @@ public sealed class SellerRegistrationApiTests
                 body.RootElement.GetProperty("phone").GetString());
             Assert.Equal("DRAFT",
                 body.RootElement.GetProperty("status").GetString());
+            Assert.Equal(1, body.RootElement.GetProperty("revision").GetInt32());
             Assert.False(body.RootElement.TryGetProperty("accountId", out _));
         }
         Assert.Equal(HttpStatusCode.NotFound, (await second.GetAsync(url)).StatusCode);
@@ -119,17 +130,26 @@ public sealed class SellerRegistrationApiTests
         Assert.Equal(HttpStatusCode.NotFound, (await second.GetAsync(url)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest,
             (await first.PutAsJsonAsync(url,
-                Fields(firstPhone, "invalid", "123"))).StatusCode);
+                Fields(firstPhone, "invalid", "123", revision: 1))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest,
             (await first.PutAsJsonAsync(url,
-                Fields(firstPhone, new string('X', 121)))).StatusCode);
+                Fields(firstPhone, new string('X', 121), revision: 1))).StatusCode);
 
+        // An outdated browser tab cannot overwrite an already-saved draft.
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await first.PutAsJsonAsync(
+                url, Fields(firstPhone, "نسخهٔ قدیمی", revision: 0))).StatusCode);
         var updated = await first.PutAsJsonAsync(
-            url, Fields(firstPhone, "فروشگاه ویرایش‌شده"));
+            url, Fields(firstPhone, "فروشگاه ویرایش‌شده", revision: 1));
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        using (var body = JsonDocument.Parse(await updated.Content.ReadAsStringAsync()))
+            Assert.Equal(2, body.RootElement.GetProperty("revision").GetInt32());
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await first.PutAsJsonAsync(
+                url, Fields(firstPhone, "ویرایش قدیمی", revision: 1))).StatusCode);
         Assert.Equal(HttpStatusCode.OK,
             (await second.PutAsJsonAsync(
-                url, Fields(secondPhone, "فروشگاه دوم"))).StatusCode);
+                url, Fields(secondPhone, "فروشگاه دوم", revision: 0))).StatusCode);
 
         var one = await seller.RegistrationDrafts.AsNoTracking()
             .SingleAsync(x => x.AccountId == firstId);
@@ -142,6 +162,8 @@ public sealed class SellerRegistrationApiTests
             x => x.AccountId == firstId || x.AccountId == secondId));
         Assert.Equal("DRAFT", one.Status);
         Assert.Equal("DRAFT", two.Status);
+        Assert.Equal(2, one.Revision);
+        Assert.Equal(1, two.Revision);
 
         await identity.AuthSessions
             .Where(x => x.AccountId == firstId)
@@ -158,10 +180,10 @@ public sealed class SellerRegistrationApiTests
             .ToString("D9", CultureInfo.InvariantCulture);
 
     private static object Fields(string phone, string name,
-        string postalCode = "1234567890") => new
+        string postalCode = "1234567890", int revision = 0) => new
         {
             storeName = name, ownerName = "مسئول",
             phone, city = "تهران", address = "نشانی آزمایشی",
-            postalCode
+            postalCode, revision
         };
 }
