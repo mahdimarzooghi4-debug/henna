@@ -1,6 +1,7 @@
 using Hana.Application.Time;
 using Hana.Infrastructure.Time;
 using Hana.Infrastructure.Identity;
+using Hana.Infrastructure.Seller;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
@@ -66,6 +67,9 @@ if (hasIdentityDb)
 {
     builder.Services.AddDbContext<HanaIdentityDbContext>(
         options => options.UseNpgsql(identityConnectionString));
+    builder.Services.AddDbContext<HanaSellerDbContext>(options =>
+        options.UseNpgsql(identityConnectionString, postgres =>
+            postgres.MigrationsHistoryTable("__EFMigrationsHistory", "seller")));
 }
 
 if (hasIdentityDb)
@@ -110,10 +114,13 @@ app.MapGet("/health/ready", async (IServiceProvider services,
         if (!await db.Database.CanConnectAsync(cancellationToken))
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
+        var sellerDb = scope.ServiceProvider.GetRequiredService<HanaSellerDbContext>();
         var pending = await db.Database.GetPendingMigrationsAsync(cancellationToken);
-        return pending.Any()
+        var sellerPending = await sellerDb.Database.GetPendingMigrationsAsync(cancellationToken);
+        return pending.Any() || sellerPending.Any() ||
+            !await sellerDb.Database.CanConnectAsync(cancellationToken)
             ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
-            : Results.Ok(new { ready = true, modules = new[] { "identity" } });
+            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller" } });
     }
     catch
     {
@@ -315,6 +322,8 @@ app.MapDelete("/api/v1/auth/session", async (
     .Produces(StatusCodes.Status401Unauthorized)
     .Produces(StatusCodes.Status503ServiceUnavailable);
 
+app.MapSellerRegistration(hasIdentityDb);
+
 // Migration is an explicit one-off operator action, never a side effect of
 // starting ordinary API replicas. Store the real password only in env/secrets.
 if (args.Contains("--apply-migrations", StringComparer.Ordinal))
@@ -325,6 +334,8 @@ if (args.Contains("--apply-migrations", StringComparer.Ordinal))
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<HanaIdentityDbContext>();
     await db.Database.MigrateAsync();
+    var sellerDb = scope.ServiceProvider.GetRequiredService<HanaSellerDbContext>();
+    await sellerDb.Database.MigrateAsync();
     return;
 }
 
