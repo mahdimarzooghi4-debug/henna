@@ -76,6 +76,9 @@ public sealed class InitialCatalog : Migration
             name: "ix_catalog_categories_public", schema: "catalog",
             table: "categories", columns: ["state", "name", "id"]);
         migrationBuilder.CreateIndex(
+            name: "ix_catalog_products_category", schema: "catalog",
+            table: "products", column: "category_id");
+        migrationBuilder.CreateIndex(
             name: "ix_catalog_products_public_category", schema: "catalog",
             table: "products",
             columns: ["state", "category_id", "name", "id"]);
