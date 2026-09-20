@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ASPNETCORE_URLS=http://127.0.0.1:5184 dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-api.log 2>&1 &
+          ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://127.0.0.1:5184 dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-api.log 2>&1 &
           api_pid=$!
           trap 'kill "$api_pid" 2>/dev/null || true' EXIT
           for attempt in {1..45}; do
@@ -64,16 +64,12 @@ jobs:
               test "$verify_unavailable" = "503"
               # No valid session is ever created by the default disabled SMS provider.
               session_no_bearer=$(curl --silent --output /tmp/hana-session-missing.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/auth/session)
-              echo "CI SESSION PROBE session_no_bearer=$session_no_bearer"
               test "$session_no_bearer" = "401"
               session_missing_db_token=$(curl --silent --output /tmp/hana-session-invalid.json --write-out "%{http_code}" -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" http://127.0.0.1:5184/api/v1/auth/session)
-              echo "CI SESSION PROBE session_missing_db_token=$session_missing_db_token"
               test "$session_missing_db_token" = "401"
               logout_no_bearer=$(curl --silent --output /tmp/hana-logout-missing.json --write-out "%{http_code}" -X DELETE http://127.0.0.1:5184/api/v1/auth/session)
-              echo "CI SESSION PROBE logout_no_bearer=$logout_no_bearer"
               test "$logout_no_bearer" = "401"
               logout_invalid=$(curl --silent --output /tmp/hana-logout-invalid.json --write-out "%{http_code}" -X DELETE -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" http://127.0.0.1:5184/api/v1/auth/session)
-              echo "CI SESSION PROBE logout_invalid=$logout_invalid"
               test "$logout_invalid" = "401"
               exit 0
             fi
