@@ -37,6 +37,8 @@ jobs:
         run: dotnet restore Hana.slnx
       - name: Build .NET solution
         run: dotnet build Hana.slnx --configuration Release --no-restore
+      - name: Verify Catalog migration snapshot matches model
+        run: dotnet test Hana.slnx --configuration Release --no-build --filter FullyQualifiedName~CatalogModelSnapshotTests
       - name: Apply Identity, Seller and Catalog migrations
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
       - name: Confirm repeated migration is harmless
