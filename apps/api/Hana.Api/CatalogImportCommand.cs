@@ -30,7 +30,10 @@ internal static class CatalogImportCommand
         var result = await CatalogImportService.ImportAsync(
             db, reviewed.Json,
             scope.ServiceProvider.GetRequiredService<IClock>().UtcNow,
-            dryRun: reviewed.DryRun);
+            dryRun: reviewed.DryRun,
+            expectedDbStateSha256: reviewed.ExpectedDbStateSha256,
+            onDbStateObserved: observed =>
+                Console.WriteLine("Reviewed DB state sha256=" + observed));
         Console.WriteLine("Reviewed input sha256=" + reviewed.Sha256);
         Console.WriteLine(
             $"Catalog {(reviewed.DryRun ? "PREVIEW ONLY" : "APPLIED")}: " +
