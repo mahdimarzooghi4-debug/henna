@@ -251,10 +251,7 @@ app.MapGet("/api/v1/auth/session", async (
         CancellationToken cancellationToken) =>
     {
         context.Response.Headers.CacheControl = "no-store";
-        if (!context.Request.IsHttps &&
-            (!app.Environment.IsDevelopment() ||
-             context.Connection.RemoteIpAddress is not { } ip ||
-             !System.Net.IPAddress.IsLoopback(ip)))
+        if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
         var authorization = context.Request.Headers.Authorization.ToString();
@@ -288,10 +285,7 @@ app.MapDelete("/api/v1/auth/session", async (
         CancellationToken cancellationToken) =>
     {
         context.Response.Headers.CacheControl = "no-store";
-        if (!context.Request.IsHttps &&
-            (!app.Environment.IsDevelopment() ||
-             context.Connection.RemoteIpAddress is not { } ip ||
-             !System.Net.IPAddress.IsLoopback(ip)))
+        if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
         var authorization = context.Request.Headers.Authorization.ToString();
