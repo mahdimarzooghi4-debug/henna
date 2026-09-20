@@ -68,6 +68,8 @@ public sealed class HanaCatalogDbContextModelSnapshot : ModelSnapshot
             entity.HasOne(x => x.Category).WithMany()
                 .HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_catalog_products_categories");
+            entity.HasIndex(x => x.CategoryId)
+                .HasDatabaseName("ix_catalog_products_category");
             entity.HasIndex(x => new { x.State, x.CategoryId, x.Name, x.Id })
                 .HasDatabaseName("ix_catalog_products_public_category");
         });
