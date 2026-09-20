@@ -141,13 +141,14 @@ Idempotency-Key: inc-ord42-item7-try1
 | `GET /seller/settlements/{settlementId}` | seller خود/finance مجاز | جمع اقلام، سهم حمل، کسور جریمه جدا، `activeHoldReasons`، net و payout state |
 | `GET /admin/settlements/{settlementId}/holds` | support/finance دارای action | holdهای incident مستقل با دلیل و audit |
 | `GET /admin/settlements/{settlementId}/deductions` | finance | پیوند orderItemId/incidentId/returnId/penaltyId |
-| `POST /internal/settlement-payouts/{settlementId}/submit` | worker/finance با مجوز | اجرای guarded پرداخت، **فقط** اگر hold فعال صفر، موعد عادی و ledger معتبر باشد |
+| `POST /internal/settlement-payouts/{settlementId}/submit` | worker/finance با مجوز | اجرای guarded پرداخت در چرخه پایان روز کاری ADR-038، **فقط** اگر hold فعال صفر، eligibility مالی و ledger معتبر باشد |
 
 برای هر فاکتور:
 
 ```text
 maySubmitPayout =
-  ordinarySettlementEligibilityMet
+  endOfHanaWorkdaySettlementCycle
+  AND ordinarySettlementEligibilityMet
   AND activeSettlementHolds == 0
   AND requiredFinancialCorrectionsPosted
   AND payoutNotAlreadySubmittedOrPaid
@@ -190,4 +191,4 @@ maySubmitPayout =
 
 ## ۷. گیت تثبیت OpenAPI/SQL
 
-تا زمان تصویب روش اثبات مراجعه، قاعده تخصیص تخفیف سبدی، مبدأ دقیق تسویه یک‌روزه و وضعیت کسورات بالاتر از موجودی، فیلدهای مرتبط را **با TODO سیاست و contract tests** علامت بزنید؛ اصل گزارش یک‌ساعته، تماس + مراجعه، بازپرداخت فوری و guard تسویه از همین حالا قابل ساخت‌اند. هیچ endpoint یا status این فایل به معنای deploy شدن سرویس نیست.
+تا زمان تصویب روش اثبات مراجعه، قاعده تخصیص تخفیف سبدی، تقویم و ساعت دقیق پایان روز کاری تسویه ADR-038 و وضعیت کسورات بالاتر از موجودی، فیلدهای مرتبط را **با TODO سیاست و contract tests** علامت بزنید؛ اصل گزارش یک‌ساعته، تماس + مراجعه، بازپرداخت فوری و guard تسویه از همین حالا قابل ساخت‌اند. هیچ endpoint یا status این فایل به معنای deploy شدن سرویس نیست.
