@@ -62,6 +62,15 @@ jobs:
               test "$verify_invalid" = "400"
               verify_unavailable=$(curl --silent --output /tmp/hana-verify-unavailable.json --write-out "%{http_code}" -H "Content-Type: application/json" -d '{"challengeId":"00000000-0000-0000-0000-000000000001","phone":"09123456789","code":"123456"}' http://127.0.0.1:5184/api/v1/auth/otp/verify)
               test "$verify_unavailable" = "503"
+              # No valid session is ever created by the default disabled SMS provider.
+              session_no_bearer=$(curl --silent --output /tmp/hana-session-missing.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/auth/session)
+              test "$session_no_bearer" = "401"
+              session_missing_db_token=$(curl --silent --output /tmp/hana-session-invalid.json --write-out "%{http_code}" -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" http://127.0.0.1:5184/api/v1/auth/session)
+              test "$session_missing_db_token" = "401"
+              logout_no_bearer=$(curl --silent --output /tmp/hana-logout-missing.json --write-out "%{http_code}" -X DELETE http://127.0.0.1:5184/api/v1/auth/session)
+              test "$logout_no_bearer" = "401"
+              logout_invalid=$(curl --silent --output /tmp/hana-logout-invalid.json --write-out "%{http_code}" -X DELETE -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" http://127.0.0.1:5184/api/v1/auth/session)
+              test "$logout_invalid" = "401"
               exit 0
             fi
             sleep 1

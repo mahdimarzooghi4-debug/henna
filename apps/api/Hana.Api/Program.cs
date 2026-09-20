@@ -50,11 +50,13 @@ if (hasIdentityDb)
         options => options.UseNpgsql(identityConnectionString));
 }
 
+if (hasIdentityDb)
+    builder.Services.AddScoped<AuthSessionService>();
+
 if (hasIdentityDb && otpKeyConfigured)
 {
     builder.Services.AddScoped<OtpChallengeIssuer>();
     builder.Services.AddScoped<OtpSignInService>();
-    builder.Services.AddScoped<AuthSessionService>();
 }
 
 
@@ -239,6 +241,83 @@ app.MapPost("/api/v1/auth/otp/verify", async (
     .Produces(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status401Unauthorized)
     .Produces(StatusCodes.Status429TooManyRequests)
+    .Produces(StatusCodes.Status503ServiceUnavailable);
+
+// Bearer sessions do not depend on SMS provider availability: a user who
+// previously signed in can still access or revoke a valid session during an
+// SMS outage. Do not expose phone, digest or session token in responses.
+app.MapGet("/api/v1/auth/session", async (
+        HttpContext context, IServiceProvider services,
+        CancellationToken cancellationToken) =>
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        if (!context.Request.IsHttps &&
+            (!app.Environment.IsDevelopment() ||
+             context.Connection.RemoteIpAddress is not { } ip ||
+             !System.Net.IPAddress.IsLoopback(ip)))
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+        var authorization = context.Request.Headers.Authorization.ToString();
+        if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ||
+            !SessionTokenCodec.TryComputeDigest(authorization[7..], out _))
+            return Results.Unauthorized();
+        if (!hasIdentityDb)
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+        try
+        {
+            var accountId = await services.GetRequiredService<AuthSessionService>()
+                .ResolveAccountAsync(authorization[7..], cancellationToken);
+            return accountId is { } id
+                ? Results.Ok(new { accountId = id })
+                : Results.Unauthorized();
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+    })
+    .WithName("GetCurrentSession")
+    .WithTags("Identity")
+    .Produces(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status401Unauthorized)
+    .Produces(StatusCodes.Status503ServiceUnavailable);
+
+app.MapDelete("/api/v1/auth/session", async (
+        HttpContext context, IServiceProvider services,
+        CancellationToken cancellationToken) =>
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        if (!context.Request.IsHttps &&
+            (!app.Environment.IsDevelopment() ||
+             context.Connection.RemoteIpAddress is not { } ip ||
+             !System.Net.IPAddress.IsLoopback(ip)))
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+        var authorization = context.Request.Headers.Authorization.ToString();
+        if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ||
+            !SessionTokenCodec.TryComputeDigest(authorization[7..], out _))
+            return Results.Unauthorized();
+        if (!hasIdentityDb)
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+        try
+        {
+            var revoked = await services.GetRequiredService<AuthSessionService>()
+                .RevokeAsync(authorization[7..], cancellationToken);
+            return revoked
+                ? Results.NoContent()
+                : Results.Unauthorized();
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+    })
+    .WithName("RevokeCurrentSession")
+    .WithTags("Identity")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status401Unauthorized)
     .Produces(StatusCodes.Status503ServiceUnavailable);
 
 // Migration is an explicit one-off operator action, never a side effect of
