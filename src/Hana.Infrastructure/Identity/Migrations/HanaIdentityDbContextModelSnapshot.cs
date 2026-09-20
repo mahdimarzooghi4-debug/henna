@@ -57,6 +57,27 @@ public sealed class HanaIdentityDbContextModelSnapshot : ModelSnapshot
             entity.HasIndex(x => new { x.NormalizedPhone, x.IssuedAtUtc })
                 .HasDatabaseName("ix_otp_challenges_phone_issued");
         });
+        modelBuilder.Entity<OtpIpRateWindowRecord>(entity =>
+        {
+            entity.ToTable("otp_ip_windows", "identity", table =>
+            {
+                table.HasCheckConstraint("ck_otp_ip_windows_action",
+                    "action IN ('REQUEST', 'VERIFY')");
+                table.HasCheckConstraint("ck_otp_ip_windows_count",
+                    "request_count >= 1");
+            });
+            entity.HasKey(x => new { x.PartitionDigest, x.Action });
+            entity.Property(x => x.PartitionDigest).HasColumnName("partition_digest")
+                .HasMaxLength(32).IsRequired();
+            entity.Property(x => x.Action).HasColumnName("action")
+                .HasMaxLength(8).IsRequired();
+            entity.Property(x => x.WindowStartedAtUtc)
+                .HasColumnName("window_started_at_utc").IsRequired();
+            entity.Property(x => x.RequestCount).HasColumnName("request_count")
+                .IsRequired();
+            entity.HasIndex(x => x.WindowStartedAtUtc)
+                .HasDatabaseName("ix_otp_ip_windows_started");
+        });
         modelBuilder.Entity<AuthSessionRecord>(entity =>
         {
             entity.ToTable("auth_sessions", "identity", table =>
