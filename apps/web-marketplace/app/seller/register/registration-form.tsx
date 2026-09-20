@@ -141,6 +141,7 @@ export function RegistrationForm() {
     // Never automatically save over another tab's newer draft.
     const selected = chooseSellerDraftCopy(fields, conflict, "mine");
     setFields(selected.fields);
+    setBaseline(conflict.fields);
     setRevision(selected.revision);
     setSaved(selected.saved);
     setInvalidField(null);
@@ -328,9 +329,11 @@ export function RegistrationForm() {
               </>
             ) : (
               <>
-                <p>آخرین نسخهٔ سرور با نسخهٔ این پنجره مقایسه شد.
-                  انتخاب نسخهٔ سرور، تغییرات ذخیره‌نشدهٔ این پنجره
-                  را کنار می‌گذارد؛ نگه‌داشتن متن من، آن را خودکار ذخیره نمی‌کند.</p>
+                <p>آخرین نسخهٔ سرور با نسخهٔ این پنجره و آخرین نسخه‌ای
+                  که این پنجره دیده بود مقایسه شد. می‌توانید همهٔ متن خود،
+                  همهٔ متن سرور یا برای هر فیلد یک نسخه را انتخاب کنید.
+                  هیچ‌کدام بدون زدن دوبارهٔ دکمهٔ ذخیره، متنی را روی سرور
+                  بازنویسی نمی‌کند.</p>
                 {differences.length === 0
                   ? <p>متن هر شش فیلد یکسان است؛ فقط شمارهٔ نسخه تغییر کرده است.</p>
                   : (
@@ -344,11 +347,54 @@ export function RegistrationForm() {
                               <p><strong>نسخهٔ ذخیره‌شده</strong>
                                 <bdi dir="auto">{item.onServer || "—"}</bdi></p>
                             </div>
+                            <fieldset className="seller-conflict__selection">
+                              <legend>
+                                انتخاب نسخه برای {item.label}
+                                {readyConflict?.choices[item.key] === null
+                                  ? " — هر دو پنجره این فیلد را متفاوت تغییر داده‌اند"
+                                  : ""}
+                              </legend>
+                              <label>
+                                <input type="radio"
+                                  name={`conflict-field-${item.key}`}
+                                  checked={readyConflict?.choices[item.key] === "mine"}
+                                  disabled={busy}
+                                  onChange={() => selectConflictField(
+                                    item.key, "mine",
+                                  )} />
+                                متن این پنجره
+                              </label>
+                              <label>
+                                <input type="radio"
+                                  name={`conflict-field-${item.key}`}
+                                  checked={readyConflict?.choices[item.key] === "server"}
+                                  disabled={busy}
+                                  onChange={() => selectConflictField(
+                                    item.key, "server",
+                                  )} />
+                                نسخهٔ سرور
+                              </label>
+                            </fieldset>
                           </div>
                         ))}
                     </div>
                   )}
+                {differences.length > 0 && (
+                  <p className="seller-conflict__hint" role="status"
+                    aria-live="polite">
+                    {unresolved > 0
+                      ? `برای ترکیب فیلدها باید برای ${unresolved} فیلدی که در هر دو پنجره تغییر کرده است، نسخهٔ مورد نظر را انتخاب کنید.`
+                      : "انتخاب فیلدها آماده است. اعمال ترکیب فقط متن فرم را تغییر می‌دهد، نه نسخهٔ ذخیره‌شدهٔ سرور را."}
+                  </p>
+                )}
                 <div className="seller-conflict__actions">
+                  {differences.length > 0 && (
+                    <button type="button" className="seller-conflict__keep-mine"
+                      disabled={busy || unresolved > 0}
+                      onClick={chooseCombinedCopy}>
+                      ترکیب انتخاب‌های هر فیلد در فرم
+                    </button>
+                  )}
                   <button type="button" className="seller-conflict__use-server"
                     disabled={busy} onClick={chooseServerCopy}>
                     بارگذاری نسخهٔ سرور
