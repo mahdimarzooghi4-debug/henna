@@ -18,6 +18,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { colors, space } from "./src/theme";
 import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from "./src/phone";
 import { MobileAuthClient } from "./src/mobile-auth";
+import { otpRequestTransition } from "./src/otp-request-transition";
 
 type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited";
 type ViewState = "checking" | "phone" | "code" | "session" | "offline";
@@ -49,6 +50,7 @@ function ConsumerAuthScreen() {
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [view, setView] = useState<ViewState>("checking");
   const [status, setStatus] = useState<FormStatus>("idle");
+  const [resendNotice, setResendNotice] = useState("");
   const pending = useRef(false);
   const mounted = useRef(true);
 
@@ -74,27 +76,34 @@ function ConsumerAuthScreen() {
     return () => { mounted.current = false; };
   }, []);
 
-  async function requestCode() {
-    if (pending.current) return;
+  async function requestCode(resend = false) {
+    if (pending.current ||
+      (resend && (view !== "code" || !challengeId)) ||
+      (!resend && view !== "phone")) return;
     const normalized = normalizeIranianMobile(phone);
-    setPhone(normalized);
     if (!isValidIranianMobile(normalized)) {
+      if (resend) {
+        setChallengeId(null);
+        setCode("");
+        setView("phone");
+      }
       setStatus("invalid");
       return;
     }
+    const previous = { challengeId, code };
+    setPhone(normalized);
     pending.current = true;
     setStatus("loading");
+    setResendNotice("");
     try {
       const result = await auth.requestOtp(normalized);
       if (!mounted.current) return;
-      if (result.status === "accepted") {
-        setChallengeId(result.challengeId);
-        setCode("");
-        setView("code");
-        setStatus("idle");
-      } else {
-        setStatus(result.status);
-      }
+      const next = otpRequestTransition(result, previous, resend);
+      setChallengeId(next.challengeId);
+      setCode(next.code);
+      setView(next.view);
+      setStatus(next.status);
+      setResendNotice(next.notice);
     } finally {
       pending.current = false;
     }
@@ -112,6 +121,7 @@ function ConsumerAuthScreen() {
         setChallengeId(null);
         setView("session");
         setStatus("idle");
+        setResendNotice("");
       } else {
         setStatus(result.status);
       }
@@ -133,6 +143,7 @@ function ConsumerAuthScreen() {
         setCode("");
         setChallengeId(null);
         setStatus("idle");
+        setResendNotice("");
       } else {
         // An outage is not proof of server-side revocation: retain SecureStore.
         setStatus("unavailable");
@@ -205,6 +216,7 @@ function ConsumerAuthScreen() {
                   onChangeText={(value) => {
                     setPhone(value);
                     setStatus("idle");
+                    setResendNotice("");
                   }}
                 />
                 <Pressable
@@ -215,7 +227,7 @@ function ConsumerAuthScreen() {
                     pressed && styles.primaryButtonPressed,
                     status === "loading" && styles.primaryButtonLoading,
                   ]}
-                  onPress={requestCode}
+                  onPress={() => void requestCode(false)}
                   disabled={status === "loading"}
                 >
                   <Text style={styles.primaryButtonText}>
@@ -226,11 +238,11 @@ function ConsumerAuthScreen() {
                   <Text accessibilityRole="alert" style={[
                     styles.formStatus, status === "invalid" && styles.formStatusError,
                   ]}>
-                    {status === "invalid"
+                    {resendNotice || (status === "invalid"
                       ? "شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد."
                       : status === "limited"
                         ? "تعداد درخواست‌ها زیاد است. لطفاً کمی بعد تلاش کنید."
-                        : "سرویس ارسال کد در دسترس نیست؛ دریافت کد تأیید نشده است."}
+                        : "سرویس ارسال کد در دسترس نیست؛ دریافت کد تأیید نشده است.")}
                   </Text>
                 )}
 
@@ -274,6 +286,7 @@ function ConsumerAuthScreen() {
                   onChangeText={(value) => {
                     setCode(normalizeDigits(value));
                     setStatus("idle");
+                    setResendNotice("");
                   }}
                 />
                 <Pressable
@@ -295,13 +308,28 @@ function ConsumerAuthScreen() {
                   <Text accessibilityRole="alert" style={[
                     styles.formStatus, status === "invalid" && styles.formStatusError,
                   ]}>
-                    {status === "invalid"
+                    {resendNotice || (status === "invalid"
                       ? "کد یا اطلاعات تأیید معتبر نیست."
                       : status === "limited"
                         ? "تعداد تلاش‌ها زیاد است؛ بعداً دوباره تلاش کنید."
-                        : "تأیید کد در دسترس نیست؛ ورود انجام نشد."}
+                        : "تأیید کد در دسترس نیست؛ ورود انجام نشد.")}
                   </Text>
                 )}
+                {resendNotice && status === "idle" && (
+                  <Text accessibilityRole="alert" style={styles.formStatus}>
+                    {resendNotice}
+                  </Text>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="درخواست کد تأیید جدید"
+                  onPress={() => void requestCode(true)}
+                  disabled={status === "loading"}
+                >
+                  <Text style={[styles.sellerLink, styles.secondaryLink]}>
+                    درخواست کد جدید
+                  </Text>
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="ویرایش شماره موبایل"
@@ -310,6 +338,7 @@ function ConsumerAuthScreen() {
                     setChallengeId(null);
                     setCode("");
                     setStatus("idle");
+                    setResendNotice("");
                     setView("phone");
                   }}
                 >
