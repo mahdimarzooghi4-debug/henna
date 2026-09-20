@@ -106,7 +106,7 @@ export function RegistrationForm() {
       setSaved(false);
       if (response.status === 401) setAccess("signedOut");
       setMessage(response.status === 401
-        ? "برای ذخیره اطلاعات ابتدا از مسیر «ورود / ثبت‌نام» وارد حساب شوید."
+        ? "نشست شما پایان یافته است. اطلاعات این فرم ذخیره نشد؛ پیش از رفتن به ورود، متن واردشده را نگه دارید."
         : response.status === 400
           ? "اطلاعات یا شماره مسئول فروشگاه معتبر نیست. شماره باید همان شماره تأییدشده حساب باشد."
           : response.status === 409
@@ -129,7 +129,7 @@ export function RegistrationForm() {
       {access === "signedOut" && (
         <p className="form-status" role="status">
           برای ذخیره پیش‌نویس ابتدا <Link href={sellerLoginHref}>وارد حساب حنا شوید</Link>.
-          بعد از ورود به همین فرم برمی‌گردید. پیش از ورود، فرم قابل ویرایش نیست.
+          پس از ورود به همین فرم برمی‌گردید. اگر متنی را پیش از پایان نشست وارد کرده‌اید، قبل از ترک صفحه آن را کپی کنید؛ ذخیره نشده است.
         </p>
       )}
       {access === "unavailable" && (
