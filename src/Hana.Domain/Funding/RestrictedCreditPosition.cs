@@ -30,10 +30,10 @@ public sealed class RestrictedCreditPosition
         {
             used = checked(checked(reserved.Value + consumed.Value) + expired.Value);
         }
-        catch (OverflowException error)
+        catch (OverflowException)
         {
             throw new ArgumentOutOfRangeException(nameof(reserved),
-                "Projected credit totals exceed supported monetary range.", error);
+                "Projected credit totals exceed supported monetary range.");
         }
 
         if (used > allocation.AllocatedAmount.Value)
