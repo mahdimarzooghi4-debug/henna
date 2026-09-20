@@ -20,6 +20,8 @@ jobs:
         run: dotnet restore Hana.slnx
       - name: Build .NET solution
         run: dotnet build Hana.slnx --configuration Release --no-restore
+      - name: Run funding domain regression tests
+        run: dotnet test Hana.slnx --configuration Release --no-build
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash
         run: |
