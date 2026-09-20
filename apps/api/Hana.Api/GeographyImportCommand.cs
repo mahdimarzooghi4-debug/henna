@@ -28,7 +28,10 @@ internal static class GeographyImportCommand
                 "Apply migrations explicitly before importing locations.");
 
         var result = await GeographyImportService.ImportAsync(
-            db, reviewed.Json, dryRun: reviewed.DryRun);
+            db, reviewed.Json, dryRun: reviewed.DryRun,
+            expectedDbStateSha256: reviewed.ExpectedDbStateSha256,
+            onDbStateObserved: observed =>
+                Console.WriteLine("Reviewed DB state sha256=" + observed));
         Console.WriteLine("Reviewed input sha256=" + reviewed.Sha256);
         Console.WriteLine(
             $"Geography {(reviewed.DryRun ? "PREVIEW ONLY" : "APPLIED")}: " +
