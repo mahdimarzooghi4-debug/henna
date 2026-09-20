@@ -41,7 +41,48 @@ async function main() {
       response.setHeader("Cache-Control", "no-store");
       response.setHeader("Content-Type", "application/json");
 
-      if (url === "/api/v1/auth/otp/request" && request.method === "POST") {
+      if (url?.startsWith("/api/v1/catalog/") && request.method === "GET") {
+        assert.equal(request.headers.cookie, undefined,
+          "catalog gateway must not send browser session cookies upstream");
+        assert.equal(request.headers.authorization, undefined,
+          "public catalog must not expose or forward buyer session bearer");
+        if (url === "/api/v1/catalog/categories") {
+          response.writeHead(200);
+          response.end(JSON.stringify({ items: [
+            { id: challengeId, name: "گروه تست", slug: "ci-group",
+              internalAdminNote: "must not leak" },
+          ] }));
+        } else if (url.startsWith("/api/v1/catalog/products?")) {
+          const query = new URL(url, "https://catalog.test").searchParams;
+          assert.equal(query.get("page"), "1");
+          assert.equal(query.get("pageSize"), "20");
+          if (query.get("search") === "outage") {
+            response.writeHead(503);
+            response.end(JSON.stringify({ message: "upstream down" }));
+          } else if (query.get("search") === "broken") {
+            response.writeHead(200);
+            response.end(JSON.stringify({ items: [{ id: "bad" }], page: 1,
+              pageSize: 20, total: 1 }));
+          } else {
+            response.writeHead(200);
+            response.end(JSON.stringify({ items: [{
+              id: accountId, categoryId: challengeId, name: "کالای نمونه آزمون",
+              kind: "GOOD", description: null, price: 42000,
+              sellerId: challengeId, state: "PUBLISHED",
+            }], page: 1, pageSize: 20, total: 1 }));
+          }
+        } else if (url === "/api/v1/catalog/products/" + accountId) {
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            id: accountId, categoryId: challengeId, name: "کالای نمونه آزمون",
+            kind: "GOOD", description: null, price: 42000,
+            privateModerationReason: "never leak",
+          }));
+        } else {
+          response.writeHead(404);
+          response.end(JSON.stringify({ message: "not found" }));
+        }
+      } else if (url === "/api/v1/auth/otp/request" && request.method === "POST") {
         response.writeHead(202);
         response.end(JSON.stringify({ challengeId }));
       } else if (url === "/api/v1/auth/otp/verify" && request.method === "POST") {
@@ -246,6 +287,54 @@ async function main() {
   assert.equal(sellerAfter.status, 200);
   assert.equal((await sellerAfter.json()).storeName, "نسخه دوم");
   assert.ok(!JSON.stringify(sellerDraft).includes(token));
+
+  const categoryResponse = await fetch(base + "/api/catalog/categories", {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(categoryResponse.status, 200);
+  assert.equal(categoryResponse.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await categoryResponse.json(), { items: [
+    { id: challengeId, name: "گروه تست", slug: "ci-group" },
+  ] });
+
+  const listingResponse = await fetch(base + "/api/catalog/products", {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(listingResponse.status, 200);
+  assert.equal(listingResponse.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await listingResponse.json(), {
+    items: [{ id: accountId, categoryId: challengeId,
+      name: "کالای نمونه آزمون", kind: "GOOD", description: null }],
+    page: 1, pageSize: 20, total: 1,
+  });
+
+  const detailResponse = await fetch(
+    base + "/api/catalog/products/" + accountId);
+  assert.equal(detailResponse.status, 200);
+  assert.deepEqual(await detailResponse.json(), {
+    id: accountId, categoryId: challengeId,
+    name: "کالای نمونه آزمون", kind: "GOOD", description: null,
+  });
+  const hidden = await fetch(base + "/api/catalog/products/" + challengeId);
+  assert.equal(hidden.status, 404);
+  for (const path of [
+    "/api/catalog/products?page=0",
+    "/api/catalog/products?pageSize=51",
+    "/api/catalog/products?page=1&page=2",
+    "/api/catalog/products?categoryId=bad",
+    "/api/catalog/products?search=" + "a".repeat(81),
+    "/api/catalog/products?extra=1",
+  ]) {
+    const response = await fetch(base + path);
+    assert.equal(response.status, 400, path);
+  }
+  assert.equal((await fetch(
+    base + "/api/catalog/products?search=outage")).status, 503);
+  assert.equal((await fetch(
+    base + "/api/catalog/products?search=broken")).status, 503);
+  assert.equal((await fetch(
+    base + "/api/catalog/products/not-a-guid")).status, 404);
+  console.log("CI-only buyer catalog gateway: validated public data, no bearer/price leakage, 400/404/503 separation OK");
 
   const rejectLogout = await fetch(base + "/api/auth/session", {
     method: "DELETE",
