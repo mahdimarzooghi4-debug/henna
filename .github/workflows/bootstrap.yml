@@ -338,6 +338,8 @@ jobs:
         run: node tests/web-auth-gateway-smoke.mjs
       - name: Verify seller return URL policy and safe draft hydration
         run: node --experimental-strip-types --test tests/web-seller-return-smoke.mjs
+      - name: Test real seller form conflict reconciliation policy
+        run: node --experimental-strip-types --test tests/web-seller-conflict-smoke.mjs
       - name: Verify public geography Next gateway over isolated CI HTTPS
         run: node tests/web-geography-gateway-smoke.mjs
 
