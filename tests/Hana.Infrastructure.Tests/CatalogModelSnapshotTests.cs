@@ -19,8 +19,10 @@ public sealed class CatalogModelSnapshotTests
         Assert.NotNull(snapshot);
         var current = db.GetService<IDesignTimeModel>().Model;
         var differ = db.GetService<IMigrationsModelDiffer>();
+        var finalizedSnapshot = db.GetService<IModelRuntimeInitializer>()
+            .Initialize(snapshot.Model, designTime: true);
         var operations = differ.GetDifferences(
-            snapshot.Model.GetRelationalModel(),
+            finalizedSnapshot.GetRelationalModel(),
             current.GetRelationalModel());
         var details = operations.Select(operation =>
             operation.GetType().Name + ": " +
