@@ -3,6 +3,7 @@ using Hana.Infrastructure.Time;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
 using Hana.Infrastructure.Catalog;
+using Hana.Infrastructure.Geography;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
@@ -74,6 +75,9 @@ if (hasIdentityDb)
     builder.Services.AddDbContext<HanaCatalogDbContext>(options =>
         options.UseNpgsql(identityConnectionString, postgres =>
             postgres.MigrationsHistoryTable("__EFMigrationsHistory", "catalog")));
+    builder.Services.AddDbContext<HanaGeographyDbContext>(options =>
+        options.UseNpgsql(identityConnectionString, postgres =>
+            postgres.MigrationsHistoryTable("__EFMigrationsHistory", "geography")));
 }
 
 if (hasIdentityDb)
@@ -120,14 +124,18 @@ app.MapGet("/health/ready", async (IServiceProvider services,
 
         var sellerDb = scope.ServiceProvider.GetRequiredService<HanaSellerDbContext>();
         var catalogDb = scope.ServiceProvider.GetRequiredService<HanaCatalogDbContext>();
+        var geographyDb = scope.ServiceProvider.GetRequiredService<HanaGeographyDbContext>();
         var pending = await db.Database.GetPendingMigrationsAsync(cancellationToken);
         var sellerPending = await sellerDb.Database.GetPendingMigrationsAsync(cancellationToken);
         var catalogPending = await catalogDb.Database.GetPendingMigrationsAsync(cancellationToken);
+        var geographyPending = await geographyDb.Database.GetPendingMigrationsAsync(cancellationToken);
         return pending.Any() || sellerPending.Any() || catalogPending.Any() ||
+            geographyPending.Any() ||
             !await sellerDb.Database.CanConnectAsync(cancellationToken) ||
-            !await catalogDb.Database.CanConnectAsync(cancellationToken)
+            !await catalogDb.Database.CanConnectAsync(cancellationToken) ||
+            !await geographyDb.Database.CanConnectAsync(cancellationToken)
             ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
-            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller", "catalog" } });
+            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller", "catalog", "geography" } });
     }
     catch
     {
@@ -331,6 +339,7 @@ app.MapDelete("/api/v1/auth/session", async (
 
 app.MapSellerRegistration(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
+app.MapGeographyRead(hasIdentityDb);
 
 // An explicitly invoked operator process can preview or apply reviewed
 // catalog JSON. No public HTTP route or automatic product seed is installed.
@@ -355,6 +364,8 @@ if (args.Contains("--apply-migrations", StringComparer.Ordinal))
     await sellerDb.Database.MigrateAsync();
     var catalogDb = scope.ServiceProvider.GetRequiredService<HanaCatalogDbContext>();
     await catalogDb.Database.MigrateAsync();
+    var geographyDb = scope.ServiceProvider.GetRequiredService<HanaGeographyDbContext>();
+    await geographyDb.Database.MigrateAsync();
     return;
 }
 
