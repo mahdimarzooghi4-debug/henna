@@ -11,6 +11,7 @@ public sealed class HanaIdentityDbContext(DbContextOptions<HanaIdentityDbContext
 {
     public DbSet<AccountRecord> Accounts => Set<AccountRecord>();
     public DbSet<OtpChallengeRecord> OtpChallenges => Set<OtpChallengeRecord>();
+    public DbSet<AuthSessionRecord> AuthSessions => Set<AuthSessionRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,5 +60,31 @@ public sealed class HanaIdentityDbContext(DbContextOptions<HanaIdentityDbContext
             entity.HasIndex(x => new { x.NormalizedPhone, x.IssuedAtUtc })
                 .HasDatabaseName("ix_otp_challenges_phone_issued");
         });
+        modelBuilder.Entity<AuthSessionRecord>(entity =>
+        {
+            entity.ToTable("auth_sessions", table =>
+            {
+                table.HasCheckConstraint("ck_auth_sessions_expiry",
+                    "expires_at_utc > issued_at_utc");
+                table.HasCheckConstraint("ck_auth_sessions_revocation",
+                    "revoked_at_utc IS NULL OR revoked_at_utc >= issued_at_utc");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.AccountId).HasColumnName("account_id").IsRequired();
+            entity.Property(x => x.TokenDigest).HasColumnName("token_digest")
+                .HasMaxLength(32).IsRequired();
+            entity.Property(x => x.IssuedAtUtc).HasColumnName("issued_at_utc").IsRequired();
+            entity.Property(x => x.ExpiresAtUtc).HasColumnName("expires_at_utc").IsRequired();
+            entity.Property(x => x.RevokedAtUtc).HasColumnName("revoked_at_utc");
+            entity.HasIndex(x => x.TokenDigest).IsUnique()
+                .HasDatabaseName("ix_auth_sessions_digest");
+            entity.HasIndex(x => new { x.AccountId, x.ExpiresAtUtc })
+                .HasDatabaseName("ix_auth_sessions_account_expiry");
+            entity.HasOne<AccountRecord>().WithMany()
+                .HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_auth_sessions_accounts_account_id");
+        });
+
     }
 }

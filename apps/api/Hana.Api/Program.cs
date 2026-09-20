@@ -51,7 +51,11 @@ if (hasIdentityDb)
 }
 
 if (hasIdentityDb && otpKeyConfigured)
+{
     builder.Services.AddScoped<OtpChallengeIssuer>();
+    builder.Services.AddScoped<OtpSignInService>();
+    builder.Services.AddScoped<AuthSessionService>();
+}
 
 
 // One gate per observed client IP. Reverse proxies must be configured with
@@ -165,6 +169,64 @@ app.MapPost("/api/v1/auth/otp/request", async (
     .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
     .Produces(StatusCodes.Status429TooManyRequests);
 
+// This endpoint becomes usable ONLY with a real contracted SMS sender,
+// PostgreSQL and a managed OTP digest key. The default shipping setup is
+// unavailable; no test code or bypass route exists.
+app.MapPost("/api/v1/auth/otp/verify", async (
+        OtpVerifyRequest payload, IServiceProvider services,
+        HttpContext context, CancellationToken cancellationToken) =>
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        if (!IranianMobileNumber.TryParse(payload.Phone, out var phone) ||
+            payload.ChallengeId == Guid.Empty ||
+            !OtpCodeCryptography.IsSixDigitCode(payload.Code))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["challenge"] = ["اطلاعات تأیید معتبر نیست."]
+            });
+        }
+
+        // HTTPS is mandatory once outside the explicitly local Dev environment.
+        // TLS-terminating proxy support requires explicit trusted forwarded headers.
+        if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+        if (!hasIdentityDb || !otpKeyConfigured ||
+            !services.GetRequiredService<IOtpSmsSender>().IsAvailable)
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+        try
+        {
+            var result = await services.GetRequiredService<OtpSignInService>()
+                .SignInAsync(
+                    payload.ChallengeId, phone!, payload.Code,
+                    cancellationToken);
+
+            return !result.Authenticated
+                ? Results.Unauthorized()
+                : Results.Ok(new
+                {
+                    accountId = result.AccountId,
+                    accessToken = result.BearerToken,
+                    tokenType = "Bearer",
+                    expiresAtUtc = result.ExpiresAtUtc
+                });
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+    })
+    .RequireRateLimiting("otp-request")
+    .WithName("VerifyOtpAndSignIn")
+    .WithTags("Identity")
+    .ProducesValidationProblem()
+    .Produces(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status401Unauthorized)
+    .Produces(StatusCodes.Status429TooManyRequests)
+    .Produces(StatusCodes.Status503ServiceUnavailable);
+
 // Migration is an explicit one-off operator action, never a side effect of
 // starting ordinary API replicas. Store the real password only in env/secrets.
 if (args.Contains("--apply-migrations", StringComparer.Ordinal))
@@ -181,6 +243,8 @@ if (args.Contains("--apply-migrations", StringComparer.Ordinal))
 app.Run();
 
 internal sealed record OtpRequest(string? Phone);
+
+internal sealed record OtpVerifyRequest(Guid ChallengeId, string? Phone, string? Code);
 
 internal sealed record SystemStatus(string Service, string Phase, DateTimeOffset TimeUtc);
 

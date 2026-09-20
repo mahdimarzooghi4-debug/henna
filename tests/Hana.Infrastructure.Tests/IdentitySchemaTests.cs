@@ -23,9 +23,9 @@ public sealed class IdentitySchemaTests
             SELECT count(*)::integer AS "Value"
             FROM information_schema.tables
             WHERE table_schema='identity'
-              AND table_name IN ('accounts','otp_challenges')
+              AND table_name IN ('accounts','otp_challenges','auth_sessions')
             """).SingleAsync();
-        Assert.Equal(2, tables);
+        Assert.Equal(3, tables);
 
         var indexes = await db.Database.SqlQueryRaw<int>(
             """
@@ -66,6 +66,6 @@ public sealed class IdentitySchemaTests
             ORDER BY table_name
             """).ToListAsync();
 
-        Assert.Equal(new[] { "accounts", "otp_challenges" }, identityTables);
+        Assert.Equal(new[] { "accounts", "auth_sessions", "otp_challenges" }, identityTables);
     }
 }
