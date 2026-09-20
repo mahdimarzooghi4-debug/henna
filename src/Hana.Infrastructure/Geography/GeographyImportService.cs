@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -205,6 +206,19 @@ public static partial class GeographyImportService
 
         if (!dryRun)
         {
+            // The applied rows and receipt are saved and committed together.
+            // A failed import cannot leave a success receipt behind.
+            db.ImportReceipts.Add(new GeographyImportReceipt
+            {
+                Id = Guid.NewGuid(),
+                ContentSha256 = Convert.ToHexStringLower(
+                    SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(json))),
+                AppliedAtUtc = DateTimeOffset.UtcNow,
+                NewParents = newProvinces,
+                ChangedParents = changedProvinces,
+                NewChildren = newCities,
+                ChangedChildren = changedCities
+            });
             await db.SaveChangesAsync(cancellationToken);
             await transaction!.CommitAsync(cancellationToken);
         }
