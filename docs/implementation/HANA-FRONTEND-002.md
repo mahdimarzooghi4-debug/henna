@@ -29,3 +29,7 @@ npm run mobile:export:android
 ## معیار اعتبارسنجی گام
 
 در `.github/workflows/bootstrap.yml` یک job موبایل برای `expo install --check`، typecheck و export باندل Android افزوده شد. **این خروجی APK/IPA یا تست نصب روی دستگاه نیست**؛ گزارش موفقیت هر اجرای CI باید جداگانه بررسی شود. آزمایش بصری روی Android/iOS و فونت نهایی در گام بعد لازم است.
+
+## اصلاح سازگاری وابستگی‌ها
+
+نخستین `expo install --check` در CI ناسازگاری نسخه‌ای react-native، نوع‌های React و TypeScript را گزارش کرد. آنها با نسخه‌های مورد انتظار Expo SDK 57 (React Native 0.86.3، `@types/react ~19.2.4` و TypeScript `~6.0.3` برای اپ) هماهنگ شدند؛ ابزار TypeScript وب جداگانه در نسخه 5.9 باقی ماند. وضعیت build/export باید پس از اجرای مجدد CI بررسی شود.
