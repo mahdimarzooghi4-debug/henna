@@ -332,6 +332,15 @@ app.MapDelete("/api/v1/auth/session", async (
 app.MapSellerRegistration(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 
+// An explicitly invoked operator process can preview or apply reviewed
+// catalog JSON. No public HTTP route or automatic product seed is installed.
+if (args.Any(value => value.StartsWith(
+    "--catalog-", StringComparison.Ordinal)))
+{
+    await CatalogImportCommand.RunAsync(args, app.Services, hasIdentityDb);
+    return;
+}
+
 // Migration is an explicit one-off operator action, never a side effect of
 // starting ordinary API replicas. Store the real password only in env/secrets.
 if (args.Contains("--apply-migrations", StringComparer.Ordinal))
