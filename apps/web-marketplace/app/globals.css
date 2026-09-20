@@ -100,6 +100,13 @@ a { color: inherit; }
 .primary-button:disabled { opacity: .6; cursor: wait; }
 .primary-button:active { transform: translateY(1px); }
 .auth-card .primary-button { margin-top: 26px; }
+.auth-card__hint { color: var(--hana-muted); margin: 0 0 12px; font-size: 14px; }
+.auth-card__secondary {
+  display: block; margin: 16px auto 0; padding: 9px;
+  border: 0; background: transparent; color: var(--hana-teal);
+  font-weight: 700; cursor: pointer;
+}
+.auth-card__secondary:disabled { opacity: .6; cursor: wait; }
 
 .account-note {
   background: var(--hana-pale-teal);

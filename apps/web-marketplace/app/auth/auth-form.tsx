@@ -1,90 +1,233 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
 import { normalizeDigits } from "../../lib/normalize-digits";
 
-export function AuthForm() {
-  const [phone, setPhone] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "invalid" | "loading" | "unavailable" | "limited" | "sent"
-  >("idle");
+type Stage = "checking" | "phone" | "code" | "authenticated" | "session-unavailable";
+type FormStatus = "idle" | "loading" | "invalid" | "limited" | "unavailable";
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+const challengeIdPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function AuthForm() {
+  const [stage, setStage] = useState<Stage>("checking");
+  const [phone, setPhone] = useState("");
+  const [challengeId, setChallengeId] = useState("");
+  const [code, setCode] = useState("");
+  const [status, setStatus] = useState<FormStatus>("idle");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let current = true;
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then((response) => {
+        if (!current) return;
+        setStage(
+          response.ok
+            ? "authenticated"
+            : response.status === 503
+              ? "session-unavailable"
+              : "phone",
+        );
+      })
+      .catch(() => {
+        if (current) setStage("session-unavailable");
+      });
+    return () => { current = false; };
+  }, []);
+
+  async function requestCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (status === "loading") return;
-
     const normalized = normalizeDigits(phone.trim());
     setPhone(normalized);
     if (!/^09\d{9}$/.test(normalized)) {
       setStatus("invalid");
+      setMessage("شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد.");
       return;
     }
-
     setStatus("loading");
+    setMessage("");
     try {
-      // Same-origin Next route; backend URL stays server-side.
       const response = await fetch("/api/auth/otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: normalized }),
         cache: "no-store",
       });
-      setStatus(
-        response.status === 202
-          ? "sent"
-          : response.status === 400
-            ? "invalid"
-            : response.status === 429
-              ? "limited"
-              : "unavailable",
-      );
+      if (response.status === 202) {
+        const body: unknown = await response.json();
+        const id = body && typeof body === "object" && "challengeId" in body &&
+          typeof body.challengeId === "string" ? body.challengeId : "";
+        if (challengeIdPattern.test(id)) {
+          setChallengeId(id);
+          setCode("");
+          setStatus("idle");
+          setStage("code");
+          return;
+        }
+      }
+
+      setStatus(response.status === 400 ? "invalid" :
+        response.status === 429 ? "limited" : "unavailable");
+      setMessage(response.status === 400
+        ? "شماره موبایل معتبر نیست."
+        : response.status === 429
+          ? "تعداد درخواست‌ها زیاد است؛ کمی بعد تلاش کنید."
+          : "خدمت ارسال کد تأیید در دسترس نیست؛ کدی ارسال نشد.");
     } catch {
       setStatus("unavailable");
+      setMessage("خدمت ارسال کد تأیید در دسترس نیست؛ کدی ارسال نشد.");
     }
   }
+
+  async function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (status === "loading") return;
+    const normalized = normalizeDigits(code.trim());
+    setCode(normalized);
+    if (!/^\d{6}$/.test(normalized)) {
+      setStatus("invalid");
+      setMessage("کد تأیید باید شش رقم باشد.");
+      return;
+    }
+    setStatus("loading");
+    setMessage("");
+    try {
+      const response = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, challengeId, code: normalized }),
+        cache: "no-store",
+      });
+      if (response.status === 200) {
+        const body: unknown = await response.json();
+        if (body && typeof body === "object" &&
+          "authenticated" in body && body.authenticated === true) {
+          setStage("authenticated");
+          setPhone("");
+          setCode("");
+          setChallengeId("");
+          setStatus("idle");
+          return;
+        }
+      }
+      setStatus(response.status === 400 || response.status === 401
+        ? "invalid" : response.status === 429 ? "limited" : "unavailable");
+      setMessage(response.status === 400 || response.status === 401
+        ? "کد یا اطلاعات تأیید معتبر نیست."
+        : response.status === 429
+          ? "تعداد تلاش‌ها زیاد است؛ کمی بعد تلاش کنید."
+          : "خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+    } catch {
+      setStatus("unavailable");
+      setMessage("خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+    }
+  }
+
+  async function logout() {
+    if (status === "loading") return;
+    setStatus("loading");
+    setMessage("");
+    try {
+      const response = await fetch("/api/auth/session", {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      if (response.status === 204 || response.status === 401) {
+        setStage("phone");
+        setStatus("idle");
+        setPhone("");
+        setCode("");
+        setChallengeId("");
+        return;
+      }
+    } catch {
+      // Retain the UI session when revocation outcome is unknown.
+    }
+    setStatus("unavailable");
+    setMessage("خروج از حساب تأیید نشد؛ دوباره تلاش کنید.");
+  }
+
+  const busy = status === "loading";
 
   return (
     <section className="surface-card auth-card" aria-labelledby="auth-heading">
       <h2 id="auth-heading">ورود / ثبت‌نام</h2>
-      <form noValidate onSubmit={handleSubmit}>
-        <FormField
-          id="auth-phone"
-          label="شماره موبایل"
-          type="tel"
-          autoComplete="tel-national"
-          inputMode="numeric"
-          className="field__input--phone"
-          placeholder="09xxxxxxxxx"
-          maxLength={11}
-          value={phone}
-          required
-          error={status === "invalid"}
-          onChange={(event) => {
-            setPhone(event.target.value);
-            setStatus("idle");
-          }}
-        />
-        <button className="primary-button" type="submit" disabled={status === "loading"}>
-          {status === "loading" ? "در حال بررسی…" : "دریافت کد تأیید"}
-        </button>
-        {status !== "idle" && status !== "loading" && (
-          <p
-            className={["form-status", status === "invalid" && "form-status--error"].filter(Boolean).join(" ")}
-            role={status === "invalid" ? "alert" : "status"}
-            aria-live="polite"
-          >
-            {status === "invalid"
-              ? "شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد."
-              : status === "limited"
-                ? "تعداد درخواست‌ها زیاد است. لطفاً کمی بعد دوباره تلاش کنید."
-                : status === "sent"
-                  ? "درخواست ارسال پذیرفته شد. مرحله واردکردن کد هنوز آماده نیست."
-                  : "سرویس ارسال کد تأیید در دسترس نیست؛ کدی ارسال نشد."}
+      {stage === "checking" && <p role="status">در حال بررسی وضعیت ورود…</p>}
+      {stage === "session-unavailable" && (
+        <div role="status">
+          <p>بررسی وضعیت حساب فعلاً در دسترس نیست. لطفاً دوباره تلاش کنید.</p>
+          <button type="button" className="primary-button"
+            onClick={() => window.location.reload()}>تلاش دوباره</button>
+        </div>
+      )}
+      {stage === "phone" && (
+        <form noValidate onSubmit={requestCode}>
+          <FormField id="auth-phone" label="شماره موبایل" type="tel"
+            autoComplete="tel-national" inputMode="numeric"
+            className="field__input--phone" placeholder="09xxxxxxxxx"
+            maxLength={11} value={phone} required
+            error={status === "invalid"}
+            onChange={(event) => {
+              setPhone(event.target.value);
+              setStatus("idle");
+              setMessage("");
+            }}
+          />
+          <button className="primary-button" type="submit" disabled={busy}>
+            {busy ? "در حال بررسی…" : "دریافت کد تأیید"}
+          </button>
+        </form>
+      )}
+      {stage === "code" && (
+        <form noValidate onSubmit={verifyCode}>
+          <p className="auth-card__hint">
+            اگر پیامک را دریافت کرده‌اید، کد آن را وارد کنید.
           </p>
-        )}
-      </form>
+          <FormField id="auth-code" label="کد تأیید" type="text"
+            autoComplete="one-time-code" inputMode="numeric"
+            className="field__input--phone" placeholder="کد شش‌رقمی"
+            maxLength={6} value={code} required
+            error={status === "invalid"}
+            onChange={(event) => {
+              setCode(event.target.value);
+              setStatus("idle");
+              setMessage("");
+            }}
+          />
+          <button className="primary-button" type="submit" disabled={busy}>
+            {busy ? "در حال تأیید…" : "تأیید کد و ورود"}
+          </button>
+          <button className="auth-card__secondary" type="button" disabled={busy}
+            onClick={() => {
+              setStage("phone");
+              setCode("");
+              setChallengeId("");
+              setStatus("idle");
+              setMessage("");
+            }}>اصلاح شماره موبایل</button>
+        </form>
+      )}
+      {stage === "authenticated" && (
+        <div>
+          <p className="form-status" role="status">
+            ورود انجام شده است. حساب پایه شما فعال است.
+          </p>
+          <button className="primary-button" type="button" disabled={busy}
+            onClick={logout}>
+            {busy ? "در حال خروج…" : "خروج از حساب"}
+          </button>
+        </div>
+      )}
+      {message && stage !== "checking" && (
+        <p className={["form-status", status === "invalid" && "form-status--error"]
+          .filter(Boolean).join(" ")}
+          role={status === "invalid" ? "alert" : "status"}
+          aria-live="polite">{message}</p>
+      )}
       <aside className="account-note">
         <strong>یک حساب برای خرید، مشارکت و اعتبار</strong>
         <p>نوع حساب فقط حقیقی یا حقوقی است. در صورت فعال شدن حمایت، اعتبار به همین حساب اضافه می‌شود.</p>

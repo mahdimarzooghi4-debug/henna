@@ -107,14 +107,25 @@ jobs:
               grep -q 'ورود به حنا' /tmp/hana-auth.html
               grep -q 'ثبت‌نام فروشگاه در حنا' /tmp/hana-seller.html
               test -s /tmp/hana-logo.png
-              auth_proxy_status=$(curl --silent --output /tmp/hana-auth-proxy.json --write-out "%{http_code}" -H "Content-Type: application/json" -d '{"phone":"09123456789"}' http://127.0.0.1:3000/api/auth/otp/request)
+              # Route mutations need an exact same-origin Origin header.
+              auth_proxy_status=$(curl --silent --output /tmp/hana-auth-proxy.json --write-out "%{http_code}" -H "Content-Type: application/json" -H "Origin: http://127.0.0.1:3000" -d '{"phone":"09123456789"}' http://127.0.0.1:3000/api/auth/otp/request)
               test "$auth_proxy_status" = "503"
+              auth_csrf=$(curl --silent --output /tmp/hana-auth-csrf.json --write-out "%{http_code}" -H "Content-Type: application/json" -H "Origin: https://malicious.test" -d '{"phone":"09123456789"}' http://127.0.0.1:3000/api/auth/otp/request)
+              test "$auth_csrf" = "403"
+              verify_no_provider=$(curl --silent --output /tmp/hana-verify-no-provider.json --write-out "%{http_code}" -H "Content-Type: application/json" -H "Origin: http://127.0.0.1:3000" -d '{"phone":"09123456789","code":"123456","challengeId":"6b2bc828-cf5d-4af7-a026-a653739d8509"}' http://127.0.0.1:3000/api/auth/otp/verify)
+              test "$verify_no_provider" = "503"
+              session_no_cookie=$(curl --silent --output /tmp/hana-web-session.json --write-out "%{http_code}" http://127.0.0.1:3000/api/auth/session)
+              test "$session_no_cookie" = "401"
+              logout_wrong_origin=$(curl --silent --output /tmp/hana-web-logout.json --write-out "%{http_code}" -X DELETE -H "Origin: https://malicious.test" http://127.0.0.1:3000/api/auth/session)
+              test "$logout_wrong_origin" = "403"
               exit 0
             fi
             sleep 1
           done
           cat /tmp/hana-web.log
           exit 1
+      - name: Test isolated web cookie gateway (CI-only mock upstream)
+        run: node tests/web-auth-gateway-smoke.mjs
 
   mobile:
     runs-on: ubuntu-latest
