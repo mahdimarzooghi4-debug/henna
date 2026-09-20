@@ -45,6 +45,16 @@ jobs:
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
       - name: Test Identity, Seller and Catalog domain, API and PostgreSQL schemas
         run: dotnet test Hana.slnx --configuration Release --no-build
+      - name: Verify catalog operator preview and apply CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/catalog-operator-ci.json <<'JSON'
+          {"categories":[{"id":"2fd59aad-5834-4717-9462-c5e520dd7a31","name":"گروه CI","slug":"ci-catalog-operator","state":"DRAFT"}],"products":[]}
+          JSON
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-preview /tmp/catalog-operator-ci.json | grep -q 'categories new=1, changed=0'
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json | grep -q 'categories new=1, changed=0'
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json | grep -q 'categories new=0, changed=0'
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash
         run: |
