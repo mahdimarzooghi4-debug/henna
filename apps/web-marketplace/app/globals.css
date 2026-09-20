@@ -1,15 +1,166 @@
-* {
-  box-sizing: border-box;
+:root {
+  color-scheme: light;
+  --hana-terracotta: #b5523b;
+  --hana-beige: #d7b895;
+  --hana-teal: #0f5b5a;
+  --hana-olive: #8a9a6b;
+  --hana-charcoal: #2d2d2d;
+  --hana-cream: #f7f3ed;
+  --hana-muted: #756d65;
+  --hana-pale-teal: #e5f2f1;
+  --hana-surface: #fff;
+  --hana-border: #d7b895;
+  --hana-space-1: 4px;
+  --hana-space-2: 8px;
+  --hana-space-3: 12px;
+  --hana-space-4: 16px;
+  --hana-space-6: 24px;
+  --hana-space-8: 32px;
 }
 
+* { box-sizing: border-box; }
+html { min-width: 320px; }
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  min-height: 100vh;
+  background: var(--hana-cream);
+  color: var(--hana-charcoal);
+  font-family: "Vazirmatn", Tahoma, Arial, sans-serif;
+  line-height: 1.7;
 }
 
-.bootstrap {
-  max-width: 46rem;
-  padding: 3rem 1.5rem;
-  margin-inline: auto;
-  line-height: 1.9;
+button, input { font: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--hana-teal); outline-offset: 3px; }
+
+.site-header { height: 120px; background: var(--hana-surface); }
+.site-header__inner {
+  max-width: 1280px;
+  height: 100%;
+  padding: 0 16px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.site-header__brand { display: inline-flex; align-items: center; width: 220px; height: 72px; }
+.site-header__brand img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.site-header__back { color: var(--hana-teal); font-size: 15px; font-weight: 700; text-decoration: none; }
+.site-header__back:hover { text-decoration: underline; }
+
+.page-intro { width: min(1280px, calc(100% - 32px)); margin: 0 auto; padding-top: 54px; }
+.page-intro h1 { margin: 0; font-size: 38px; font-weight: 700; line-height: 1.8; }
+.page-intro p { margin: 0; color: var(--hana-muted); font-size: 17px; }
+.page-intro--seller { padding-top: 44px; }
+
+.surface-card {
+  background: var(--hana-surface);
+  border: 1px solid var(--hana-border);
+  border-radius: 20px;
+}
+.auth-card {
+  width: min(620px, calc(100% - 32px));
+  min-height: 540px;
+  margin: 56px auto 72px;
+  padding: 30px 35px 24px;
+}
+.auth-card h2 { font-size: 28px; margin: 0 0 10px; line-height: 1.8; }
+.field { display: flex; flex-direction: column; gap: 8px; text-align: right; }
+.field__label { font-size: 15px; font-weight: 700; }
+.field__input {
+  width: 100%;
+  height: 54px;
+  min-width: 0;
+  padding: 0 18px;
+  border: 1px solid var(--hana-border);
+  border-radius: 11px;
+  background: white;
+  color: var(--hana-charcoal);
+  font-size: 16px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.field__input::placeholder { color: var(--hana-muted); opacity: 1; }
+.field__input:focus { outline: none; border-color: var(--hana-teal); box-shadow: 0 0 0 3px #0f5b5a22; }
+.field__input[aria-invalid="true"] { border-color: var(--hana-terracotta); }
+.field__input--phone { direction: ltr; text-align: right; }
+.auth-card .field__input { height: 58px; border-radius: 12px; }
+.primary-button {
+  width: 100%;
+  min-height: 58px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--hana-terracotta);
+  color: white;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.primary-button:hover { background: #9f4531; }
+.primary-button:active { transform: translateY(1px); }
+.auth-card .primary-button { margin-top: 26px; }
+
+.account-note {
+  background: var(--hana-pale-teal);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.auth-card .account-note { min-height: 112px; margin-top: 32px; }
+.account-note strong { color: var(--hana-teal); font-size: 16px; }
+.account-note p { margin: 5px 0 0; font-size: 14px; line-height: 2; }
+.auth-card__footer { margin-top: 22px; }
+.auth-card__footer p { color: var(--hana-muted); margin: 0; font-size: 14px; }
+.auth-card__footer a { color: var(--hana-terracotta); font-weight: 700; font-size: 15px; text-decoration: none; }
+.auth-card__footer a:hover { text-decoration: underline; }
+.form-status { margin: 12px 0 0; font-size: 14px; border-radius: 10px; padding: 9px 12px; background: var(--hana-pale-teal); color: var(--hana-teal); }
+.form-status--error { background: #fcece6; color: #a33e30; }
+
+.registration-steps {
+  width: min(1280px, calc(100% - 32px));
+  min-height: 82px;
+  margin: 40px auto 0;
+  padding: 16px 28px;
+  border: 1px solid var(--hana-border);
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 16px;
+  background: white;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--hana-muted);
+  text-align: center;
+}
+.registration-steps__active { color: var(--hana-teal); }
+.seller-card {
+  width: min(900px, calc(100% - 32px));
+  margin: 48px auto 80px;
+  padding: 30px 39px 24px;
+}
+.seller-card h2 { font-size: 26px; margin: 0 0 16px; line-height: 1.8; }
+.seller-fields { display: grid; gap: 20px; }
+.seller-card .field__label { font-size: 14px; }
+.seller-card .account-note { margin-top: 30px; min-height: 76px; display: flex; align-items: center; }
+.seller-card .account-note p { color: var(--hana-teal); margin: 0; }
+.seller-card .primary-button { margin-top: 20px; }
+.bootstrap { width: min(46rem, calc(100% - 32px)); padding: 3rem 1.5rem; margin: 0 auto; line-height: 1.9; }
+.bootstrap__links { display: flex; gap: 16px; flex-wrap: wrap; }
+.bootstrap__links a { color: var(--hana-teal); font-weight: 700; }
+
+@media (max-width: 640px) {
+  .site-header { height: 88px; }
+  .site-header__brand { width: 145px; height: 56px; }
+  .site-header__back { font-size: 13px; }
+  .page-intro, .page-intro--seller { padding-top: 28px; }
+  .page-intro h1 { font-size: 28px; }
+  .page-intro p { font-size: 15px; }
+  .auth-card { margin-top: 28px; padding: 20px 18px 24px; min-height: auto; }
+  .auth-card h2, .seller-card h2 { font-size: 23px; }
+  .auth-card .account-note { margin-top: 26px; }
+  .registration-steps { margin-top: 26px; padding: 16px; gap: 12px; font-size: 12px; }
+  .seller-card { margin-top: 26px; padding: 20px 18px 24px; }
+}
+@media (max-width: 380px) {
+  .registration-steps { grid-template-columns: 1fr; text-align: right; }
 }

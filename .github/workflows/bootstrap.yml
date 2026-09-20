@@ -52,3 +52,23 @@ jobs:
         run: npm run web:typecheck
       - name: Build web
         run: npm run web:build
+      - name: Smoke test Figma routes and exported logo
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run start --workspace @hana/web-marketplace > /tmp/hana-web.log 2>&1 &
+          web_pid=$!
+          trap 'kill "$web_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:3000/auth -o /tmp/hana-auth.html; then
+              curl --fail --silent http://127.0.0.1:3000/seller/register -o /tmp/hana-seller.html
+              curl --fail --silent http://127.0.0.1:3000/hana-logo.png -o /tmp/hana-logo.png
+              grep -q 'ورود به حنا' /tmp/hana-auth.html
+              grep -q 'ثبت‌نام فروشگاه در حنا' /tmp/hana-seller.html
+              test -s /tmp/hana-logo.png
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hana-web.log
+          exit 1
