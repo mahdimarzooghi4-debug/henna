@@ -9,7 +9,9 @@ import {
   type SellerFields,
 } from "../../../lib/seller-draft-preflight";
 import { sellerLoginHref } from "../../../lib/seller-return";
-import { sellerFieldDifferences } from "../../../lib/seller-conflict";
+import {
+  chooseSellerDraftCopy, sellerFieldDifferences,
+} from "../../../lib/seller-conflict";
 
 
 type SellerConflict =
@@ -105,9 +107,10 @@ export function RegistrationForm() {
   function chooseServerCopy() {
     if (busy || conflict?.status !== "ready") return;
     // Only an explicit click can discard this tab's unsaved text.
-    setFields(conflict.fields);
-    setRevision(conflict.revision);
-    setSaved(true);
+    const selected = chooseSellerDraftCopy(fields, conflict, "server");
+    setFields(selected.fields);
+    setRevision(selected.revision);
+    setSaved(selected.saved);
     setInvalidField(null);
     setConflict(null);
     setMessage("آخرین نسخهٔ ذخیره‌شدهٔ سرور بارگذاری شد؛ تغییرات ذخیره‌نشدهٔ این پنجره کنار گذاشته شدند.");
@@ -117,8 +120,10 @@ export function RegistrationForm() {
     if (busy || conflict?.status !== "ready") return;
     // Keep this tab's exact fields, update ONLY the expected revision.
     // Never automatically save over another tab's newer draft.
-    setRevision(conflict.revision);
-    setSaved(false);
+    const selected = chooseSellerDraftCopy(fields, conflict, "mine");
+    setFields(selected.fields);
+    setRevision(selected.revision);
+    setSaved(selected.saved);
     setInvalidField(null);
     setConflict(null);
     setMessage("متن این پنجره نگه داشته شد. هنوز ذخیره نشده است؛ آن را بررسی کنید و برای ذخیرهٔ صریح دکمهٔ فرم را بزنید.");
