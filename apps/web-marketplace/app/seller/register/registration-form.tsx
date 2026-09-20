@@ -25,6 +25,7 @@ export function RegistrationForm() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [access, setAccess] = useState<"checking" | "signedIn" | "signedOut" | "unavailable">("checking");
   const touched = useRef(false);
 
@@ -43,15 +44,26 @@ export function RegistrationForm() {
         return;
       }
       setAccess("signedIn");
-      if (response.status === 404 || touched.current) return;
+      if (response.status === 404) {
+        setRevision(0);
+        return;
+      }
+      if (touched.current) return;
       const draft: unknown = await response.json();
       if (!draft || typeof draft !== "object" ||
-        !("status" in draft) || draft.status !== "DRAFT") return;
+        !("status" in draft) || draft.status !== "DRAFT" ||
+        !("revision" in draft) || typeof draft.revision !== "number" ||
+        !Number.isSafeInteger(draft.revision) || draft.revision < 1 ||
+        draft.revision >= 2147483647) {
+        setAccess("unavailable");
+        return;
+      }
       const values = draft as Record<string, unknown>;
       if (keys.every((key) => typeof values[key] === "string")) {
         setFields(Object.fromEntries(keys.map((key) =>
           [key, values[key]])) as SellerFields);
         setSaved(true);
+        setRevision(draft.revision);
         setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
       }
     }).catch(() => {
@@ -99,14 +111,17 @@ export function RegistrationForm() {
       const response = await fetch("/api/seller/registration", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next),
+        body: JSON.stringify({ ...next, revision }),
         cache: "no-store",
       });
       if (response.ok) {
         const result: unknown = await response.json();
         if (result && typeof result === "object" &&
-          "status" in result && result.status === "DRAFT") {
+          "status" in result && result.status === "DRAFT" &&
+          "revision" in result && typeof result.revision === "number" &&
+          result.revision === revision + 1) {
           setSaved(true);
+          setRevision(result.revision);
           setAccess("signedIn");
           setMessage("اطلاعات اولیه به‌عنوان پیش‌نویس ذخیره شد. ثبت‌نام و فعال‌سازی فروشگاه هنوز تکمیل نشده است.");
           return;
@@ -119,7 +134,7 @@ export function RegistrationForm() {
         : response.status === 400
           ? "اطلاعات یا شماره مسئول فروشگاه معتبر نیست. شماره باید همان شماره تأییدشده حساب باشد."
           : response.status === 409
-            ? "پیش‌نویس فعلی دیگر قابل ویرایش نیست."
+            ? "این پیش‌نویس در پنجرهٔ دیگری تغییر کرده است. اطلاعات این فرم هنوز پاک نشده؛ برای جلوگیری از بازنویسی ناخواسته، قبل از تلاش بعدی متن خود را نگه دارید و صفحه را تازه‌سازی کنید."
             : "ذخیره اطلاعات تأیید نشد؛ لطفاً دوباره تلاش کنید.");
     } catch {
       setSaved(false);
@@ -150,25 +165,25 @@ export function RegistrationForm() {
         <div className="seller-fields">
           <FormField id="store-name" label="نام فروشگاه" placeholder="مثلاً سوپرمارکت بهار"
             maxLength={120} value={fields.storeName} error={invalidField === "storeName"} required
-            onChange={(e) => update("storeName", e.target.value)} />
+            disabled={busy} onChange={(e) => update("storeName", e.target.value)} />
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
             maxLength={120} autoComplete="name" value={fields.ownerName} error={invalidField === "ownerName"} required
-            onChange={(e) => update("ownerName", e.target.value)} />
+            disabled={busy} onChange={(e) => update("ownerName", e.target.value)} />
           <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
             className="field__input--phone" value={fields.phone} error={invalidField === "phone"} required
-            onChange={(e) => update("phone", e.target.value)} />
+            disabled={busy} onChange={(e) => update("phone", e.target.value)} />
           <FormField id="city" label="شهر / منطقه" placeholder="شهر و محدوده فعالیت"
             maxLength={120} value={fields.city} error={invalidField === "city"} required
-            onChange={(e) => update("city", e.target.value)} />
+            disabled={busy} onChange={(e) => update("city", e.target.value)} />
           <FormField id="store-address" label="آدرس فروشگاه" placeholder="نشانی کامل فروشگاه"
             maxLength={500} autoComplete="street-address" value={fields.address} error={invalidField === "address"} required
-            onChange={(e) => update("address", e.target.value)} />
+            disabled={busy} onChange={(e) => update("address", e.target.value)} />
           <FormField id="postal-code" label="کدپستی" placeholder="کدپستی ۱۰ رقمی"
             inputMode="numeric" autoComplete="postal-code" maxLength={10}
             className="field__input--phone" value={fields.postalCode}
             error={invalidField === "postalCode"} required
-            onChange={(e) => update("postalCode", e.target.value)} />
+            disabled={busy} onChange={(e) => update("postalCode", e.target.value)} />
         </div>
         <aside className="account-note">
           <p>پس از ثبت اطلاعات، احراز هویت و مدارک صنفی در مرحله بعد تکمیل می‌شود.</p>

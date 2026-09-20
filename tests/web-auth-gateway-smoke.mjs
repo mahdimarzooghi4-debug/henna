@@ -68,9 +68,16 @@ async function main() {
         const data = JSON.parse(body);
         assert.equal(data.phone, phone);
         assert.equal(request.headers.authorization, `Bearer ${token}`);
-        sellerDraft = { ...data, status: "DRAFT" };
-        response.writeHead(200);
-        response.end(JSON.stringify({ status: "DRAFT" }));
+        if ((sellerDraft?.revision ?? 0) !== data.revision) {
+          response.writeHead(409);
+          response.end(JSON.stringify({ message: "stale revision" }));
+        } else {
+          sellerDraft = { ...data, revision: data.revision + 1, status: "DRAFT" };
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            status: "DRAFT", revision: sellerDraft.revision,
+          }));
+        }
       } else if (url === "/api/v1/auth/session" &&
         request.headers.authorization === `Bearer ${token}` &&
         request.method === "GET" && !revoked) {
@@ -204,18 +211,40 @@ async function main() {
       Cookie: sessionCookie, Origin: base,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(draft),
+    body: JSON.stringify({ ...draft, revision: 0 }),
   });
   assert.equal(sellerSaved.status, 200);
-  assert.deepEqual(await sellerSaved.json(), { status: "DRAFT" });
+  assert.deepEqual(await sellerSaved.json(), { status: "DRAFT", revision: 1 });
   assert.equal(sellerSaved.headers.get("cache-control"), "no-store");
   const sellerRestored = await fetch(sellerUrl, {
     headers: { Cookie: sessionCookie },
   });
   assert.equal(sellerRestored.status, 200);
   assert.deepEqual(await sellerRestored.json(), {
-    ...draft, phone, postalCode: "1234567890", status: "DRAFT",
+    ...draft, phone, postalCode: "1234567890", status: "DRAFT", revision: 1,
   });
+  const sellerStale = await fetch(sellerUrl, {
+    method: "PUT",
+    headers: {
+      Cookie: sessionCookie, Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ...draft, storeName: "نسخه قدیمی", revision: 0 }),
+  });
+  assert.equal(sellerStale.status, 409);
+  const savedSecond = await fetch(sellerUrl, {
+    method: "PUT",
+    headers: {
+      Cookie: sessionCookie, Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ...draft, storeName: "نسخه دوم", revision: 1 }),
+  });
+  assert.equal(savedSecond.status, 200);
+  assert.deepEqual(await savedSecond.json(), { status: "DRAFT", revision: 2 });
+  const sellerAfter = await fetch(sellerUrl, { headers: { Cookie: sessionCookie } });
+  assert.equal(sellerAfter.status, 200);
+  assert.equal((await sellerAfter.json()).storeName, "نسخه دوم");
   assert.ok(!JSON.stringify(sellerDraft).includes(token));
 
   const rejectLogout = await fetch(base + "/api/auth/session", {

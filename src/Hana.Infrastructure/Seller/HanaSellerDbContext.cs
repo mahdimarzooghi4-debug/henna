@@ -18,8 +18,12 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
         modelBuilder.Entity<SellerRegistrationDraft>(entity =>
         {
             entity.ToTable("registration_drafts", table =>
+            {
                 table.HasCheckConstraint("ck_registration_drafts_status",
-                    "status = 'DRAFT'"));
+                    "status = 'DRAFT'");
+                table.HasCheckConstraint("ck_registration_drafts_revision",
+                    "revision >= 1");
+            });
             entity.HasKey(x => x.AccountId);
             entity.Property(x => x.AccountId).HasColumnName("account_id")
                 .ValueGeneratedNever();
@@ -37,6 +41,8 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasMaxLength(10).IsRequired();
             entity.Property(x => x.Status).HasColumnName("status")
                 .HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Revision).HasColumnName("revision")
+                .HasDefaultValue(1).IsRequired();
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
                 .IsRequired();
         });
