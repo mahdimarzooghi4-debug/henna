@@ -1,6 +1,6 @@
 # ADR-040 — جمعه نیز روز کاری تسویه فروشگاه‌ها در حناست
 
-**وضعیت:** تصویب‌شده؛ طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی نیز روز چرخه تسویه هستند؛ ساعت آغاز چرخه خودکار طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) ۰۰:۰۰ است؛ منطقه زمانی مرجع و زمان وصول بانکی هنوز نیازمند تعیین مستقل‌اند  
+**وضعیت:** تصویب‌شده؛ طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی نیز روز چرخه تسویه هستند؛ ساعت آغاز چرخه خودکار طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) ۰۰:۰۰ است؛ منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) `Asia/Tehran` است؛ زمان وصول بانکی هنوز نیازمند تعیین مستقل است  
 **تاریخ ثبت:** ۲۰۲۶-۰۹-۲۰  
 **حوزه:** Seller Settlement, Business Calendar, Daily Batch, Financial Operations  
 **مکمل:** [ADR-038 — تسویه همه فروشگاه‌ها در پایان هر روز کاری](ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)، [ADR-039 — پنجشنبه روز کاری تسویه است](ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-032 — توقف فاکتور اختلاف‌دار](ADR-032-HOLD-INVOICE-SETTLEMENT-UNTIL-SUPPORT-RESOLVES-ITEM-INCIDENT.md)
@@ -21,7 +21,7 @@
 ## مرز تصمیم
 
 - طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، **تعطیلات رسمی حتی اگر با جمعه مصادف باشند چرخه پایان همان روز دارند**؛ یک تاریخ فقط یک چرخه منطقی ایجاد کند.
-- ساعت آغاز چرخه و cut-off طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) ۰۰:۰۰ است؛ منطقه زمانی مرجع، محدودیت بانکی و SLA رسیدن وجه به فروشگاه نیازمند قرارداد اجرایی‌اند؛ طبق ADR-041 تعطیل رسمی مانع چرخه حنا نیست.
+- ساعت آغاز چرخه و cut-off طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) ۰۰:۰۰ است؛ منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) `Asia/Tehran` تصویب شده؛ محدودیت بانکی و SLA رسیدن وجه به فروشگاه نیازمند قرارداد اجرایی‌اند؛ طبق ADR-041 تعطیل رسمی مانع چرخه حنا نیست.
 - قاعده زمان انجام سفارش سوپرمارکتی طبق ADR-008 و توقف تسویه فاکتور اختلاف‌دار بدون تغییر است.
 
 ## آزمون‌های پذیرش
@@ -34,4 +34,4 @@
 
 ## تصمیم بعدی
 
-طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، **بله، در روز تعطیل رسمی نیز چرخه پایان روز اجرا می‌شود**. ساعت cut-off طبق ADR-042 ۰۰:۰۰ است؛ منطقه زمانی مرجع هنوز باز است.
+طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، **بله، در روز تعطیل رسمی نیز چرخه پایان روز اجرا می‌شود**. ساعت cut-off طبق ADR-042 ۰۰:۰۰ است؛ منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) `Asia/Tehran` تصویب شده است.
