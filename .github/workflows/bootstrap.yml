@@ -65,6 +65,11 @@ jobs:
             echo 'Unpinned catalog apply was accepted'
             exit 1
           fi
+          # File hash alone is insufficient; the DB preview must be approved.
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json --expected-sha256 "$catalog_sha" > /tmp/catalog-missing-db-review.log 2>&1; then
+            echo 'Unpinned catalog DB state was accepted'
+            exit 1
+          fi
           sed 's/ci-catalog-operator/ci-catalog-changed/' /tmp/catalog-operator-ci.json > /tmp/catalog-changed.json
           if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-changed.json --expected-sha256 "$catalog_sha" --expected-db-state-sha256 "$catalog_db_sha" > /tmp/catalog-mismatch.log 2>&1; then
             echo 'Changed catalog content was accepted with old review hash'
@@ -91,6 +96,11 @@ jobs:
           test "$geography_sha" = "$(sha256sum /tmp/hana-geo-operator-ci.json | cut -d' ' -f1)"
           if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json > /tmp/geo-unreviewed.log 2>&1; then
             echo 'Unpinned geography apply was accepted'
+            exit 1
+          fi
+          # File hash alone is insufficient; the DB preview must be approved.
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json --expected-sha256 "$geography_sha" > /tmp/geo-missing-db-review.log 2>&1; then
+            echo 'Unpinned geography DB state was accepted'
             exit 1
           fi
           sed 's/ci-reviewed-city/ci-changed-city/' /tmp/hana-geo-operator-ci.json > /tmp/geo-changed.json
