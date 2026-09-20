@@ -57,6 +57,20 @@ jobs:
           dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-preview /tmp/catalog-operator-ci.json | grep -q 'categories new=1, changed=0'
           dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json | grep -q 'categories new=1, changed=0'
           dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json | grep -q 'categories new=0, changed=0'
+      - name: Verify geography operator preview and apply CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          # CI-only operator-reviewed location; never a production seed.
+          cat > /tmp/hana-geo-operator-ci.json <<'JSON'
+          {"provinces":[{"id":"2fd59aad-5834-4717-9462-c5e520dd7a31","name":"استان آزمایشی CI","slug":"ci-reviewed-province","state":"DRAFT"}],"cities":[{"id":"40a9a026-f3f8-4366-b164-d43b52b641be","provinceId":"2fd59aad-5834-4717-9462-c5e520dd7a31","name":"شهر آزمایشی CI","slug":"ci-reviewed-city","state":"DRAFT"}]}
+          JSON
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-preview /tmp/hana-geo-operator-ci.json > /tmp/hana-geo-preview.log
+          grep -q 'Geography PREVIEW ONLY: provinces new=1, changed=0; cities new=1, changed=0' /tmp/hana-geo-preview.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json > /tmp/hana-geo-apply.log
+          grep -q 'Geography APPLIED: provinces new=1, changed=0; cities new=1, changed=0' /tmp/hana-geo-apply.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json > /tmp/hana-geo-repeat.log
+          grep -q 'Geography APPLIED: provinces new=0, changed=0; cities new=0, changed=0' /tmp/hana-geo-repeat.log
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash
         run: |
