@@ -1,6 +1,6 @@
 # ADR-038 — تسویه همه فروشگاه‌ها در پایان هر روز کاری حنا
 
-**وضعیت:** تصویب‌شده؛ جایگزین «یک روز بعد» در ADR-008؛ طبق [ADR-039](ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) پنجشنبه و طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) جمعه روز کاری تسویه‌اند؛ تعطیلات رسمی و ساعت دقیق چرخه همچنان بازند  
+**وضعیت:** تصویب‌شده؛ جایگزین «یک روز بعد» در ADR-008؛ طبق [ADR-039](ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) پنجشنبه، طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) جمعه و طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی نیز روز چرخه تسویه‌اند؛ ساعت دقیق چرخه همچنان باز است  
 **تاریخ ثبت:** ۲۰۲۶-۰۹-۲۰  
 **حوزه:** Seller Settlement, Financial Operations, Daily Batch, Settlement Hold, Reconciliation  
 **مکمل/اصلاح‌کننده:** [ADR-008 — چرخه کوتاه سوپرمارکتی و قاعده پیشین تسویه](ADR-008-GROCERY-ONE-DAY-FULFILLMENT-SETTLEMENT-PENDING.md)، [ADR-007 — کسر سهم حمل فروشنده](ADR-007-SELLER-DELIVERY-SHARE-DEDUCTED-AT-SETTLEMENT.md)، [ADR-029 — کسر جریمه فروشگاه](ADR-029-DEDUCT-LATE-RETURN-PENALTY-FROM-SELLER-SETTLEMENT.md)، [ADR-032 — توقف تسویه پرونده به‌موقع](ADR-032-HOLD-INVOICE-SETTLEMENT-UNTIL-SUPPORT-RESOLVES-ITEM-INCIDENT.md)، [ADR-033 — ادامه توقف تا تعیین نتیجه جمع‌آوری](ADR-033-HOLD-DAMAGED-INVOICE-THROUGH-SELLER-COLLECTION-SLA.md)، [ADR-034 — رفع فوری hold پس از جمع‌آوری به‌موقع](ADR-034-RELEASE-SETTLEMENT-HOLD-ON-EARLY-DAMAGED-RETURN-COLLECTION.md)
@@ -19,14 +19,14 @@
 
 ## موارد باز که نباید از این تصمیم استنتاج شوند
 
-- طبق [ADR-039](ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، **پنجشنبه و جمعه هر دو روز کاری معمول تسویه حنا هستند**؛ نباید صرفاً به دلیل روز هفته از batch حذف شوند. وضعیت تعطیلات رسمی حتی در پنجشنبه/جمعه، منطقه زمانی مرجع، ساعت دقیق پایان روز، زمان cut-off و قواعد تعطیلات متوالی هنوز نیازمند تقویم/قرارداد اجرایی‌اند؛ هیچ ساعت یا تعطیلی پیش‌فرض دیگری تعیین نشود.
+- طبق [ADR-039](ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، **پنجشنبه و جمعه هر دو روز کاری معمول تسویه حنا هستند**؛ نباید صرفاً به دلیل روز هفته از batch حذف شوند. طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، **تعطیلات رسمی نیز چرخه پایان همان روز دارند**؛ به این ترتیب هر روز تقویمی روز تسویه حناست. منطقه زمانی مرجع، ساعت دقیق پایان روز، زمان cut-off و وصول واقعی بانکی هنوز نیازمند قرارداد اجرایی‌اند؛ هیچ ساعت پیش‌فرضی تعیین نشود.
 - «انجام تسویه در پایان روز کاری» قاعده زمان **چرخه مالی حنا** است. زمان وصول واقعی وجه در حساب بانکی فروشگاه، SLA PSP/بانک، خطا/نامعلوم‌بودن انتقال و تطبیق بانکی باید جداگانه در قرارداد پرداخت ثبت شوند؛ پیش از تأیید بانک وضعیت `PAID` صوری نسازید.
 - مبلغ خالص ناکافی بعد از سایر کسورات، و تسویه‌ای که قبل از ثبت پرونده واقعاً پرداخت شده است، همچنان بدون سیاست نهایی carry-forward/برداشت بانکی/تسویه منفی است.
 - تاریخ سررسید گزارش مشتری و ساعت جمع‌آوری فروشگاه با زمان batch تغییر نمی‌کنند.
 
 ## گیت آزمون پذیرش
 
-- روز کاری، **از جمله پنجشنبه و جمعه طبق ADR-039/040**، با چند فروشگاه و چند فاکتور: در پایان روز، همه فروشگاه‌های دارای مبلغ مجاز در محاسبه و اجرای تسویه وارد شوند، نه انتخاب گزینشی یک دسته محصول.
+- هر روز تقویمی، **شامل پنجشنبه، جمعه و تعطیل رسمی طبق ADR-039 تا ADR-041**، با چند فروشگاه و چند فاکتور: در پایان روز، همه فروشگاه‌های دارای مبلغ مجاز در محاسبه و اجرای تسویه وارد شوند، نه انتخاب گزینشی یک دسته محصول.
 - فروشگاهی با فاکتور A دارای hold و فاکتور B بدون hold: A پرداخت نشود، B در چرخه پایان روز قابل تسویه باشد.
 - دریافت واقعی کالای خراب قبل از پایان ساعت و رفع hold در میانه روز: مجوز payout فوری نسازد؛ مبلغ به چرخه روزانه بازگردد.
 - تسویه فروشگاهی که تمام فاکتورهایش held هستند: پرداخت صوری یا کسر مضاعف نسازد.
@@ -35,4 +35,4 @@
 
 ## تصمیم تکمیلی و مورد باز
 
-طبق [ADR-039](ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، **پنجشنبه و جمعه هر دو روز کاری‌اند**. وضعیت تعطیلات رسمی و ساعت/تقویم دقیق پایان روز کاری هنوز باز است.
+طبق [ADR-039](ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، **پنجشنبه، جمعه و تعطیلات رسمی همه در چرخه روزانه حنا هستند**؛ ساعت دقیق پایان روز و زمان وصول بانکی هنوز باز است.
