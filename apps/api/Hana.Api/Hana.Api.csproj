@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <ProjectReference Include="../../../src/Hana.Application/Hana.Application.csproj" />
+    <ProjectReference Include="../../../src/Hana.Domain/Hana.Domain.csproj" />
     <ProjectReference Include="../../../src/Hana.Infrastructure/Hana.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
   </ItemGroup>

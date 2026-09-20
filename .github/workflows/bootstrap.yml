@@ -20,7 +20,7 @@ jobs:
         run: dotnet restore Hana.slnx
       - name: Build .NET solution
         run: dotnet build Hana.slnx --configuration Release --no-restore
-      - name: Run funding domain regression tests
+      - name: Run identity domain tests
         run: dotnet test Hana.slnx --configuration Release --no-build
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash
@@ -32,6 +32,10 @@ jobs:
           for attempt in {1..45}; do
             if curl --fail --silent http://127.0.0.1:5184/health/live > /dev/null; then
               curl --fail --silent http://127.0.0.1:5184/api/v1/system/status | grep -q '"phase":"bootstrap"'
+              status_invalid=$(curl --silent --output /tmp/hana-invalid.json --write-out "%{http_code}" -H "Content-Type: application/json" -d '{"phone":"123"}' http://127.0.0.1:5184/api/v1/auth/otp/request)
+              test "$status_invalid" = "400"
+              status_no_provider=$(curl --silent --output /tmp/hana-no-provider.json --write-out "%{http_code}" -H "Content-Type: application/json" -d '{"phone":"09123456789"}' http://127.0.0.1:5184/api/v1/auth/otp/request)
+              test "$status_no_provider" = "503"
               exit 0
             fi
             sleep 1
@@ -68,6 +72,8 @@ jobs:
               grep -q 'ورود به حنا' /tmp/hana-auth.html
               grep -q 'ثبت‌نام فروشگاه در حنا' /tmp/hana-seller.html
               test -s /tmp/hana-logo.png
+              auth_proxy_status=$(curl --silent --output /tmp/hana-auth-proxy.json --write-out "%{http_code}" -H "Content-Type: application/json" -d '{"phone":"09123456789"}' http://127.0.0.1:3000/api/auth/otp/request)
+              test "$auth_proxy_status" = "503"
               exit 0
             fi
             sleep 1

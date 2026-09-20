@@ -97,6 +97,7 @@ a { color: inherit; }
   cursor: pointer;
 }
 .primary-button:hover { background: #9f4531; }
+.primary-button:disabled { opacity: .6; cursor: wait; }
 .primary-button:active { transform: translateY(1px); }
 .auth-card .primary-button { margin-top: 26px; }
 

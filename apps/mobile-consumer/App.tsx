@@ -17,7 +17,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { colors, space } from "./src/theme";
 import { isValidIranianMobile, normalizeIranianMobile } from "./src/phone";
 
-type FormStatus = "idle" | "invalid" | "unavailable";
+type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited" | "sent";
 
 const logo = require("./assets/hana-app-logo.png");
 const backIcon = require("./assets/back.png");
@@ -26,15 +26,50 @@ function ConsumerAuthScreen() {
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<FormStatus>("idle");
 
-  function requestCode() {
+  async function requestCode() {
+    if (status === "loading") return;
+
     const normalized = normalizeIranianMobile(phone);
     setPhone(normalized);
     if (!isValidIranianMobile(normalized)) {
       setStatus("invalid");
       return;
     }
-    // Intentional: no mock code, session, OTP provider call or fake success.
-    setStatus("unavailable");
+
+    // EXPO_PUBLIC_* holds ONLY a public API URL, NEVER an SMS provider secret.
+    const apiBase = process.env.EXPO_PUBLIC_HANA_API_BASE_URL?.trim();
+    if (!apiBase || (!__DEV__ && !apiBase.startsWith("https://"))) {
+      setStatus("unavailable");
+      return;
+    }
+
+    setStatus("loading");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(
+        `${apiBase.replace(/\/$/, "")}/api/v1/auth/otp/request`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: normalized }),
+          signal: controller.signal,
+        },
+      );
+      setStatus(
+        response.status === 202
+          ? "sent"
+          : response.status === 400
+            ? "invalid"
+            : response.status === 429
+              ? "limited"
+              : "unavailable",
+      );
+    } catch {
+      setStatus("unavailable");
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   return (
@@ -104,13 +139,17 @@ function ConsumerAuthScreen() {
               style={({ pressed }) => [
                 styles.primaryButton,
                 pressed && styles.primaryButtonPressed,
+                status === "loading" && styles.primaryButtonLoading,
               ]}
               onPress={requestCode}
+              disabled={status === "loading"}
             >
-              <Text style={styles.primaryButtonText}>دریافت کد تأیید</Text>
+              <Text style={styles.primaryButtonText}>
+                {status === "loading" ? "در حال بررسی…" : "دریافت کد تأیید"}
+              </Text>
             </Pressable>
 
-            {status !== "idle" && (
+            {status !== "idle" && status !== "loading" && (
               <Text
                 accessibilityRole={status === "invalid" ? "alert" : "text"}
                 style={[
@@ -120,7 +159,11 @@ function ConsumerAuthScreen() {
               >
                 {status === "invalid"
                   ? "شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد."
-                  : "ارسال کد تأیید هنوز متصل نشده است؛ هیچ کدی ارسال نشد."}
+                  : status === "limited"
+                    ? "تعداد درخواست‌ها زیاد است. لطفاً کمی بعد تلاش کنید."
+                    : status === "sent"
+                      ? "درخواست ارسال پذیرفته شد. مرحله واردکردن کد هنوز آماده نیست."
+                      : "سرویس ارسال کد در دسترس نیست؛ کدی ارسال نشد."
               </Text>
             )}
 
@@ -242,6 +285,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryButtonPressed: { opacity: 0.84 },
+  primaryButtonLoading: { opacity: 0.6 },
   primaryButtonText: { color: colors.surface, fontSize: 16, fontWeight: "700" },
   formStatus: {
     backgroundColor: colors.paleTeal,

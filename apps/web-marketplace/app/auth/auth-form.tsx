@@ -7,18 +7,42 @@ import { normalizeDigits } from "../../lib/normalize-digits";
 
 export function AuthForm() {
   const [phone, setPhone] = useState("");
-  const [status, setStatus] = useState<"idle" | "invalid" | "unavailable">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "invalid" | "loading" | "unavailable" | "limited" | "sent"
+  >("idle");
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (status === "loading") return;
+
     const normalized = normalizeDigits(phone.trim());
     setPhone(normalized);
     if (!/^09\d{9}$/.test(normalized)) {
       setStatus("invalid");
       return;
     }
-    // No simulated OTP, fake success, or call to an unimplemented endpoint.
-    setStatus("unavailable");
+
+    setStatus("loading");
+    try {
+      // Same-origin Next route; backend URL stays server-side.
+      const response = await fetch("/api/auth/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalized }),
+        cache: "no-store",
+      });
+      setStatus(
+        response.status === 202
+          ? "sent"
+          : response.status === 400
+            ? "invalid"
+            : response.status === 429
+              ? "limited"
+              : "unavailable",
+      );
+    } catch {
+      setStatus("unavailable");
+    }
   }
 
   return (
@@ -42,10 +66,10 @@ export function AuthForm() {
             setStatus("idle");
           }}
         />
-        <button className="primary-button" type="submit">
-          دریافت کد تأیید
+        <button className="primary-button" type="submit" disabled={status === "loading"}>
+          {status === "loading" ? "در حال بررسی…" : "دریافت کد تأیید"}
         </button>
-        {status !== "idle" && (
+        {status !== "idle" && status !== "loading" && (
           <p
             className={["form-status", status === "invalid" && "form-status--error"].filter(Boolean).join(" ")}
             role={status === "invalid" ? "alert" : "status"}
@@ -53,7 +77,11 @@ export function AuthForm() {
           >
             {status === "invalid"
               ? "شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد."
-              : "ارسال کد تأیید هنوز به سرویس پیامک و احراز هویت متصل نشده است؛ هیچ کدی ارسال نشد."}
+              : status === "limited"
+                ? "تعداد درخواست‌ها زیاد است. لطفاً کمی بعد دوباره تلاش کنید."
+                : status === "sent"
+                  ? "درخواست ارسال پذیرفته شد. مرحله واردکردن کد هنوز آماده نیست."
+                  : "سرویس ارسال کد تأیید در دسترس نیست؛ کدی ارسال نشد."}
           </p>
         )}
       </form>
