@@ -1,6 +1,4 @@
-import {
-  sellerFieldKeys, type SellerFields,
-} from "./seller-draft-preflight.ts";
+import type { SellerFields } from "./seller-draft-preflight";
 
 /**
  * Comparison for a real 409 on the existing Figma-approved seller first step.
@@ -26,7 +24,7 @@ export type SellerFieldDifference = {
 export function sellerFieldDifferences(
   mine: SellerFields, onServer: SellerFields,
 ): SellerFieldDifference[] {
-  return sellerFieldKeys
+  return (Object.keys(sellerFieldLabels) as (keyof SellerFields)[])
     .filter((key) => mine[key] !== onServer[key])
     .map((key) => ({
       key,
