@@ -12,6 +12,7 @@ namespace Hana.Infrastructure.Tests;
 /// Real ASP.NET and disposable CI PostgreSQL. No city or launch data is
 /// seeded into shipping builds or production by migrations.
 /// </summary>
+[Collection("GeographyDatabase")]
 public sealed class GeographyReadApiTests
 {
     [Fact]
