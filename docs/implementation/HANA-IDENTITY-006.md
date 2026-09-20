@@ -12,6 +12,6 @@
 
 ## آزمون و ادامه
 
-تست‌های PostgreSQL قبلیِ `AuthSessionService` صحت lookup، ابطال بار اول/دوم و پایان اعتبار را بررسی می‌کنند. CI برای 401 endpointهای GET و DELETE بدون bearer و با bearer ظاهراً معتبر اما ناشناس smoke test دارد؛ build .NET و وب و Expo برقرار است.
+تست‌های PostgreSQL قبلیِ `AuthSessionService` صحت lookup، ابطال بار اول/دوم و پایان اعتبار را بررسی می‌کنند. CI برای 401 endpointهای GET و DELETE بدون bearer و با bearer ظاهراً معتبر اما ناشناس smoke test دارد؛ build .NET و وب و Expo برقرار است. **نتیجه واقعی:** [CI موفق Identity 006](https://github.com/mahdimarzooghi4-debug/henna/actions/runs/35519297351) روی commit `b38be98` هر سه job backend/web/mobile را گذراند؛ ۱۴ تست دامنه + ۲۵ تست زیرساخت = **۳۹ تست موفق** و smoke احراز/ابطال نشست نامعتبر 401 پاس شد.
 
 **مرحله بعد:** پیاده‌سازی `POST /api/auth/otp/verify` در Next به‌عنوان gateway و صدور **HttpOnly + Secure + SameSite** cookie در مرورگر، routeهای same-origin برای session/logout با بررسی Origin و استقرار session در SecureStore موبایل؛ بدون قراردادن bearer در JS/browser storage. فریم OTP هنوز باید با فیگمای تأییدشده تطبیق داده شود، نه طراحی مصوب حدسی.
