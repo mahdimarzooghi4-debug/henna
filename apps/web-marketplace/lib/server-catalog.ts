@@ -21,7 +21,7 @@ const record = (value: unknown): JsonObject | null =>
 const text = (value: unknown, limit: number): value is string =>
   typeof value === "string" && value.trim().length > 0 &&
   value.length <= limit && !/[\u0000-\u001f\u007f]/.test(value);
-const boundedInteger = (value: unknown, min: number, max: number) =>
+const boundedInteger = (value: unknown, min: number, max: number): value is number =>
   typeof value === "number" && Number.isSafeInteger(value) &&
   value >= min && value <= max;
 
@@ -46,7 +46,7 @@ export function parseProduct(value: unknown): PublicProduct | null {
     return null;
   return {
     id: x.id, categoryId: x.categoryId, name: x.name,
-    kind: x.kind, description: x.description ?? null,
+    kind: x.kind, description: typeof x.description === "string" ? x.description : null,
   };
 }
 
