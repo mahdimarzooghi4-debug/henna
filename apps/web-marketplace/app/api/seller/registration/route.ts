@@ -36,6 +36,13 @@ function parseFields(value: unknown): Record<(typeof names)[number], string> | n
   return fields;
 }
 
+function validRevision(value: unknown, allowZero: boolean): value is number {
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= (allowZero ? 0 : 1) &&
+    value < 2147483647;
+}
+
 export async function GET(request: NextRequest) {
   const token = bearer(request);
   if (!token) return error("برای مشاهده اطلاعات فروشگاه ابتدا وارد شوید.", 401);
@@ -53,9 +60,12 @@ export async function GET(request: NextRequest) {
     const payload: unknown = await response.json();
     const fields = parseFields(payload);
     if (!fields || !payload || typeof payload !== "object" ||
-      !("status" in payload) || payload.status !== "DRAFT")
+      !("status" in payload) || payload.status !== "DRAFT" ||
+      !("revision" in payload) || !validRevision(payload.revision, false))
       return error(unavailable, 503);
-    return NextResponse.json({ ...fields, status: "DRAFT" }, { headers: noStore });
+    return NextResponse.json(
+      { ...fields, status: "DRAFT", revision: payload.revision },
+      { headers: noStore });
   } catch {
     return error(unavailable, 503);
   }
@@ -71,13 +81,19 @@ export async function PUT(request: NextRequest) {
   if (!target) return error(unavailable, 503);
 
   let fields: ReturnType<typeof parseFields>;
+  let revision: number | null = null;
   try {
     const raw = await request.text();
-    fields = raw.length <= 4096 ? parseFields(JSON.parse(raw)) : null;
+    const body: unknown = raw.length <= 4096 ? JSON.parse(raw) : null;
+    fields = parseFields(body);
+    if (body && typeof body === "object" && "revision" in body &&
+      validRevision(body.revision, true))
+      revision = body.revision;
   } catch {
     fields = null;
   }
-  if (!fields) return error("اطلاعات اولیه فروشگاه معتبر نیست.", 400);
+  if (!fields || revision === null)
+    return error("اطلاعات اولیه یا نسخهٔ پیش‌نویس معتبر نیست.", 400);
 
   try {
     const upstream = await fetch(target, {
@@ -86,7 +102,7 @@ export async function PUT(request: NextRequest) {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(fields),
+      body: JSON.stringify({ ...fields, revision }),
       cache: "no-store", signal: AbortSignal.timeout(8000),
     });
     if (upstream.status === 401)
@@ -94,13 +110,18 @@ export async function PUT(request: NextRequest) {
     if (upstream.status === 400)
       return error("اطلاعات یا شماره مسئول فروشگاه معتبر نیست.", 400);
     if (upstream.status === 409)
-      return error("این پیش‌نویس دیگر قابل ویرایش نیست.", 409);
+      return error("پیش‌نویس در پنجرهٔ دیگری تغییر کرده است. پیش از ذخیره دوباره صفحه را تازه‌سازی کنید.", 409);
     if (!upstream.ok) return error(unavailable, 503);
     const payload: unknown = await upstream.json();
     if (!payload || typeof payload !== "object" ||
-      !("status" in payload) || payload.status !== "DRAFT")
+      !("status" in payload) || payload.status !== "DRAFT" ||
+      !("revision" in payload) ||
+      !validRevision(payload.revision, false) ||
+      payload.revision !== revision + 1)
       return error(unavailable, 503);
-    return NextResponse.json({ status: "DRAFT" }, { headers: noStore });
+    return NextResponse.json(
+      { status: "DRAFT", revision: payload.revision },
+      { headers: noStore });
   } catch {
     return error(unavailable, 503);
   }
