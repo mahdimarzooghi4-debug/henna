@@ -1,80 +1,56 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../../components/form-field";
 import { normalizeDigits } from "../../../lib/normalize-digits";
+import {
+  emptySellerFields, loadSellerDraft, sellerFieldKeys,
+  type SellerFields,
+} from "../../../lib/seller-draft-preflight";
+import { sellerLoginHref } from "../../../lib/seller-return";
 
-type SellerFields = {
-  storeName: string;
-  ownerName: string;
-  phone: string;
-  city: string;
-  address: string;
-  postalCode: string;
-};
-
-const emptyFields: SellerFields = {
-  storeName: "", ownerName: "", phone: "", city: "", address: "", postalCode: "",
-};
-const keys = Object.keys(emptyFields) as (keyof SellerFields)[];
 
 export function RegistrationForm() {
-  const [fields, setFields] = useState<SellerFields>(emptyFields);
+  const [fields, setFields] = useState<SellerFields>(emptySellerFields);
   const [invalidField, setInvalidField] = useState<keyof SellerFields | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [revision, setRevision] = useState(0);
   const [access, setAccess] = useState<"checking" | "signedIn" | "signedOut" | "unavailable">("checking");
-  const touched = useRef(false);
+
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/seller/registration", {
-      cache: "no-store", signal: controller.signal,
-    }).then(async (response) => {
+    void loadSellerDraft(fetch, controller.signal).then((result) => {
       if (controller.signal.aborted) return;
-      if (response.status === 401) {
+      if (result.status === "signedOut") {
         setAccess("signedOut");
         return;
       }
-      if (response.status !== 200 && response.status !== 404) {
+      if (result.status === "unavailable") {
         setAccess("unavailable");
         return;
       }
-      setAccess("signedIn");
-      if (response.status === 404) {
+      if (result.status === "new") {
         setRevision(0);
+        setAccess("signedIn");
         return;
       }
-      if (touched.current) return;
-      const draft: unknown = await response.json();
-      if (!draft || typeof draft !== "object" ||
-        !("status" in draft) || draft.status !== "DRAFT" ||
-        !("revision" in draft) || typeof draft.revision !== "number" ||
-        !Number.isSafeInteger(draft.revision) || draft.revision < 1 ||
-        draft.revision >= 2147483647) {
-        setAccess("unavailable");
-        return;
-      }
-      const values = draft as Record<string, unknown>;
-      if (keys.every((key) => typeof values[key] === "string")) {
-        setFields(Object.fromEntries(keys.map((key) =>
-          [key, values[key]])) as SellerFields);
-        setSaved(true);
-        setRevision(draft.revision);
-        setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
-      }
-    }).catch(() => {
-      // An unavailable service is not proof that the user's draft is absent.
-      if (!controller.signal.aborted) setAccess("unavailable");
+      // Release the form only AFTER a complete draft and its matching
+      // revision have both arrived. Never merge preflight data over edits.
+      setFields(result.fields);
+      setSaved(true);
+      setRevision(result.revision);
+      setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
+      setAccess("signedIn");
     });
     return () => controller.abort();
   }, []);
 
   function update(field: keyof SellerFields, value: string) {
-    touched.current = true;
+    if (access !== "signedIn" || busy) return;
     setSaved(false);
     setFields((current) => ({ ...current, [field]: value }));
     setInvalidField(null);
@@ -83,12 +59,12 @@ export function RegistrationForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || access === "signedOut" || access === "checking") return;
+    if (busy || access !== "signedIn") return;
     const phone = normalizeDigits(fields.phone.trim());
     const postalCode = normalizeDigits(fields.postalCode.trim());
     const next = { ...fields, phone, postalCode };
     setFields(next);
-    const missing = keys.find((key) => !next[key].trim());
+    const missing = sellerFieldKeys.find((key) => !next[key].trim());
     if (missing) {
       setInvalidField(missing);
       setMessage("لطفاً همه اطلاعات اولیه فروشگاه را تکمیل کنید.");
@@ -130,7 +106,7 @@ export function RegistrationForm() {
       setSaved(false);
       if (response.status === 401) setAccess("signedOut");
       setMessage(response.status === 401
-        ? "برای ذخیره اطلاعات ابتدا از مسیر «ورود / ثبت‌نام» وارد حساب شوید."
+        ? "نشست شما پایان یافته است. اطلاعات این فرم ذخیره نشد؛ پیش از رفتن به ورود، متن واردشده را نگه دارید."
         : response.status === 400
           ? "اطلاعات یا شماره مسئول فروشگاه معتبر نیست. شماره باید همان شماره تأییدشده حساب باشد."
           : response.status === 409
@@ -152,44 +128,44 @@ export function RegistrationForm() {
       )}
       {access === "signedOut" && (
         <p className="form-status" role="status">
-          برای ذخیره پیش‌نویس ابتدا <Link href="/auth">وارد حساب حنا شوید</Link>.
-          اطلاعات واردشده تا زمان ورود در سرور ذخیره نمی‌شود.
+          برای ذخیره پیش‌نویس ابتدا <Link href={sellerLoginHref}>وارد حساب حنا شوید</Link>.
+          پس از ورود به همین فرم برمی‌گردید. اگر متنی را پیش از پایان نشست وارد کرده‌اید، قبل از ترک صفحه آن را کپی کنید؛ ذخیره نشده است.
         </p>
       )}
       {access === "unavailable" && (
         <p className="form-status form-status--error" role="status">
-          وضعیت پیش‌نویس فعلاً قابل بررسی نیست؛ ذخیره را تنها پس از پاسخ موفق سرور معتبر بدانید.
+          وضعیت پیش‌نویس فعلاً قابل بررسی نیست. برای جلوگیری از بازنویسی نسخه موجود، فرم تا بررسی موفق غیرفعال است. <button type="button" className="auth-card__secondary" onClick={() => window.location.reload()}>تلاش دوباره</button>
         </p>
       )}
       <form noValidate onSubmit={handleSubmit}>
         <div className="seller-fields">
           <FormField id="store-name" label="نام فروشگاه" placeholder="مثلاً سوپرمارکت بهار"
             maxLength={120} value={fields.storeName} error={invalidField === "storeName"} required
-            disabled={busy} onChange={(e) => update("storeName", e.target.value)} />
+            disabled={busy || access !== "signedIn"} onChange={(e) => update("storeName", e.target.value)} />
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
             maxLength={120} autoComplete="name" value={fields.ownerName} error={invalidField === "ownerName"} required
-            disabled={busy} onChange={(e) => update("ownerName", e.target.value)} />
+            disabled={busy || access !== "signedIn"} onChange={(e) => update("ownerName", e.target.value)} />
           <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
             className="field__input--phone" value={fields.phone} error={invalidField === "phone"} required
-            disabled={busy} onChange={(e) => update("phone", e.target.value)} />
+            disabled={busy || access !== "signedIn"} onChange={(e) => update("phone", e.target.value)} />
           <FormField id="city" label="شهر / منطقه" placeholder="شهر و محدوده فعالیت"
             maxLength={120} value={fields.city} error={invalidField === "city"} required
-            disabled={busy} onChange={(e) => update("city", e.target.value)} />
+            disabled={busy || access !== "signedIn"} onChange={(e) => update("city", e.target.value)} />
           <FormField id="store-address" label="آدرس فروشگاه" placeholder="نشانی کامل فروشگاه"
             maxLength={500} autoComplete="street-address" value={fields.address} error={invalidField === "address"} required
-            disabled={busy} onChange={(e) => update("address", e.target.value)} />
+            disabled={busy || access !== "signedIn"} onChange={(e) => update("address", e.target.value)} />
           <FormField id="postal-code" label="کدپستی" placeholder="کدپستی ۱۰ رقمی"
             inputMode="numeric" autoComplete="postal-code" maxLength={10}
             className="field__input--phone" value={fields.postalCode}
             error={invalidField === "postalCode"} required
-            disabled={busy} onChange={(e) => update("postalCode", e.target.value)} />
+            disabled={busy || access !== "signedIn"} onChange={(e) => update("postalCode", e.target.value)} />
         </div>
         <aside className="account-note">
           <p>پس از ثبت اطلاعات، احراز هویت و مدارک صنفی در مرحله بعد تکمیل می‌شود.</p>
         </aside>
         <button className="primary-button" type="submit"
-          disabled={busy || access === "signedOut" || access === "checking"}>
+          disabled={busy || access !== "signedIn"}>
           {busy ? "در حال ذخیره…" : saved ? "ذخیره تغییرات پیش‌نویس" : "ثبت اطلاعات و ادامه"}
         </button>
         {message && (
