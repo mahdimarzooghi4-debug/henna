@@ -45,15 +45,21 @@ function safeBaseUrl(raw: string | undefined, allowLocalHttp: boolean): string |
 /** API transport is injectable solely to test the same production behavior in CI. */
 export class MobileAuthClient {
   private readonly base: string | null;
+  private readonly store: TokenStore;
+  private readonly fetchFn: typeof fetch;
+  private readonly now: () => number;
 
   constructor(
     apiBase: string | undefined,
-    private readonly store: TokenStore,
-    private readonly fetchFn: typeof fetch = fetch,
-    private readonly now: () => number = Date.now,
+    store: TokenStore,
+    fetchFn: typeof fetch = fetch,
+    now: () => number = Date.now,
     allowLocalHttp = false,
   ) {
     this.base = safeBaseUrl(apiBase, allowLocalHttp);
+    this.store = store;
+    this.fetchFn = fetchFn;
+    this.now = now;
   }
 
   private async send(
