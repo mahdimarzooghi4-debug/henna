@@ -19,7 +19,8 @@ export const emptySellerFields: SellerFields = {
 export const sellerFieldKeys = Object.keys(emptySellerFields) as (keyof SellerFields)[];
 
 export type SellerPreflight =
-  | { status: "signedOut" | "unavailable" }
+  | { status: "signedOut" }
+  | { status: "unavailable" }
   | { status: "new"; revision: 0 }
   | { status: "restored"; revision: number; fields: SellerFields };
 
