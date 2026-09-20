@@ -118,9 +118,17 @@ jobs:
             exit 1
           fi
           grep -q 'Reviewed import SHA-256 differs from preview' /tmp/geo-mismatch.log
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json --expected-sha256 "$geography_sha" > /tmp/hana-geo-apply.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json --expected-sha256 "$geography_sha" --expected-db-state-sha256 "$geography_db_sha" > /tmp/hana-geo-apply.log
           grep -q 'Geography APPLIED: provinces new=1, changed=0; cities new=1, changed=0' /tmp/hana-geo-apply.log
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json --expected-sha256 "$geography_sha" > /tmp/hana-geo-repeat.log
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json --expected-sha256 "$geography_sha" --expected-db-state-sha256 "$geography_db_sha" > /tmp/geo-stale-db.log 2>&1; then
+            echo 'Stale geography preview was allowed to apply'
+            exit 1
+          fi
+          grep -q 'Imported database state differs from preview' /tmp/geo-stale-db.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-preview /tmp/hana-geo-operator-ci.json > /tmp/geo-repeat-preview.log
+          geo_fresh_db_sha=$(grep '^Reviewed DB state sha256=' /tmp/geo-repeat-preview.log | cut -d= -f2)
+          test "$geo_fresh_db_sha" != "$geography_db_sha"
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json --expected-sha256 "$geography_sha" --expected-db-state-sha256 "$geo_fresh_db_sha" > /tmp/hana-geo-repeat.log
           grep -q 'Geography APPLIED: provinces new=0, changed=0; cities new=0, changed=0' /tmp/hana-geo-repeat.log
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash
