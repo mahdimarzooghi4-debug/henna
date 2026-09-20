@@ -104,6 +104,12 @@ erDiagram
 
 `CUSTOMER_UNAVAILABLE_VERIFIED` حالت **پایان تعهد مراجعه مجدد فروشگاه برای همان پرونده** است، نه `COLLECTED`. اگر پس از پاسخ پشتیبانی `sellerCollectedAt` هنوز null است، سیستم حق پر کردن آن یا ایجاد مأموریت جمع‌آوری تازه ندارد. رفع hold یک incident، سایر holdهای همان فاکتور را حفظ می‌کند.
 
+### چرخه پایان روز کاری: طراحی داده برای ADR-038
+
+`SETTLEMENT_CYCLE` یا معادل پیشنهادی با `settlementCycleId`, `businessDate`, `calendarPolicyVersion`, `cycleCutoffAt`, `state`, `startedAt`, `finishedAt` نگهداری شود؛ `SELLER_SETTLEMENT`/فاکتورهای انتخاب‌شده به چرخه و `sellerId` مرتبط بمانند. چرخه شامل **تمام فروشگاه‌ها** برای فاکتورهای واجد شرایط است؛ holdها روی **فاکتور** باقی می‌مانند، نه boolean مسدودکننده کل فروشگاه. هر فاکتور که در زمان cutoff held است با دلیل و `incidentId` برای reconciliation قابل شناسایی باشد؛ سایر فاکتورهای مجاز همان فروشگاه حذف نشوند.
+
+برای هر اجرای چرخه و دستور payout، `(businessDate, sellerId, cycleType)` یا کلید یکتای هم‌ارز، `payoutAttemptId`, `providerReference` و وضعیت جداگانه `PAYOUT_SUBMITTED | PAYOUT_UNKNOWN | PAID` نیاز است. اعتبار `PAID` به موفقیت واقعی/تطبیق بانکی وابسته است. تقویم/ساعت روز کاری و مبدأ cut-off **هنوز سیاست باز** هستند و از مدل timestamp سفارش استنتاج نمی‌شوند. طرح و کلیدهای فوق پیشنهاد migration فنی‌اند و نه schema اجراشده.
+
 ## تأیید عدم‌تحویل پس از handoff
 
 طبق [ADR-020](../adr/ADR-020-FULL-REFUND-ON-CONFIRMED-NONDELIVERY.md)، `ORDER_INCIDENT`/شکایت عدم‌تحویل باید به `ORDER` و `DELIVERY_JOB_REFERENCE` مرتبط شود و نتیجه بررسی جدا از وضعیت لغو پیش از handoff نگهداری شود. `REFUND` با کلید idempotency وابسته به `incidentId + orderId + reason` و ledger مربوط، فقط بعد از تأیید عدم‌تحویل ساخته می‌شود. استرداد بخش نقدی به کیف پول و بازگشت اعتبار محدود به منبع خود به ترتیب ADR-014 و قرارداد اعتبار انجام می‌شود. این تکمیل مفهومی است و migration نهایی نیاز به قرارداد مالی/عملیاتی دارد.
