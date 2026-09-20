@@ -11,7 +11,7 @@
 - worker بی‌عملیات مالی؛ صرف ایجاد worker به معنی فعال‌بودن تسویه شبانه نیست.
 - وب Next.js/React با RTL فارسی و صفحه **موقت فنی، نه صفحه مصوب فیگما**.
 - PostgreSQL 17 فقط در Docker Compose محلی؛ **هنوز اتصال EF Core، migration و مدل داده عملیاتی ساخته نشده‌اند**.
-- CI شامل restore/build و smoke API و build/typecheck وب؛ پاس‌شدن آن باید در GitHub Actions بررسی شود، نه فرض شود.
+- CI شامل restore/build و smoke API و build/typecheck وب؛ **اولین اجرای واقعی آن برای commit `884c46d` در هر دو job بک‌اند و وب موفق شد** ([گزارش GitHub Actions](https://github.com/mahdimarzooghi4-debug/henna/actions/runs/35511098655)). این موفقیت فقط اعتبارسنجی اسکلت است، نه تست سفارش، مالی یا اتصال بیرونی.
 
 ## راه‌اندازی برای توسعه‌دهنده
 
