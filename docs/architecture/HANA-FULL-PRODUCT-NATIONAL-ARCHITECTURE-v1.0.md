@@ -37,7 +37,7 @@ flowchart TD
   W[فروشنده، ثبت‌نام، ادمین، سازمان و صفحات عمومی وب] --> EDGE
   EDGE --> FRONT[Next.js frontends / Mobile API client]
   FRONT --> G[API Gateway + BFF / Auth / Rate limits]
-  G --> CORE[Core domain: stateless modular services]
+  G --> CORE[ASP.NET Core / .NET 10 LTS: modular monolith]
   CORE --> PG[(PostgreSQL HA / PITR)]
   CORE --> RED[(Redis / ephemeral cache)]
   CORE --> STORE[(Encrypted object storage)]
@@ -54,7 +54,7 @@ flowchart TD
 
 ## ۳. فناوری و ساختار کد
 
-**پشته پیشنهادی و قابل تثبیت در ADR فناوری:** TypeScript؛ وب Next.js؛ اپ خریدار React Native/Expo؛ Backend NestJS؛ PostgreSQL؛ Redis برای cache/coordination کوتاه‌عمر؛ object storage؛ message broker پایدار؛ OpenTelemetry؛ OpenAPI و CI/CD. استفاده از موتور جست‌وجوی مجزا به اندازه داده، query و نیاز geo وابسته است؛ در شروع جست‌وجوی PostgreSQL با index سنجیده شود و مرز `Search` از ابتدا مستقل باشد. Elasticsearch/OpenSearch گزینه است نه پیش‌فرض اجباری. زیرساخت declarative، migration نسخه‌دار و secret manager اجباری؛ Kubernetes اختیاری و تابع قابلیت عملیات.
+**پشته مصوب طبق [ADR-045](../adr/ADR-045-HANA-TECHNOLOGY-STACK-ASPNET-CORE-DOTNET-10-LTS.md):** بک‌اند **C# / ASP.NET Core / .NET 10 LTS** با معماری modular monolith؛ لایه داده EF Core و SQL مستقیمِ کنترل‌شده در موارد لازم؛ workerهای .NET با outbox و صف پایدار؛ وب **Next.js + React + TypeScript**؛ اپ خریدار **React Native/Expo + TypeScript**؛ PostgreSQL؛ Redis فقط برای cache/coordination کوتاه‌عمر؛ object storage؛ OpenTelemetry؛ REST/OpenAPI نسخه‌دار و CI/CD. **NestJS صرفاً پیشنهاد قدیمی و برای بک‌اند حنا جایگزین شده است.** استفاده از موتور جست‌وجوی مجزا به اندازه داده، query و نیاز geo وابسته است؛ در شروع جست‌وجوی PostgreSQL با index سنجیده شود و مرز `Search` از ابتدا مستقل باشد. Elasticsearch/OpenSearch گزینه است نه پیش‌فرض اجباری. زیرساخت declarative، migration نسخه‌دار و secret manager اجباری؛ Kubernetes اختیاری و تابع قابلیت عملیات.
 
 ```text
 apps/
@@ -64,14 +64,14 @@ apps/
   web-admin/
   web-organization/
   mobile-consumer/
-  api/                   # ماژول‌های مشترک دامنه
-  workers/               # outbox, notifications, sync, reconciliation
+  api/                   # ASP.NET Core / C#؛ ماژول‌های مشترک دامنه
+  workers/               # .NET Worker Service؛ outbox, notifications, sync, reconciliation
 packages/
   api-contracts/
   ui-web/
   design-tokens/
-  shared-types/
-  validation/
+  generated-api-clients/ # TypeScript client از OpenAPI؛ قرارداد مشترک نه مدل مستقیم C#
+  validation/            # اعتبارسنجی frontend؛ اعتبارسنجی مرجع در ASP.NET Core
 infra/
   environments/
   monitoring/
