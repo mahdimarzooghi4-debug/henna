@@ -142,6 +142,9 @@ Idempotency-Key: inc-ord42-item7-try1
 | `GET /admin/settlements/{settlementId}/holds` | support/finance دارای action | holdهای incident مستقل با دلیل و audit |
 | `GET /admin/settlements/{settlementId}/deductions` | finance | پیوند orderItemId/incidentId/returnId/penaltyId |
 | `POST /internal/settlement-payouts/{settlementId}/submit` | worker/finance با مجوز | اجرای guarded پرداخت در چرخه پایان روز کاری ADR-038، **فقط** اگر hold فعال صفر، eligibility مالی و ledger معتبر باشد |
+| `GET /admin/settlement-cycles/{cycleId}` | finance مجاز | `businessDate`, `cycleCutoffAt`, `cycleState`, فروشگاه‌ها و فاکتورهای انتخاب‌شده/held، آمار مبلغ و وضعیت تطبیق؛ بدون مدارک محرمانه مشتری |
+
+در چرخه پایان **هر روز کاری همه فروشگاه‌ها** طبق [ADR-038](../adr/ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)، `businessDate`, `settlementCycleId`, `cycleCutoffAt`, `policyVersion` و وضعیت `PAYOUT_SUBMITTED | PAYOUT_UNKNOWN | PAID` باید قابل پیگیری و تطبیق باشند. hold فاکتور A نباید مانع payout فاکتور B همان فروشنده شود. زمان و تقویم «روز کاری» هنوز تعریف اجرایی مصوب ندارند و این API ساعت پیش‌فرضی تعیین نمی‌کند.
 
 برای هر فاکتور:
 
