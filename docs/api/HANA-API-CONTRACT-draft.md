@@ -39,6 +39,8 @@ Base path: `/api/v1`. ارتباط HTTPS؛ token/session معتبر؛ مجوز �
 | سازمان | `/organizations/{orgId}/programs`، `/people-imports`، `/allocations`، `/usage` | Organization |
 | پشتیبانی | `/support/tickets`، `/notifications` | Support |
 
+طبق [ADR-046](../adr/ADR-046-ADMIN-LOGISTICS-SECTION-EXTERNAL-SERVICE-FIGMA-DEFERRED.md)، `Admin / Logistics` در دامنه پنل ادمین حنا است ولی سرویس عملیاتی لجستیک از بیرون تأمین می‌شود؛ قرارداد admin-facing برای نمایش/پیگیری داده سفارش و اتصال باید **از سمت API حنا و adapter دارای مجوز** تعریف شود، نه اتصال مستقیم مرورگر ادمین به پایگاه داده یا کلیدهای سرویس بیرونی. طرح صفحه‌های ادمین لجستیک هنگام ساخت همان بخش به Figma اضافه می‌شوند؛ endpointها و مجوز دقیق این صفحه تا تصویب UI و قرارداد سرویس تعیین‌نشده‌اند.
+
 تمام مسیرها placeholders طراحی API هستند، نه API فعال.
 
 ## قرارداد پیشنهادی quote خرید
