@@ -61,6 +61,10 @@ erDiagram
 
 طبق [ADR-014](../adr/ADR-014-WALLET-REFUND-OPTIONAL-CASHOUT.md) مدل مفهومی افزون بر ledger و credit فعلی به `WALLET_ACCOUNT`، `WALLET_TRANSACTION`، `REFUND`، `WITHDRAWAL_REQUEST` و `WITHDRAWAL_ATTEMPT` یا معادل نرمال‌شده نیاز دارد. موجودی نقدی قابل استرداد، وجه رزروشده برای برداشت و اعتبار حمایتیِ محدود، **یک موجودی قابل نقدسازی واحد نیستند**. cardinality و migration دقیق بعد از قرارداد مالی تثبیت می‌شوند؛ این یادداشت تأیید قطعی SQL schema نیست.
 
+## تأیید عدم‌تحویل پس از handoff
+
+طبق [ADR-020](../adr/ADR-020-FULL-REFUND-ON-CONFIRMED-NONDELIVERY.md)، `ORDER_INCIDENT`/شکایت عدم‌تحویل باید به `ORDER` و `DELIVERY_JOB_REFERENCE` مرتبط شود و نتیجه بررسی جدا از وضعیت لغو پیش از handoff نگهداری شود. `REFUND` با کلید idempotency وابسته به `incidentId + orderId + reason` و ledger مربوط، فقط بعد از تأیید عدم‌تحویل ساخته می‌شود. استرداد بخش نقدی به کیف پول و بازگشت اعتبار محدود به منبع خود به ترتیب ADR-014 و قرارداد اعتبار انجام می‌شود. این تکمیل مفهومی است و migration نهایی نیاز به قرارداد مالی/عملیاتی دارد.
+
 ## مرز تراکنش‌ها و constraints
 
 | موضوع | قید الزامی |
