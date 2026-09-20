@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
 import { normalizeDigits } from "../../lib/normalize-digits";
 import { sellerRegistrationPath } from "../../lib/seller-return";
+import {
+  otpRequestTransition, type OtpRequestOutcome,
+} from "../../lib/otp-request-transition";
 
 type Stage = "checking" | "phone" | "code" | "authenticated" | "session-unavailable";
 type FormStatus = "idle" | "loading" | "invalid" | "limited" | "unavailable";
@@ -21,6 +24,9 @@ export function AuthForm({ returnTo }: {
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<FormStatus>("idle");
   const [message, setMessage] = useState("");
+  // A synchronous guard prevents a verify and resend racing before React
+  // commits a loading render. Never issue two challenges concurrently.
+  const pending = useRef(false);
 
   useEffect(() => {
     let current = true;
@@ -47,18 +53,30 @@ export function AuthForm({ returnTo }: {
     return () => { current = false; };
   }, [returnTo]);
 
-  async function requestCode(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (status === "loading") return;
+  async function requestCode(resend: boolean) {
+    if (pending.current || status === "loading") return;
+    if (resend && (stage !== "code" || !challengeIdPattern.test(challengeId)))
+      return;
+    if (!resend && stage !== "phone") return;
     const normalized = normalizeDigits(phone.trim());
-    setPhone(normalized);
     if (!/^09\d{9}$/.test(normalized)) {
+      if (resend) {
+        setStage("phone");
+        setChallengeId("");
+        setCode("");
+      }
       setStatus("invalid");
       setMessage("شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد.");
       return;
     }
+
+    // Store no OTP code/challenge anywhere beyond this component's memory.
+    const previous = { challengeId, code };
+    setPhone(normalized);
+    pending.current = true;
     setStatus("loading");
     setMessage("");
+    let outcome: OtpRequestOutcome = { status: "unavailable" };
     try {
       const response = await fetch("/api/auth/otp/request", {
         method: "POST",
@@ -70,31 +88,32 @@ export function AuthForm({ returnTo }: {
         const body: unknown = await response.json();
         const id = body && typeof body === "object" && "challengeId" in body &&
           typeof body.challengeId === "string" ? body.challengeId : "";
-        if (challengeIdPattern.test(id)) {
-          setChallengeId(id);
-          setCode("");
-          setStatus("idle");
-          setStage("code");
-          return;
-        }
+        if (challengeIdPattern.test(id))
+          outcome = { status: "accepted", challengeId: id };
+      } else if (response.status === 400) {
+        outcome = { status: "invalid" };
+      } else if (response.status === 429) {
+        outcome = { status: "limited" };
       }
-
-      setStatus(response.status === 400 ? "invalid" :
-        response.status === 429 ? "limited" : "unavailable");
-      setMessage(response.status === 400
-        ? "شماره موبایل معتبر نیست."
-        : response.status === 429
-          ? "تعداد درخواست‌ها زیاد است؛ کمی بعد تلاش کنید."
-          : "خدمت ارسال کد تأیید در دسترس نیست؛ کدی ارسال نشد.");
     } catch {
-      setStatus("unavailable");
-      setMessage("خدمت ارسال کد تأیید در دسترس نیست؛ کدی ارسال نشد.");
+      // An unknown send outcome is NOT permission to retain an old OTP:
+      // the issuer may have consumed the old challenge before a timeout.
+    } finally {
+      pending.current = false;
     }
+
+    const next = otpRequestTransition(outcome, previous, resend);
+    setChallengeId(next.challengeId);
+    setCode(next.code);
+    setStage(next.stage);
+    setStatus(next.status);
+    setMessage(next.message);
   }
 
   async function verifyCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (status === "loading") return;
+    if (status === "loading" || pending.current ||
+      stage !== "code" || !challengeIdPattern.test(challengeId)) return;
     const normalized = normalizeDigits(code.trim());
     setCode(normalized);
     if (!/^\d{6}$/.test(normalized)) {
@@ -102,6 +121,7 @@ export function AuthForm({ returnTo }: {
       setMessage("کد تأیید باید شش رقم باشد.");
       return;
     }
+    pending.current = true;
     setStatus("loading");
     setMessage("");
     try {
@@ -135,11 +155,14 @@ export function AuthForm({ returnTo }: {
     } catch {
       setStatus("unavailable");
       setMessage("خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+    } finally {
+      pending.current = false;
     }
   }
 
   async function logout() {
-    if (status === "loading") return;
+    if (status === "loading" || pending.current) return;
+    pending.current = true;
     setStatus("loading");
     setMessage("");
     try {
@@ -157,6 +180,8 @@ export function AuthForm({ returnTo }: {
       }
     } catch {
       // Retain the UI session when revocation outcome is unknown.
+    } finally {
+      pending.current = false;
     }
     setStatus("unavailable");
     setMessage("خروج از حساب تأیید نشد؛ دوباره تلاش کنید.");
@@ -176,7 +201,10 @@ export function AuthForm({ returnTo }: {
         </div>
       )}
       {stage === "phone" && (
-        <form noValidate onSubmit={requestCode}>
+        <form noValidate onSubmit={(event) => {
+          event.preventDefault();
+          void requestCode(false);
+        }}>
           <FormField id="auth-phone" label="شماره موبایل" type="tel"
             autoComplete="tel-national" inputMode="numeric"
             className="field__input--phone" placeholder="09xxxxxxxxx"
@@ -214,12 +242,17 @@ export function AuthForm({ returnTo }: {
           </button>
           <button className="auth-card__secondary" type="button" disabled={busy}
             onClick={() => {
+              if (pending.current) return;
               setStage("phone");
               setCode("");
               setChallengeId("");
               setStatus("idle");
               setMessage("");
             }}>اصلاح شماره موبایل</button>
+          <button className="auth-card__secondary" type="button" disabled={busy}
+            onClick={() => void requestCode(true)}>
+            درخواست کد جدید
+          </button>
         </form>
       )}
       {stage === "authenticated" && (
