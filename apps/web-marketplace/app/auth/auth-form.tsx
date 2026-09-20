@@ -59,7 +59,7 @@ export function AuthForm({ returnTo }: {
       return;
     if (!resend && stage !== "phone") return;
     const normalized = normalizeDigits(phone.trim());
-    if (!/^09\\d{9}$/.test(normalized)) {
+    if (!/^09\d{9}$/.test(normalized)) {
       if (resend) {
         setStage("phone");
         setChallengeId("");
@@ -180,10 +180,11 @@ export function AuthForm({ returnTo }: {
       }
     } catch {
       // Retain the UI session when revocation outcome is unknown.
+    } finally {
+      pending.current = false;
     }
     setStatus("unavailable");
     setMessage("خروج از حساب تأیید نشد؛ دوباره تلاش کنید.");
-    pending.current = false;
   }
 
   const busy = status === "loading";
