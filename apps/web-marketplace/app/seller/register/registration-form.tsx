@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { FormField } from "../../../components/form-field";
 import { normalizeDigits } from "../../../lib/normalize-digits";
 
@@ -24,6 +25,7 @@ export function RegistrationForm() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [access, setAccess] = useState<"checking" | "signedIn" | "signedOut" | "unavailable">("checking");
   const touched = useRef(false);
 
   useEffect(() => {
@@ -31,7 +33,17 @@ export function RegistrationForm() {
     fetch("/api/seller/registration", {
       cache: "no-store", signal: controller.signal,
     }).then(async (response) => {
-      if (!response.ok || touched.current) return;
+      if (controller.signal.aborted) return;
+      if (response.status === 401) {
+        setAccess("signedOut");
+        return;
+      }
+      if (response.status !== 200 && response.status !== 404) {
+        setAccess("unavailable");
+        return;
+      }
+      setAccess("signedIn");
+      if (response.status === 404 || touched.current) return;
       const draft: unknown = await response.json();
       if (!draft || typeof draft !== "object" ||
         !("status" in draft) || draft.status !== "DRAFT") return;
@@ -44,6 +56,7 @@ export function RegistrationForm() {
       }
     }).catch(() => {
       // An unavailable service is not proof that the user's draft is absent.
+      if (!controller.signal.aborted) setAccess("unavailable");
     });
     return () => controller.abort();
   }, []);
@@ -58,7 +71,7 @@ export function RegistrationForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || access === "signedOut" || access === "checking") return;
     const phone = normalizeDigits(fields.phone.trim());
     const postalCode = normalizeDigits(fields.postalCode.trim());
     const next = { ...fields, phone, postalCode };
@@ -94,11 +107,13 @@ export function RegistrationForm() {
         if (result && typeof result === "object" &&
           "status" in result && result.status === "DRAFT") {
           setSaved(true);
+          setAccess("signedIn");
           setMessage("اطلاعات اولیه به‌عنوان پیش‌نویس ذخیره شد. ثبت‌نام و فعال‌سازی فروشگاه هنوز تکمیل نشده است.");
           return;
         }
       }
       setSaved(false);
+      if (response.status === 401) setAccess("signedOut");
       setMessage(response.status === 401
         ? "برای ذخیره اطلاعات ابتدا از مسیر «ورود / ثبت‌نام» وارد حساب شوید."
         : response.status === 400
@@ -117,6 +132,20 @@ export function RegistrationForm() {
   return (
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
+      {access === "checking" && (
+        <p className="form-status" role="status">در حال بررسی وضعیت حساب و پیش‌نویس…</p>
+      )}
+      {access === "signedOut" && (
+        <p className="form-status" role="status">
+          برای ذخیره پیش‌نویس ابتدا <Link href="/auth">وارد حساب حنا شوید</Link>.
+          اطلاعات واردشده تا زمان ورود در سرور ذخیره نمی‌شود.
+        </p>
+      )}
+      {access === "unavailable" && (
+        <p className="form-status form-status--error" role="status">
+          وضعیت پیش‌نویس فعلاً قابل بررسی نیست؛ ذخیره را تنها پس از پاسخ موفق سرور معتبر بدانید.
+        </p>
+      )}
       <form noValidate onSubmit={handleSubmit}>
         <div className="seller-fields">
           <FormField id="store-name" label="نام فروشگاه" placeholder="مثلاً سوپرمارکت بهار"
@@ -144,7 +173,8 @@ export function RegistrationForm() {
         <aside className="account-note">
           <p>پس از ثبت اطلاعات، احراز هویت و مدارک صنفی در مرحله بعد تکمیل می‌شود.</p>
         </aside>
-        <button className="primary-button" type="submit" disabled={busy}>
+        <button className="primary-button" type="submit"
+          disabled={busy || access === "signedOut" || access === "checking"}>
           {busy ? "در حال ذخیره…" : saved ? "ذخیره تغییرات پیش‌نویس" : "ثبت اطلاعات و ادامه"}
         </button>
         {message && (
