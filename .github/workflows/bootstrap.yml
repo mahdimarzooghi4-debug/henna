@@ -76,9 +76,18 @@ jobs:
             exit 1
           fi
           grep -q 'Reviewed import SHA-256 differs from preview' /tmp/catalog-mismatch.log
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json --expected-sha256 "$catalog_sha" > /tmp/catalog-applied.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json --expected-sha256 "$catalog_sha" --expected-db-state-sha256 "$catalog_db_sha" > /tmp/catalog-applied.log
           grep -q 'Catalog APPLIED: categories new=1, changed=0; products new=0, changed=0' /tmp/catalog-applied.log
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json --expected-sha256 "$catalog_sha" > /tmp/catalog-repeat.log
+          # Exact reviewed file but changed relevant DB state: fail with no receipt.
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json --expected-sha256 "$catalog_sha" --expected-db-state-sha256 "$catalog_db_sha" > /tmp/catalog-stale-db.log 2>&1; then
+            echo 'Stale catalog preview was allowed to apply'
+            exit 1
+          fi
+          grep -q 'Imported database state differs from preview' /tmp/catalog-stale-db.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-preview /tmp/catalog-operator-ci.json > /tmp/catalog-repeat-preview.log
+          catalog_fresh_db_sha=$(grep '^Reviewed DB state sha256=' /tmp/catalog-repeat-preview.log | cut -d= -f2)
+          test "$catalog_fresh_db_sha" != "$catalog_db_sha"
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json --expected-sha256 "$catalog_sha" --expected-db-state-sha256 "$catalog_fresh_db_sha" > /tmp/catalog-repeat.log
           grep -q 'Catalog APPLIED: categories new=0, changed=0; products new=0, changed=0' /tmp/catalog-repeat.log
       - name: Verify geography operator preview and apply CLI
         shell: bash
