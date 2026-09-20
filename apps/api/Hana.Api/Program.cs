@@ -3,6 +3,8 @@ using Hana.Infrastructure.Time;
 using Hana.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
+using Hana.Api;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,24 @@ builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IClock, SystemClock>();
+
+var trustedForwarding = TrustedForwardingConfiguration.Load(builder.Configuration);
+if (trustedForwarding is not null)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+            ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = 1;
+        options.RequireHeaderSymmetry = true;
+        options.KnownProxies.Clear();
+        options.KnownIPNetworks.Clear();
+        foreach (var proxy in trustedForwarding.KnownProxies)
+            options.KnownProxies.Add(proxy);
+        foreach (var network in trustedForwarding.KnownNetworks)
+            options.KnownIPNetworks.Add(network);
+    });
+}
 
 // SMS provider is deliberately UNCONFIGURED by default. A production sender
 // must be implemented against an actual contracted provider and reviewed
@@ -63,6 +83,8 @@ if (hasIdentityDb && otpKeyConfigured)
 // after input validation and service readiness, not per-process in memory.
 // Never trust X-Forwarded-For unless explicitly configured for trusted proxies.
 var app = builder.Build();
+if (trustedForwarding is not null)
+    app.UseForwardedHeaders();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
