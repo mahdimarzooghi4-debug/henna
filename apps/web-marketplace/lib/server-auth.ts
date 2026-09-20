@@ -22,7 +22,19 @@ export function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return false;
   try {
-    return new URL(origin).origin === new URL(request.url).origin;
+    const submitted = new URL(origin);
+    const url = new URL(request.url);
+    const host = request.headers.get("host");
+    // Next can normalize request.url to localhost inside a proxy, while
+    // the Host header retains the browser-visible authority. Require BOTH
+    // the browser Origin and public Host to agree; never trust arbitrary
+    // x-forwarded-host or x-forwarded-proto request headers.
+    return Boolean(host) &&
+      submitted.origin === `${submitted.protocol}//${host}` &&
+      submitted.protocol === url.protocol &&
+      submitted.pathname === "/" &&
+      submitted.search === "" &&
+      submitted.hash === "";
   } catch {
     return false;
   }
