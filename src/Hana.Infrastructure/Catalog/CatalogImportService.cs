@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using System.Data;
 using System.Text.Json;
+using Hana.Infrastructure.ImportReview;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +30,9 @@ public static partial class CatalogImportService
 
     public static async Task<CatalogImportResult> ImportAsync(
         HanaCatalogDbContext db, string json, DateTimeOffset now,
-        bool dryRun, CancellationToken cancellationToken = default)
+        bool dryRun, CancellationToken cancellationToken = default,
+        string? expectedDbStateSha256 = null,
+        Action<string>? onDbStateObserved = null)
     {
         ArgumentNullException.ThrowIfNull(db);
         if (string.IsNullOrWhiteSpace(json) ||
@@ -88,8 +92,11 @@ public static partial class CatalogImportService
             referencedCategoryIds.Add(item.CategoryId);
         }
 
-        await using var transaction = dryRun ? null :
-            await db.Database.BeginTransactionAsync(cancellationToken);
+        // Preview must see a single stable DB snapshot across both reads.
+        // Apply takes the existing table locks before reading the same scope.
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            dryRun ? IsolationLevel.RepeatableRead : IsolationLevel.ReadCommitted,
+            cancellationToken);
         if (!dryRun)
         {
             // Serialized catalog operator imports across API replicas.
@@ -110,6 +117,24 @@ public static partial class CatalogImportService
         var categoriesById = categories.ToDictionary(x => x.Id);
         var productsById = products.ToDictionary(x => x.Id);
 
+        // Include all persisted fields that can influence this import, sorted
+        // independently of query/physical row order. The input itself is
+        // separately bound by --expected-sha256; this pins DB state only.
+        var dbState = ImportStateChecksum.Compute(new
+        {
+            categories = categories.OrderBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id, x.Name, x.Slug, x.State, x.CreatedAtUtc
+                }).ToArray(),
+            products = products.OrderBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id, x.CategoryId, x.Name, x.Kind,
+                    x.Description, x.State, x.CreatedAtUtc
+                }).ToArray()
+        });
+
         // Reject the entire batch BEFORE mutating a tracked entity.
         foreach (var item in inputCategories)
         {
@@ -129,6 +154,11 @@ public static partial class CatalogImportService
                 throw new InvalidDataException(
                     "Product kind is immutable for an existing catalog identity.");
         }
+
+        if (!dryRun)
+            ImportStateChecksum.RequireMatch(
+                expectedDbStateSha256, dbState);
+        onDbStateObserved?.Invoke(dbState);
 
         var newCategories = 0;
         var changedCategories = 0;
@@ -211,7 +241,7 @@ public static partial class CatalogImportService
                 ChangedChildren = changedProducts
             });
             await db.SaveChangesAsync(cancellationToken);
-            await transaction!.CommitAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
 
         return new CatalogImportResult(
