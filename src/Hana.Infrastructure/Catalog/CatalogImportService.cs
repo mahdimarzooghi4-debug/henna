@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -196,6 +197,19 @@ public static partial class CatalogImportService
 
         if (!dryRun)
         {
+            // The applied rows and receipt are saved and committed together.
+            // A failed import cannot leave a success receipt behind.
+            db.ImportReceipts.Add(new CatalogImportReceipt
+            {
+                Id = Guid.NewGuid(),
+                ContentSha256 = Convert.ToHexStringLower(
+                    SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(json))),
+                AppliedAtUtc = now,
+                NewParents = newCategories,
+                ChangedParents = changedCategories,
+                NewChildren = newProducts,
+                ChangedChildren = changedProducts
+            });
             await db.SaveChangesAsync(cancellationToken);
             await transaction!.CommitAsync(cancellationToken);
         }

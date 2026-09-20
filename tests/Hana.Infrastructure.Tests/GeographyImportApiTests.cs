@@ -1,4 +1,6 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Hana.Infrastructure.Geography;
@@ -48,13 +50,20 @@ public sealed class GeographyImportApiTests
             "same-city", GeographyStates.Selectable);
         var json = Document([first, second],
             [city, draftCity, otherCity]);
+        var appliedDigests = new HashSet<string>(StringComparer.Ordinal);
+        var initialDigest = Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(json)));
 
         async Task<GeographyImportResult> Import(
             string document, bool dryRun = false)
         {
             await using var scoped = new HanaGeographyDbContext(options);
-            return await GeographyImportService.ImportAsync(
+            var result = await GeographyImportService.ImportAsync(
                 scoped, document, dryRun);
+            if (!dryRun)
+                appliedDigests.Add(Convert.ToHexStringLower(
+                    SHA256.HashData(Encoding.UTF8.GetBytes(document))));
+            return result;
         }
 
         using var factory = new WebApplicationFactory<Program>()
@@ -69,6 +78,8 @@ public sealed class GeographyImportApiTests
                 await Import(json, dryRun: true));
             Assert.False(await db.Provinces.AsNoTracking().AnyAsync(
                 x => x.Id == provinceId || x.Id == otherProvinceId));
+            Assert.Equal(0, await db.ImportReceipts.AsNoTracking()
+                .CountAsync(x => x.ContentSha256 == initialDigest));
             Assert.Equal(HttpStatusCode.NotFound,
                 (await client.GetAsync(cityUrl + "/" + cityId)).StatusCode);
 
@@ -81,6 +92,24 @@ public sealed class GeographyImportApiTests
             Assert.Equal(3, await db.Cities.AsNoTracking().CountAsync(
                 x => x.Id == cityId || x.Id == draftCityId ||
                      x.Id == otherCityId));
+            var receipts = await db.ImportReceipts.AsNoTracking()
+                .Where(x => x.ContentSha256 == initialDigest)
+                .OrderBy(x => x.AppliedAtUtc).ThenBy(x => x.Id)
+                .ToListAsync();
+            Assert.Equal(2, receipts.Count);
+            Assert.All(receipts, x =>
+            {
+                Assert.NotEqual(Guid.Empty, x.Id);
+                Assert.Equal(initialDigest, x.ContentSha256);
+                Assert.True(x.AppliedAtUtc > DateTimeOffset.UtcNow.AddMinutes(-5));
+                Assert.True(x.AppliedAtUtc <= DateTimeOffset.UtcNow.AddMinutes(1));
+            });
+            Assert.Contains(receipts, x => x.NewParents == 2 &&
+                x.NewChildren == 3 &&
+                x.ChangedParents == 0 && x.ChangedChildren == 0);
+            Assert.Contains(receipts, x =>
+                x.NewParents == 0 && x.ChangedParents == 0 &&
+                x.NewChildren == 0 && x.ChangedChildren == 0);
 
             var provinces = await client.GetFromJsonAsync<JsonElement>(
                 provincesUrl);
@@ -149,6 +178,8 @@ public sealed class GeographyImportApiTests
             await Assert.ThrowsAsync<InvalidDataException>(
                 () => Import(Document([], [])));
 
+            Assert.Equal(2, await db.ImportReceipts.AsNoTracking()
+                .CountAsync(x => x.ContentSha256 == initialDigest));
             // Merely omitting an existing province/city does not delete,
             // withdraw or re-parent that city.
             Assert.Equal(new GeographyImportResult(0, 1, 0, 0, false),
@@ -183,6 +214,11 @@ public sealed class GeographyImportApiTests
         }
         finally
         {
+            // Production receipts remain append-only; only CI test fixtures
+            // are cleaned from disposable CI PostgreSQL by unique content hash.
+            await db.ImportReceipts.Where(x =>
+                appliedDigests.Contains(x.ContentSha256))
+                .ExecuteDeleteAsync();
             await db.Cities.Where(x =>
                 x.Id == cityId || x.Id == draftCityId ||
                 x.Id == otherCityId).ExecuteDeleteAsync();

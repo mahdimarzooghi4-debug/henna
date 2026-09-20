@@ -1,4 +1,6 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Hana.Infrastructure.Catalog;
 using Microsoft.AspNetCore.Hosting;
@@ -47,13 +49,20 @@ public sealed class CatalogImportApiTests
                 "SERVICE", "PUBLISHED", null)
         };
         var initialJson = Document(categories, products);
+        var appliedDigests = new HashSet<string>(StringComparer.Ordinal);
+        var initialDigest = Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(initialJson)));
         var now = DateTimeOffset.UtcNow;
 
         async Task<CatalogImportResult> Import(string document, bool dryRun)
         {
             await using var scoped = new HanaCatalogDbContext(options);
-            return await CatalogImportService.ImportAsync(
+            var result = await CatalogImportService.ImportAsync(
                 scoped, document, now, dryRun);
+            if (!dryRun)
+                appliedDigests.Add(Convert.ToHexStringLower(
+                    SHA256.HashData(Encoding.UTF8.GetBytes(document))));
+            return result;
         }
 
         using var factory = new WebApplicationFactory<Program>()
@@ -67,6 +76,8 @@ public sealed class CatalogImportApiTests
             Assert.Equal(new CatalogImportResult(2, 0, 2, 0, true), preview);
             Assert.False(await db.Categories.AsNoTracking().AnyAsync(
                 x => x.Id == categoryId || x.Id == hiddenCategoryId));
+            Assert.Equal(0, await db.ImportReceipts.AsNoTracking()
+                .CountAsync(x => x.ContentSha256 == initialDigest));
             Assert.Equal(HttpStatusCode.NotFound,
                 (await client.GetAsync(detail)).StatusCode);
 
@@ -78,6 +89,24 @@ public sealed class CatalogImportApiTests
                 x => x.Id == categoryId || x.Id == hiddenCategoryId));
             Assert.Equal(2, await db.Products.AsNoTracking().CountAsync(
                 x => x.Id == productId || x.Id == hiddenProductId));
+            var receipts = await db.ImportReceipts.AsNoTracking()
+                .Where(x => x.ContentSha256 == initialDigest)
+                .OrderBy(x => x.AppliedAtUtc).ThenBy(x => x.Id)
+                .ToListAsync();
+            Assert.Equal(2, receipts.Count);
+            Assert.All(receipts, x =>
+            {
+                Assert.NotEqual(Guid.Empty, x.Id);
+                Assert.Equal(initialDigest, x.ContentSha256);
+                Assert.True(x.AppliedAtUtc > DateTimeOffset.UtcNow.AddMinutes(-5));
+                Assert.True(x.AppliedAtUtc <= DateTimeOffset.UtcNow.AddMinutes(1));
+            });
+            Assert.Contains(receipts, x => x.NewParents == 2 &&
+                x.NewChildren == 2 &&
+                x.ChangedParents == 0 && x.ChangedChildren == 0);
+            Assert.Contains(receipts, x =>
+                x.NewParents == 0 && x.ChangedParents == 0 &&
+                x.NewChildren == 0 && x.ChangedChildren == 0);
             var visible = await client.GetAsync(detail);
             Assert.Equal(HttpStatusCode.OK, visible.StatusCode);
             using (var result = JsonDocument.Parse(
@@ -124,6 +153,8 @@ public sealed class CatalogImportApiTests
                     [Category(Guid.NewGuid(), slug, "slug تکراری",
                         "PUBLISHED")], []), dryRun: false));
 
+            Assert.Equal(2, await db.ImportReceipts.AsNoTracking()
+                .CountAsync(x => x.ContentSha256 == initialDigest));
             // Explicit withdrawal is reversible; omissions don't auto-delete.
             var withdrawn = await Import(Document([],
                 [Product(productId, categoryId, "کالای معتبر CI",
@@ -155,6 +186,11 @@ public sealed class CatalogImportApiTests
         }
         finally
         {
+            // Production receipts remain append-only; only CI test fixtures
+            // are cleaned from disposable CI PostgreSQL by unique content hash.
+            await db.ImportReceipts.Where(x =>
+                appliedDigests.Contains(x.ContentSha256))
+                .ExecuteDeleteAsync();
             await db.Products.Where(x =>
                 x.Id == productId || x.Id == hiddenProductId)
                 .ExecuteDeleteAsync();
