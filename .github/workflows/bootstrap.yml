@@ -54,9 +54,25 @@ jobs:
           cat > /tmp/catalog-operator-ci.json <<'JSON'
           {"categories":[{"id":"2fd59aad-5834-4717-9462-c5e520dd7a31","name":"گروه CI","slug":"ci-catalog-operator","state":"DRAFT"}],"products":[]}
           JSON
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-preview /tmp/catalog-operator-ci.json | grep -q 'categories new=1, changed=0'
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json | grep -q 'categories new=1, changed=0'
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json | grep -q 'categories new=0, changed=0'
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-preview /tmp/catalog-operator-ci.json > /tmp/catalog-preview.log
+          grep -q 'categories new=1, changed=0' /tmp/catalog-preview.log
+          catalog_sha=$(grep -oE 'sha256=[a-f0-9]{64}' /tmp/catalog-preview.log | cut -d= -f2)
+          test "$catalog_sha" = "$(sha256sum /tmp/catalog-operator-ci.json | cut -d' ' -f1)"
+          # Applying without review approval must not be possible.
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json > /tmp/catalog-unreviewed.log 2>&1; then
+            echo 'Unpinned catalog apply was accepted'
+            exit 1
+          fi
+          sed 's/ci-catalog-operator/ci-catalog-changed/' /tmp/catalog-operator-ci.json > /tmp/catalog-changed.json
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-changed.json --expected-sha256 "$catalog_sha" > /tmp/catalog-mismatch.log 2>&1; then
+            echo 'Changed catalog content was accepted with old review hash'
+            exit 1
+          fi
+          grep -q 'Reviewed import SHA-256 differs from preview' /tmp/catalog-mismatch.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json --expected-sha256 "$catalog_sha" > /tmp/catalog-applied.log
+          grep -q 'Catalog APPLIED: categories new=1, changed=0; products new=0, changed=0' /tmp/catalog-applied.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json --expected-sha256 "$catalog_sha" > /tmp/catalog-repeat.log
+          grep -q 'Catalog APPLIED: categories new=0, changed=0; products new=0, changed=0' /tmp/catalog-repeat.log
       - name: Verify geography operator preview and apply CLI
         shell: bash
         run: |
@@ -67,9 +83,21 @@ jobs:
           JSON
           dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-preview /tmp/hana-geo-operator-ci.json > /tmp/hana-geo-preview.log
           grep -q 'Geography PREVIEW ONLY: provinces new=1, changed=0; cities new=1, changed=0' /tmp/hana-geo-preview.log
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json > /tmp/hana-geo-apply.log
+          geography_sha=$(grep -oE 'sha256=[a-f0-9]{64}' /tmp/hana-geo-preview.log | cut -d= -f2)
+          test "$geography_sha" = "$(sha256sum /tmp/hana-geo-operator-ci.json | cut -d' ' -f1)"
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json > /tmp/geo-unreviewed.log 2>&1; then
+            echo 'Unpinned geography apply was accepted'
+            exit 1
+          fi
+          sed 's/ci-reviewed-city/ci-changed-city/' /tmp/hana-geo-operator-ci.json > /tmp/geo-changed.json
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/geo-changed.json --expected-sha256 "$geography_sha" > /tmp/geo-mismatch.log 2>&1; then
+            echo 'Changed geography content was accepted with old review hash'
+            exit 1
+          fi
+          grep -q 'Reviewed import SHA-256 differs from preview' /tmp/geo-mismatch.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json --expected-sha256 "$geography_sha" > /tmp/hana-geo-apply.log
           grep -q 'Geography APPLIED: provinces new=1, changed=0; cities new=1, changed=0' /tmp/hana-geo-apply.log
-          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json > /tmp/hana-geo-repeat.log
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json --expected-sha256 "$geography_sha" > /tmp/hana-geo-repeat.log
           grep -q 'Geography APPLIED: provinces new=0, changed=0; cities new=0, changed=0' /tmp/hana-geo-repeat.log
       - name: Smoke test liveness and bootstrap endpoint
         shell: bash
