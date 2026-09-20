@@ -12,6 +12,7 @@ namespace Hana.Infrastructure.Tests;
 /// Uses real ASP.NET routes and disposable CI PostgreSQL; all category and
 /// product records are test-only. No shipping catalog demo seed exists.
 /// </summary>
+[Collection("CatalogDatabase")]
 public sealed class CatalogReadApiTests
 {
     [Fact]
