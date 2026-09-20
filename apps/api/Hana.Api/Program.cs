@@ -350,6 +350,15 @@ if (args.Any(value => value.StartsWith(
     return;
 }
 
+// Explicit offline import of reviewed reference geography only. It does not
+// expose province/city mutation over public HTTP or enable city commerce.
+if (args.Any(value => value.StartsWith(
+    "--geography-", StringComparison.Ordinal)))
+{
+    await GeographyImportCommand.RunAsync(args, app.Services, hasIdentityDb);
+    return;
+}
+
 // Migration is an explicit one-off operator action, never a side effect of
 // starting ordinary API replicas. Store the real password only in env/secrets.
 if (args.Contains("--apply-migrations", StringComparer.Ordinal))
