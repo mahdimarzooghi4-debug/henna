@@ -1,4 +1,6 @@
+using System.Data;
 using System.Text;
+using Hana.Infrastructure.ImportReview;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -32,7 +34,9 @@ public static partial class GeographyImportService
 
     public static async Task<GeographyImportResult> ImportAsync(
         HanaGeographyDbContext db, string json, bool dryRun,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? expectedDbStateSha256 = null,
+        Action<string>? onDbStateObserved = null)
     {
         ArgumentNullException.ThrowIfNull(db);
         if (string.IsNullOrWhiteSpace(json) ||
@@ -94,8 +98,10 @@ public static partial class GeographyImportService
             referencedProvinceIds.Add(city.ProvinceId);
         }
 
-        await using var transaction = dryRun ? null :
-            await db.Database.BeginTransactionAsync(cancellationToken);
+        // Repeatable preview snapshot; apply serializes operator changes.
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            dryRun ? IsolationLevel.RepeatableRead : IsolationLevel.ReadCommitted,
+            cancellationToken);
         if (!dryRun)
         {
             // Serializes concurrent operator processes, including disjoint
@@ -121,6 +127,23 @@ public static partial class GeographyImportService
         var provincesById = provinces.ToDictionary(x => x.Id);
         var citiesById = cities.ToDictionary(x => x.Id);
 
+        // Same scoped identity/province/slug lookup at preview and apply.
+        // Sorted persisted values prevent query or row order from changing
+        // the digest; this digest is NOT proof of city launch readiness.
+        var dbState = ImportStateChecksum.Compute(new
+        {
+            provinces = provinces.OrderBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id, x.Name, x.Slug, x.State
+                }).ToArray(),
+            cities = cities.OrderBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id, x.ProvinceId, x.Name, x.Slug, x.State
+                }).ToArray()
+        });
+
         // Finish all validation before adding or mutating EF tracked rows.
         foreach (var province in inputProvinces)
         {
@@ -144,6 +167,11 @@ public static partial class GeographyImportService
                 throw new InvalidDataException(
                     "City slug already belongs to another city in this province.");
         }
+
+        if (!dryRun)
+            ImportStateChecksum.RequireMatch(
+                expectedDbStateSha256, dbState);
+        onDbStateObserved?.Invoke(dbState);
 
         var newProvinces = 0;
         var changedProvinces = 0;
@@ -220,7 +248,7 @@ public static partial class GeographyImportService
                 ChangedChildren = changedCities
             });
             await db.SaveChangesAsync(cancellationToken);
-            await transaction!.CommitAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
 
         return new GeographyImportResult(

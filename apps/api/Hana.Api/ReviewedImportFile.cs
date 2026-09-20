@@ -19,13 +19,17 @@ internal static class ReviewedImportFile
 
         if ((!preview && !apply) ||
             (preview && args.Length != 2) ||
-            (apply && (args.Length != 4 || args[2] != "--expected-sha256" ||
-                !ValidDigest(args[3]))) ||
+            (apply && (args.Length != 6 ||
+                args[2] != "--expected-sha256" ||
+                !ValidDigest(args[3]) ||
+                args[4] != "--expected-db-state-sha256" ||
+                !ValidDigest(args[5]))) ||
             !Path.IsPathFullyQualified(args[1]))
             throw new InvalidOperationException(
                 "Use --" + module + "-preview <absolute-json-file> or " +
                 "--" + module + "-apply <absolute-json-file> " +
-                "--expected-sha256 <64-lowercase-hex-digest-from-preview>.");
+                "--expected-sha256 <64-lowercase-hex-file-digest> " +
+                "--expected-db-state-sha256 <64-lowercase-hex-db-digest-from-preview>.");
 
         // Open once, then hash and parse the very same bounded byte snapshot.
         // FileInfo.Length + File.ReadAllText would allow an edit between hash
@@ -77,7 +81,8 @@ internal static class ReviewedImportFile
                 "Reviewed import must contain valid UTF-8 JSON.", ex);
         }
 
-        return new ReviewedImportInput(json, actual, preview);
+        return new ReviewedImportInput(
+            json, actual, preview, apply ? args[5] : null);
     }
 
     private static bool ValidDigest(string digest) =>
@@ -86,4 +91,5 @@ internal static class ReviewedImportFile
 }
 
 internal sealed record ReviewedImportInput(
-    string Json, string Sha256, bool DryRun);
+    string Json, string Sha256, bool DryRun,
+    string? ExpectedDbStateSha256);

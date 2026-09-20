@@ -55,11 +55,15 @@ public sealed class GeographyImportApiTests
             SHA256.HashData(Encoding.UTF8.GetBytes(json)));
 
         async Task<GeographyImportResult> Import(
-            string document, bool dryRun = false)
+            string document, bool dryRun = false,
+            string? expectedDbStateSha256 = null,
+            Action<string>? onDbStateObserved = null)
         {
             await using var scoped = new HanaGeographyDbContext(options);
             var result = await GeographyImportService.ImportAsync(
-                scoped, document, dryRun);
+                scoped, document, dryRun,
+                expectedDbStateSha256: expectedDbStateSha256,
+                onDbStateObserved: onDbStateObserved);
             if (!dryRun)
                 appliedDigests.Add(Convert.ToHexStringLower(
                     SHA256.HashData(Encoding.UTF8.GetBytes(document))));
@@ -74,8 +78,11 @@ public sealed class GeographyImportApiTests
         var cityUrl = "/api/v1/geography/cities";
         try
         {
+            string? reviewedDbState = null;
             Assert.Equal(new GeographyImportResult(2, 0, 3, 0, true),
-                await Import(json, dryRun: true));
+                await Import(json, dryRun: true,
+                    onDbStateObserved: hash => reviewedDbState = hash));
+            Assert.Equal(64, reviewedDbState?.Length);
             Assert.False(await db.Provinces.AsNoTracking().AnyAsync(
                 x => x.Id == provinceId || x.Id == otherProvinceId));
             Assert.Equal(0, await db.ImportReceipts.AsNoTracking()
@@ -84,7 +91,10 @@ public sealed class GeographyImportApiTests
                 (await client.GetAsync(cityUrl + "/" + cityId)).StatusCode);
 
             Assert.Equal(new GeographyImportResult(2, 0, 3, 0, false),
-                await Import(json));
+                await Import(json,
+                    expectedDbStateSha256: reviewedDbState));
+            await Assert.ThrowsAsync<InvalidDataException>(() => Import(
+                json, expectedDbStateSha256: reviewedDbState));
             Assert.Equal(new GeographyImportResult(0, 0, 0, 0, false),
                 await Import(json));
             Assert.Equal(2, await db.Provinces.AsNoTracking().CountAsync(

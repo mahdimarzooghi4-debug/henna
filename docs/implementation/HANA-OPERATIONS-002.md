@@ -11,9 +11,9 @@ Operations 001 فایلِ تأییدشده را به SHA-256 دقیق bytes مق
 - `applied_at_utc`: زمان UTC اجرای اعمال؛
 - `new_parents`, `changed_parents`, `new_children`, `changed_children`: شمارش واقعی تغییرها؛ در Catalog به‌ترتیب دسته‌ها/محصولات و در Geography استان‌ها/شهرها.
 
-**پیش‌نمایش، ورودی نامعتبر و rollback، رسید موفق ندارند.** اجرای تکراری موفق—even وقتی همه شمارش‌ها صفر هستند—رسید تازه دارد تا عملیاتی‌بودن اجرای مجدد مشخص بماند؛ خود هویت محصولات/شهرها تکرار نمی‌شود. اگر درج receipt یا ذخیرهٔ رکوردها شکست بخورد، کل تراکنش rollback می‌شود. read API و مدل خروجی public تغییر نمی‌کنند؛ رسید از طریق دسترسی محدود DBA/اپراتور به دو schema قابل بررسی است.
+**پیش‌نمایش، ورودی نامعتبر و rollback، رسید موفق ندارند.** apply با هش وضعیت DB قدیمی نیز پیش از ثبت receipt رد می‌شود (Operations 003). اجرای تکراری موفق—even وقتی همه شمارش‌ها صفر هستند—رسید تازه دارد تا عملیاتی‌بودن اجرای مجدد مشخص بماند؛ خود هویت محصولات/شهرها تکرار نمی‌شود. اگر درج receipt یا ذخیرهٔ رکوردها شکست بخورد، کل تراکنش rollback می‌شود. read API و مدل خروجی public تغییر نمی‌کنند؛ رسید از طریق دسترسی محدود DBA/اپراتور به دو schema قابل بررسی است.
 
-برای راه‌اندازی نسخهٔ جدید، ابتدا `--apply-migrations` را جداگانه اجرا کنید و سپس دستورات preview و apply در Operations 001 را اجرا کنید. startup عادی schema ایجاد نمی‌کند؛ readiness تا اعمال هر دو migration تازه 503 می‌دهد. CI drift snapshot، مهاجرت تکراری، preview بدون receipt، apply و تکرار با دو receipt مختلف و رد batch معیوب بدون receipt را با PostgreSQL واقعی تست می‌کند.
+برای راه‌اندازی نسخهٔ جدید، ابتدا `--apply-migrations` را جداگانه اجرا کنید و سپس دستورات preview و apply دو-هشی در [Operations 003](HANA-OPERATIONS-003.md) را اجرا کنید. startup عادی schema ایجاد نمی‌کند؛ readiness تا اعمال هر دو migration تازه 503 می‌دهد. CI drift snapshot، مهاجرت تکراری، preview بدون receipt، apply و تکرار با دو receipt مختلف و رد batch معیوب بدون receipt را با PostgreSQL واقعی تست می‌کند.
 
 ## مرز ممیزی
 
