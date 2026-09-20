@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="src/Hana.Domain/Hana.Domain.csproj" />
   <Project Path="tests/Hana.Domain.Tests/Hana.Domain.Tests.csproj" />
+  <Project Path="tests/Hana.Infrastructure.Tests/Hana.Infrastructure.Tests.csproj" />
   <Project Path="src/Hana.Application/Hana.Application.csproj" />
   <Project Path="src/Hana.Infrastructure/Hana.Infrastructure.csproj" />
   <Project Path="apps/api/Hana.Api/Hana.Api.csproj" />
