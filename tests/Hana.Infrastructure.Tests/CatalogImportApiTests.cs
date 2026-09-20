@@ -1,0 +1,178 @@
+using System.Net;
+using System.Text.Json;
+using Hana.Infrastructure.Catalog;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+
+namespace Hana.Infrastructure.Tests;
+
+/// <summary>
+/// Disposable CI Postgres and actual public API. No fixture import in shipping code.
+/// Serialized with CatalogReadApiTests to isolate the shared CI database.
+/// </summary>
+[Collection("CatalogDatabase")]
+public sealed class CatalogImportApiTests
+{
+    [Fact]
+    public async Task OperatorPreviewApplyAndWithdrawAreAtomicAndIdempotent()
+    {
+        var connection = Environment.GetEnvironmentVariable(
+            "ConnectionStrings__IdentityDb");
+        if (string.IsNullOrWhiteSpace(connection)) return;
+
+        var options = new DbContextOptionsBuilder<HanaCatalogDbContext>()
+            .UseNpgsql(connection, pg =>
+                pg.MigrationsHistoryTable("__EFMigrationsHistory", "catalog"))
+            .Options;
+        await using var db = new HanaCatalogDbContext(options);
+        Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+
+        var categoryId = Guid.NewGuid();
+        var hiddenCategoryId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var hiddenProductId = Guid.NewGuid();
+        var slug = "ci-approved-" + categoryId.ToString("N");
+        var hiddenSlug = "ci-hidden-" + hiddenCategoryId.ToString("N");
+        var categories = new[]
+        {
+            Category(categoryId, slug, "گروه مورد تأیید", "PUBLISHED"),
+            Category(hiddenCategoryId, hiddenSlug, "گروه پیش‌نویس", "DRAFT")
+        };
+        var products = new[]
+        {
+            Product(productId, categoryId, "کالای معتبر CI", "GOOD",
+                "PUBLISHED", "توضیح قابل انتشار"),
+            Product(hiddenProductId, hiddenCategoryId, "خدمت مخفی CI",
+                "SERVICE", "PUBLISHED", null)
+        };
+        var initialJson = Document(categories, products);
+        var now = DateTimeOffset.UtcNow;
+
+        async Task<CatalogImportResult> Import(string document, bool dryRun)
+        {
+            await using var scoped = new HanaCatalogDbContext(options);
+            return await CatalogImportService.ImportAsync(
+                scoped, document, now, dryRun);
+        }
+
+        using var factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        using var client = factory.CreateClient();
+        var detail = "/api/v1/catalog/products/" + productId;
+
+        try
+        {
+            var preview = await Import(initialJson, dryRun: true);
+            Assert.Equal(new CatalogImportResult(2, 0, 2, 0, true), preview);
+            Assert.False(await db.Categories.AsNoTracking().AnyAsync(
+                x => x.Id == categoryId || x.Id == hiddenCategoryId));
+            Assert.Equal(HttpStatusCode.NotFound,
+                (await client.GetAsync(detail)).StatusCode);
+
+            var applied = await Import(initialJson, dryRun: false);
+            Assert.Equal(new CatalogImportResult(2, 0, 2, 0, false), applied);
+            var stable = await Import(initialJson, dryRun: false);
+            Assert.Equal(new CatalogImportResult(0, 0, 0, 0, false), stable);
+            Assert.Equal(2, await db.Categories.AsNoTracking().CountAsync(
+                x => x.Id == categoryId || x.Id == hiddenCategoryId));
+            Assert.Equal(2, await db.Products.AsNoTracking().CountAsync(
+                x => x.Id == productId || x.Id == hiddenProductId));
+            var visible = await client.GetAsync(detail);
+            Assert.Equal(HttpStatusCode.OK, visible.StatusCode);
+            using (var result = JsonDocument.Parse(
+                await visible.Content.ReadAsStringAsync()))
+            {
+                Assert.Equal("کالای معتبر CI",
+                    result.RootElement.GetProperty("name").GetString());
+                Assert.False(result.RootElement.TryGetProperty("state", out _));
+                Assert.False(result.RootElement.TryGetProperty("price", out _));
+            }
+            Assert.Equal(HttpStatusCode.NotFound,
+                (await client.GetAsync("/api/v1/catalog/products/" +
+                    hiddenProductId)).StatusCode);
+
+            // All validation completes before mutating the first entity.
+            var unknownCategory = Guid.NewGuid();
+            var invalid = Document(
+                [Category(categoryId, slug, "تغییر نام نباید ذخیره شود",
+                    "PUBLISHED")],
+                [Product(Guid.NewGuid(), unknownCategory,
+                    "کالای با گروه ناموجود", "GOOD", "PUBLISHED", null)]);
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(invalid, dryRun: false));
+            Assert.Equal("گروه مورد تأیید",
+                (await db.Categories.AsNoTracking().SingleAsync(
+                    x => x.Id == categoryId)).Name);
+            Assert.Equal(2, await db.Products.AsNoTracking().CountAsync(
+                x => x.Id == productId || x.Id == hiddenProductId));
+
+            // Schema is strict: importer is not an offer/price/stock backdoor.
+            var extraField = initialJson.Replace(
+                "\"kind\":\"GOOD\"", "\"kind\":\"GOOD\",\"price\":123");
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(extraField, dryRun: false));
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(Document(categories,
+                    [products[0], products[0]]), dryRun: false));
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(Document(categories,
+                    [Product(productId, categoryId, "کالای تغییرنوع",
+                        "SERVICE", "PUBLISHED", null)]), dryRun: false));
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(Document(
+                    [Category(Guid.NewGuid(), slug, "slug تکراری",
+                        "PUBLISHED")], []), dryRun: false));
+
+            // Explicit withdrawal is reversible; omissions don't auto-delete.
+            var withdrawn = await Import(Document([],
+                [Product(productId, categoryId, "کالای معتبر CI",
+                    "GOOD", "DRAFT", "توضیح قابل انتشار")]),
+                dryRun: false);
+            Assert.Equal(1, withdrawn.ChangedProducts);
+            Assert.Equal(HttpStatusCode.NotFound,
+                (await client.GetAsync(detail)).StatusCode);
+            Assert.Equal(2, await db.Products.AsNoTracking().CountAsync(
+                x => x.Id == productId || x.Id == hiddenProductId));
+
+            await Import(Document([],
+                [Product(productId, categoryId, "کالای معتبر CI",
+                    "GOOD", "PUBLISHED", "توضیح قابل انتشار")]),
+                dryRun: false);
+            Assert.Equal(HttpStatusCode.OK,
+                (await client.GetAsync(detail)).StatusCode);
+
+            await Import(Document(
+                [Category(categoryId, slug, "گروه مورد تأیید", "DRAFT")], []),
+                dryRun: false);
+            Assert.Equal(HttpStatusCode.NotFound,
+                (await client.GetAsync(detail)).StatusCode);
+            await Import(Document(
+                [Category(categoryId, slug, "گروه مورد تأیید", "PUBLISHED")],
+                []), dryRun: false);
+            Assert.Equal(HttpStatusCode.OK,
+                (await client.GetAsync(detail)).StatusCode);
+        }
+        finally
+        {
+            await db.Products.Where(x =>
+                x.Id == productId || x.Id == hiddenProductId)
+                .ExecuteDeleteAsync();
+            await db.Categories.Where(x =>
+                x.Id == categoryId || x.Id == hiddenCategoryId)
+                .ExecuteDeleteAsync();
+        }
+    }
+
+    private static object Category(
+        Guid id, string slug, string name, string state) =>
+        new { id, slug, name, state };
+
+    private static object Product(Guid id, Guid categoryId, string name,
+        string kind, string state, string? description) =>
+        new { id, categoryId, name, kind, state, description };
+
+    private static string Document(
+        object[] categories, object[] products) =>
+        JsonSerializer.Serialize(new { categories, products });
+}
