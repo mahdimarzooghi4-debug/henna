@@ -117,8 +117,9 @@ public sealed class GeographyImportApiTests
             // Unknown attributes cannot become a backdoor for commerce,
             // delivery flags, price, provider, or launch activation.
             var extraField = json.Replace(
-                "\"name\":\"استان آزمون\"",
-                "\"name\":\"استان آزمون\",\"cityLaunchReady\":true");
+                "\"slug\":\"" + provinceSlug + "\"",
+                "\"slug\":\"" + provinceSlug +
+                    "\",\"cityLaunchReady\":true");
             await Assert.ThrowsAsync<InvalidDataException>(
                 () => Import(extraField));
             await Assert.ThrowsAsync<InvalidDataException>(
