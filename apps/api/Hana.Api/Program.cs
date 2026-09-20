@@ -73,6 +73,20 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
+
+    // Independent attempt budget so requesting a code does not consume all
+    // verification attempts at the IP limiter. The database additionally
+    // caps incorrect guesses at five per challenge.
+    options.AddPolicy("otp-verify", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 });
 
 var app = builder.Build();
@@ -218,7 +232,7 @@ app.MapPost("/api/v1/auth/otp/verify", async (
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
     })
-    .RequireRateLimiting("otp-request")
+    .RequireRateLimiting("otp-verify")
     .WithName("VerifyOtpAndSignIn")
     .WithTags("Identity")
     .ProducesValidationProblem()
