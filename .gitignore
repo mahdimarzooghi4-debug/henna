@@ -9,6 +9,8 @@ coverage/
 node_modules/
 .next/
 .expo/
+.expo-export/
+dist/
 out/
 *.tsbuildinfo
 # local-only secrets and runtime data

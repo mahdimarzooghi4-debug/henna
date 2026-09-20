@@ -1,10 +1,13 @@
 {
   "name": "hana-workspace",
   "private": true,
-  "workspaces": ["apps/web-marketplace"],
+  "workspaces": ["apps/web-marketplace", "apps/mobile-consumer"],
   "scripts": {
     "web:dev": "npm run dev --workspace @hana/web-marketplace",
     "web:build": "npm run build --workspace @hana/web-marketplace",
-    "web:typecheck": "npm run typecheck --workspace @hana/web-marketplace"
+    "web:typecheck": "npm run typecheck --workspace @hana/web-marketplace",
+    "mobile:dev": "npm run start --workspace @hana/mobile-consumer",
+    "mobile:typecheck": "npm run typecheck --workspace @hana/mobile-consumer",
+    "mobile:export:android": "npm run export:android --workspace @hana/mobile-consumer"
   }
 }

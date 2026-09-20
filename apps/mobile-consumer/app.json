@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "حنا",
+    "slug": "hana-consumer",
+    "scheme": "hana",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "version": "0.1.0",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "edgeToEdgeEnabled": true
+    },
+    "extra": {
+      "implementationPhase": "design-to-code bootstrap; auth integration pending"
+    }
+  }
+}

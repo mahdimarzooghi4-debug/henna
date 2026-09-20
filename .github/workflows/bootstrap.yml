@@ -72,3 +72,23 @@ jobs:
           done
           cat /tmp/hana-web.log
           exit 1
+
+  mobile:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_NO_TELEMETRY: '1'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install monorepo dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check Expo compatibility
+        run: npx expo install --check
+        working-directory: apps/mobile-consumer
+      - name: Typecheck consumer app
+        run: npm run mobile:typecheck
+      - name: Bundle consumer app for Android
+        run: npm run mobile:export:android
