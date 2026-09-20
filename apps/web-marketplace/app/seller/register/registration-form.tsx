@@ -12,14 +12,27 @@ import { sellerLoginHref } from "../../../lib/seller-return";
 import {
   chooseSellerDraftCopy, sellerFieldDifferences,
 } from "../../../lib/seller-conflict";
+import {
+  combineSellerDraftFields, suggestSellerFieldChoices,
+  unresolvedSellerFieldChoices, type SellerFieldChoice,
+  type SellerFieldChoices,
+} from "../../../lib/seller-field-merge";
 
 
 type SellerConflict =
   | { status: "loading" | "unavailable" }
-  | { status: "ready"; fields: SellerFields; revision: number };
+  | {
+    status: "ready";
+    fields: SellerFields;
+    revision: number;
+    choices: SellerFieldChoices;
+  };
 
 export function RegistrationForm() {
   const [fields, setFields] = useState<SellerFields>(emptySellerFields);
+  // Last CONFIRMED server values, not the current text in this tab.
+  // Needed to distinguish independent field edits from overlapping ones.
+  const [baseline, setBaseline] = useState<SellerFields>(emptySellerFields);
   const [invalidField, setInvalidField] = useState<keyof SellerFields | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,12 +57,14 @@ export function RegistrationForm() {
       }
       if (result.status === "new") {
         setRevision(0);
+        setBaseline(emptySellerFields);
         setAccess("signedIn");
         return;
       }
       // Release the form only AFTER a complete draft and its matching
       // revision have both arrived. Never merge preflight data over edits.
       setFields(result.fields);
+      setBaseline(result.fields);
       setSaved(true);
       setRevision(result.revision);
       setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
@@ -60,7 +75,7 @@ export function RegistrationForm() {
 
   useEffect(() => {
     if (conflict?.status === "ready") conflictHeading.current?.focus();
-  }, [conflict]);
+  }, [conflict?.status]);
 
   function update(field: keyof SellerFields, value: string) {
     if (access !== "signedIn" || busy || conflict) return;
@@ -70,7 +85,7 @@ export function RegistrationForm() {
     setMessage("");
   }
 
-  async function retrieveCurrentDraft() {
+  async function retrieveCurrentDraft(local: SellerFields = fields) {
     // A 409 is NEVER permission to resubmit at an assumed revision 0.
     // Recheck the authenticated server draft without discarding local edits.
     setConflict({ status: "loading" });
@@ -83,6 +98,9 @@ export function RegistrationForm() {
       setConflict({
         status: "ready", fields: current.fields,
         revision: current.revision,
+        choices: suggestSellerFieldChoices(
+          baseline, local, current.fields,
+        ),
       });
       setMessage("این پیش‌نویس جای دیگری تغییر کرده است. دو نسخه را مقایسه کنید و صریحاً انتخاب کنید؛ اطلاعات این پنجره پاک نشده است.");
     } else {
@@ -109,6 +127,7 @@ export function RegistrationForm() {
     // Only an explicit click can discard this tab's unsaved text.
     const selected = chooseSellerDraftCopy(fields, conflict, "server");
     setFields(selected.fields);
+    setBaseline(conflict.fields);
     setRevision(selected.revision);
     setSaved(selected.saved);
     setInvalidField(null);
@@ -129,12 +148,47 @@ export function RegistrationForm() {
     setMessage("متن این پنجره نگه داشته شد. هنوز ذخیره نشده است؛ آن را بررسی کنید و برای ذخیرهٔ صریح دکمهٔ فرم را بزنید.");
   }
 
+  function selectConflictField(
+    key: keyof SellerFields, choice: Exclude<SellerFieldChoice, null>,
+  ) {
+    if (busy || access !== "signedIn") return;
+    setConflict((current) => current?.status === "ready"
+      ? {
+        ...current,
+        choices: { ...current.choices, [key]: choice },
+      }
+      : current);
+  }
+
+  function chooseCombinedCopy() {
+    if (busy || access !== "signedIn" ||
+      conflict?.status !== "ready") return;
+    // A genuine overlapping edit MUST be resolved; no implicit winner.
+    const result = combineSellerDraftFields(
+      fields, conflict, conflict.choices,
+    );
+    if (!result) return;
+    setFields(result.fields);
+    setBaseline(conflict.fields);
+    setRevision(result.revision);
+    setSaved(result.saved);
+    setInvalidField(null);
+    setConflict(null);
+    setMessage(result.saved
+      ? "ترکیب انتخابی با نسخهٔ ذخیره‌شده برابر است؛ نیازی به ذخیرهٔ دوباره نیست."
+      : "ترکیب انتخابی در فرم قرار گرفت، اما هنوز ذخیره نشده است. هر شش فیلد را بررسی کنید و دکمهٔ ذخیرهٔ اصلی را بزنید.");
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || access !== "signedIn" || conflict) return;
-    const phone = normalizeDigits(fields.phone.trim());
-    const postalCode = normalizeDigits(fields.postalCode.trim());
-    const next = { ...fields, phone, postalCode };
+    const next = Object.fromEntries(
+      sellerFieldKeys.map((key) => [key, fields[key].trim()]),
+    ) as SellerFields;
+    const phone = normalizeDigits(next.phone);
+    const postalCode = normalizeDigits(next.postalCode);
+    next.phone = phone;
+    next.postalCode = postalCode;
     setFields(next);
     const missing = sellerFieldKeys.find((key) => !next[key].trim());
     if (missing) {
@@ -169,6 +223,7 @@ export function RegistrationForm() {
           "revision" in result && typeof result.revision === "number" &&
           result.revision === revision + 1) {
           setSaved(true);
+          setBaseline(next);
           setRevision(result.revision);
           setAccess("signedIn");
           setMessage("اطلاعات اولیه به‌عنوان پیش‌نویس ذخیره شد. ثبت‌نام و فعال‌سازی فروشگاه هنوز تکمیل نشده است.");
@@ -177,7 +232,7 @@ export function RegistrationForm() {
       }
       setSaved(false);
       if (response.status === 409) {
-        await retrieveCurrentDraft();
+        await retrieveCurrentDraft(next);
         return;
       }
       if (response.status === 401) setAccess("signedOut");
@@ -194,9 +249,15 @@ export function RegistrationForm() {
     }
   }
 
-  const differences = conflict?.status === "ready"
-    ? sellerFieldDifferences(fields, conflict.fields)
+  const readyConflict = conflict?.status === "ready" ? conflict : null;
+  const differences = readyConflict
+    ? sellerFieldDifferences(fields, readyConflict.fields)
     : [];
+  const unresolved = readyConflict
+    ? unresolvedSellerFieldChoices(
+      fields, readyConflict.fields, readyConflict.choices,
+    )
+    : 0;
 
   return (
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
