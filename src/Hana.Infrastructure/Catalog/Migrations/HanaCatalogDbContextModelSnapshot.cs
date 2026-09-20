@@ -73,5 +73,37 @@ public sealed class HanaCatalogDbContextModelSnapshot : ModelSnapshot
             entity.HasIndex(x => new { x.State, x.CategoryId, x.Name, x.Id })
                 .HasDatabaseName("ix_catalog_products_public_category");
         });
+
+        modelBuilder.Entity<CatalogImportReceipt>(entity =>
+        {
+            entity.ToTable("import_receipts", "catalog", table =>
+            {
+                table.HasCheckConstraint("ck_catalog_receipt_digest",
+                    "content_sha256 ~ '^[a-f0-9]{64}$'");
+                table.HasCheckConstraint("ck_catalog_receipt_counts",
+                    "new_parents >= 0 AND changed_parents >= 0 AND " +
+                    "new_children >= 0 AND changed_children >= 0");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.ContentSha256)
+                .HasColumnName("content_sha256")
+                .HasMaxLength(64).IsRequired();
+            entity.Property(x => x.AppliedAtUtc)
+                .HasColumnName("applied_at_utc").IsRequired();
+            entity.Property(x => x.NewParents)
+                .HasColumnName("new_parents").IsRequired();
+            entity.Property(x => x.ChangedParents)
+                .HasColumnName("changed_parents").IsRequired();
+            entity.Property(x => x.NewChildren)
+                .HasColumnName("new_children").IsRequired();
+            entity.Property(x => x.ChangedChildren)
+                .HasColumnName("changed_children").IsRequired();
+            entity.HasIndex(x => new { x.AppliedAtUtc, x.Id })
+                .HasDatabaseName("ix_catalog_receipt_applied");
+            entity.HasIndex(x => x.ContentSha256)
+                .HasDatabaseName("ix_catalog_receipt_digest");
+        });
     }
 }
