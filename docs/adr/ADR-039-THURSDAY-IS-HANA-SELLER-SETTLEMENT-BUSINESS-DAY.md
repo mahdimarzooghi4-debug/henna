@@ -1,6 +1,6 @@
 # ADR-039 — پنجشنبه روز کاری تسویه فروشگاه‌ها در حناست
 
-**وضعیت:** تصویب‌شده؛ طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) جمعه نیز روز کاری تسویه است؛ طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی نیز چرخه تسویه دارند؛ ساعت طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) ۰۰:۰۰ نیمه‌شب مصوب است؛ منطقه زمانی مرجع و وصول واقعی بانکی بازند  
+**وضعیت:** تصویب‌شده؛ طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) جمعه نیز روز کاری تسویه است؛ طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی نیز چرخه تسویه دارند؛ ساعت طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) ۰۰:۰۰ نیمه‌شب مصوب است؛ منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) `Asia/Tehran` است و وصول واقعی بانکی باز است  
 **تاریخ ثبت:** ۲۰۲۶-۰۹-۲۰  
 **حوزه:** Seller Settlement, Business Calendar, Daily Batch, Financial Operations  
 **مکمل:** [ADR-038 — تسویه همه فروشگاه‌ها در پایان هر روز کاری](ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)، [ADR-008 — چرخه کوتاه سوپرمارکتی](ADR-008-GROCERY-ONE-DAY-FULFILLMENT-SETTLEMENT-PENDING.md)، [ADR-032 — توقف فاکتور دارای گزارش](ADR-032-HOLD-INVOICE-SETTLEMENT-UNTIL-SUPPORT-RESOLVES-ITEM-INCIDENT.md)
@@ -22,9 +22,9 @@
 
 - طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، **جمعه نیز روز کاری تسویه حناست**.
 - طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، **پنجشنبه مصادف با تعطیل رسمی نیز چرخه پایان همان روز دارد**.
-- ساعت اجرای خودکار/cut-off طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) **۰۰:۰۰ نیمه‌شب** است؛ منطقه زمانی مرجع و زمان وصول واقعی وجه در حساب فروشگاه هنوز مستقل‌اند؛ تعطیلات رسمی طبق ADR-041 چرخه حنا را حذف نمی‌کنند.
+- ساعت اجرای خودکار/cut-off طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md) **۰۰:۰۰ نیمه‌شب** است؛ منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) `Asia/Tehran` است؛ زمان وصول واقعی وجه در حساب فروشگاه هنوز مستقل است؛ تعطیلات رسمی طبق ADR-041 چرخه حنا را حذف نمی‌کنند.
 
-پنجشنبه طبق این ADR و جمعه طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) روز کاری تسویه‌اند؛ طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی هم روز تسویه حنا هستند؛ طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، ساعت حنا ۰۰:۰۰ است؛ منطقه زمانی مرجع/زمان وصول بانکی هنوز تصمیم جدا می‌خواهند.
+پنجشنبه طبق این ADR و جمعه طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) روز کاری تسویه‌اند؛ طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی هم روز تسویه حنا هستند؛ طبق [ADR-042](ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، ساعت حنا ۰۰:۰۰ است؛ منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) `Asia/Tehran` تصویب شده؛ زمان وصول بانکی هنوز تصمیم جدا می‌خواهد.
 
 ## آزمون پذیرش
 
@@ -36,4 +36,4 @@
 
 ## تصمیم تکمیلی باز
 
-طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، پاسخ مثبت است. طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تسویه در تعطیلات رسمی نیز مصوب است؛ ساعت cut-off طبق ADR-042 برابر ۰۰:۰۰ نیمه‌شب است؛ منطقه زمانی مرجع باز است.
+طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، پاسخ مثبت است. طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تسویه در تعطیلات رسمی نیز مصوب است؛ ساعت cut-off طبق ADR-042 برابر ۰۰:۰۰ نیمه‌شب است؛ منطقه زمانی مرجع طبق [ADR-043](ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) `Asia/Tehran` است.
