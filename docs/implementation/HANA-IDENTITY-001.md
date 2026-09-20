@@ -26,4 +26,4 @@ EXPO_PUBLIC_HANA_API_BASE_URL=http://10.0.2.2:5184 npm run mobile:dev
 
 ## اعتبارسنجی
 
-GitHub Actions شامل تست واحد شماره، build .NET، smoke پاسخ‌های 400 و 503، typecheck/build وب، آزمون مسیر proxy در حالت سرویس غیرفعال و export باندل Expo است. این آزمون‌ها تحویل پیامک واقعی یا ورود موفق را اثبات نمی‌کنند.
+GitHub Actions شامل تست واحد شماره، build .NET، smoke پاسخ‌های 400 و 503، typecheck/build وب، آزمون مسیر proxy در حالت سرویس غیرفعال و export باندل Expo است. در [اجرای GitHub Actions مربوط به اصلاح JSX موبایل](https://github.com/mahdimarzooghi4-debug/henna/actions/runs/35515881685)، **هر سه job بک‌اند/وب/موبایل موفق شدند**؛ **۱۴ آزمون اعتبارسنجی دامنه هویت پاس شدند** و تست 400/503 سمت API و proxy وب نیز اجرا شد. این آزمون‌ها تحویل پیامک واقعی یا ورود موفق را اثبات نمی‌کنند.
