@@ -1,6 +1,6 @@
 # طراحی فنی جریان کسری/خرابی، بازپرداخت و تسویه فروشنده — ۰.۱
 
-**وضعیت:** طرح پیاده‌سازی برای قواعد **مصوب** ADR-008، ADR-013 تا ADR-017 و ADR-019 تا ADR-042؛ نام جدول/مسیر/رویداد در این سند **پیشنهادی فنی** است، نه تصمیم تجاری تازه یا ادعای پیاده‌سازی موجود.  
+**وضعیت:** طرح پیاده‌سازی برای قواعد **مصوب** ADR-008، ADR-013 تا ADR-017 و ADR-019 تا ADR-043؛ نام جدول/مسیر/رویداد در این سند **پیشنهادی فنی** است، نه تصمیم تجاری تازه یا ادعای پیاده‌سازی موجود.  
 **دامنه:** سفارش تک‌فروشنده‌ای؛ ارسال و دریافت حضوری؛ مشتری، پشتیبانی حنا، فروشگاه، کیف پول و تسویه.  
 **مرجع API:** [قرارداد جزئی‌تر جریان](../api/HANA-INCIDENT-SETTLEMENT-API-CONTRACT-v0.1.md) · **مرجع آزمون:** [ماتریس آزمون](../testing/HANA-INCIDENT-SETTLEMENT-ACCEPTANCE-MATRIX-v0.1.md).
 
@@ -52,7 +52,7 @@
 
 ### تسویه فاکتور
 
-`ELIGIBLE → ON_HOLD → ELIGIBLE → PAYOUT_SUBMITTED → PAID`؛ وضعیت‌های خطا/نامعلوم payout نیز جدا از `PAID`. منشأ هر hold و آزادسازی‌اش شناسه پرونده و علت مستقل دارد؛ رفع یک hold به معنی حذف سایر holdهای فاکتور نیست. منظور `ELIGIBLE` احراز مجازبودن مالی و حضور در چرخه تسویه **پایان هر روز کاری همه فروشگاه‌ها طبق [ADR-038](../adr/ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)** است؛ «یک روز بعد از پرداخت یا تحویل» دیگر قاعده نیست. طبق [ADR-042](../adr/ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، شروع خودکار batch هر شب `00:00` است؛ منطقه زمانی مرجع این ساعت و چرخه واقعی واریز بانک هنوز قرارداد اجرایی می‌خواهند.
+`ELIGIBLE → ON_HOLD → ELIGIBLE → PAYOUT_SUBMITTED → PAID`؛ وضعیت‌های خطا/نامعلوم payout نیز جدا از `PAID`. منشأ هر hold و آزادسازی‌اش شناسه پرونده و علت مستقل دارد؛ رفع یک hold به معنی حذف سایر holdهای فاکتور نیست. منظور `ELIGIBLE` احراز مجازبودن مالی و حضور در چرخه تسویه **پایان هر روز کاری همه فروشگاه‌ها طبق [ADR-038](../adr/ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)** است؛ «یک روز بعد از پرداخت یا تحویل» دیگر قاعده نیست. طبق [ADR-042](../adr/ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، شروع خودکار batch هر شب `00:00` است؛ منطقه زمانی مرجع این ساعت طبق [ADR-043](../adr/ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) **`Asia/Tehran`** است؛ چرخه واقعی واریز بانک هنوز قرارداد اجرایی می‌خواهد.
 
 ## ۴. سناریوی ترتیبی
 
@@ -93,7 +93,7 @@ sequenceDiagram
 
 ### چرخه روزانه همه فروشگاه‌ها — ADR-038
 
-طبق [ADR-042](../adr/ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، `businessDate`، `settlementCycleId` و `cycleCutoffAt` کلیدهای پیشنهادی یک batch خودکار در **`00:00` نیمه‌شب آغاز روز بعد برای businessDate روز پایان‌یافته** هستند؛ منطقه زمانی مرجع باید صریحاً پیکربندی شود، نه ساعت یا منطقه زمانی فرضی یا ۲۴ ساعت پس از `paidAt` یا `customerReceivedAt`. موتور batch در انتهای هر روز کاری، فاکتورهای قابل‌تسویه همه sellerها را ارزیابی می‌کند و فاکتورهای held را با دلیل جدا در خروجی حسابرسی نگه می‌دارد. محاسبه «فاکتورهای مجاز» به معنی تغییر نتیجه شکایت یا برداشت وجه مشتری نیست.
+طبق [ADR-042](../adr/ADR-042-AUTOMATIC-SELLER-SETTLEMENT-AT-MIDNIGHT-BANK-CYCLE-DEPENDENT.md)، `businessDate`، `settlementCycleId` و `cycleCutoffAt` کلیدهای پیشنهادی یک batch خودکار در **`00:00` نیمه‌شب آغاز روز بعد برای businessDate روز پایان‌یافته** هستند؛ منطقه زمانی مرجع طبق [ADR-043](../adr/ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) **`Asia/Tehran`** است؛ `businessDate` تاریخ محلی روز پایان‌یافته باشد و UTC timestamps جدا ذخیره شوند. نه UTC midnight و نه ۲۴ ساعت پس از `paidAt` یا `customerReceivedAt` مبنای scheduler نیست. موتور batch در انتهای هر روز کاری، فاکتورهای قابل‌تسویه همه sellerها را ارزیابی می‌کند و فاکتورهای held را با دلیل جدا در خروجی حسابرسی نگه می‌دارد. محاسبه «فاکتورهای مجاز» به معنی تغییر نتیجه شکایت یا برداشت وجه مشتری نیست.
 
 1. ابتدا شناسه یکتای `businessDate + sellerId + cycleType` یا معادل نسخه‌دار برای batch/settlement ایجاد یا بازیابی شود؛ retry اجرا، batch جدیدی با همان scope نسازد.
 2. انتخاب فاکتورها، snapshot کسورات و ایجاد فرمان پرداخت باید با `settlementVersion`/قفل فاکتور در برابر ثبت incident اتمیک باشد. `WHERE activeHoldCount = 0` صرفاً روی replica یا cache برای صدور دستور بانکی کافی نیست.
@@ -101,7 +101,7 @@ sequenceDiagram
 4. `PAYOUT_SUBMITTED`، `PAYOUT_UNKNOWN` و `PAID` تفکیک شوند؛ رسید بانکی/تطبیق واقعی برای `PAID` لازم است. اگر ارائه‌دهنده بانکی تأخیر دارد، SLA وصول واقعی پول از سیاست ساعت انجام batch جدا تعریف شود.
 5. جمع اقلام مالی، سهم حمل فروشنده، جریمه مورددار، refund قبلاً منظورشده و شناسه منبع ledger مستقل و یکتا باشند؛ بدون سیاست مصوب برای کسری موجودی، خالص منفی یا بدهی خودکار ساخته نشود.
 
-**طبق [ADR-039](../adr/ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-040](../adr/ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-041](../adr/ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، همه روزهای تقویمی شامل پنجشنبه، جمعه و تعطیلات رسمی در چرخه پایان همان روز تسویه حنا هستند**؛ scheduler نباید الگوی weekend/holiday exclusion اعمال کند. اگر تعطیل رسمی جمعه باشد فقط یک batch منطقی برای آن businessDate ساخته شود. ساعت خودکار `00:00` مصوب است؛ موارد هنوز تصمیم‌نگرفته: منطقه زمانی مرجع، چرخه و زمان واقعی وصول بانکی در روز تعطیل و حداقل مانده قابل پرداخت. ثبت `businessDate` و `policyVersion` امکان بازتولید محاسبات تاریخی پس از تصویب تقویم را فراهم می‌کند.
+**طبق [ADR-039](../adr/ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-040](../adr/ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-041](../adr/ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، همه روزهای تقویمی شامل پنجشنبه، جمعه و تعطیلات رسمی در چرخه پایان همان روز تسویه حنا هستند**؛ scheduler نباید الگوی weekend/holiday exclusion اعمال کند. اگر تعطیل رسمی جمعه باشد فقط یک batch منطقی برای آن businessDate ساخته شود. ساعت خودکار `00:00 Asia/Tehran` طبق [ADR-043](../adr/ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) مصوب است؛ موارد هنوز تصمیم‌نگرفته: چرخه و زمان واقعی وصول بانکی در روز تعطیل و حداقل مانده قابل پرداخت. ثبت `businessDate` و `policyVersion` امکان بازتولید محاسبات تاریخی پس از تصویب تقویم را فراهم می‌کند.
 
 ## ۵. اتمیسیته، race و idempotency
 
@@ -138,7 +138,7 @@ sellerNetSettlementIrr = مبلغ قابل تسویه مطابق قرارداد 
 
 - نحوه حداقلی اثبات حضور در درِ مشتری، حداقل تعداد تماس و زمان انتظار.
 - تخصیص تخفیف سبدی به قلم آسیب‌دیده و همپوشانی گزارش‌ها.
-- منطقه زمانی مرجع ساعت `00:00` چرخه تسویه روزانه طبق ADR-042؛ زمان وصول بانک وابسته به چرخه بانکی؛ پنجشنبه، جمعه و تعطیلات رسمی طبق [ADR-039](../adr/ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-040](../adr/ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-041](../adr/ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) روزهای چرخه مصوب هستند؛ کسری تسویه پس از سایر کسورات، payout انجام‌شده پیش از incident، اعتراض‌های استثنایی و سیاست اختلاف زمان تحویل.
+- منطقه زمانی مرجع ساعت `00:00` چرخه تسویه روزانه طبق [ADR-043](../adr/ADR-043-MIDNIGHT-SETTLEMENT-IN-IRAN-TIMEZONE.md) `Asia/Tehran` است؛ زمان وصول بانک وابسته به چرخه بانکی؛ پنجشنبه، جمعه و تعطیلات رسمی طبق [ADR-039](../adr/ADR-039-THURSDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، [ADR-040](../adr/ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) و [ADR-041](../adr/ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) روزهای چرخه مصوب هستند؛ کسری تسویه پس از سایر کسورات، payout انجام‌شده پیش از incident، اعتراض‌های استثنایی و سیاست اختلاف زمان تحویل.
 - وضعیت نهایی کالا نزد مشتری بعد از پرونده عدم دسترسی؛ ADR-037 صرفاً **مراجعه مجدد اجباری فروشگاه** را منتفی می‌کند.
 
 **این موارد در پیاده‌سازی با feature policy مصوب/مانع انتشار مدیریت شوند، نه مقدار پیش‌فرض پنهان.**
