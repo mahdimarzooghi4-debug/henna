@@ -65,6 +65,45 @@ erDiagram
 
 طبق [ADR-021](../adr/ADR-021-ITEM-SHORTAGE-DAMAGE-PHOTO-SELLER-RESOLUTION.md)، `ORDER_INCIDENT` باید `incidentType`, `orderItemId`, `affectedQuantity`,  `reportedBy`, `incidentReportedAt`, `supportReviewState`, `supportDecisionAt`, `sellerReturnState` و پیوند به `INCIDENT_ATTACHMENT` (عکس) و `ITEM_RETURN` (در صورت دریافت کالای خراب) داشته باشد یا معادل نرمال‌شده آن‌ها را فراهم کند. تأیید/رد پشتیبانی حنا، ارجاع و هماهنگی با فروشگاه، مأمور/زمان دریافت فیزیکی توسط خود فروشگاه و هر refund به همان قلم/تعداد و ledger مرتبط شوند؛ طبق [ADR-030](../adr/ADR-030-CUSTOMER-DAMAGE-REPORT-WITHIN-ONE-HOUR-OF-RECEIPT.md)، برای خرابی `customerReceivedAt` و `damageReportDueAt = customerReceivedAt + 60 minutes` به سفارش/پرونده متصل باشد؛ طبق [ADR-031](../adr/ADR-031-MISSING-ITEM-REPORT-WITHIN-ONE-HOUR-OF-RECEIPT.md) کسری نیز همان مهلت را دارد و می‌توان `incidentReportDueAt = customerReceivedAt + 60 minutes` را برای هر دو نوع گزارش ثبت کرد؛ `courierHandoffAt` مبدأ نیست و `incidentReportedAt` با `supportApprovedAt` یا `sellerCollectedAt` یکی نشود. طبق [ADR-023](../adr/ADR-023-SUPPORT-APPROVAL-SELLER-COLLECTS-DAMAGED-GOODS.md)، مرجوعی کالای خراب نباید `deliveryJobId` جدید در لجستیک حنا ایجاد کند؛ طبق [ADR-022](../adr/ADR-022-ITEM-ISSUE-REFUND-TO-WALLET-OPTIONAL-WITHDRAWAL.md) بخش نقدی refund کسری/خرابی ابتدا به `WALLET_ACCOUNT` قابل برداشت مشتری می‌رود و بخش اعتبار محدود به همان منبع بازمی‌گردد؛ عودت بانکی فقط با `WITHDRAWAL_REQUEST` جداگانه مشتری است. طبق [ADR-024](../adr/ADR-024-IMMEDIATE-WALLET-REFUND-ON-APPROVED-DAMAGE.md)، در خرابی تأییدشده، رویداد `SUPPORT_APPROVED_REFUND`/معادل باعث refund و بستانکاری کیف پول می‌شود؛ `ITEM_RETURN.sellerCollectedAt` پیش‌شرط ایجاد refund نیست و تأخیر فروشگاه نباید آن را معلق کند. طبق [ADR-025](../adr/ADR-025-SELLER-COLLECTS-DAMAGED-RETURN-WITHIN-ONE-HOUR.md)، `ITEM_RETURN` یا معادل آن باید `sellerReturnSlaStartAt`, `sellerReturnDueAt`, `sellerCollectedAt` و `slaBreachedAt` را با مبدأ مصوب ثبت کند؛ مقدار SLA یک ساعت و مبدأ آن `supportApprovedAt` است: `sellerReturnSlaStartAt = supportApprovedAt` و `sellerReturnDueAt = supportApprovedAt + 60 minutes`؛ ابلاغ دیرهنگام نباید مبدأ را تغییر دهد. طبق [ADR-026](../adr/ADR-026-SELLER-PENALTY-FOR-LATE-DAMAGED-RETURN.md)، ثبت تخلف و `SELLER_PENALTY`/معادل باید به `ITEM_RETURN`، فروشگاه و سفارش متصل و idempotent باشد؛ طبق [ADR-027](../adr/ADR-027-LATE-DAMAGED-RETURN-PENALTY-EQUALS-ITEM-PRICE.md)، مبلغ جریمه معادل قیمت کالای خرابِ مرتبط است و باید به snapshot قیمت `ORDER_ITEM` مرتبط باشد؛ طبق [ADR-028](../adr/ADR-028-PENALTY-USES-ACTUAL-ORDER-ITEM-PRICE.md) snapshot قیمت واقعی `ORDER_ITEM` بعد از تخفیف مبناست، نه قیمت فهرست روز یا فقط سهم پرداخت نقدی؛ جزئیات تخصیص تخفیف سبدی هنوز باز است؛ طبق [ADR-029](../adr/ADR-029-DEDUCT-LATE-RETURN-PENALTY-FROM-SELLER-SETTLEMENT.md)، جریمه با `SETTLEMENT_DEDUCTION` جداگانه و `settlementId` به تسویه همان فروشگاه وصل و یک بار کسر می‌شود؛ تا پیش از تسویه مبلغ فاکتور در جریان مالی حناست و کسر جریمه به تسویه همان فاکتور مرتبط می‌شود؛ طبق [ADR-032](../adr/ADR-032-HOLD-INVOICE-SETTLEMENT-UNTIL-SUPPORT-RESOLVES-ITEM-INCIDENT.md)، هر پرونده به‌موقع کسری/خرابی `SETTLEMENT_HOLD`/معادل را با `orderId`, `incidentId`, `sellerId`, `holdPlacedAt`, `supportDecisionAt`, `holdReleasedAt` و `holdReason` به فاکتور مرتبط می‌کند؛ تسویه در حضور hold فعال ممنوع است و رفع یکی از holdهای چند پرونده، سایرین را حذف نمی‌کند. طبق [ADR-033](../adr/ADR-033-HOLD-DAMAGED-INVOICE-THROUGH-SELLER-COLLECTION-SLA.md) پرونده خرابیِ تأییدشده نیازمند دریافت فیزیکی باید hold جمع‌آوری با علت `DAMAGED_RETURN_SLA_HOLD` و `sellerReturnDueAt` داشته باشد؛ جابه‌جایی اتمیک hold بررسی به hold جمع‌آوری، ثبت نتیجه SLA و جریمه احتمالی پیش از رفع hold لازم است. طبق [ADR-034](../adr/ADR-034-RELEASE-SETTLEMENT-HOLD-ON-EARLY-DAMAGED-RETURN-COLLECTION.md) دریافت واقعی و معتبر با `sellerCollectedAt <= sellerReturnDueAt` باید `DAMAGED_RETURN_SLA_HOLD` همان پرونده را همان موقع با `holdReleasedAt` و علت `COLLECTED_ON_TIME` رفع کند؛ سایر holdها برقرار و جریمه تأخیر منتفی است. طبق [ADR-035](../adr/ADR-035-CALL-CUSTOMER-FIRST-EXEMPT-VERIFIED-CUSTOMER-UNAVAILABILITY.md)، تماس اولیه و نتیجه آن با `sellerFirstContactAt`، `contactOutcome`، مرجع مستندات و `customerUnavailableReviewState`/`supportUnavailabilityDecisionAt` در `ITEM_RETURN` یا رکورد مرتبط نگهداری شوند؛ طبق [ADR-036](../adr/ADR-036-SELLER-MUST-VISIT-CUSTOMER-DOOR-AFTER-FIRST-CALL.md)، برای احراز استثنای مشتری غایب باید `sellerArrivedAtCustomerDoorAt` و مدرک حضور نیز ثبت شود و حداکثر `sellerReturnDueAt` باشد؛ تماس تنها یا حضور دیرهنگام کفایت نمی‌کند؛ وضعیت `CUSTOMER_UNAVAILABLE_VERIFIED` مستقل از `COLLECTED` است، `sellerCollectedAt` صوری ندارد و پس از بررسی پشتیبانی بدون جریمه، hold مربوط رفع می‌شود؛ طبق [ADR-037](../adr/ADR-037-NO-SECOND-SELLER-VISIT-AFTER-VERIFIED-CUSTOMER-UNAVAILABILITY.md) در همین وضعیت تعهد مراجعه مجدد برای همان `incidentId` خاتمه یافته و `sellerCollectedAt` همچنان خالی است؛ در دسترس‌شدن بعدی مشتری نباید `ITEM_RETURN` اجباری یا SLA تازه ایجاد کند. رقابت زمان‌سنج با رویداد دریافت/بررسی عدم دسترسی اتمیک و idempotent باشد؛ جریمه پس از پرداخت واقعی تسویه یا کسری ناشی از سایر کسورات باز است و نباید ledger ساختگی یا تسویه منفی ایجاد شود.
 
+## زیرمدل پیاده‌سازی پیشنهادیِ پرونده، بازپس‌گیری و قفل تسویه
+
+مرجع: [طراحی فنی اجرایی](HANA-INCIDENT-REFUND-SETTLEMENT-TECHNICAL-DESIGN-v0.1.md)، [قرارداد API](../api/HANA-INCIDENT-SETTLEMENT-API-CONTRACT-v0.1.md)، [ماتریس QA](../testing/HANA-INCIDENT-SETTLEMENT-ACCEPTANCE-MATRIX-v0.1.md). نام‌ها و cardinalityهای زیر **طرح فنی** هستند و SQL migration نهایی محسوب نمی‌شوند.
+
+```mermaid
+erDiagram
+    ORDER ||--o{ ORDER_INCIDENT : reported_on
+    ORDER_ITEM ||--o{ ORDER_INCIDENT : concerns
+    ORDER_INCIDENT ||--o{ INCIDENT_ATTACHMENT : includes
+    ORDER_INCIDENT ||--o| ITEM_RETURN : requires
+    ITEM_RETURN ||--o{ SELLER_CONTACT_ATTEMPT : documents
+    ITEM_RETURN ||--o{ SELLER_DOORSTEP_VISIT : documents
+    ORDER_INCIDENT ||--o{ SETTLEMENT_HOLD : blocks
+    ITEM_RETURN ||--o{ SELLER_RETURN_SLA_BREACH : may_breach
+    SELLER_RETURN_SLA_BREACH ||--o| SELLER_PENALTY : may_result_in
+    SELLER_PENALTY ||--o| SETTLEMENT_DEDUCTION : applied_as
+    ORDER ||--o| SELLER_SETTLEMENT : payable_as
+    SELLER_SETTLEMENT ||--o{ SETTLEMENT_HOLD : blocked_by
+    SELLER_SETTLEMENT ||--o{ SETTLEMENT_DEDUCTION : reduced_by
+    ORDER_INCIDENT ||--o{ REFUND : resolves_with
+    REFUND ||--|{ LEDGER_ENTRY : posted_as
+```
+
+| موجودیت/فیلد مهم | قید و مالکیت فنی |
+|---|---|
+| `ORDER.customerReceivedAt` | رویداد دریافت واقعی، timestamp معتبر؛ جدا از `courierHandoffAt` و `readyAt` |
+| `ORDER_INCIDENT` | `incidentId, orderId, orderItemId, incidentType, affectedQuantity, incidentReportedAt, supportDecisionAt`؛ هر report معتبر به hold خودش وصل باشد |
+| `SETTLEMENT_HOLD` | `holdId, orderId, settlementId, incidentId, holdReason, placedAt, releasedAt, releasedReason`؛ hold فعال مستقل به ازای incident/reason، نه boolean کلی order |
+| `ITEM_RETURN` | `returnId, incidentId, supportApprovedAt, sellerReturnDueAt, sellerCollectedAt, status`؛ برای `MISSING_ITEM` ساخته نشود |
+| `SELLER_CONTACT_ATTEMPT` | `returnId, attemptedAt, outcome, evidenceRef`؛ تماس اولیه ثبت شود |
+| `SELLER_DOORSTEP_VISIT` | `returnId, arrivedAt, evidenceRef, verificationState`؛ برای معافیت `arrivedAt <= sellerReturnDueAt` |
+| `CUSTOMER_UNAVAILABLE_REVIEW` یا فیلد معادل | `returnId, decision, supportActorId, decidedAt, evidenceRefs`؛ فقط پشتیبانی حق نهایی‌سازی |
+| `SELLER_PENALTY / SETTLEMENT_DEDUCTION` | پیوند به `returnId`، `incidentId`، `orderItemId` و snapshot قیمت، ledger مستقل از refund |
+| `REFUND / WALLET_TRANSACTION` | جبران نقدی قابل برداشت و اعتبار محدود تفکیک؛ کلید یکتای دامنه برای جلوگیری از دوباره‌بستانکاری |
+
+**قیود قابل تبدیل به migration پس از نهایی‌شدن قرارداد:** unique partial index برای hold فعال با منبع+دلیل؛ unique برای `(returnId, penaltyType)` و `(settlementId, deductionType, sourceId)`؛ check برای مثبت‌بودن مقدار متاثر و تاریخ‌های معتبر؛ کنترل مجموع refund نسبت به اقلام آسیب‌دیده/سابقه پرداخت؛ قفل سطر تسویه هنگام ثبت incident و payout. **قید business** «عدم دسترسی مشتری پس از تماس+حضور تأیید شد» صرفاً یک CHECK SQL نیست و به تغییر حالت دارای مجوز، audit و evidence نیاز دارد.
+
+`CUSTOMER_UNAVAILABLE_VERIFIED` حالت **پایان تعهد مراجعه مجدد فروشگاه برای همان پرونده** است، نه `COLLECTED`. اگر پس از پاسخ پشتیبانی `sellerCollectedAt` هنوز null است، سیستم حق پر کردن آن یا ایجاد مأموریت جمع‌آوری تازه ندارد. رفع hold یک incident، سایر holdهای همان فاکتور را حفظ می‌کند.
+
 ## تأیید عدم‌تحویل پس از handoff
 
 طبق [ADR-020](../adr/ADR-020-FULL-REFUND-ON-CONFIRMED-NONDELIVERY.md)، `ORDER_INCIDENT`/شکایت عدم‌تحویل باید به `ORDER` و `DELIVERY_JOB_REFERENCE` مرتبط شود و نتیجه بررسی جدا از وضعیت لغو پیش از handoff نگهداری شود. `REFUND` با کلید idempotency وابسته به `incidentId + orderId + reason` و ledger مربوط، فقط بعد از تأیید عدم‌تحویل ساخته می‌شود. استرداد بخش نقدی به کیف پول و بازگشت اعتبار محدود به منبع خود به ترتیب ADR-014 و قرارداد اعتبار انجام می‌شود. این تکمیل مفهومی است و migration نهایی نیاز به قرارداد مالی/عملیاتی دارد.
