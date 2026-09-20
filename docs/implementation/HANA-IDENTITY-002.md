@@ -30,6 +30,6 @@ dotnet run --project apps/api/Hana.Api/Hana.Api.csproj
 
 ## آزمون‌ها و گیت انتشار
 
-در GitHub Actions یک PostgreSQL 17 موقت در job بک‌اند بالا می‌آید، migration دو بار اعمال می‌شود (تکرار بی‌اثر)، آزمون‌های xUnit دامنه و integration جدول‌ها/ایندکس اجرا می‌شوند؛ سپس smoke readiness/OTP انجام می‌شود. وب و Expo نیز build/export می‌شوند. **در این مرحله هنوز OTP امن عملیاتی، تراکنش/ledger، اعتبار یا اتصال بانکی/لجستیک ایجاد نشده است.**
+در GitHub Actions یک PostgreSQL 17 موقت در job بک‌اند بالا می‌آید، migration دو بار اعمال می‌شود (تکرار بی‌اثر)، آزمون‌های xUnit دامنه و integration جدول‌ها/ایندکس اجرا می‌شوند؛ سپس smoke readiness/OTP انجام می‌شود. **نتیجه واقعی:** [اجرای موفق GitHub Actions](https://github.com/mahdimarzooghi4-debug/henna/actions/runs/35517056795) برای commit `8e799b3`: هر سه job بک‌اند/وب/موبایل موفق؛ **۱۴ آزمون دامنه و ۲ آزمون یکپارچه PostgreSQL** پاس؛ اجرای دوم migration گزارش داد که دیتابیس به‌روز است. وب و Expo نیز build/export می‌شوند. **در این مرحله هنوز OTP امن عملیاتی، تراکنش/ledger، اعتبار یا اتصال بانکی/لجستیک ایجاد نشده است.**
 
 برای انتشار آینده باید رمزهای مدیریت‌شده، backup/restore، سیاست حفظ و حذف شماره/چالش، قفل و انقضای چالش، قیدهای تکمیل، anti-abuse توزیع‌شده، session قابل ابطال و audit طراحی و آزمایش شوند.
