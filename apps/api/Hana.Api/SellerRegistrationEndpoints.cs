@@ -44,7 +44,8 @@ internal static class SellerRegistrationEndpoints
                     draft.City,
                     draft.Address,
                     draft.PostalCode,
-                    draft.Status
+                    draft.Status,
+                    draft.Revision
                 });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -64,6 +65,14 @@ internal static class SellerRegistrationEndpoints
 
             var token = BearerToken(context);
             if (token is null) return Results.Unauthorized();
+            // Revision 0 means "create only"; existing drafts require the
+            // exact last-seen revision, preventing stale tabs from erasing data.
+            if (input.Revision is not { } expectedRevision ||
+                expectedRevision < 0 || expectedRevision == int.MaxValue)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["revision"] = ["نسخهٔ پیش‌نویس معتبر نیست؛ صفحه را بازخوانی کنید."]
+                });
             if (!SellerRegistrationFields.TryCreate(input.StoreName,
                 input.OwnerName, input.Phone, input.City,
                 input.Address, input.PostalCode, out var fields))
@@ -97,27 +106,42 @@ internal static class SellerRegistrationEndpoints
                 var db = services.GetRequiredService<HanaSellerDbContext>();
                 var now = services.GetRequiredService<IClock>().UtcNow
                     .ToUniversalTime();
-                var updated = await db.Database.ExecuteSqlInterpolatedAsync($"""
-                    INSERT INTO seller.registration_drafts
-                      (account_id, store_name, owner_name, phone, city,
-                       address, postal_code, status, updated_at_utc)
-                    VALUES ({accountId.Value}, {fields.StoreName},
-                      {fields.OwnerName}, {fields.Phone}, {fields.City},
-                      {fields.Address}, {fields.PostalCode}, 'DRAFT', {now})
-                    ON CONFLICT (account_id) DO UPDATE SET
-                      store_name = EXCLUDED.store_name,
-                      owner_name = EXCLUDED.owner_name,
-                      phone = EXCLUDED.phone,
-                      city = EXCLUDED.city,
-                      address = EXCLUDED.address,
-                      postal_code = EXCLUDED.postal_code,
-                      updated_at_utc = EXCLUDED.updated_at_utc
-                    WHERE registration_drafts.status = 'DRAFT'
-                    """, cancellationToken);
+                // A one-statement compare-and-swap for both creation and edit.
+                // UPDATE and INSERT are each atomic in PostgreSQL across API
+                // replicas; stale writes never replace a newer draft.
+                var updated = expectedRevision == 0
+                    ? await db.Database.ExecuteSqlInterpolatedAsync($"""
+                        INSERT INTO seller.registration_drafts
+                          (account_id, store_name, owner_name, phone, city,
+                           address, postal_code, status, revision, updated_at_utc)
+                        VALUES ({accountId.Value}, {fields.StoreName},
+                          {fields.OwnerName}, {fields.Phone}, {fields.City},
+                          {fields.Address}, {fields.PostalCode}, 'DRAFT', 1, {now})
+                        ON CONFLICT (account_id) DO NOTHING
+                        """, cancellationToken)
+                    : await db.Database.ExecuteSqlInterpolatedAsync($"""
+                        UPDATE seller.registration_drafts SET
+                          store_name = {fields.StoreName},
+                          owner_name = {fields.OwnerName},
+                          phone = {fields.Phone},
+                          city = {fields.City},
+                          address = {fields.Address},
+                          postal_code = {fields.PostalCode},
+                          revision = revision + 1,
+                          updated_at_utc = {now}
+                        WHERE account_id = {accountId.Value}
+                          AND status = 'DRAFT'
+                          AND revision = {expectedRevision}
+                        """, cancellationToken);
                 return updated == 1
-                    ? Results.Ok(new { status = "DRAFT" })
-                    : Results.Conflict(new { message =
-                        "وضعیت ثبت‌نام اجازه ویرایش اطلاعات اولیه را نمی‌دهد." });
+                    ? Results.Ok(new
+                    {
+                        status = "DRAFT", revision = expectedRevision + 1
+                    })
+                    : Results.Conflict(new
+                    {
+                        message = "این پیش‌نویس جای دیگری تغییر کرده یا دیگر قابل ویرایش نیست؛ قبل از ذخیره دوباره تازه‌ترین نسخه را بگیرید."
+                    });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
@@ -141,4 +165,5 @@ internal static class SellerRegistrationEndpoints
 
 internal sealed record SellerRegistrationInput(
     string? StoreName, string? OwnerName, string? Phone,
-    string? City, string? Address, string? PostalCode);
+    string? City, string? Address, string? PostalCode,
+    int? Revision);
