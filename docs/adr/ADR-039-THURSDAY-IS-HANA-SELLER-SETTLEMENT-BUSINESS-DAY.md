@@ -1,6 +1,6 @@
 # ADR-039 — پنجشنبه روز کاری تسویه فروشگاه‌ها در حناست
 
-**وضعیت:** تصویب‌شده؛ طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) جمعه نیز روز کاری تسویه است؛ تعطیلات رسمی و ساعت دقیق پایان روز هنوز بازند  
+**وضعیت:** تصویب‌شده؛ طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) جمعه نیز روز کاری تسویه است؛ طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی نیز چرخه تسویه دارند؛ ساعت دقیق پایان روز هنوز باز است  
 **تاریخ ثبت:** ۲۰۲۶-۰۹-۲۰  
 **حوزه:** Seller Settlement, Business Calendar, Daily Batch, Financial Operations  
 **مکمل:** [ADR-038 — تسویه همه فروشگاه‌ها در پایان هر روز کاری](ADR-038-ALL-SELLERS-SETTLED-END-OF-EACH-WORKDAY.md)، [ADR-008 — چرخه کوتاه سوپرمارکتی](ADR-008-GROCERY-ONE-DAY-FULFILLMENT-SETTLEMENT-PENDING.md)، [ADR-032 — توقف فاکتور دارای گزارش](ADR-032-HOLD-INVOICE-SETTLEMENT-UNTIL-SUPPORT-RESOLVES-ITEM-INCIDENT.md)
@@ -21,10 +21,10 @@
 ## مواردی که این پاسخ تعیین نمی‌کند
 
 - طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، **جمعه نیز روز کاری تسویه حناست**.
-- اگر پنجشنبه با **تعطیل رسمی** مصادف شود، تسویه طبق روز هفته انجام شود یا قواعد تعطیل رسمی اعمال شود؟
-- ساعت دقیق پایان روز کاری و cut-off، منطقه زمانی مرجع، زمان وصول واقعی وجه در حساب فروشگاه و تقویم تعطیلات هنوز تصمیم مستقل می‌خواهند.
+- طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md)، **پنجشنبه مصادف با تعطیل رسمی نیز چرخه پایان همان روز دارد**.
+- ساعت دقیق پایان روز کاری و cut-off، منطقه زمانی مرجع و زمان وصول واقعی وجه در حساب فروشگاه هنوز تصمیم مستقل می‌خواهند؛ تعطیلات رسمی طبق ADR-041 چرخه تسویه حنا را حذف نمی‌کنند.
 
-پنجشنبه طبق این ADR و جمعه طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) روز کاری تسویه‌اند؛ وضعیت تعطیلات رسمی و ساعت/زمان وصول بانکی هنوز تصمیم جدا می‌خواهند.
+پنجشنبه طبق این ADR و جمعه طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md) روز کاری تسویه‌اند؛ طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تعطیلات رسمی هم روز تسویه حنا هستند؛ ساعت/زمان وصول بانکی هنوز تصمیم جدا می‌خواهند.
 
 ## آزمون پذیرش
 
@@ -36,4 +36,4 @@
 
 ## تصمیم تکمیلی باز
 
-طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، پاسخ مثبت است. حکم تسویه در تعطیلات رسمی هنوز باز است.
+طبق [ADR-040](ADR-040-FRIDAY-IS-HANA-SELLER-SETTLEMENT-BUSINESS-DAY.md)، پاسخ مثبت است. طبق [ADR-041](ADR-041-SETTLE-ALL-SELLERS-ON-OFFICIAL-HOLIDAYS.md) تسویه در تعطیلات رسمی نیز مصوب است؛ ساعت cut-off باز است.
