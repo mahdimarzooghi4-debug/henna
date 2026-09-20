@@ -248,6 +248,13 @@ jobs:
               done
               catalog_invalid=$(curl --silent --output /tmp/hana-catalog-invalid-web.json --write-out "%{http_code}" 'http://127.0.0.1:3000/api/catalog/products?pageSize=51')
               test "$catalog_invalid" = "400"
+              # No upstream config cannot be mistaken for an empty city list.
+              for route in provinces "cities?provinceId=123e4567-e89b-42d3-a456-426614174000" cities/123e4567-e89b-42d3-a456-426614174000; do
+                status=$(curl --silent --output /tmp/hana-geo-web.json --write-out "%{http_code}" "http://127.0.0.1:3000/api/geography/$route")
+                test "$status" = "503"
+              done
+              geo_invalid=$(curl --silent --output /tmp/hana-geo-invalid-web.json --write-out "%{http_code}" http://127.0.0.1:3000/api/geography/cities)
+              test "$geo_invalid" = "400"
               exit 0
             fi
             sleep 1
