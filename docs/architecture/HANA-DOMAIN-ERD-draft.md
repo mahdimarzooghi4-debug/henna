@@ -104,6 +104,10 @@ erDiagram
 
 `CUSTOMER_UNAVAILABLE_VERIFIED` حالت **پایان تعهد مراجعه مجدد فروشگاه برای همان پرونده** است، نه `COLLECTED`. اگر پس از پاسخ پشتیبانی `sellerCollectedAt` هنوز null است، سیستم حق پر کردن آن یا ایجاد مأموریت جمع‌آوری تازه ندارد. رفع hold یک incident، سایر holdهای همان فاکتور را حفظ می‌کند.
 
+### تفکیک دفتر درآمد بازارگاه از هزینه/درآمد لجستیک (ADR-044)
+
+طبق [ADR-044](../adr/ADR-044-SEPARATE-HANA-FIXED-INVOICE-FEE-FROM-LOGISTICS-COURIER-REVENUE.md)، درآمد حنا **کارمزد ثابت هر فاکتور** است: `MARKETPLACE_FIXED_INVOICE_FEE` با `invoiceId` و `feePolicyVersion`/amount integer ریال مستقل از ارزش سفارش. داده `deliveryTotalIrr`، سهم حمل خریدار/فروشنده و بدهی بین سامانه‌ها ردیف‌های هزینه/تطبیق حمل‌اند، نه همان کارمزد بازارگاه. «۱۰٪ از پیک» درآمد کسب‌وکار مستقل لجستیک است؛ نرخ/مبنای محاسبه آن برای ledger حنا تعریف نمی‌شود. ارتباط `deliveryJobId` از مرز API لجستیک و شناسه صورتحساب بین کسب‌وکارها باقی می‌ماند، بدون اشتراک‌گذاری مخزن درآمد یا شناسایی مبلغ پیک به‌عنوان درآمد بازارگاه.
+
 ### چرخه پایان روز کاری: طراحی داده برای ADR-038
 
 `SETTLEMENT_CYCLE` یا معادل پیشنهادی با `settlementCycleId`, `businessDate`, `calendarPolicyVersion`, `cycleCutoffAt`, `state`, `startedAt`, `finishedAt` نگهداری شود؛ `SELLER_SETTLEMENT`/فاکتورهای انتخاب‌شده به چرخه و `sellerId` مرتبط بمانند. چرخه شامل **تمام فروشگاه‌ها** برای فاکتورهای واجد شرایط است؛ holdها روی **فاکتور** باقی می‌مانند، نه boolean مسدودکننده کل فروشگاه. هر فاکتور که در زمان cutoff held است با دلیل و `incidentId` برای reconciliation قابل شناسایی باشد؛ سایر فاکتورهای مجاز همان فروشگاه حذف نشوند.
