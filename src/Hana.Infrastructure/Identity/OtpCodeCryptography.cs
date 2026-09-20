@@ -42,6 +42,19 @@ public sealed class OtpCodeCryptography
         return HMACSHA256.HashData(_key, message);
     }
 
+    /// <summary>
+    /// Pseudonymize a server-observed address, separated from OTP code digests.
+    /// Avoid storing raw IPs or a publicly reversible unsalted IPv4 hash.
+    /// </summary>
+    public byte[] ComputeClientIpDigest(string canonicalIp, string action)
+    {
+        if (string.IsNullOrWhiteSpace(canonicalIp) ||
+            action is not ("REQUEST" or "VERIFY"))
+            throw new ArgumentException("Invalid OTP IP throttle partition.");
+        return HMACSHA256.HashData(_key,
+            Encoding.UTF8.GetBytes("hana:identity:otp-ip:v1:" + action + ":" + canonicalIp));
+    }
+
     public bool VerifyDigest(
         Guid challengeId, string normalizedPhone, string? candidate, byte[]? storedDigest)
     {
