@@ -45,7 +45,7 @@ export function AuthForm({ returnTo }: {
         if (current) setStage("session-unavailable");
       });
     return () => { current = false; };
-  }, []);
+  }, [returnTo]);
 
   async function requestCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
