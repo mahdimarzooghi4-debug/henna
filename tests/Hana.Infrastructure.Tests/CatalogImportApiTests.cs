@@ -54,11 +54,16 @@ public sealed class CatalogImportApiTests
             SHA256.HashData(Encoding.UTF8.GetBytes(initialJson)));
         var now = DateTimeOffset.UtcNow;
 
-        async Task<CatalogImportResult> Import(string document, bool dryRun)
+        async Task<CatalogImportResult> Import(
+            string document, bool dryRun,
+            string? expectedDbStateSha256 = null,
+            Action<string>? onDbStateObserved = null)
         {
             await using var scoped = new HanaCatalogDbContext(options);
             var result = await CatalogImportService.ImportAsync(
-                scoped, document, now, dryRun);
+                scoped, document, now, dryRun,
+                expectedDbStateSha256: expectedDbStateSha256,
+                onDbStateObserved: onDbStateObserved);
             if (!dryRun)
                 appliedDigests.Add(Convert.ToHexStringLower(
                     SHA256.HashData(Encoding.UTF8.GetBytes(document))));
@@ -72,7 +77,10 @@ public sealed class CatalogImportApiTests
 
         try
         {
-            var preview = await Import(initialJson, dryRun: true);
+            string? reviewedDbState = null;
+            var preview = await Import(initialJson, dryRun: true,
+                onDbStateObserved: hash => reviewedDbState = hash);
+            Assert.Equal(64, reviewedDbState?.Length);
             Assert.Equal(new CatalogImportResult(2, 0, 2, 0, true), preview);
             Assert.False(await db.Categories.AsNoTracking().AnyAsync(
                 x => x.Id == categoryId || x.Id == hiddenCategoryId));
@@ -81,8 +89,14 @@ public sealed class CatalogImportApiTests
             Assert.Equal(HttpStatusCode.NotFound,
                 (await client.GetAsync(detail)).StatusCode);
 
-            var applied = await Import(initialJson, dryRun: false);
+            var applied = await Import(initialJson, dryRun: false,
+                expectedDbStateSha256: reviewedDbState);
             Assert.Equal(new CatalogImportResult(2, 0, 2, 0, false), applied);
+            // Same bytes but changed persisted identity: prior preview is
+            // stale; no extra receipt or row mutation.
+            await Assert.ThrowsAsync<InvalidDataException>(() => Import(
+                initialJson, dryRun: false,
+                expectedDbStateSha256: reviewedDbState));
             var stable = await Import(initialJson, dryRun: false);
             Assert.Equal(new CatalogImportResult(0, 0, 0, 0, false), stable);
             Assert.Equal(2, await db.Categories.AsNoTracking().CountAsync(
