@@ -1,0 +1,15 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.bootstrap {
+  max-width: 46rem;
+  padding: 3rem 1.5rem;
+  margin-inline: auto;
+  line-height: 1.9;
+}

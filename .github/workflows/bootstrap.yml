@@ -1,0 +1,54 @@
+name: Bootstrap checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore .NET solution
+        run: dotnet restore Hana.slnx
+      - name: Build .NET solution
+        run: dotnet build Hana.slnx --configuration Release --no-restore
+      - name: Smoke test liveness and bootstrap endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASPNETCORE_URLS=http://127.0.0.1:5184 dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5184/health/live > /dev/null; then
+              curl --fail --silent http://127.0.0.1:5184/api/v1/system/status | grep -q '"phase":"bootstrap"'
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hana-api.log
+          exit 1
+
+  web:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install web dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck web
+        run: npm run web:typecheck
+      - name: Build web
+        run: npm run web:build

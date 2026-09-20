@@ -1,0 +1,21 @@
+# Developer-only PostgreSQL. Do not reuse these credentials in production.
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hana_dev
+      POSTGRES_USER: hana_dev
+      POSTGRES_PASSWORD: ${HANA_DEV_DB_PASSWORD:?Create .env from .env.example}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - hana-postgres-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hana_dev -d hana_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  hana-postgres-dev:
