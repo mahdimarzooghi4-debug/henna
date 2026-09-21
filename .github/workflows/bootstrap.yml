@@ -471,8 +471,6 @@ jobs:
       - name: Generate native Android project from committed Expo configuration
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile-consumer
-      - name: Provision Android SDK command-line tools and licenses
-        uses: android-actions/setup-android@v3
       - name: Install and verify Expo-pinned Android NDK before Gradle
         shell: bash
         run: |
@@ -487,7 +485,7 @@ jobs:
             fi
             rm -rf "$ndk_dir"
             echo "Installing pinned NDK attempt $attempt/3"
-            if sdkmanager --install "ndk;$ndk_version" &&
+            if "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk_version" &&
               test -f "$ndk_dir/source.properties" &&
               grep -Fq "Pkg.Revision = $ndk_version" "$ndk_dir/source.properties"; then
               exit 0
