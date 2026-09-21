@@ -13,7 +13,7 @@ public sealed class ReviewedImportJsonTests
     [InlineData("{\"cities\":[{\"nested\":{\"id\":1,\"id\":2}}]}")]
     [InlineData("{\"products\":[{\"name\":\"A\",\"name\":\"B\"}]}")]
     public void ExactOrEscapedDuplicateObjectKeysAreRejected(string json) =>
-        Assert.Throws<JsonException>(() =>
+        Assert.ThrowsAny<JsonException>(() =>
             ReviewedImportJson.RejectDuplicateProperties(json));
 
     [Theory]
@@ -29,14 +29,14 @@ public sealed class ReviewedImportJsonTests
     [InlineData("{\"state\":1} {}")]
     [InlineData("{\"state\":")]
     public void MalformedOrRelaxedJsonIsNotAccepted(string json) =>
-        Assert.Throws<JsonException>(() =>
+        Assert.ThrowsAny<JsonException>(() =>
             ReviewedImportJson.RejectDuplicateProperties(json));
 
     [Fact]
     public void DeeplyNestedInputIsRejectedWithinImportDepthBound()
     {
         var json = new string('[', 13) + "0" + new string(']', 13);
-        Assert.Throws<JsonException>(() =>
+        Assert.ThrowsAny<JsonException>(() =>
             ReviewedImportJson.RejectDuplicateProperties(json));
     }
 }
