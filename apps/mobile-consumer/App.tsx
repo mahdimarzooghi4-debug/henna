@@ -4,6 +4,7 @@ import {
   Alert,
   AppState,
   Image,
+  Linking,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +19,9 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, space } from "./src/theme";
 import { BuyerBrowseScreen } from "./src/buyer-browse-screen";
+import {
+  parseBuyerLink, type BuyerLinkEvent, type BuyerLinkRoute,
+} from "./src/buyer-link";
 import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from "./src/phone";
 import { MobileAuthClient } from "./src/mobile-auth";
 import { otpRequestTransition } from "./src/otp-request-transition";
@@ -491,13 +495,48 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
   );
 }
 
+const blankBrowseLink: BuyerLinkRoute = {
+  kind: "browse", browse: { categoryId: null, search: "", page: 1 },
+};
+
 export default function App() {
   const [screen, setScreen] = useState<"browse" | "auth">("browse");
+  // Defer starting public HTTP until getInitialURL settles. A cold detail
+  // link must not first fetch page 1 and briefly paint unrelated content.
+  const [link, setLink] = useState<BuyerLinkEvent | null>(null);
+  const sequence = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+    let receivedLiveLink = false;
+    const apply = (url: string | null, incoming: boolean) => {
+      const route = parseBuyerLink(url);
+      if (incoming && route === null) return; // Never navigate on untrusted URL.
+      setLink({ token: ++sequence.current, route: route ?? blankBrowseLink });
+      if (incoming) setScreen("browse");
+    };
+    const listener = Linking.addEventListener("url", ({ url }) => {
+      if (!active) return;
+      receivedLiveLink = true;
+      apply(url, true);
+    });
+    void Linking.getInitialURL()
+      .then((url) => {
+        if (active && !receivedLiveLink) apply(url, false);
+      })
+      .catch(() => {
+        if (active && !receivedLiveLink) apply(null, false);
+      });
+    return () => { active = false; listener.remove(); };
+  }, []);
+
   return (
     <SafeAreaProvider>
-      {screen === "browse"
-        ? <BuyerBrowseScreen onLogin={() => setScreen("auth")} />
-        : <ConsumerAuthScreen onBrowse={() => setScreen("browse")} />}
+      {link === null ? <View style={styles.flex} /> :
+        screen === "browse"
+          ? <BuyerBrowseScreen link={link}
+              onLogin={() => setScreen("auth")} />
+          : <ConsumerAuthScreen onBrowse={() => setScreen("browse")} />}
     </SafeAreaProvider>
   );
 }

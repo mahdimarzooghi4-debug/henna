@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MobileCatalogClient } from "./mobile-catalog.ts";
+import { type BuyerLinkEvent } from "./buyer-link.ts";
 import { BuyerProductDetailScreen } from "./buyer-product-detail-screen";
 import {
   BROWSE_PAGE_SIZE, BuyerBrowseController, initialBuyerBrowseState,
@@ -22,12 +23,19 @@ const catalog = new MobileCatalogClient(
 );
 
 /** Approved Figma buyer mobile frames 476:4 (empty), 478:22 (API-backed). */
-export function BuyerBrowseScreen({ onLogin }: { onLogin: () => void }) {
-  const [detailId, setDetailId] = useState<string | null>(null);
-  const [browse, setBrowse] = useState<BuyerBrowseState>(initialBuyerBrowseState);
+export function BuyerBrowseScreen({ onLogin, link }: {
+  onLogin: () => void; link: BuyerLinkEvent;
+}) {
+  const [detailId, setDetailId] = useState<string | null>(
+    link.route.kind === "detail" ? link.route.id : null,
+  );
+  const [browse, setBrowse] = useState<BuyerBrowseState>(
+    () => initialBuyerBrowseState(link.route.browse),
+  );
   const [controller] = useState(() =>
-    new BuyerBrowseController(catalog, setBrowse));
-  const [draftSearch, setDraftSearch] = useState("");
+    new BuyerBrowseController(catalog, setBrowse, link.route.browse));
+  const lastLink = useRef(link.token);
+  const [draftSearch, setDraftSearch] = useState(link.route.browse.search);
   const [searchError, setSearchError] = useState("");
   const scroll = useRef<ScrollView>(null);
 
@@ -35,6 +43,16 @@ export function BuyerBrowseScreen({ onLogin }: { onLogin: () => void }) {
     controller.start();
     return () => controller.stop();
   }, [controller]);
+
+  useEffect(() => {
+    if (lastLink.current === link.token) return;
+    lastLink.current = link.token;
+    // A warm URL replaces the entire public query, not a stale card's fields.
+    controller.restoreLocation(link.route.browse);
+    setDraftSearch(link.route.browse.search);
+    setSearchError("");
+    setDetailId(link.route.kind === "detail" ? link.route.id : null);
+  }, [controller, link]);
 
   function search() {
     if (!controller.submitSearch(draftSearch)) {
