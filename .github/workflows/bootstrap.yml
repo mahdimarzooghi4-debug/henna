@@ -354,6 +354,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-buyer-browse-smoke.mjs
       - name: Test web public product detail DTO and ID policy
         run: node --experimental-strip-types --test tests/web-buyer-product-detail-smoke.mjs
+      - name: Test shareable buyer browse URL allowlist and restoration policy
+        run: node --experimental-strip-types --test tests/web-buyer-navigation-smoke.mjs
       - name: Install CI-only Chromium for actual frontend interactions
         shell: bash
         run: |
@@ -372,6 +374,8 @@ jobs:
         run: node tests/web-buyer-browse-browser-smoke.mjs
       - name: Browser test approved public product detail states
         run: node tests/web-buyer-product-detail-browser-smoke.mjs
+      - name: Browser test saved browse URLs and history across buyer detail
+        run: node tests/web-buyer-navigation-browser-smoke.mjs
 
   mobile:
     runs-on: ubuntu-latest
