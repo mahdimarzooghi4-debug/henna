@@ -34,14 +34,16 @@ ID='60000000-0000-4000-8000-000000000021'
 
 # Cold launch via the OS; not simctl launch <bundle> or Expo Go.
 xcrun simctl terminate "$HANA_IOS_SIM_ID" "$bundle" 2>/dev/null || true
-xcrun simctl openurl "$HANA_IOS_SIM_ID" "hana://products/$ID?search=$TERM&page=2"
-echo "Launched iOS cold detail URI via simctl openurl"
+# Maestro starts its iOS XCTest driver before executing its flow. Opening
+# before driver bootstrap is unreliable: XCTest can foreground SpringBoard
+# and discard the initial scene. The first flow step invokes openLink only
+# after the driver is ready, while the app remains terminated (cold).
+echo "Cold detail link will be delivered by native Maestro openLink after XCTest boot"
 maestro --device "$HANA_IOS_SIM_ID" test -e "APP_ID=$bundle" \
   tests/ios-buyer-detail-native.yaml
 
 xcrun simctl terminate "$HANA_IOS_SIM_ID" "$bundle" 2>/dev/null || true
-xcrun simctl openurl "$HANA_IOS_SIM_ID" "hana://browse?search=$TERM&page=2"
-echo "Launched iOS cold browse URI via simctl openurl"
+echo "Cold browse link will be delivered by native Maestro openLink after XCTest boot"
 maestro --device "$HANA_IOS_SIM_ID" test -e "APP_ID=$bundle" \
   tests/ios-buyer-browse-native.yaml
 
