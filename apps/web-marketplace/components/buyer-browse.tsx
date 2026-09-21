@@ -15,7 +15,9 @@ type Load<T> =
 async function publicJson(path: string, signal: AbortSignal): Promise<unknown> {
   const response = await fetch(path, {
     method: "GET", cache: "no-store", credentials: "omit",
-    redirect: "error", headers: { Accept: "application/json" }, signal,
+    redirect: "error",
+    headers: { Accept: "application/json", "Cache-Control": "no-store" },
+    signal,
   });
   if (response.status !== 200 ||
     !response.headers.get("content-type")?.includes("application/json"))
