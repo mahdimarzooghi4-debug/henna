@@ -153,6 +153,29 @@ public sealed class GeographyImportApiTests
                 (await db.Provinces.AsNoTracking().SingleAsync(
                     x => x.Id == provinceId)).Name);
 
+            // Reject duplicate publication fields even when an escaped
+            // property name hides the duplicate from a casual file review.
+            var ambiguousState = json.Replace(
+                "\"state\":\"SELECTABLE\"",
+                "\"state\":\"SELECTABLE\",\"state\":\"DRAFT\"",
+                StringComparison.Ordinal);
+            Assert.NotEqual(json, ambiguousState);
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(ambiguousState, dryRun: true));
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(ambiguousState));
+            var escapedState = json.Replace(
+                "\"state\":\"SELECTABLE\"",
+                "\"state\":\"SELECTABLE\",\"st\\u0061te\":\"DRAFT\"",
+                StringComparison.Ordinal);
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(escapedState));
+            Assert.Equal("استان آزمون",
+                (await db.Provinces.AsNoTracking().SingleAsync(
+                    x => x.Id == provinceId)).Name);
+            Assert.Equal(HttpStatusCode.OK,
+                (await client.GetAsync(cityUrl + "/" + cityId)).StatusCode);
+
             // Unknown attributes cannot become a backdoor for commerce,
             // delivery flags, price, provider, or launch activation.
             var extraField = json.Replace(
