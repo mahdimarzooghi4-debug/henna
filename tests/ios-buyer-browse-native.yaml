@@ -1,0 +1,5 @@
+appId: ${APP_ID}
+---
+- assertVisible: "کالاها را در حنا مرور کنید"
+- assertVisible: "کالای پیوند آزمایشی"
+- assertVisible: "دریافت کالاها تأیید نشد"

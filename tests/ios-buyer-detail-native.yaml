@@ -1,0 +1,21 @@
+# The app has already been launched by simctl openurl (not launchApp).
+# No real API is configured; unavailable is the honest approved state.
+appId: ${APP_ID}
+---
+- assertVisible: "جزئیات کالا یا خدمت"
+- assertVisible: "دریافت جزئیات تأیید نشد"
+- scrollUntilVisible:
+    element: "بازگشت به فهرست کالاها"
+    direction: DOWN
+- tapOn: "بازگشت به فهرست کالاها"
+- assertVisible: "کالاها را در حنا مرور کنید"
+- assertVisible: "کالای پیوند آزمایشی"
+- openLink: "hana://products/60000000-0000-4000-8000-000000000021"
+- assertVisible: "جزئیات کالا یا خدمت"
+- assertVisible: "دریافت جزئیات تأیید نشد"
+# The OS may deliver this custom scheme but JS must ignore the unapproved path.
+- openLink: "hana://auth"
+- assertVisible: "جزئیات کالا یا خدمت"
+- openLink: "hana://browse?search=%DA%A9%D8%A7%D9%84%D8%A7%DB%8C+%D9%BE%DB%8C%D9%88%D9%86%D8%AF+%D8%A2%D8%B2%D9%85%D8%A7%DB%8C%D8%B4%DB%8C&page=2"
+- assertVisible: "کالاها را در حنا مرور کنید"
+- assertVisible: "کالای پیوند آزمایشی"
