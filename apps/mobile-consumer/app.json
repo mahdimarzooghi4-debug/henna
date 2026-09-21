@@ -15,7 +15,7 @@
       "edgeToEdgeEnabled": true
     },
     "extra": {
-      "implementationPhase": "Identity 008 native SecureStore session; real SMS adapter pending"
+      "implementationPhase": "Frontend 020 buyer public custom-scheme links; native E2E and real SMS adapter pending"
     }
   }
 }
