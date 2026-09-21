@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../../components/form-field";
+import { SellerLocationReference } from "./location-reference";
 import {
   hasUnsavedSellerEdits, isLeavingSellerPage, validateSellerDraft,
   type SellerFieldErrors,
@@ -351,6 +352,9 @@ export function RegistrationForm() {
           <FormField id="city" label="شهر / منطقه" placeholder="شهر و محدوده فعالیت"
             maxLength={120} value={fields.city} error={Boolean(fieldErrors.city)} errorMessage={fieldErrors.city} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("city", e.target.value)} />
+          <SellerLocationReference
+            enabled={access === "signedIn" && !busy && conflict === null}
+            onChoose={(value) => update("city", value)} />
           <FormField id="store-address" label="آدرس فروشگاه" placeholder="نشانی کامل فروشگاه"
             maxLength={500} autoComplete="street-address" value={fields.address} error={Boolean(fieldErrors.address)} errorMessage={fieldErrors.address} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("address", e.target.value)} />
