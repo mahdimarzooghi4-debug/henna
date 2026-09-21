@@ -91,6 +91,19 @@ export function AuthForm({ returnTo }: {
   }, [returnTo]);
 
   useEffect(() => {
+    const onVisibilityChange = () => {
+      if (!shouldRecheckVisibleWebSession(
+        document.visibilityState, stage, pending.current,
+      )) return;
+      checkSession();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener(
+      "visibilitychange", onVisibilityChange,
+    );
+  }, [stage, returnTo]);
+
+  useEffect(() => {
     // Focus follows the real state, including a 202 RESEND with a fresh
     // challenge but unchanged stage. No focus theft on 429/verify errors.
     if (stage === "phone") phoneInput.current?.focus();
