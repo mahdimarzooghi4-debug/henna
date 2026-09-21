@@ -3,9 +3,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import {
-  BUYER_PAGE_SIZE, buyerCatalogPath, parseBuyerCategories,
+  BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
+  buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
   parseBuyerPage, validBuyerSearch,
-  type BuyerCategory, type BuyerPage,
+  type BuyerBrowseLocation, type BuyerCategory, type BuyerPage,
 } from "../lib/buyer-catalog";
 
 type Load<T> =
@@ -27,16 +28,19 @@ async function publicJson(path: string, signal: AbortSignal): Promise<unknown> {
 }
 
 /** Figma 476:3/476:4 (empty) + 478:2/478:22 (API-backed); approved by owner. */
-export function BuyerBrowse() {
+export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
+  // Parse server-provided URL before the first paint or catalog request:
+  // a directly shared /?page=2&search=... must not flash page 1 results.
+  const initial = parseBuyerBrowseLocation(new URLSearchParams(initialQuery));
   const [categories, setCategories] = useState<Load<BuyerCategory[]>>({
     status: "loading", key: "0",
   });
   const [categoryRetry, setCategoryRetry] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [draftSearch, setDraftSearch] = useState("");
-  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<string | null>(initial.categoryId);
+  const [draftSearch, setDraftSearch] = useState(initial.search);
+  const [search, setSearch] = useState(initial.search);
   const [searchError, setSearchError] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
   const [products, setProducts] = useState<Load<BuyerPage>>({
     status: "loading", key: "",
@@ -44,6 +48,43 @@ export function BuyerBrowse() {
   const path = buyerCatalogPath(page, selected, search);
   const current = products.key === path && products.status !== "loading"
     ? products : { status: "loading" as const, key: path };
+  const locationState: BuyerBrowseLocation = {
+    categoryId: selected, search, page,
+  };
+
+  function setBrowseLocation(next: BuyerBrowseLocation) {
+    setSelected(next.categoryId);
+    setSearch(next.search);
+    setDraftSearch(next.search);
+    setPage(next.page);
+    setSearchError("");
+    // Native browser Back/Forward and copied URLs restore the same approved
+    // public catalog query. No arbitrary return URL or private state.
+    const href = buyerBrowseHref(next);
+    if (window.location.pathname === "/" &&
+      window.location.pathname + window.location.search !== href)
+      window.history.pushState(window.history.state, "", href);
+  }
+
+  useEffect(() => {
+    function restore() {
+      if (window.location.pathname !== "/") return;
+      const next = parseBuyerBrowseLocation(
+        new URLSearchParams(window.location.search),
+      );
+      setSelected(next.categoryId);
+      setSearch(next.search);
+      setDraftSearch(next.search);
+      setPage(next.page);
+      setSearchError("");
+      const href = buyerBrowseHref(next);
+      if (window.location.pathname + window.location.search !== href)
+        window.history.replaceState(window.history.state, "", href);
+    }
+    restore();
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, [initialQuery]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -91,14 +132,21 @@ export function BuyerBrowse() {
     }
     setSearchError("");
     const term = draftSearch.trim();
-    setPage(1);
     if (term === search && page === 1) setProductRetry((n) => n + 1);
-    setSearch(term);
+    setBrowseLocation({ categoryId: selected, search: term, page: 1 });
   }
 
   function chooseCategory(id: string | null) {
-    setSelected(id);
-    setPage(1);
+    // A category filter can only be selected from current published API data.
+    if (id !== null && (categories.status !== "ok" ||
+      !categories.data.some((category) => category.id === id))) return;
+    setBrowseLocation({ categoryId: id, search, page: 1 });
+  }
+
+  function choosePage(nextPage: number) {
+    if (current.status !== "ok" || nextPage < 1 || nextPage > 10000 ||
+      (nextPage - 1) * BUYER_PAGE_SIZE >= current.data.total) return;
+    setBrowseLocation({ categoryId: selected, search, page: nextPage });
   }
 
   return (
@@ -169,7 +217,7 @@ export function BuyerBrowse() {
               <ul className="buyer-products" aria-label="فهرست کالاهای منتشرشده">
                 {current.data.items.map((item) => (
                   <li className="buyer-product" key={item.id}>
-                    <h3><Link className="buyer-product__link" href={`/products/${item.id}`}>{item.name}</Link></h3>
+                    <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
                     <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}</p>
                     {item.description && <p>{item.description}</p>}
                   </li>
@@ -180,10 +228,10 @@ export function BuyerBrowse() {
               <span>صفحهٔ {current.data.page} از {Math.max(1,
                 Math.ceil(current.data.total / BUYER_PAGE_SIZE))}</span>
               <button type="button" disabled={page === 1}
-                onClick={() => setPage((n) => Math.max(1, n - 1))}>صفحهٔ قبل</button>
+                onClick={() => choosePage(page - 1)}>صفحهٔ قبل</button>
               <button type="button" disabled={
                 page >= 10000 || page * BUYER_PAGE_SIZE >= current.data.total
-              } onClick={() => setPage((n) => n + 1)}>صفحهٔ بعد</button>
+              } onClick={() => choosePage(page + 1)}>صفحهٔ بعد</button>
             </nav>
             <p className="buyer-not-commerce">این فهرست صرفاً برای مرور است؛ قیمت، موجودی و امکان خرید هنوز فعال نیست.</p>
           </>
