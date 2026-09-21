@@ -6,7 +6,7 @@
 - Figma [476:3](https://www.figma.com/design/uREafnhmH5dDRwPraBOmuk/henna-platform?node-id=476-3) — دسکتاپ خالی؛ [476:4](https://www.figma.com/design/uREafnhmH5dDRwPraBOmuk/henna-platform?node-id=476-4) — موبایل خالی.
 - Figma [478:2](https://www.figma.com/design/uREafnhmH5dDRwPraBOmuk/henna-platform?node-id=478-2) — دسکتاپ داده‌دار؛ [478:22](https://www.figma.com/design/uREafnhmH5dDRwPraBOmuk/henna-platform?node-id=478-22) — موبایل داده‌دار.
 
-این‌ها فریم‌های responsive **صفحهٔ وب خریدار** هستند؛ رابط اپ Expo بر اساس الگوی موبایل مصوب هنوز پیاده‌سازی نشده است. برچسب DRAFT روی بوم Figma در Frontend 010 ساخته شده و گزارش وضعیت تاریخی طراحی است.
+این‌ها چهار فریم خانه و مرور خریدار هستند؛ وب در Frontend 015 و رابط اپ Expo مطابق دو فریم موبایل در [Frontend 016](HANA-FRONTEND-016.md) پیاده‌سازی شده‌اند. برچسب DRAFT روی بوم Figma در Frontend 010 ساخته شده و گزارش وضعیت تاریخی طراحی است.
 
 ## مرز واقعی پیاده‌سازی
 
@@ -20,4 +20,4 @@
 - `tests/web-buyer-browse-browser-smoke.mjs` مرورگر **واقعی Chromium** مقابل build production Next: خالی، محتوای API فقط در CI، صفحه‌بندی، فیلتر UUID، جست‌وجو، ۵۰۳، پاسخ malformed، بازیابی و viewport 390px. Route doubles صرفاً در مرورگر تست هستند، نه کد منتشرشده یا seed production.
 - CI وب typecheck/build و BFF tests قبلی؛ backend و mobile job بدون تغییر.
 
-**باقی‌مانده:** UI اپ خریدار Expo برای همین چهار طرح، محتوای واقعی تأییدشده از اپراتور، SMS production، صفحه جزئیات کالا، پیشنهاد فروشنده، قیمت/موجودی، سبد، سفارش و پرداخت.
+**به‌روزرسانی Frontend 016:** UI مرور اپ خریدار Expo طبق دو فریم موبایل اضافه شد. **باقی‌مانده:** محتوای واقعی تأییدشده از اپراتور، SMS production، صفحه جزئیات کالا، پیشنهاد فروشنده، قیمت/موجودی، سبد، سفارش و پرداخت.
