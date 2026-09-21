@@ -369,7 +369,9 @@ export function RegistrationForm() {
         </aside>
         <button className="primary-button" type="submit"
           disabled={busy || access !== "signedIn" || conflict !== null}>
-          {busy ? "در حال ذخیره…" : saved ? "ذخیره تغییرات پیش‌نویس" : "ثبت اطلاعات و ادامه"}
+          {busy ? "در حال ذخیره…" :
+            revision > 0 ? "ذخیره تغییرات پیش‌نویس" :
+              "ثبت اطلاعات و ادامه"}
         </button>
         {conflict && access === "signedIn" && (
           <section className="seller-conflict"
