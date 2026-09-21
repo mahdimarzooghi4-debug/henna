@@ -1,6 +1,6 @@
 # Frontend 010 — پیش‌نویس قابل تأییدِ خانه و مرور کالاهای خریدار (Figma)
 
-**وضعیت:** DESIGN PROPOSAL — NOT APPROVED — NOT IMPLEMENTED IN SHIPPING WEB/EXPO. این سند مجوز انتشار UI یا خرید نیست.
+**وضعیت تاریخی در Frontend 010:** DESIGN PROPOSAL — NOT APPROVED — NOT IMPLEMENTED (در زمان ایجاد). **به‌روزرسانی Frontend 015:** مالک هر چهار فریم را صریحاً تأیید کرده است؛ مجوز صرفاً برای پیاده‌سازی مرور کاتالوگ است، نه قیمت/خرید/انتشار کالا. UI وب در Frontend 015 پیاده‌سازی شد و اپ Expo در گام بعد می‌آید.
 
 ## تحویل واقعی این مرحله در فیگمای حنا
 
