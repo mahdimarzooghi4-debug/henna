@@ -43,13 +43,20 @@ export function RegistrationForm() {
   const [revision, setRevision] = useState(0);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
   const conflictHeading = useRef<HTMLHeadingElement>(null);
+  const preflightAbort = useRef<AbortController | null>(null);
   const [access, setAccess] = useState<"checking" | "signedIn" | "signedOut" | "unavailable">("checking");
 
 
-  useEffect(() => {
+  function checkInitialDraft() {
+    // Only a 404 from a live, authenticated server permits revision zero.
+    // Retry this GET in place; page reload is not needed for an outage.
+    preflightAbort.current?.abort();
     const controller = new AbortController();
+    preflightAbort.current = controller;
+    setAccess("checking");
     void loadSellerDraft(fetch, controller.signal).then((result) => {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted ||
+        preflightAbort.current !== controller) return;
       if (result.status === "signedOut") {
         setAccess("signedOut");
         return;
@@ -64,8 +71,8 @@ export function RegistrationForm() {
         setAccess("signedIn");
         return;
       }
-      // Release the form only AFTER a complete draft and its matching
-      // revision have both arrived. Never merge preflight data over edits.
+      // A complete draft and its actual revision arrive together before
+      // any field can become editable.
       setFields(result.fields);
       setBaseline(result.fields);
       setSaved(true);
@@ -73,7 +80,11 @@ export function RegistrationForm() {
       setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
       setAccess("signedIn");
     });
-    return () => controller.abort();
+  }
+
+  useEffect(() => {
+    checkInitialDraft();
+    return () => preflightAbort.current?.abort();
   }, []);
 
   useEffect(() => {
@@ -274,7 +285,8 @@ export function RegistrationForm() {
       )}
       {access === "unavailable" && (
         <p className="form-status form-status--error" role="status">
-          وضعیت پیش‌نویس فعلاً قابل بررسی نیست. برای جلوگیری از بازنویسی نسخه موجود، فرم تا بررسی موفق غیرفعال است. <button type="button" className="auth-card__secondary" onClick={() => window.location.reload()}>تلاش دوباره</button>
+          وضعیت پیش‌نویس فعلاً قابل بررسی نیست. برای جلوگیری از بازنویسی نسخه موجود، فرم تا بررسی موفق غیرفعال است. <button type="button" className="auth-card__secondary"
+            onClick={checkInitialDraft}>بررسی دوباره بدون ترک فرم</button>
         </p>
       )}
       <form noValidate onSubmit={handleSubmit}>
