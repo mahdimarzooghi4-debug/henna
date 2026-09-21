@@ -8,8 +8,12 @@ import { sellerRegistrationPath } from "../../lib/seller-return";
 import {
   otpRequestTransition, type OtpRequestOutcome,
 } from "../../lib/otp-request-transition";
+import {
+  isConfirmedWebSession, shouldRecheckVisibleWebSession,
+  type WebAuthStage,
+} from "../../lib/web-session-visibility";
 
-type Stage = "checking" | "phone" | "code" | "authenticated" | "session-unavailable";
+type Stage = WebAuthStage;
 type FormStatus = "idle" | "loading" | "invalid" | "limited" | "unavailable";
 
 const challengeIdPattern =
