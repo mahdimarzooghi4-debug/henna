@@ -471,6 +471,29 @@ jobs:
       - name: Generate native Android project from committed Expo configuration
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile-consumer
+      - name: Install and verify Expo-pinned Android NDK before Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ndk_version=27.1.12297006
+          ndk_dir="${ANDROID_HOME:?}/ndk/$ndk_version"
+          for attempt in 1 2 3; do
+            if test -f "$ndk_dir/source.properties" &&
+              grep -Fq "Pkg.Revision = $ndk_version" "$ndk_dir/source.properties"; then
+              echo "Verified Android NDK $ndk_version"
+              exit 0
+            fi
+            rm -rf "$ndk_dir"
+            echo "Installing pinned NDK attempt $attempt/3"
+            if sdkmanager --install "ndk;$ndk_version" &&
+              test -f "$ndk_dir/source.properties" &&
+              grep -Fq "Pkg.Revision = $ndk_version" "$ndk_dir/source.properties"; then
+              exit 0
+            fi
+            if test "$attempt" -lt 3; then sleep 15; fi
+          done
+          echo "Pinned Android NDK unavailable or corrupt; refusing to build"
+          exit 1
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
         run: ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-consumer/android
