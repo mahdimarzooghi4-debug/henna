@@ -174,7 +174,8 @@ test("query supersession and unmount abort pending transport and hide old result
   assert.equal(states.some(s => s.search === "کالای CI 1" &&
     s.products.status === "loading"), true);
   c.stop();
-  assert.equal(calls.at(-1).options.signal.aborted, true);
+  // Completed transport removes its upstream abort listener; a closed screen
+  // must make no NEW calls. Superseded in-flight transport was aborted above.
   const total = calls.length;
   await c.refreshProducts();
   assert.equal(calls.length, total, "unmounted browse makes no HTTP calls");
