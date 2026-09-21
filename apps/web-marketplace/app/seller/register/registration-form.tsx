@@ -91,6 +91,42 @@ export function RegistrationForm() {
     if (conflict?.status === "ready") conflictHeading.current?.focus();
   }, [conflict?.status]);
 
+  const hasUnsavedChanges = hasUnsavedSellerEdits(fields, baseline);
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    // Browsers choose their own generic text for refresh/close warning.
+    const onUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const onLink = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 ||
+        event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)
+        return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest("a[href]");
+      if (!link || link.hasAttribute("download") ||
+        (link.target && link.target !== "_self") ||
+        !isLeavingSellerPage(link.href, window.location.href)) return;
+
+      if (!window.confirm(
+        "تغییرات فرم فروشگاه هنوز ذخیره نشده‌اند. با ترک صفحه ممکن است از دست بروند. ادامه می‌دهید؟",
+      )) {
+        event.preventDefault();
+        // Stop Next's delegated client navigation after cancellation.
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onUnload);
+    document.addEventListener("click", onLink, true);
+    return () => {
+      window.removeEventListener("beforeunload", onUnload);
+      document.removeEventListener("click", onLink, true);
+    };
+  }, [hasUnsavedChanges]);
+
   function update(field: keyof SellerFields, value: string) {
     if (access !== "signedIn" || busy || conflict) return;
     setSaved(false);
@@ -274,6 +310,12 @@ export function RegistrationForm() {
   return (
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
+      {hasUnsavedChanges && (
+        <p className="seller-unsaved-note" role="status">
+          تغییرات این فرم هنوز در سرور ذخیره نشده‌اند. پیش از بستن یا
+          ترک صفحه، پس از رفع خطا یا تعارض، اطلاعات را ثبت کنید.
+        </p>
+      )}
       {access === "checking" && (
         <p className="form-status" role="status">در حال بررسی وضعیت حساب و پیش‌نویس…</p>
       )}
