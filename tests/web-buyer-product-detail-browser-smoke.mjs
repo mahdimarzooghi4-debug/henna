@@ -76,8 +76,8 @@ async function main() {
   page.on("pageerror", e => errors.push(e.message));
   await page.goto(base);
   await page.getByRole("link", { name: published.name, exact: true }).click();
+  await page.waitForURL(base + "/products/" + ID);
   await page.getByRole("heading", { name: published.name }).waitFor();
-  assert.equal(new URL(page.url()).pathname, "/products/" + ID);
   assert.equal(await page.getByText("شرح منتشرشدهٔ CI").count(), 1);
   assert.equal(await page.getByText(A).count(), 1);
   assert.equal(await page.getByText("SECRET").count(), 0);
