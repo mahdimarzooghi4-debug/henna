@@ -8,8 +8,12 @@ import { sellerRegistrationPath } from "../../lib/seller-return";
 import {
   otpRequestTransition, type OtpRequestOutcome,
 } from "../../lib/otp-request-transition";
+import {
+  isConfirmedWebSession, shouldRecheckVisibleWebSession,
+  type WebAuthStage,
+} from "../../lib/web-session-visibility";
 
-type Stage = "checking" | "phone" | "code" | "authenticated" | "session-unavailable";
+type Stage = WebAuthStage;
 type FormStatus = "idle" | "loading" | "invalid" | "limited" | "unavailable";
 
 const challengeIdPattern =
@@ -32,7 +36,9 @@ export function AuthForm({ returnTo }: {
   const codeInput = useRef<HTMLInputElement>(null);
 
   function checkSession() {
-    // A retry must never use a page reload or trust a stale earlier response.
+    if (pending.current) return;
+    // Rechecking a visible authenticated tab hides the old success state
+    // until the SAME server-backed HttpOnly cookie is actually verified.
     sessionRequest.current?.abort();
     const controller = new AbortController();
     sessionRequest.current = controller;
@@ -41,20 +47,37 @@ export function AuthForm({ returnTo }: {
     setMessage("");
     void fetch("/api/auth/session", {
       cache: "no-store", signal: controller.signal,
-    }).then((response) => {
+    }).then(async (response) => {
       if (controller.signal.aborted ||
         sessionRequest.current !== controller) return;
-      if (response.ok && returnTo === sellerRegistrationPath) {
-        // The cookie was validated by the server, not inferred from its
-        // presence. The destination is a compile-time allowlisted path.
+
+      if (response.status === 401) {
+        // Only a server-confirmed 401 proves the prior session is gone.
+        setPhone("");
+        setCode("");
+        setChallengeId("");
+        setStage("phone");
+        return;
+      }
+      if (response.status !== 200) {
+        // 403, 429, 500, 503, malformed or unexpected 2xx must not
+        // falsely turn an unverified account into a signed-out visitor.
+        setStage("session-unavailable");
+        return;
+      }
+      const body: unknown = await response.json();
+      if (controller.signal.aborted ||
+        sessionRequest.current !== controller) return;
+      if (!isConfirmedWebSession(body)) {
+        setStage("session-unavailable");
+        return;
+      }
+      if (returnTo === sellerRegistrationPath) {
+        // Only the existing compile-time allowlisted destination is valid.
         window.location.replace(sellerRegistrationPath);
         return;
       }
-      setStage(response.ok
-        ? "authenticated"
-        : response.status === 503
-          ? "session-unavailable"
-          : "phone");
+      setStage("authenticated");
     }).catch(() => {
       if (!controller.signal.aborted &&
         sessionRequest.current === controller)
@@ -66,6 +89,19 @@ export function AuthForm({ returnTo }: {
     checkSession();
     return () => sessionRequest.current?.abort();
   }, [returnTo]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (!shouldRecheckVisibleWebSession(
+        document.visibilityState, stage, pending.current,
+      )) return;
+      checkSession();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener(
+      "visibilitychange", onVisibilityChange,
+    );
+  }, [stage, returnTo]);
 
   useEffect(() => {
     // Focus follows the real state, including a 202 RESEND with a fresh
@@ -290,6 +326,10 @@ export function AuthForm({ returnTo }: {
               ادامه ثبت‌نام فروشگاه
             </Link>
           )}
+          <button className="auth-card__secondary" type="button" disabled={busy}
+            onClick={checkSession}>
+            بررسی دوباره اعتبار نشست
+          </button>
           <button className="primary-button" type="button" disabled={busy}
             onClick={logout}>
             {busy ? "در حال خروج…" : "خروج از حساب"}
