@@ -2,6 +2,11 @@
 # No real API is configured; unavailable is the honest approved state.
 appId: ${APP_ID}
 ---
+- runFlow:
+    when:
+      visible: 'Open in .*حنا.*'
+    commands:
+      - tapOn: "Open"
 - assertVisible: "جزئیات کالا یا خدمت"
 - assertVisible: "دریافت جزئیات تأیید نشد"
 - scrollUntilVisible:

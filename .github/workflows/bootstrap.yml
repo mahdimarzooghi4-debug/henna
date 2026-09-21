@@ -462,6 +462,7 @@ jobs:
     timeout-minutes: 65
     env:
       EXPO_NO_TELEMETRY: '1'
+      MAESTRO_CLI_NO_ANALYTICS: '1'
       CI: '1'
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8

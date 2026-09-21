@@ -1,5 +1,10 @@
 appId: ${APP_ID}
 ---
+- runFlow:
+    when:
+      visible: 'Open in .*حنا.*'
+    commands:
+      - tapOn: "Open"
 - assertVisible: "کالاها را در حنا مرور کنید"
 - assertVisible: "کالای پیوند آزمایشی"
 - assertVisible: "دریافت کالاها تأیید نشد"

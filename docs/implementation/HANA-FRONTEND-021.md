@@ -16,4 +16,4 @@ Frontend 020 parser، warm/cold coordinator و خروجی Android JS را آزم
 
 ## محدودیت‌های دقیق
 
-این پوشش تحویل intent و UI native را **در emulator CI** اثبات می‌کند، نه کیفیت بصری و touch کامل روی سخت‌افزار واقعی یا نسخهٔ store-signed. Universal/Verified HTTPS App Links برای دامنهٔ production، associationهای Android و iOS، setup signing واقعی، iOS simulator/test و تست فیزیکی همچنان جداگانه هستند. این PR پیامک، فروشندهٔ تأییدشده، کالاهای واقعی production، قیمت، موجودی، خرید یا پرداخت نمی‌سازد.
+در زمان Frontend 021 این پوشش صرفاً تحویل intent و UI native **در emulator Android CI** را اثبات می‌کرد؛ [Frontend 022](HANA-FRONTEND-022.md) بعداً CI نصب‌شده در شبیه‌ساز iOS را به آن افزود. این دو آزمون هنوز کیفیت بصری و لمس کامل روی سخت‌افزار واقعی یا نسخهٔ store-signed را اثبات نمی‌کنند. Universal/Verified HTTPS App Links برای دامنهٔ production، associationهای Android و iOS، setup signing واقعی، iOS simulator/test و تست فیزیکی همچنان جداگانه هستند. این PR پیامک، فروشندهٔ تأییدشده، کالاهای واقعی production، قیمت، موجودی، خرید یا پرداخت نمی‌سازد.
