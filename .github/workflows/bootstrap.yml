@@ -358,6 +358,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Browser test approved buyer login and seller form across two tabs
         run: node tests/web-frontend-browser-smoke.mjs
+      - name: Browser test buyer OTP recovery at mobile viewport
+        run: node tests/web-auth-recovery-browser-smoke.mjs
 
   mobile:
     runs-on: ubuntu-latest

@@ -27,31 +27,52 @@ export function AuthForm({ returnTo }: {
   // A synchronous guard prevents a verify and resend racing before React
   // commits a loading render. Never issue two challenges concurrently.
   const pending = useRef(false);
+  const sessionRequest = useRef<AbortController | null>(null);
+  const phoneInput = useRef<HTMLInputElement>(null);
+  const codeInput = useRef<HTMLInputElement>(null);
+
+  function checkSession() {
+    // A retry must never use a page reload or trust a stale earlier response.
+    sessionRequest.current?.abort();
+    const controller = new AbortController();
+    sessionRequest.current = controller;
+    setStage("checking");
+    setStatus("idle");
+    setMessage("");
+    void fetch("/api/auth/session", {
+      cache: "no-store", signal: controller.signal,
+    }).then((response) => {
+      if (controller.signal.aborted ||
+        sessionRequest.current !== controller) return;
+      if (response.ok && returnTo === sellerRegistrationPath) {
+        // The cookie was validated by the server, not inferred from its
+        // presence. The destination is a compile-time allowlisted path.
+        window.location.replace(sellerRegistrationPath);
+        return;
+      }
+      setStage(response.ok
+        ? "authenticated"
+        : response.status === 503
+          ? "session-unavailable"
+          : "phone");
+    }).catch(() => {
+      if (!controller.signal.aborted &&
+        sessionRequest.current === controller)
+        setStage("session-unavailable");
+    });
+  }
 
   useEffect(() => {
-    let current = true;
-    fetch("/api/auth/session", { cache: "no-store" })
-      .then((response) => {
-        if (!current) return;
-        if (response.ok && returnTo === sellerRegistrationPath) {
-          // The cookie was validated by the server, not inferred from its
-          // presence. The destination is a compile-time allowlisted path.
-          window.location.replace(sellerRegistrationPath);
-          return;
-        }
-        setStage(
-          response.ok
-            ? "authenticated"
-            : response.status === 503
-              ? "session-unavailable"
-              : "phone",
-        );
-      })
-      .catch(() => {
-        if (current) setStage("session-unavailable");
-      });
-    return () => { current = false; };
+    checkSession();
+    return () => sessionRequest.current?.abort();
   }, [returnTo]);
+
+  useEffect(() => {
+    // Focus follows the real state, including a 202 RESEND with a fresh
+    // challenge but unchanged stage. No focus theft on 429/verify errors.
+    if (stage === "phone") phoneInput.current?.focus();
+    if (stage === "code") codeInput.current?.focus();
+  }, [stage, challengeId]);
 
   async function requestCode(resend: boolean) {
     if (pending.current || status === "loading") return;
@@ -197,7 +218,7 @@ export function AuthForm({ returnTo }: {
         <div role="status">
           <p>بررسی وضعیت حساب فعلاً در دسترس نیست. لطفاً دوباره تلاش کنید.</p>
           <button type="button" className="primary-button"
-            onClick={() => window.location.reload()}>تلاش دوباره</button>
+            onClick={checkSession}>بررسی دوباره بدون ترک صفحه</button>
         </div>
       )}
       {stage === "phone" && (
@@ -209,6 +230,8 @@ export function AuthForm({ returnTo }: {
             autoComplete="tel-national" inputMode="numeric"
             className="field__input--phone" placeholder="09xxxxxxxxx"
             maxLength={11} value={phone} required
+            inputRef={phoneInput} disabled={busy}
+            aria-describedby={status === "invalid" ? "auth-feedback" : undefined}
             error={status === "invalid"}
             onChange={(event) => {
               setPhone(event.target.value);
@@ -230,6 +253,8 @@ export function AuthForm({ returnTo }: {
             autoComplete="one-time-code" inputMode="numeric"
             className="field__input--phone" placeholder="کد شش‌رقمی"
             maxLength={6} value={code} required
+            inputRef={codeInput} disabled={busy}
+            aria-describedby={status === "invalid" ? "auth-feedback" : undefined}
             error={status === "invalid"}
             onChange={(event) => {
               setCode(event.target.value);
@@ -272,7 +297,7 @@ export function AuthForm({ returnTo }: {
         </div>
       )}
       {message && stage !== "checking" && (
-        <p className={["form-status", status === "invalid" && "form-status--error"]
+        <p id="auth-feedback" className={["form-status", status === "invalid" && "form-status--error"]
           .filter(Boolean).join(" ")}
           role={status === "invalid" ? "alert" : "status"}
           aria-live="polite">{message}</p>
