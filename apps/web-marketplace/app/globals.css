@@ -169,6 +169,70 @@ a { color: inherit; }
 .seller-card .account-note p { color: var(--hana-teal); margin: 0; }
 .seller-card .primary-button { margin-top: 20px; }
 
+/* Optional live geography assist for the existing seller city/area input.
+   Does not constitute a new approved Figma screen or serviceability flag. */
+.seller-location-reference {
+  margin-top: -12px;
+  font-size: 14px;
+}
+.seller-location-reference__toggle {
+  background: transparent;
+  border: 0;
+  padding: 6px 0;
+  color: var(--hana-teal);
+  font-weight: 700;
+  cursor: pointer;
+  text-align: right;
+}
+.seller-location-reference__toggle:hover { text-decoration: underline; }
+.seller-location-reference__toggle:disabled { opacity: .6; cursor: not-allowed; }
+.seller-location-reference__panel {
+  border: 1px solid var(--hana-border);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 8px 0 0;
+  background: var(--hana-cream);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.seller-location-reference__panel p { margin: 0; color: var(--hana-muted); }
+.seller-location-reference__panel label {
+  font-weight: 700;
+  color: var(--hana-charcoal);
+}
+.seller-location-reference__panel select {
+  display: block;
+  width: 100%;
+  background: var(--hana-surface);
+  border: 1px solid var(--hana-border);
+  border-radius: 11px;
+  color: var(--hana-charcoal);
+  padding: 12px;
+  min-height: 48px;
+  font: inherit;
+}
+.seller-location-reference__panel select:disabled { opacity: .6; }
+.seller-location-reference__panel button {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border: 1px solid var(--hana-teal);
+  border-radius: 10px;
+  background: white;
+  color: var(--hana-teal);
+  font-weight: 700;
+  cursor: pointer;
+}
+.seller-location-reference__panel button:disabled { opacity: .5; cursor: not-allowed; }
+.seller-location-reference__panel .seller-location-reference__apply {
+  margin-top: 6px;
+  width: 100%;
+  min-height: 48px;
+  background: var(--hana-teal);
+  color: var(--hana-surface);
+}
+
+
 /* Inline recovery for a real 409 on the Figma-approved seller step one.
    No separate or unapproved registration screen is introduced. */
 .seller-conflict {
