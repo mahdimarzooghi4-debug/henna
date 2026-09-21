@@ -406,6 +406,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-buyer-browse-smoke.mjs
       - name: Test shipping Expo public product detail states and cancellation
         run: node --experimental-strip-types --test tests/mobile-buyer-product-detail-smoke.mjs
+      - name: Test Expo public custom-scheme buyer links and warm catalog restoration
+        run: node --experimental-strip-types --test tests/mobile-buyer-deep-link-smoke.mjs
       - name: Test public Expo geography client (CI-only mocked transport)
         run: node --experimental-strip-types --test tests/mobile-geography-smoke.mjs
       - name: Bundle consumer app for Android

@@ -27,6 +27,9 @@ const boundedText = (raw: unknown, maxLength: number): raw is string =>
 const boundedInt = (raw: unknown, min: number, max: number): raw is number =>
   typeof raw === "number" && Number.isSafeInteger(raw) &&
   raw >= min && raw <= max;
+export const validMobileCatalogId = (raw: unknown): raw is string =>
+  typeof raw === "string" && uuid.test(raw) &&
+  raw !== "00000000-0000-0000-0000-000000000000";
 const validId = (raw: unknown): raw is string =>
   typeof raw === "string" && uuid.test(raw) &&
   raw !== "00000000-0000-0000-0000-000000000000";
