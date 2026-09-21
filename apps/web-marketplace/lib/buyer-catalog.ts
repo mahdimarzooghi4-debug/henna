@@ -96,3 +96,71 @@ export function parseBuyerProduct(
       ? x.description : null,
   };
 }
+
+/**
+ * The entire browse/navigation state is a small, same-origin allowlist.
+ * A product URL carries search/category/page query values, never a returnTo
+ * string that could become an open redirect.
+ */
+export type BuyerBrowseLocation = {
+  categoryId: string | null;
+  search: string;
+  page: number;
+};
+
+export const emptyBuyerBrowseLocation = (): BuyerBrowseLocation => ({
+  categoryId: null, search: "", page: 1,
+});
+
+export function parseBuyerBrowseLocation(
+  params: URLSearchParams,
+): BuyerBrowseLocation {
+  const category = params.get("categoryId");
+  const term = params.get("search") ?? "";
+  const pageText = params.get("page") ?? "";
+  const number = /^[1-9][0-9]{0,4}$/.test(pageText)
+    ? Number(pageText) : 1;
+  return {
+    categoryId: validBuyerProductId(category) ? category.toLowerCase() : null,
+    search: validBuyerSearch(term) ? term.trim() : "",
+    page: number >= 1 && number <= 10000 ? number : 1,
+  };
+}
+
+export function buyerBrowseQuery(state: BuyerBrowseLocation): string {
+  const params = new URLSearchParams();
+  if (state.categoryId && validBuyerProductId(state.categoryId))
+    params.set("categoryId", state.categoryId.toLowerCase());
+  if (validBuyerSearch(state.search) && state.search.trim())
+    params.set("search", state.search.trim());
+  if (Number.isSafeInteger(state.page) &&
+    state.page >= 2 && state.page <= 10000)
+    params.set("page", String(state.page));
+  return params.toString();
+}
+
+export function buyerBrowseHref(state: BuyerBrowseLocation): string {
+  const query = buyerBrowseQuery(state);
+  return "/" + (query ? "?" + query : "");
+}
+
+export function buyerDetailHref(
+  id: string, state: BuyerBrowseLocation,
+): string | null {
+  if (!validBuyerProductId(id)) return null;
+  const query = buyerBrowseQuery(state);
+  return "/products/" + id.toLowerCase() + (query ? "?" + query : "");
+}
+
+/** Preserve only plain string search params emitted by Next's server props. */
+export function buyerParamsFromRecord(
+  raw: Record<string, string | string[] | undefined>,
+): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const key of ["categoryId", "search", "page"]) {
+    const value = raw[key];
+    // Repeated keys are not a valid saved browse state.
+    if (typeof value === "string") params.set(key, value);
+  }
+  return params;
+}
