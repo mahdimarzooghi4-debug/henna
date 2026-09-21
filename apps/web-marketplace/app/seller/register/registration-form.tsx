@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../../components/form-field";
-import { normalizeDigits } from "../../../lib/normalize-digits";
+import {
+  hasUnsavedSellerEdits, isLeavingSellerPage, validateSellerDraft,
+  type SellerFieldErrors,
+} from "../../../lib/seller-edit-safety";
 import {
   emptySellerFields, loadSellerDraft, sellerFieldKeys,
   type SellerFields,
@@ -33,20 +36,27 @@ export function RegistrationForm() {
   // Last CONFIRMED server values, not the current text in this tab.
   // Needed to distinguish independent field edits from overlapping ones.
   const [baseline, setBaseline] = useState<SellerFields>(emptySellerFields);
-  const [invalidField, setInvalidField] = useState<keyof SellerFields | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<SellerFieldErrors>({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [revision, setRevision] = useState(0);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
   const conflictHeading = useRef<HTMLHeadingElement>(null);
+  const preflightAbort = useRef<AbortController | null>(null);
   const [access, setAccess] = useState<"checking" | "signedIn" | "signedOut" | "unavailable">("checking");
 
 
-  useEffect(() => {
+  function checkInitialDraft() {
+    // Only a 404 from a live, authenticated server permits revision zero.
+    // Retry this GET in place; page reload is not needed for an outage.
+    preflightAbort.current?.abort();
     const controller = new AbortController();
+    preflightAbort.current = controller;
+    setAccess("checking");
     void loadSellerDraft(fetch, controller.signal).then((result) => {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted ||
+        preflightAbort.current !== controller) return;
       if (result.status === "signedOut") {
         setAccess("signedOut");
         return;
@@ -61,8 +71,8 @@ export function RegistrationForm() {
         setAccess("signedIn");
         return;
       }
-      // Release the form only AFTER a complete draft and its matching
-      // revision have both arrived. Never merge preflight data over edits.
+      // A complete draft and its actual revision arrive together before
+      // any field can become editable.
       setFields(result.fields);
       setBaseline(result.fields);
       setSaved(true);
@@ -70,18 +80,67 @@ export function RegistrationForm() {
       setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
       setAccess("signedIn");
     });
-    return () => controller.abort();
+  }
+
+  useEffect(() => {
+    checkInitialDraft();
+    return () => preflightAbort.current?.abort();
   }, []);
 
   useEffect(() => {
     if (conflict?.status === "ready") conflictHeading.current?.focus();
   }, [conflict?.status]);
 
+  const hasUnsavedChanges = hasUnsavedSellerEdits(fields, baseline);
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    // Browsers choose their own generic text for refresh/close warning.
+    const onUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const onLink = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 ||
+        event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)
+        return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest("a[href]");
+      if (!(link instanceof HTMLAnchorElement) ||
+        link.hasAttribute("download") ||
+        (link.target && link.target !== "_self") ||
+        !isLeavingSellerPage(link.href, window.location.href)) return;
+      // External/full navigations have the native beforeunload warning;
+      // this confirmation is for Next's same-origin client-side links.
+      if (new URL(link.href, window.location.href).origin !==
+        window.location.origin) return;
+
+      if (!window.confirm(
+        "تغییرات فرم فروشگاه هنوز ذخیره نشده‌اند. با ترک صفحه ممکن است از دست بروند. ادامه می‌دهید؟",
+      )) {
+        event.preventDefault();
+        // Stop Next's delegated client navigation after cancellation.
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onUnload);
+    document.addEventListener("click", onLink, true);
+    return () => {
+      window.removeEventListener("beforeunload", onUnload);
+      document.removeEventListener("click", onLink, true);
+    };
+  }, [hasUnsavedChanges]);
+
   function update(field: keyof SellerFields, value: string) {
     if (access !== "signedIn" || busy || conflict) return;
     setSaved(false);
     setFields((current) => ({ ...current, [field]: value }));
-    setInvalidField(null);
+    setFieldErrors((current) => {
+      const changed = { ...current };
+      delete changed[field];
+      return changed;
+    });
     setMessage("");
   }
 
@@ -130,7 +189,7 @@ export function RegistrationForm() {
     setBaseline(conflict.fields);
     setRevision(selected.revision);
     setSaved(selected.saved);
-    setInvalidField(null);
+    setFieldErrors({});
     setConflict(null);
     setMessage("آخرین نسخهٔ ذخیره‌شدهٔ سرور بارگذاری شد؛ تغییرات ذخیره‌نشدهٔ این پنجره کنار گذاشته شدند.");
   }
@@ -144,7 +203,7 @@ export function RegistrationForm() {
     setBaseline(conflict.fields);
     setRevision(selected.revision);
     setSaved(selected.saved);
-    setInvalidField(null);
+    setFieldErrors({});
     setConflict(null);
     setMessage("متن این پنجره نگه داشته شد. هنوز ذخیره نشده است؛ آن را بررسی کنید و برای ذخیرهٔ صریح دکمهٔ فرم را بزنید.");
   }
@@ -173,7 +232,7 @@ export function RegistrationForm() {
     setBaseline(conflict.fields);
     setRevision(result.revision);
     setSaved(result.saved);
-    setInvalidField(null);
+    setFieldErrors({});
     setConflict(null);
     setMessage(result.saved
       ? "ترکیب انتخابی با نسخهٔ ذخیره‌شده برابر است؛ نیازی به ذخیرهٔ دوباره نیست."
@@ -183,31 +242,24 @@ export function RegistrationForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || access !== "signedIn" || conflict) return;
-    const next = Object.fromEntries(
-      sellerFieldKeys.map((key) => [key, fields[key].trim()]),
-    ) as SellerFields;
-    const phone = normalizeDigits(next.phone);
-    const postalCode = normalizeDigits(next.postalCode);
-    next.phone = phone;
-    next.postalCode = postalCode;
+    const validation = validateSellerDraft(fields);
+    const next = validation.values;
     setFields(next);
-    const missing = sellerFieldKeys.find((key) => !next[key].trim());
-    if (missing) {
-      setInvalidField(missing);
-      setMessage("لطفاً همه اطلاعات اولیه فروشگاه را تکمیل کنید.");
+    if (validation.firstInvalid) {
+      setFieldErrors(validation.errors);
+      setMessage("لطفاً فیلدهای مشخص‌شده را اصلاح کنید؛ اطلاعات ذخیره نشد.");
+      const firstInputId: Record<keyof SellerFields, string> = {
+        storeName: "store-name",
+        ownerName: "owner-name",
+        phone: "seller-phone",
+        city: "city",
+        address: "store-address",
+        postalCode: "postal-code",
+      };
+      document.getElementById(firstInputId[validation.firstInvalid])?.focus();
       return;
     }
-    if (!/^09\d{9}$/.test(phone)) {
-      setInvalidField("phone");
-      setMessage("شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد.");
-      return;
-    }
-    if (!/^\d{10}$/.test(postalCode)) {
-      setInvalidField("postalCode");
-      setMessage("کدپستی باید دقیقاً ۱۰ رقم داشته باشد.");
-      return;
-    }
-    setInvalidField(null);
+    setFieldErrors({});
     setBusy(true);
     setMessage("");
     try {
@@ -263,6 +315,12 @@ export function RegistrationForm() {
   return (
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
+      {hasUnsavedChanges && (
+        <p className="seller-unsaved-note" role="status">
+          تغییرات این فرم هنوز در سرور ذخیره نشده‌اند. پیش از بستن یا
+          ترک صفحه، پس از رفع خطا یا تعارض، اطلاعات را ثبت کنید.
+        </p>
+      )}
       {access === "checking" && (
         <p className="form-status" role="status">در حال بررسی وضعیت حساب و پیش‌نویس…</p>
       )}
@@ -274,31 +332,32 @@ export function RegistrationForm() {
       )}
       {access === "unavailable" && (
         <p className="form-status form-status--error" role="status">
-          وضعیت پیش‌نویس فعلاً قابل بررسی نیست. برای جلوگیری از بازنویسی نسخه موجود، فرم تا بررسی موفق غیرفعال است. <button type="button" className="auth-card__secondary" onClick={() => window.location.reload()}>تلاش دوباره</button>
+          وضعیت پیش‌نویس فعلاً قابل بررسی نیست. برای جلوگیری از بازنویسی نسخه موجود، فرم تا بررسی موفق غیرفعال است. <button type="button" className="auth-card__secondary"
+            onClick={checkInitialDraft}>بررسی دوباره بدون ترک فرم</button>
         </p>
       )}
       <form noValidate onSubmit={handleSubmit}>
         <div className="seller-fields">
           <FormField id="store-name" label="نام فروشگاه" placeholder="مثلاً سوپرمارکت بهار"
-            maxLength={120} value={fields.storeName} error={invalidField === "storeName"} required
+            maxLength={120} value={fields.storeName} error={Boolean(fieldErrors.storeName)} errorMessage={fieldErrors.storeName} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("storeName", e.target.value)} />
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
-            maxLength={120} autoComplete="name" value={fields.ownerName} error={invalidField === "ownerName"} required
+            maxLength={120} autoComplete="name" value={fields.ownerName} error={Boolean(fieldErrors.ownerName)} errorMessage={fieldErrors.ownerName} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("ownerName", e.target.value)} />
           <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
-            className="field__input--phone" value={fields.phone} error={invalidField === "phone"} required
+            className="field__input--phone" value={fields.phone} error={Boolean(fieldErrors.phone)} errorMessage={fieldErrors.phone} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("phone", e.target.value)} />
           <FormField id="city" label="شهر / منطقه" placeholder="شهر و محدوده فعالیت"
-            maxLength={120} value={fields.city} error={invalidField === "city"} required
+            maxLength={120} value={fields.city} error={Boolean(fieldErrors.city)} errorMessage={fieldErrors.city} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("city", e.target.value)} />
           <FormField id="store-address" label="آدرس فروشگاه" placeholder="نشانی کامل فروشگاه"
-            maxLength={500} autoComplete="street-address" value={fields.address} error={invalidField === "address"} required
+            maxLength={500} autoComplete="street-address" value={fields.address} error={Boolean(fieldErrors.address)} errorMessage={fieldErrors.address} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("address", e.target.value)} />
           <FormField id="postal-code" label="کدپستی" placeholder="کدپستی ۱۰ رقمی"
             inputMode="numeric" autoComplete="postal-code" maxLength={10}
             className="field__input--phone" value={fields.postalCode}
-            error={invalidField === "postalCode"} required
+            error={Boolean(fieldErrors.postalCode)} errorMessage={fieldErrors.postalCode} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("postalCode", e.target.value)} />
         </div>
         <aside className="account-note">
@@ -409,9 +468,10 @@ export function RegistrationForm() {
           </section>
         )}
         {message && (
-          <p className={["form-status", (invalidField || (!saved && !busy)) &&
+          <p className={["form-status", (Object.keys(fieldErrors).length > 0 || (!saved && !busy)) &&
             "form-status--error"].filter(Boolean).join(" ")}
-            role={invalidField || (!saved && !busy) ? "alert" : "status"}
+            role={Object.keys(fieldErrors).length > 0 ||
+              (!saved && !busy) ? "alert" : "status"}
             aria-live="polite">{message}</p>
         )}
       </form>
