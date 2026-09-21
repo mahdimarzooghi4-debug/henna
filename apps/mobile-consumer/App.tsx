@@ -516,7 +516,7 @@ export default function App() {
       if (incoming) setScreen("browse");
     };
     const listener = Linking.addEventListener("url", ({ url }) => {
-      if (!active) return;
+      if (!active || parseBuyerLink(url) === null) return;
       receivedLiveLink = true;
       apply(url, true);
     });
