@@ -110,6 +110,10 @@ export function RegistrationForm() {
       if (!link || link.hasAttribute("download") ||
         (link.target && link.target !== "_self") ||
         !isLeavingSellerPage(link.href, window.location.href)) return;
+      // External/full navigations have the native beforeunload warning;
+      // this confirmation is for Next's same-origin client-side links.
+      if (new URL(link.href, window.location.href).origin !==
+        window.location.origin) return;
 
       if (!window.confirm(
         "تغییرات فرم فروشگاه هنوز ذخیره نشده‌اند. با ترک صفحه ممکن است از دست بروند. ادامه می‌دهید؟",
