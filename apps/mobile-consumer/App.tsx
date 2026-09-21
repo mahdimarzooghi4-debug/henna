@@ -19,6 +19,7 @@ import { colors, space } from "./src/theme";
 import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from "./src/phone";
 import { MobileAuthClient } from "./src/mobile-auth";
 import { otpRequestTransition } from "./src/otp-request-transition";
+import { validateOtpEntry } from "./src/otp-form-input";
 
 type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited";
 type ViewState = "checking" | "phone" | "code" | "session" | "offline";
@@ -51,6 +52,9 @@ function ConsumerAuthScreen() {
   const [view, setView] = useState<ViewState>("checking");
   const [status, setStatus] = useState<FormStatus>("idle");
   const [resendNotice, setResendNotice] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const phoneInput = useRef<TextInput>(null);
+  const codeInput = useRef<TextInput>(null);
   const pending = useRef(false);
   const mounted = useRef(true);
 
@@ -76,6 +80,14 @@ function ConsumerAuthScreen() {
     return () => { mounted.current = false; };
   }, []);
 
+  useEffect(() => {
+    // Focus the actual step only once it is mounted. An acknowledged resend
+    // changes challengeId while remaining in "code", so it also refocuses
+    // the cleared six-digit field. A throttled resend changes neither.
+    if (view === "phone") phoneInput.current?.focus();
+    if (view === "code") codeInput.current?.focus();
+  }, [view, challengeId]);
+
   async function requestCode(resend = false) {
     if (pending.current ||
       (resend && (view !== "code" || !challengeId)) ||
@@ -91,6 +103,7 @@ function ConsumerAuthScreen() {
       return;
     }
     const previous = { challengeId, code };
+    setCodeError("");
     setPhone(normalized);
     pending.current = true;
     setStatus("loading");
@@ -110,11 +123,19 @@ function ConsumerAuthScreen() {
   }
 
   async function verifyCode() {
-    if (pending.current || !challengeId) return;
+    if (pending.current || view !== "code" || !challengeId) return;
+    const checked = validateOtpEntry(code);
+    setCode(checked.code);
+    if (checked.error) {
+      setStatus("invalid");
+      setCodeError(checked.error);
+      return;
+    }
+    setCodeError("");
     pending.current = true;
     setStatus("loading");
     try {
-      const result = await auth.verifyOtp(phone, challengeId, code);
+      const result = await auth.verifyOtp(phone, challengeId, checked.code);
       if (!mounted.current) return;
       if (result.status === "authenticated") {
         setCode("");
@@ -122,6 +143,7 @@ function ConsumerAuthScreen() {
         setView("session");
         setStatus("idle");
         setResendNotice("");
+        setCodeError("");
       } else {
         setStatus(result.status);
       }
@@ -144,6 +166,7 @@ function ConsumerAuthScreen() {
         setChallengeId(null);
         setStatus("idle");
         setResendNotice("");
+        setCodeError("");
       } else {
         // An outage is not proof of server-side revocation: retain SecureStore.
         setStatus("unavailable");
@@ -204,7 +227,13 @@ function ConsumerAuthScreen() {
                   شماره موبایل
                 </Text>
                 <TextInput
+                  ref={phoneInput}
                   accessibilityLabel="شماره موبایل"
+                  accessibilityHint={status === "invalid"
+                    ? "شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد."
+                    : undefined}
+                  accessibilityState={{ disabled: status === "loading" }}
+                  editable={status !== "loading"}
                   style={[styles.input, status === "invalid" && styles.invalidInput]}
                   placeholder="09xxxxxxxxx"
                   placeholderTextColor={colors.muted}
@@ -214,6 +243,7 @@ function ConsumerAuthScreen() {
                   maxLength={11}
                   value={phone}
                   onChangeText={(value) => {
+                    if (pending.current) return;
                     setPhone(value);
                     setStatus("idle");
                     setResendNotice("");
@@ -275,7 +305,13 @@ function ConsumerAuthScreen() {
                 {/* Technical OTP step only: its final visual frame needs approved Figma. */}
                 <Text style={styles.fieldLabel}>کد تأیید برای {phone}</Text>
                 <TextInput
+                  ref={codeInput}
                   accessibilityLabel="کد شش رقمی تأیید"
+                  accessibilityHint={status === "invalid"
+                    ? codeError || "کد یا اطلاعات تأیید معتبر نیست."
+                    : undefined}
+                  accessibilityState={{ disabled: status === "loading" }}
+                  editable={status !== "loading"}
                   style={[styles.input, status === "invalid" && styles.invalidInput]}
                   placeholder="xxxxxx"
                   placeholderTextColor={colors.muted}
@@ -284,7 +320,9 @@ function ConsumerAuthScreen() {
                   maxLength={6}
                   value={code}
                   onChangeText={(value) => {
+                    if (pending.current) return;
                     setCode(normalizeDigits(value));
+                    setCodeError("");
                     setStatus("idle");
                     setResendNotice("");
                   }}
@@ -309,7 +347,7 @@ function ConsumerAuthScreen() {
                     styles.formStatus, status === "invalid" && styles.formStatusError,
                   ]}>
                     {resendNotice || (status === "invalid"
-                      ? "کد یا اطلاعات تأیید معتبر نیست."
+                      ? codeError || "کد یا اطلاعات تأیید معتبر نیست."
                       : status === "limited"
                         ? "تعداد تلاش‌ها زیاد است؛ بعداً دوباره تلاش کنید."
                         : "تأیید کد در دسترس نیست؛ ورود انجام نشد.")}
@@ -333,12 +371,14 @@ function ConsumerAuthScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="ویرایش شماره موبایل"
+                  disabled={status === "loading"}
                   onPress={() => {
                     if (pending.current) return;
                     setChallengeId(null);
                     setCode("");
                     setStatus("idle");
                     setResendNotice("");
+                    setCodeError("");
                     setView("phone");
                   }}
                 >
