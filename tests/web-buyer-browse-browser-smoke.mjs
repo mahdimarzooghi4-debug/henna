@@ -103,18 +103,18 @@ async function main() {
   mode = "rich";
   await page.reload();
   await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).waitFor();
-  await page.getByRole("heading", { name: "عنوان واقعی API در تست 1" }).waitFor();
+  await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 20);
   assert.equal(await page.getByText("SECRET").count(), 0);
   assert.equal(await page.getByText("1234").count(), 0);
   assert.equal(await page.getByRole("button", { name: /خرید|سبد/ }).count(), 0);
   await page.getByRole("button", { name: "صفحهٔ بعد" }).click();
-  await page.getByRole("heading", { name: "عنوان واقعی API در تست 21" }).waitFor();
+  await page.getByRole("heading", { name: "عنوان واقعی API در تست 21", exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 1);
   assert.equal(calls.at(-1).params.page, "2");
 
   await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).click();
-  await page.getByRole("heading", { name: "عنوان واقعی API در تست 1" }).waitFor();
+  await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.page, "1");
   assert.equal(calls.at(-1).params.categoryId, categoryA);
   assert.equal(await page.getByRole("button", {
@@ -122,12 +122,12 @@ async function main() {
   }).getAttribute("aria-pressed"), "true");
   assert.equal(await page.getByRole("button", { name: "صفحهٔ بعد" }).isDisabled(), true);
   await page.getByRole("button", { name: "همه دسته‌ها" }).click();
-  await page.getByRole("heading", { name: "عنوان واقعی API در تست 2" }).waitFor();
+  await page.getByRole("heading", { name: "عنوان واقعی API در تست 2", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.categoryId, undefined);
 
   await page.locator("#buyer-search").fill("عنوان واقعی API در تست 21");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
-  await page.getByRole("heading", { name: "عنوان واقعی API در تست 21" }).waitFor();
+  await page.getByRole("heading", { name: "عنوان واقعی API در تست 21", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.search, "عنوان واقعی API در تست 21");
   assert.equal(calls.at(-1).params.page, "1");
   assert.equal(await page.locator(".buyer-product").count(), 1);
@@ -148,7 +148,7 @@ async function main() {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("#buyer-search").fill("");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
-  await page.getByRole("heading", { name: "عنوان واقعی API در تست 1" }).waitFor();
+  await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.evaluate(() =>
     document.documentElement.scrollWidth <= window.innerWidth), true);
   assert.deepEqual(errors, []);
