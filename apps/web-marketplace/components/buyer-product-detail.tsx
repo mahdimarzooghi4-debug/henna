@@ -13,7 +13,9 @@ type Detail =
   | { status: "ok"; id: string; product: BuyerProduct };
 
 /** Owner-approved Figma 480:2–480:7: published / 404 / unavailable. */
-export function BuyerProductDetail({ id }: { id: string }) {
+export function BuyerProductDetail({ id, backHref }: {
+  id: string; backHref: string;
+}) {
   const [retry, setRetry] = useState(0);
   const [state, setState] = useState<Detail>({ status: "loading", id });
   // Never paint previous product while a new route ID is being fetched.
@@ -104,7 +106,7 @@ export function BuyerProductDetail({ id }: { id: string }) {
           </p>
         </>
       )}
-      <Link href="/" className="buyer-detail-button buyer-detail-button--back">
+      <Link href={backHref} className="buyer-detail-button buyer-detail-button--back">
         بازگشت به فهرست کالاها
       </Link>
     </main>
