@@ -412,3 +412,45 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-geography-smoke.mjs
       - name: Bundle consumer app for Android
         run: npm run mobile:export:android
+
+  android-native-links:
+    # An installed, offline, CI-only Expo APK in Android Emulator.
+    # This is not Expo Go or a production-signed / store-ready release.
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      EXPO_NO_TELEMETRY: '1'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install monorepo dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate native Android project from committed Expo configuration
+        run: npx expo prebuild --platform android --no-install
+        working-directory: apps/mobile-consumer
+      - name: Compile Android APK with embedded production JS (CI-only debug signing)
+        run: ./gradlew :app:assembleRelease --no-daemon
+        working-directory: apps/mobile-consumer/android
+      - name: Enable KVM for hardware-accelerated emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test actual Android intent delivery to installed buyer UI
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          ram-size: 3072M
+          disable-animations: true
+          script: python3 tests/mobile-android-native-smoke.py
