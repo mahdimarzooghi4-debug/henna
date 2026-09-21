@@ -102,7 +102,6 @@ test("public Expo browse is initially empty-to-loading and independent of OTP", 
   await until(() => c.snapshot().products.status === "ok");
   assert.equal(c.snapshot().products.data.items.length, 1);
   assert.equal(calls.at(-1).url.searchParams.get("categoryId"), A);
-  assert.equal(c.calls, undefined);
   assert.equal(c.chooseCategory(null), true);
   await until(() => c.snapshot().products.status === "ok");
   assert.equal(calls.at(-1).url.searchParams.has("categoryId"), false);

@@ -40,10 +40,16 @@ export class BuyerBrowseController {
   private categoryRequest: AbortController | null = null;
   private productRequest: AbortController | null = null;
 
+  private readonly catalog: MobileCatalogClient;
+  private readonly publish: (state: BuyerBrowseState) => void;
+
   constructor(
-    private readonly catalog: MobileCatalogClient,
-    private readonly publish: (state: BuyerBrowseState) => void,
-  ) {}
+    catalog: MobileCatalogClient,
+    publish: (state: BuyerBrowseState) => void,
+  ) {
+    this.catalog = catalog;
+    this.publish = publish;
+  }
 
   snapshot(): BuyerBrowseState { return this.state; }
 
