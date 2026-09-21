@@ -1,6 +1,6 @@
 import type { SellerFields } from "./seller-draft-preflight";
-import { sellerFieldLabels } from "./seller-conflict";
-import { normalizeDigits } from "./normalize-digits";
+import { sellerFieldLabels } from "./seller-conflict.ts";
+import { normalizeDigits } from "./normalize-digits.ts";
 
 /** Mirrors first-stage domain length/control checks, not business approval. */
 export type SellerFieldErrors = Partial<Record<keyof SellerFields, string>>;
