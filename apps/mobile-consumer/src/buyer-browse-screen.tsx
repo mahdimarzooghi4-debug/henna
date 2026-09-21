@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MobileCatalogClient } from "./mobile-catalog.ts";
+import { BuyerProductDetailScreen } from "./buyer-product-detail-screen";
 import {
   BROWSE_PAGE_SIZE, BuyerBrowseController, initialBuyerBrowseState,
   type BuyerBrowseState,
@@ -22,6 +23,7 @@ const catalog = new MobileCatalogClient(
 
 /** Approved Figma buyer mobile frames 476:4 (empty), 478:22 (API-backed). */
 export function BuyerBrowseScreen({ onLogin }: { onLogin: () => void }) {
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [browse, setBrowse] = useState<BuyerBrowseState>(initialBuyerBrowseState);
   const [controller] = useState(() =>
     new BuyerBrowseController(catalog, setBrowse));
@@ -44,6 +46,11 @@ export function BuyerBrowseScreen({ onLogin }: { onLogin: () => void }) {
 
   const products = browse.products;
   const categories = browse.categories;
+  // Keep the mounted browse coordinator and its real search/filter/page state.
+  if (detailId !== null) return (
+    <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
+      onBack={() => setDetailId(null)} />
+  );
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
@@ -190,7 +197,10 @@ export function BuyerBrowseScreen({ onLogin }: { onLogin: () => void }) {
               <>
                 <View style={styles.productsPanel}>
                   {products.data.items.map((product) => (
-                    <View key={product.id} style={styles.productCard}>
+                    <Pressable key={product.id} style={styles.productCard}
+                      accessibilityRole="button"
+                      accessibilityLabel={`جزئیات ${product.name}`}
+                      onPress={() => setDetailId(product.id)}>
                       <Text style={styles.productTitle} accessibilityRole="header">
                         {product.name}
                       </Text>
@@ -202,7 +212,8 @@ export function BuyerBrowseScreen({ onLogin }: { onLogin: () => void }) {
                           {product.description}
                         </Text>
                       ) : null}
-                    </View>
+                      <Text style={styles.productDetailLink}>مشاهدهٔ جزئیات</Text>
+                    </Pressable>
                   ))}
                 </View>
                 <View style={styles.paging}>
@@ -342,6 +353,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream, borderRadius: 12, gap: 7,
   },
   productKind: { color: colors.muted, fontSize: 14, ...rtl },
+  productDetailLink: { color: colors.teal, fontSize: 14, fontWeight: "700", ...rtl },
   productDescription: { color: colors.muted, fontSize: 13, lineHeight: 23, ...rtl },
   paging: { gap: 10, marginTop: 20 },
   pagingLabel: { color: colors.muted, fontSize: 14, ...rtl },
