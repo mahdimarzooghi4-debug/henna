@@ -75,7 +75,7 @@ async function main() {
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   await page.goto(base);
-  await page.getByRole("link", { name: "جزئیات " + published.name }).click();
+  await page.getByRole("link", { name: published.name, exact: true }).click();
   await page.getByRole("heading", { name: published.name }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/products/" + ID);
   assert.equal(await page.getByText("شرح منتشرشدهٔ CI").count(), 1);
@@ -84,7 +84,7 @@ async function main() {
   assert.equal(await page.getByText("1200").count(), 0);
   assert.equal(await page.getByRole("button", { name: /سبد|خرید/ }).count(), 0);
   await page.getByRole("link", { name: "بازگشت به فهرست کالاها" }).click();
-  await page.getByRole("link", { name: "جزئیات " + published.name }).waitFor();
+  await page.getByRole("link", { name: published.name, exact: true }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/");
 
   await page.goto(base + "/products/" + OTHER);
