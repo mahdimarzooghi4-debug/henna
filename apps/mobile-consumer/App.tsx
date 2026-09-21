@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import {
   Alert,
+  AppState,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -20,9 +21,12 @@ import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from ".
 import { MobileAuthClient } from "./src/mobile-auth";
 import { otpRequestTransition } from "./src/otp-request-transition";
 import { validateOtpEntry } from "./src/otp-form-input";
+import {
+  shouldRecheckOnForeground, type MobileAuthView,
+} from "./src/session-foreground";
 
 type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited";
-type ViewState = "checking" | "phone" | "code" | "session" | "offline";
+type ViewState = MobileAuthView;
 
 const logo = require("./assets/hana-app-logo.png");
 const backIcon = require("./assets/back.png");
@@ -57,6 +61,8 @@ function ConsumerAuthScreen() {
   const codeInput = useRef<TextInput>(null);
   const pending = useRef(false);
   const mounted = useRef(true);
+  const viewRef = useRef<ViewState>("checking");
+  const appState = useRef(AppState.currentState);
 
   async function refreshSession() {
     if (pending.current) return;
@@ -66,6 +72,15 @@ function ConsumerAuthScreen() {
     try {
       const result = await auth.session();
       if (!mounted.current) return;
+      if (result.status === "guest") {
+        // After remote revocation/expiry, remove the last phone and OTP
+        // from React memory; SecureStore deletion is done by auth.session.
+        setPhone("");
+        setCode("");
+        setChallengeId(null);
+        setResendNotice("");
+        setCodeError("");
+      }
       setView(result.status === "authenticated" ? "session"
         : result.status === "guest" ? "phone" : "offline");
       setStatus(result.status === "unavailable" ? "unavailable" : "idle");
@@ -78,6 +93,25 @@ function ConsumerAuthScreen() {
     mounted.current = true;
     void refreshSession();
     return () => { mounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const previous = appState.current;
+      appState.current = nextState;
+      if (!mounted.current ||
+        !shouldRecheckOnForeground(
+          previous, nextState, viewRef.current, pending.current,
+        )) return;
+      // Hide an unverified old session immediately on return. The native
+      // transport handles 401 vs network failure and SecureStore integrity.
+      void refreshSession();
+    });
+    return () => subscription.remove();
   }, []);
 
   useEffect(() => {
@@ -138,6 +172,7 @@ function ConsumerAuthScreen() {
       const result = await auth.verifyOtp(phone, challengeId, checked.code);
       if (!mounted.current) return;
       if (result.status === "authenticated") {
+        setPhone("");
         setCode("");
         setChallengeId(null);
         setView("session");
@@ -421,6 +456,16 @@ function ConsumerAuthScreen() {
                 <Text style={styles.formStatus}>
                   اعتبار نشست از API حنا استعلام شده است؛ صفحه اصلی هنوز ساخته نشده است.
                 </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="بررسی دوباره اعتبار نشست"
+                  disabled={status === "loading"}
+                  onPress={() => void refreshSession()}
+                >
+                  <Text style={[styles.sellerLink, styles.secondaryLink]}>
+                    بررسی دوباره اعتبار نشست
+                  </Text>
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="خروج از حساب"
