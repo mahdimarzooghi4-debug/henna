@@ -352,6 +352,8 @@ jobs:
         run: node tests/web-geography-gateway-smoke.mjs
       - name: Test buyer browse public catalog parsing and query policy
         run: node --experimental-strip-types --test tests/web-buyer-browse-smoke.mjs
+      - name: Test web public product detail DTO and ID policy
+        run: node --experimental-strip-types --test tests/web-buyer-product-detail-smoke.mjs
       - name: Install CI-only Chromium for actual frontend interactions
         shell: bash
         run: |
@@ -368,6 +370,8 @@ jobs:
         run: node tests/web-auth-visibility-browser-smoke.mjs
       - name: Browser test approved buyer homepage and public catalog states
         run: node tests/web-buyer-browse-browser-smoke.mjs
+      - name: Browser test approved public product detail states
+        run: node tests/web-buyer-product-detail-browser-smoke.mjs
 
   mobile:
     runs-on: ubuntu-latest
@@ -396,6 +400,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-catalog-smoke.mjs
       - name: Test shipping Expo buyer browse controller against public catalog (CI-only HTTP)
         run: node --experimental-strip-types --test tests/mobile-buyer-browse-smoke.mjs
+      - name: Test shipping Expo public product detail states and cancellation
+        run: node --experimental-strip-types --test tests/mobile-buyer-product-detail-smoke.mjs
       - name: Test public Expo geography client (CI-only mocked transport)
         run: node --experimental-strip-types --test tests/mobile-geography-smoke.mjs
       - name: Bundle consumer app for Android
