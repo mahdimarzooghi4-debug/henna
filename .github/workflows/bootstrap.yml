@@ -346,6 +346,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-seller-field-merge-smoke.mjs
       - name: Test seller input error recovery and unsaved draft guard
         run: node --experimental-strip-types --test tests/web-seller-edit-safety-smoke.mjs
+      - name: Test optional seller city reference via genuine public geography gateway
+        run: node --experimental-strip-types --test tests/web-seller-location-reference-smoke.mjs
       - name: Verify public geography Next gateway over isolated CI HTTPS
         run: node tests/web-geography-gateway-smoke.mjs
 
