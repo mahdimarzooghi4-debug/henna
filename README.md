@@ -64,6 +64,8 @@
 
 **[Frontend 020 — پیوند عمیق اختصاصی کاتالوگ عمومی در Expo](docs/implementation/HANA-FRONTEND-020.md).** اپ خریدار لینک‌های `hana://browse?...` و `hana://products/<uuid>?...` را با scheme ثبت‌شدهٔ قبلی دریافت می‌کند؛ شروع سرد و لینک در اپ باز، همان فیلتر/جست‌وجو/صفحه را بدون نمایش نتیجهٔ کهنه بازسازی می‌کنند. شناسه/مسیر/مبدأ مشکوک رد می‌شود و OTP/نشست عمومی در لینک قرار ندارد. CI parser، کاتالوگ/AbortController، TypeScript و Android bundle را می‌آزماید؛ **تحویل واقعی سیستم‌عامل روی دستگاه و HTTPS App Links هنوز آزموده/ثبت نشده‌اند**.
 
+**[Frontend 021 — نصب APK و آزمون پیوندهای خریدار در شبیه‌ساز واقعی Android](docs/implementation/HANA-FRONTEND-021.md).** علاوه بر خروجی JavaScript Expo، CI پروژهٔ native را از app.json تولید، APK با JS درون‌گذاری‌شده می‌سازد و روی Android Emulator نصب می‌کند؛ intent scheme واقعی `hana://` را برای cold/warm detail، back به مرور، ورودی نامعتبر و cold browse از UI native می‌آزماید. این آزمون **شبیه‌ساز Android** است، نه دستگاه فیزیکی، iOS، امضای انتشار یا HTTPS Verified App Links.
+
 **[Catalog 001 — API واقعی دسته‌بندی و هویت کالا/خدمت قابل‌نمایش](docs/implementation/HANA-CATALOG-001.md).** schema و migration مستقل کاتالوگ، فیلتر انتشار و جست‌وجو/صفحه‌بندی عمومی اضافه شدند؛ هیچ قیمت، موجودی، پیشنهاد فروشنده، محتوای نمایشی ساختگی یا صفحهٔ جدید بدون فریم فیگما منتشر نشده است.
 
 **[Catalog 002 — اتصال امن API کاتالوگ به درگاه وب خریدار](docs/implementation/HANA-CATALOG-002.md).** مسیرهای عمومی خواندن دسته، فهرست و جزئیات در Next.js به API واقعی متصل شدند؛ 400/404/503، اعتبارسنجی، عدم نشت bearer/cookie و فیلدهای قیمت ساختگی تست شده‌اند. در زمان Catalog 002 هنوز صفحهٔ لیست/جزئیات مصوب نبود؛ لیست در Frontend 015/016 پیاده شد، جزئیات عمومی در Frontend 018 ساخته شد و پیشنهاد قابل خرید هنوز منتشر نشده است.

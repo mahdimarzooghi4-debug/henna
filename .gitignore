@@ -10,6 +10,9 @@ node_modules/
 .next/
 .expo/
 .expo-export/
+# Generated Expo native projects are ephemeral until explicit native ownership.
+/apps/mobile-consumer/android/
+/apps/mobile-consumer/ios/
 dist/
 out/
 *.tsbuildinfo
