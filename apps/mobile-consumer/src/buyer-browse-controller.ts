@@ -17,12 +17,20 @@ export type BuyerBrowseState = {
   page: number;
 };
 
-export const initialBuyerBrowseState = (): BuyerBrowseState => ({
+export type BuyerBrowseLocation = {
+  categoryId: string | null;
+  search: string;
+  page: number;
+};
+
+export const initialBuyerBrowseState = (
+  location: BuyerBrowseLocation = { categoryId: null, search: "", page: 1 },
+): BuyerBrowseState => ({
   categories: { status: "loading" },
   products: { status: "loading" },
-  categoryId: null,
-  search: "",
-  page: 1,
+  categoryId: location.categoryId,
+  search: location.search,
+  page: location.page,
 });
 
 export function validBrowseSearch(text: string): boolean {
@@ -35,7 +43,7 @@ export function validBrowseSearch(text: string): boolean {
  * Late results (including malformed responses) can never restore stale UI.
  */
 export class BuyerBrowseController {
-  private state: BuyerBrowseState = initialBuyerBrowseState();
+  private state: BuyerBrowseState;
   private active = false;
   private categoryRequest: AbortController | null = null;
   private productRequest: AbortController | null = null;
@@ -46,9 +54,11 @@ export class BuyerBrowseController {
   constructor(
     catalog: MobileCatalogClient,
     publish: (state: BuyerBrowseState) => void,
+    initial?: BuyerBrowseLocation,
   ) {
     this.catalog = catalog;
     this.publish = publish;
+    this.state = initialBuyerBrowseState(initial);
   }
 
   snapshot(): BuyerBrowseState { return this.state; }
@@ -122,6 +132,25 @@ export class BuyerBrowseController {
       return;
     }
     this.update({ products: { status: "ok", data: result.data } });
+  }
+
+  /**
+   * Apply a validated incoming custom-scheme link without treating the old
+   * page as a result of the new query. A removed category cannot be selected
+   * when the current published categories response is already known.
+   */
+  restoreLocation(location: BuyerBrowseLocation): void {
+    if (!this.active) return;
+    const categoryId = location.categoryId !== null &&
+      this.state.categories.status === "ok" &&
+      !this.state.categories.data.some(
+        item => item.id.toLowerCase() === location.categoryId,
+      ) ? null : location.categoryId;
+    const page = categoryId === location.categoryId ? location.page : 1;
+    this.productRequest?.abort();
+    this.update({ categoryId, search: location.search, page,
+      products: { status: "loading" } });
+    void this.refreshProducts();
   }
 
   chooseCategory(id: string | null): boolean {
