@@ -67,7 +67,7 @@ test("valid 200 empty reference is different from 503 and malformed 200", async 
     reply(200, { items: [{ ...province, state: "SELECTABLE" }] },
       "text/plain"),
     new Error("offline"),
-    reply(200, { items: [city] }),
+    reply(200, { items: [{ ...province, id: "invalid" }] }),
   ]);
   assert.deepEqual(await getSellerReferenceProvinces(fetchFn),
     { status: "ok", items: [] });
@@ -79,7 +79,7 @@ test("valid 200 empty reference is different from 503 and malformed 200", async 
     { status: "unavailable" });
   assert.deepEqual(await getSellerReferenceProvinces(fetchFn),
     { status: "unavailable" },
-    "city shaped record cannot become a province option");
+    "invalid identity cannot become a province option");
 });
 
 test("cross-province city, duplicate ID/slug, bad names and extra-long lists fail closed", () => {
