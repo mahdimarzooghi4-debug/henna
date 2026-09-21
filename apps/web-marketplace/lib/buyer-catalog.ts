@@ -72,3 +72,27 @@ export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage |
     items, page: requestedPage, pageSize: BUYER_PAGE_SIZE, total: x.total,
   };
 }
+
+/** A product identity is not a seller offer, price or stock claim. */
+export function validBuyerProductId(value: unknown): value is string {
+  return id(value);
+}
+
+/** Do not reuse listing data as proof that a detail lookup succeeded. */
+export function parseBuyerProduct(
+  raw: unknown, requestedId: string,
+): BuyerProduct | null {
+  const x = object(raw);
+  if (!validBuyerProductId(requestedId) || !x ||
+    !id(x.id) || x.id.toLowerCase() !== requestedId.toLowerCase() ||
+    !id(x.categoryId) || !words(x.name, 200) ||
+    (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
+    (x.description !== null && x.description !== undefined &&
+      (typeof x.description !== "string" || x.description.length > 2000)))
+    return null;
+  return {
+    id: x.id, categoryId: x.categoryId, name: x.name,
+    kind: x.kind, description: typeof x.description === "string"
+      ? x.description : null,
+  };
+}

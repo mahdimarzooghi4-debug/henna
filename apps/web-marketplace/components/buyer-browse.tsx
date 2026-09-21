@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, parseBuyerCategories,
   parseBuyerPage, validBuyerSearch,
@@ -168,7 +169,7 @@ export function BuyerBrowse() {
               <ul className="buyer-products" aria-label="فهرست کالاهای منتشرشده">
                 {current.data.items.map((item) => (
                   <li className="buyer-product" key={item.id}>
-                    <h3>{item.name}</h3>
+                    <h3><Link className="buyer-product__link" href={`/products/${item.id}`}>{item.name}</Link></h3>
                     <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}</p>
                     {item.description && <p>{item.description}</p>}
                   </li>

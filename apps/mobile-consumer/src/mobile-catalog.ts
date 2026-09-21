@@ -167,8 +167,8 @@ export class MobileCatalogClient {
     return this.get("/api/v1/catalog/products?" + params, products, false, signal);
   }
 
-  detail(id: string): Promise<CatalogResult<CatalogProduct>> {
+  detail(id: string, signal?: AbortSignal): Promise<CatalogResult<CatalogProduct>> {
     if (!validId(id)) return Promise.resolve({ status: "invalid" });
-    return this.get("/api/v1/catalog/products/" + id, product, true);
+    return this.get("/api/v1/catalog/products/" + id, product, true, signal);
   }
 }

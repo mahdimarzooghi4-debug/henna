@@ -451,3 +451,46 @@ a { color: inherit; }
   .buyer-products-status { min-height: 197px; }
   .buyer-products-status h3 { font-size: 19px; }
 }
+
+
+/* Owner-approved Figma product-detail states 480:2–480:7. No priced offer. */
+.buyer-product__link { color: inherit; text-decoration: none; }
+.buyer-product__link:hover { text-decoration: underline; }
+.buyer-detail-main {
+  width: min(1280px, calc(100% - 32px)); margin: 0 auto;
+  padding: 40px 0 80px; text-align: right;
+}
+.buyer-detail-eyebrow { margin: 0 0 10px; color: var(--hana-terracotta); font-size: 14px; font-weight: 700; }
+.buyer-detail-main h1 { font-size: 34px; margin: 0 0 8px; line-height: 1.6; }
+.buyer-detail-intro { margin: 0 0 24px; color: var(--hana-muted); font-size: 17px; }
+.buyer-detail-card {
+  background: var(--hana-surface); border: 1px solid var(--hana-border);
+  border-radius: 18px; padding: 25px 28px;
+  min-height: 240px; overflow-wrap: anywhere;
+}
+.buyer-detail-card--status { padding-top: 30px; }
+.buyer-detail-card h2 { font-size: 28px; color: var(--hana-teal); margin: 0 0 18px; line-height: 1.7; }
+.buyer-detail-card--status h2 { font-size: 25px; }
+.buyer-detail-card p { margin: 0 0 18px; }
+.buyer-detail-card .buyer-detail-error { color: #a33e30; }
+.buyer-detail-card__eyebrow { font-size: 14px; font-weight: 700; color: var(--hana-terracotta); }
+.buyer-detail-kind { font-size: 16px; font-weight: 700; color: var(--hana-charcoal); }
+.buyer-detail-category, .buyer-detail-description { font-size: 16px; color: var(--hana-muted); white-space: pre-wrap; }
+.buyer-detail-category bdi { font-size: 14px; display: inline-block; }
+.buyer-detail-disclosure { background: var(--hana-pale-teal); color: var(--hana-teal); border-radius: 14px; padding: 18px 20px; margin: 24px 0; }
+.buyer-detail-button { min-height: 52px; border: 1px solid var(--hana-teal); border-radius: 12px; padding: 12px 20px; display: block; width: fit-content; max-width: 100%; font-weight: 700; font-size: 16px; cursor: pointer; text-decoration: none; text-align: right; }
+.buyer-detail-button--primary { background: var(--hana-teal); color: white; margin: 24px 0; }
+.buyer-detail-button--back { background: var(--hana-surface); color: var(--hana-teal); margin: 24px 0; }
+.buyer-detail-button--back:hover { background: var(--hana-pale-teal); }
+@media (max-width: 640px) {
+  .buyer-detail-main { padding-top: 25px; padding-bottom: 60px; }
+  .buyer-detail-eyebrow { font-size: 12px; }
+  .buyer-detail-main h1 { font-size: 24px; }
+  .buyer-detail-intro { font-size: 14px; }
+  .buyer-detail-card { border-radius: 16px; padding: 16px; min-height: 190px; }
+  .buyer-detail-card h2 { font-size: 19px; }
+  .buyer-detail-card--status { padding-top: 16px; }
+  .buyer-detail-disclosure { font-size: 13px; padding: 13px 15px; }
+  .buyer-detail-category, .buyer-detail-description { font-size: 14px; }
+  .buyer-detail-button { width: 100%; min-height: 54px; font-size: 14px; }
+}
