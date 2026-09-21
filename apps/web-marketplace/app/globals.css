@@ -82,6 +82,13 @@ a { color: inherit; }
 .field__input::placeholder { color: var(--hana-muted); opacity: 1; }
 .field__input:focus { outline: none; border-color: var(--hana-teal); box-shadow: 0 0 0 3px #0f5b5a22; }
 .field__input[aria-invalid="true"] { border-color: var(--hana-terracotta); }
+.field__error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #a33e30;
+  overflow-wrap: anywhere;
+}
 .field__input--phone { direction: ltr; text-align: right; }
 .auth-card .field__input { height: 58px; border-radius: 12px; }
 .primary-button {
@@ -147,6 +154,15 @@ a { color: inherit; }
   padding: 30px 39px 24px;
 }
 .seller-card h2 { font-size: 26px; margin: 0 0 16px; line-height: 1.8; }
+.seller-unsaved-note {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--hana-beige);
+  border-radius: 10px;
+  background: var(--hana-cream);
+  font-size: 14px;
+  color: var(--hana-teal);
+}
 .seller-fields { display: grid; gap: 20px; }
 .seller-card .field__label { font-size: 14px; }
 .seller-card .account-note { margin-top: 30px; min-height: 76px; display: flex; align-items: center; }
