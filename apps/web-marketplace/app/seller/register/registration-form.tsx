@@ -280,25 +280,25 @@ export function RegistrationForm() {
       <form noValidate onSubmit={handleSubmit}>
         <div className="seller-fields">
           <FormField id="store-name" label="نام فروشگاه" placeholder="مثلاً سوپرمارکت بهار"
-            maxLength={120} value={fields.storeName} error={invalidField === "storeName"} required
+            maxLength={120} value={fields.storeName} error={Boolean(fieldErrors.storeName)} errorMessage={fieldErrors.storeName} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("storeName", e.target.value)} />
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
-            maxLength={120} autoComplete="name" value={fields.ownerName} error={invalidField === "ownerName"} required
+            maxLength={120} autoComplete="name" value={fields.ownerName} error={Boolean(fieldErrors.ownerName)} errorMessage={fieldErrors.ownerName} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("ownerName", e.target.value)} />
           <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
-            className="field__input--phone" value={fields.phone} error={invalidField === "phone"} required
+            className="field__input--phone" value={fields.phone} error={Boolean(fieldErrors.phone)} errorMessage={fieldErrors.phone} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("phone", e.target.value)} />
           <FormField id="city" label="شهر / منطقه" placeholder="شهر و محدوده فعالیت"
-            maxLength={120} value={fields.city} error={invalidField === "city"} required
+            maxLength={120} value={fields.city} error={Boolean(fieldErrors.city)} errorMessage={fieldErrors.city} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("city", e.target.value)} />
           <FormField id="store-address" label="آدرس فروشگاه" placeholder="نشانی کامل فروشگاه"
-            maxLength={500} autoComplete="street-address" value={fields.address} error={invalidField === "address"} required
+            maxLength={500} autoComplete="street-address" value={fields.address} error={Boolean(fieldErrors.address)} errorMessage={fieldErrors.address} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("address", e.target.value)} />
           <FormField id="postal-code" label="کدپستی" placeholder="کدپستی ۱۰ رقمی"
             inputMode="numeric" autoComplete="postal-code" maxLength={10}
             className="field__input--phone" value={fields.postalCode}
-            error={invalidField === "postalCode"} required
+            error={Boolean(fieldErrors.postalCode)} errorMessage={fieldErrors.postalCode} required
             disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("postalCode", e.target.value)} />
         </div>
         <aside className="account-note">
@@ -409,9 +409,10 @@ export function RegistrationForm() {
           </section>
         )}
         {message && (
-          <p className={["form-status", (invalidField || (!saved && !busy)) &&
+          <p className={["form-status", (Object.keys(fieldErrors).length > 0 || (!saved && !busy)) &&
             "form-status--error"].filter(Boolean).join(" ")}
-            role={invalidField || (!saved && !busy) ? "alert" : "status"}
+            role={Object.keys(fieldErrors).length > 0 ||
+              (!saved && !busy) ? "alert" : "status"}
             aria-live="polite">{message}</p>
         )}
       </form>
