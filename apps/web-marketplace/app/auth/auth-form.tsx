@@ -326,6 +326,10 @@ export function AuthForm({ returnTo }: {
               ادامه ثبت‌نام فروشگاه
             </Link>
           )}
+          <button className="auth-card__secondary" type="button" disabled={busy}
+            onClick={checkSession}>
+            بررسی دوباره اعتبار نشست
+          </button>
           <button className="primary-button" type="button" disabled={busy}
             onClick={logout}>
             {busy ? "در حال خروج…" : "خروج از حساب"}
