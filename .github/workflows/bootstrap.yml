@@ -471,6 +471,8 @@ jobs:
       - name: Generate native Android project from committed Expo configuration
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile-consumer
+      - name: Provision Android SDK command-line tools and licenses
+        uses: android-actions/setup-android@v3
       - name: Install and verify Expo-pinned Android NDK before Gradle
         shell: bash
         run: |
