@@ -11,9 +11,9 @@ const good = { categoryId: category, search: "دستباف & کتان", page: 2 
 
 test("canonical navigation is always same-origin and carries only public state", () => {
   const query = buyerBrowseQuery(good);
-  assert.equal(query,
-    "categoryId=" + category + "&search=" +
-    "دستباف+%26+کتان&page=2");
+  assert.equal(query, new URLSearchParams({
+    categoryId: category, search: "دستباف & کتان", page: "2",
+  }).toString());
   assert.equal(buyerBrowseHref(good), "/?" + query);
   assert.equal(buyerDetailHref(product, good),
     "/products/" + product + "?" + query);
