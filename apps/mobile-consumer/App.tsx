@@ -17,6 +17,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, space } from "./src/theme";
+import { BuyerBrowseScreen } from "./src/buyer-browse-screen";
 import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from "./src/phone";
 import { MobileAuthClient } from "./src/mobile-auth";
 import { otpRequestTransition } from "./src/otp-request-transition";
@@ -49,7 +50,7 @@ const auth = new MobileAuthClient(
   __DEV__,
 );
 
-function ConsumerAuthScreen() {
+function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -235,12 +236,7 @@ function ConsumerAuthScreen() {
               accessibilityRole="button"
               accessibilityLabel="بازگشت به فروشگاه"
               style={styles.backTouch}
-              onPress={() =>
-                Alert.alert(
-                  "فروشگاه حنا",
-                  "صفحه اصلی اپ مصرف‌کننده هنوز در این مرحله ساخته نشده است."
-                )
-              }
+              onPress={onBrowse}
             >
               <Image source={backIcon} style={styles.backIcon} resizeMode="contain" />
             </Pressable>
@@ -454,7 +450,7 @@ function ConsumerAuthScreen() {
               <>
                 <Text style={styles.fieldLabel}>نشست شما فعال است.</Text>
                 <Text style={styles.formStatus}>
-                  اعتبار نشست از API حنا استعلام شده است؛ صفحه اصلی هنوز ساخته نشده است.
+                  اعتبار نشست از API حنا استعلام شده است. مرور کاتالوگ برای همه در صفحهٔ اصلی در دسترس است.
                 </Text>
                 <Pressable
                   accessibilityRole="button"
@@ -496,9 +492,12 @@ function ConsumerAuthScreen() {
 }
 
 export default function App() {
+  const [screen, setScreen] = useState<"browse" | "auth">("browse");
   return (
     <SafeAreaProvider>
-      <ConsumerAuthScreen />
+      {screen === "browse"
+        ? <BuyerBrowseScreen onLogin={() => setScreen("auth")} />
+        : <ConsumerAuthScreen onBrowse={() => setScreen("browse")} />}
     </SafeAreaProvider>
   );
 }

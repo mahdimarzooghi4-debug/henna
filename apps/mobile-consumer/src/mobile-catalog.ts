@@ -104,10 +104,14 @@ export class MobileCatalogClient {
   private async get<T>(
     path: string, parse: (raw: unknown) => T | null,
     canBeMissing = false,
+    signal?: AbortSignal,
   ): Promise<CatalogResult<T>> {
     if (!this.base) return { status: "unavailable" };
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const abort = () => controller.abort();
+    if (signal?.aborted) controller.abort();
+    signal?.addEventListener("abort", abort, { once: true });
+    const timeout = setTimeout(abort, 8000);
     try {
       const response = await this.fetchFn(this.base + path, {
         method: "GET",
@@ -135,14 +139,15 @@ export class MobileCatalogClient {
       return { status: "unavailable" };
     } finally {
       clearTimeout(timeout);
+      signal?.removeEventListener("abort", abort);
     }
   }
 
-  categories(): Promise<CatalogResult<CatalogCategory[]>> {
-    return this.get("/api/v1/catalog/categories", categories);
+  categories(signal?: AbortSignal): Promise<CatalogResult<CatalogCategory[]>> {
+    return this.get("/api/v1/catalog/categories", categories, false, signal);
   }
 
-  list(query: CatalogQuery = {}): Promise<CatalogResult<CatalogPage>> {
+  list(query: CatalogQuery = {}, signal?: AbortSignal): Promise<CatalogResult<CatalogPage>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
     const categoryId = query.categoryId;
@@ -159,7 +164,7 @@ export class MobileCatalogClient {
     });
     if (categoryId !== undefined) params.set("categoryId", categoryId);
     if (search) params.set("search", search);
-    return this.get("/api/v1/catalog/products?" + params, products);
+    return this.get("/api/v1/catalog/products?" + params, products, false, signal);
   }
 
   detail(id: string): Promise<CatalogResult<CatalogProduct>> {
