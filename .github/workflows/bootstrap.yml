@@ -382,6 +382,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-auth-smoke.mjs
       - name: Test Expo OTP field feedback and six-digit submission guard
         run: node --experimental-strip-types --test tests/mobile-otp-entry-smoke.mjs
+      - name: Test Expo foreground session revalidation and SecureStore fail closed
+        run: node --experimental-strip-types --test tests/mobile-session-resume-smoke.mjs
       - name: Test public mobile buyer catalog client (CI-only mocked transport)
         run: node --experimental-strip-types --test tests/mobile-catalog-smoke.mjs
       - name: Test public Expo geography client (CI-only mocked transport)
