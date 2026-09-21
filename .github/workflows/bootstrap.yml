@@ -454,3 +454,97 @@ jobs:
           ram-size: 3072M
           disable-animations: true
           script: python3 tests/mobile-android-native-smoke.py
+
+  ios-native-links:
+    # Expo SDK 57 requires Xcode 26.4+ (macOS 26 runner).
+    # Unsigned simulator .app; this is not a physical-device or App Store build.
+    runs-on: macos-26
+    timeout-minutes: 65
+    env:
+      EXPO_NO_TELEMETRY: '1'
+      MAESTRO_CLI_NO_ANALYTICS: '1'
+      CI: '1'
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install monorepo dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate native iOS project from committed Expo configuration
+        run: npx expo prebuild --platform ios --no-install
+        working-directory: apps/mobile-consumer
+      - name: Install iOS native dependencies
+        run: pod install
+        working-directory: apps/mobile-consumer/ios
+      - name: Build embedded-JS Release iOS Simulator app without signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          workspace=$(find apps/mobile-consumer/ios -maxdepth 1 -name '*.xcworkspace' -print -quit)
+          test -n "$workspace"
+          scheme=$(basename "$workspace" .xcworkspace)
+          set +e
+          xcodebuild -workspace "$workspace" -scheme "$scheme" \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath /tmp/hana-ios-derived \
+            CODE_SIGNING_ALLOWED=NO build > /tmp/hana-ios-build.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            tail -n 180 /tmp/hana-ios-build.log
+            exit "$status"
+          fi
+          find /tmp/hana-ios-derived/Build/Products/Release-iphonesimulator \
+            -maxdepth 1 -name '*.app' -type d -print
+      - name: Boot an available iOS 26 iPhone Simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available -j > /tmp/hana-ios-simulators.json
+          id=$(python3 - <<'PY'
+          import json
+          with open("/tmp/hana-ios-simulators.json") as f:
+              devices = json.load(f)["devices"]
+          for runtime, entries in sorted(devices.items(), reverse=True):
+              if not runtime.startswith("com.apple.CoreSimulator.SimRuntime.iOS-26"):
+                  continue
+              for device in entries:
+                  if device["name"].startswith("iPhone") and device["state"] == "Shutdown":
+                      print(device["udid"])
+                      raise SystemExit
+          raise SystemExit("No bootable iOS 26 iPhone Simulator in runner")
+          PY
+          )
+          echo "HANA_IOS_SIM_ID=$id" >> "$GITHUB_ENV"
+          xcrun simctl boot "$id"
+          xcrun simctl bootstatus "$id" -b
+      - name: Install pinned Maestro native UI runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            https://github.com/mobile-dev-inc/maestro/releases/download/cli-2.7.0/maestro.zip \
+            --output /tmp/hana-maestro.zip
+          unzip -q /tmp/hana-maestro.zip -d /tmp/hana-maestro
+          echo "/tmp/hana-maestro/maestro/bin" >> "$GITHUB_PATH"
+      - name: Test actual installed iOS OS URI delivery and buyer UI
+        shell: bash
+        run: bash tests/mobile-ios-native-smoke.sh
+      - name: Upload native failure diagnostics (no signing keys)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-native-diagnostics
+          path: |
+            /tmp/hana-ios-build.log
+            ~/.maestro/tests/
+          if-no-files-found: ignore
+          retention-days: 2
