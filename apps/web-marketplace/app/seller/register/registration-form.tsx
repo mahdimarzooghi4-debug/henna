@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../../components/form-field";
-import { normalizeDigits } from "../../../lib/normalize-digits";
+import {
+  hasUnsavedSellerEdits, isLeavingSellerPage, validateSellerDraft,
+  type SellerFieldErrors,
+} from "../../../lib/seller-edit-safety";
 import {
   emptySellerFields, loadSellerDraft, sellerFieldKeys,
   type SellerFields,
@@ -33,7 +36,7 @@ export function RegistrationForm() {
   // Last CONFIRMED server values, not the current text in this tab.
   // Needed to distinguish independent field edits from overlapping ones.
   const [baseline, setBaseline] = useState<SellerFields>(emptySellerFields);
-  const [invalidField, setInvalidField] = useState<keyof SellerFields | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<SellerFieldErrors>({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -81,7 +84,11 @@ export function RegistrationForm() {
     if (access !== "signedIn" || busy || conflict) return;
     setSaved(false);
     setFields((current) => ({ ...current, [field]: value }));
-    setInvalidField(null);
+    setFieldErrors((current) => {
+      const changed = { ...current };
+      delete changed[field];
+      return changed;
+    });
     setMessage("");
   }
 
@@ -130,7 +137,7 @@ export function RegistrationForm() {
     setBaseline(conflict.fields);
     setRevision(selected.revision);
     setSaved(selected.saved);
-    setInvalidField(null);
+    setFieldErrors({});
     setConflict(null);
     setMessage("آخرین نسخهٔ ذخیره‌شدهٔ سرور بارگذاری شد؛ تغییرات ذخیره‌نشدهٔ این پنجره کنار گذاشته شدند.");
   }
@@ -144,7 +151,7 @@ export function RegistrationForm() {
     setBaseline(conflict.fields);
     setRevision(selected.revision);
     setSaved(selected.saved);
-    setInvalidField(null);
+    setFieldErrors({});
     setConflict(null);
     setMessage("متن این پنجره نگه داشته شد. هنوز ذخیره نشده است؛ آن را بررسی کنید و برای ذخیرهٔ صریح دکمهٔ فرم را بزنید.");
   }
@@ -173,7 +180,7 @@ export function RegistrationForm() {
     setBaseline(conflict.fields);
     setRevision(result.revision);
     setSaved(result.saved);
-    setInvalidField(null);
+    setFieldErrors({});
     setConflict(null);
     setMessage(result.saved
       ? "ترکیب انتخابی با نسخهٔ ذخیره‌شده برابر است؛ نیازی به ذخیرهٔ دوباره نیست."
@@ -183,31 +190,24 @@ export function RegistrationForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || access !== "signedIn" || conflict) return;
-    const next = Object.fromEntries(
-      sellerFieldKeys.map((key) => [key, fields[key].trim()]),
-    ) as SellerFields;
-    const phone = normalizeDigits(next.phone);
-    const postalCode = normalizeDigits(next.postalCode);
-    next.phone = phone;
-    next.postalCode = postalCode;
+    const validation = validateSellerDraft(fields);
+    const next = validation.values;
     setFields(next);
-    const missing = sellerFieldKeys.find((key) => !next[key].trim());
-    if (missing) {
-      setInvalidField(missing);
-      setMessage("لطفاً همه اطلاعات اولیه فروشگاه را تکمیل کنید.");
+    if (validation.firstInvalid) {
+      setFieldErrors(validation.errors);
+      setMessage("لطفاً فیلدهای مشخص‌شده را اصلاح کنید؛ اطلاعات ذخیره نشد.");
+      const firstInputId: Record<keyof SellerFields, string> = {
+        storeName: "store-name",
+        ownerName: "owner-name",
+        phone: "seller-phone",
+        city: "city",
+        address: "store-address",
+        postalCode: "postal-code",
+      };
+      document.getElementById(firstInputId[validation.firstInvalid])?.focus();
       return;
     }
-    if (!/^09\d{9}$/.test(phone)) {
-      setInvalidField("phone");
-      setMessage("شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد.");
-      return;
-    }
-    if (!/^\d{10}$/.test(postalCode)) {
-      setInvalidField("postalCode");
-      setMessage("کدپستی باید دقیقاً ۱۰ رقم داشته باشد.");
-      return;
-    }
-    setInvalidField(null);
+    setFieldErrors({});
     setBusy(true);
     setMessage("");
     try {
