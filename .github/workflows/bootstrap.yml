@@ -344,6 +344,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-seller-conflict-smoke.mjs
       - name: Test safe three-way seller field merge after concurrent edits
         run: node --experimental-strip-types --test tests/web-seller-field-merge-smoke.mjs
+      - name: Test seller input error recovery and unsaved draft guard
+        run: node --experimental-strip-types --test tests/web-seller-edit-safety-smoke.mjs
       - name: Verify public geography Next gateway over isolated CI HTTPS
         run: node tests/web-geography-gateway-smoke.mjs
 
