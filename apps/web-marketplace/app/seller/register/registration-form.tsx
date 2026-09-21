@@ -107,7 +107,8 @@ export function RegistrationForm() {
       const target = event.target;
       if (!(target instanceof Element)) return;
       const link = target.closest("a[href]");
-      if (!link || link.hasAttribute("download") ||
+      if (!(link instanceof HTMLAnchorElement) ||
+        link.hasAttribute("download") ||
         (link.target && link.target !== "_self") ||
         !isLeavingSellerPage(link.href, window.location.href)) return;
       // External/full navigations have the native beforeunload warning;
