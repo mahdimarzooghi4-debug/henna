@@ -60,6 +60,35 @@ export function BuyerProductDetail({ id, backHref }: {
     return () => { active = false; abort.abort(); };
   }, [id, retry]);
 
+  useEffect(() => {
+    // Mobile browsers may restore this mounted detail from a frozen tab or
+    // back-forward cache without re-running the initial fetch. A previously
+    // published item must not remain a trusted detail indefinitely.
+    let lastRefreshAt = -Infinity;
+    function revalidateOnReturn() {
+      if (document.visibilityState !== "visible" ||
+        !window.location.pathname.startsWith("/products/") ||
+        !validBuyerProductId(id)) return;
+      // One mobile restore can emit both events. Keep a single fresh GET.
+      const now = performance.now();
+      if (now - lastRefreshAt < 500) return;
+      lastRefreshAt = now;
+      // Hide old detail immediately, including when it previously was 404.
+      // The fetch effect aborts its prior request when retry changes.
+      setState({ status: "loading", id });
+      setRetry((n) => n + 1);
+    }
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) revalidateOnReturn();
+    };
+    document.addEventListener("visibilitychange", revalidateOnReturn);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", revalidateOnReturn);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [id]);
+
   return (
     <main dir="rtl" className="buyer-detail-main">
       <p className="buyer-detail-eyebrow">جزئیات کاتالوگ عمومی حنا</p>

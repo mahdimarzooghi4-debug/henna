@@ -121,9 +121,83 @@ async function main() {
   await page.getByRole("heading", { name: published.name }).waitFor();
   assert.equal(await page.evaluate(() =>
     document.documentElement.scrollWidth <= window.innerWidth), true);
+
+  // Frontend 028: real mobile-width Next UI rechecks published detail when
+  // coming back to a frozen browser tab or a persisted bfcache page.
+  // All responses below come only from this test's in-memory HTTP fixture.
+  const savedDetail = base + "/products/" + ID + "?search=" +
+    encodeURIComponent("جست‌وجوی فارسی") + "&page=2";
+  await page.goto(savedDetail);
+  await page.getByRole("heading", { name: published.name }).waitFor();
+  const detailCalls = () => calls.filter(x =>
+    x === "/api/catalog/products/" + ID).length;
+  const beforeResume = detailCalls();
+  mode = "503";
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+    // Mobile WebKit may emit both signals for one restore; do not request
+    // the same detail twice.
+    window.dispatchEvent(new PageTransitionEvent("pageshow", {
+      persisted: true,
+    }));
+  });
+  await page.getByRole("heading", {
+    name: "دریافت جزئیات تأیید نشد",
+  }).waitFor();
+  assert.equal(await page.getByText(published.name).count(), 0,
+    "a 503 must not leave the previously published detail visible");
+  assert.equal(detailCalls(), beforeResume + 1);
+  assert.equal(page.url(), savedDetail,
+    "an uncertain response must not overwrite the saved browse location");
+  const backHref = await page.getByRole("link", {
+    name: "بازگشت به فهرست کالاها",
+  }).getAttribute("href");
+  const backLocation = new URL(backHref, base);
+  assert.equal(backLocation.origin, base);
+  assert.equal(backLocation.pathname, "/");
+  assert.equal(backLocation.searchParams.get("search"), "جست‌وجوی فارسی");
+  assert.equal(backLocation.searchParams.get("page"), "2");
+  assert.deepEqual([...backLocation.searchParams.keys()].sort(),
+    ["page", "search"]);
+
+  mode = "published";
+  await page.waitForTimeout(550);
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByRole("heading", { name: published.name }).waitFor();
+  assert.equal(await page.getByText("شرح منتشرشدهٔ CI").count(), 1);
+
+  // Confirmed 404 means the item is no longer publicly available. Unlike
+  // an outage, do not keep showing its previously published name/description.
+  mode = "404";
+  await page.waitForTimeout(550);
+  await page.evaluate(() => window.dispatchEvent(
+    new PageTransitionEvent("pageshow", { persisted: true }),
+  ));
+  await page.getByRole("heading", {
+    name: "این کالا یا خدمت پیدا نشد",
+  }).waitFor();
+  assert.equal(await page.getByText(published.name).count(), 0);
+  assert.equal(await page.getByText("شرح منتشرشدهٔ CI").count(), 0);
+  assert.equal(page.url(), savedDetail);
+
+  // A previously missing public detail can be republished. Recheck 404 on
+  // return too; an ordinary non-persisted pageshow must not double-fetch.
+  mode = "published";
+  await page.waitForTimeout(550);
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByRole("heading", { name: published.name }).waitFor();
+  const afterRecovery = detailCalls();
+  await page.evaluate(() => window.dispatchEvent(
+    new PageTransitionEvent("pageshow", { persisted: false }),
+  ));
+  await page.waitForTimeout(80);
+  assert.equal(detailCalls(), afterRecovery);
+  assert.equal(page.url(), savedDetail);
   assert.deepEqual(errors, []);
   await context.close();
-  console.log("Web public detail Chromium: link, direct URL, 200/404/503, invalid/mismatched, retry and 390px OK");
+  console.log("Web public detail Chromium: link, direct URL, retry, 390px and frozen-tab/bfcache 200/404/503 recovery OK");
 }
 try { await main(); }
 finally {
