@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
-  parseBuyerPage, validBuyerSearch,
+  parseBuyerPage, reconcilePublishedBuyerCategory, validBuyerSearch,
   type BuyerBrowseLocation, type BuyerCategory, type BuyerPage,
 } from "../lib/buyer-catalog";
 
@@ -36,6 +36,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     status: "loading", key: "0",
   });
   const [categoryRetry, setCategoryRetry] = useState(0);
+  const [categoryRecovery, setCategoryRecovery] = useState("");
   const [selected, setSelected] = useState<string | null>(initial.categoryId);
   const [draftSearch, setDraftSearch] = useState(initial.search);
   const [search, setSearch] = useState(initial.search);
@@ -58,6 +59,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     setDraftSearch(next.search);
     setPage(next.page);
     setSearchError("");
+    setCategoryRecovery("");
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
     const href = buyerBrowseHref(next);
@@ -77,6 +79,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       setDraftSearch(next.search);
       setPage(next.page);
       setSearchError("");
+      setCategoryRecovery("");
       const href = buyerBrowseHref(next);
       if (window.location.pathname + window.location.search !== href)
         window.history.replaceState(window.history.state, "", href);
@@ -123,6 +126,28 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       });
     return () => { active = false; abort.abort(); };
   }, [path, page, productRetry]);
+
+  useEffect(() => {
+    // The published taxonomy is authoritative only after a valid 200. An
+    // old bookmark can point to a category that is no longer published;
+    // a 503 must NOT be mistaken for a removed category.
+    if (categories.status !== "ok") return;
+    const next = reconcilePublishedBuyerCategory(
+      { categoryId: selected, search, page }, categories.data,
+    );
+    if (!next) return;
+    setSelected(next.categoryId);
+    setPage(next.page);
+    setCategoryRecovery(
+      "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
+    );
+    // Correct this SAME history entry rather than creating a ghost "Back"
+    // step that reinstates the removed category. Preserve public search.
+    const href = buyerBrowseHref(next);
+    if (window.location.pathname === "/" &&
+      window.location.pathname + window.location.search !== href)
+      window.history.replaceState(window.history.state, "", href);
+  }, [categories, selected, search, page]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -191,6 +216,9 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
                 onClick={() => chooseCategory(item.id)}>{item.name}</button>
             ))}
           </div>
+        )}
+        {categoryRecovery && categories.status === "ok" && (
+          <p className="buyer-panel" role="status">{categoryRecovery}</p>
         )}
       </section>
 

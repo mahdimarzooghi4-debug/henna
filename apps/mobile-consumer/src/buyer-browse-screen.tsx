@@ -67,7 +67,11 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   // Keep the mounted browse coordinator and its real search/filter/page state.
   if (detailId !== null) return (
     <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
-      onBack={() => setDetailId(null)} />
+      onBack={() => {
+        setDetailId(null);
+        // A category can leave publication while the buyer reads detail.
+        void controller.refreshCategories();
+      }} />
   );
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
@@ -174,6 +178,11 @@ export function BuyerBrowseScreen({ onLogin, link }: {
                 </View>
               )}
             </View>
+            {browse.categoryRecovery && categories.status === "ok" ? (
+              <Text accessibilityRole="alert" style={styles.categoryRecovery}>
+                دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.
+              </Text>
+            ) : null}
 
             <Text style={styles.sectionHeading} accessibilityRole="header">
               کالاها
@@ -332,6 +341,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, justifyContent: "center",
   },
   muted: { color: colors.muted, fontSize: 14, lineHeight: 26, ...rtl },
+  categoryRecovery: {
+    backgroundColor: colors.paleTeal, color: colors.teal,
+    fontSize: 13, lineHeight: 23, ...rtl,
+    marginTop: 12, padding: 12, borderRadius: 10,
+  },
   errorText: { color: colors.error, fontSize: 14, lineHeight: 25, ...rtl },
   retryButton: {
     borderWidth: 1, borderColor: colors.teal, borderRadius: 10,

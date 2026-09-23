@@ -440,6 +440,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-catalog-smoke.mjs
       - name: Test shipping Expo buyer browse controller against public catalog (CI-only HTTP)
         run: node --experimental-strip-types --test tests/mobile-buyer-browse-smoke.mjs
+      - name: Test Expo buyer notice and safe recovery for unpublished saved categories
+        run: node --experimental-strip-types --test tests/mobile-buyer-category-recovery-smoke.mjs
       - name: Test shipping Expo public product detail states and cancellation
         run: node --experimental-strip-types --test tests/mobile-buyer-product-detail-smoke.mjs
       - name: Test Expo public custom-scheme buyer links and warm catalog restoration
