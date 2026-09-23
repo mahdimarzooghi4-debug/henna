@@ -4,6 +4,14 @@ appId: ${APP_ID}
 ---
 # This cold OS URL must run AFTER the Maestro XCTest driver starts.
 - openLink: "hana://products/60000000-0000-4000-8000-000000000021?search=%DA%A9%D8%A7%D9%84%D8%A7%DB%8C+%D9%BE%DB%8C%D9%88%D9%86%D8%AF+%D8%A2%D8%B2%D9%85%D8%A7%DB%8C%D8%B4%DB%8C&page=2"
+# On a newly booted iOS simulator, the first-link alert itself may arrive
+# after Maestro's normal conditional/optional lookup budget. Wait for its
+# actual Open button (if present) before trying the optional tap; the app
+# heading below remains mandatory even if no alert is ever shown.
+- extendedWaitUntil:
+    visible: "Open"
+    timeout: 60000
+    optional: true
 # iOS may show its first-link security prompt AFTER a conditional runFlow
 # has already skipped. Give the actual Open button its own awaited lookup.
 # On an already-trusted simulator, optional means the real screen assertion
