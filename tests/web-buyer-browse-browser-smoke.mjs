@@ -206,6 +206,9 @@ async function main() {
   assert.equal(new URL(page.url()).searchParams.get("categoryId"), categoryB);
   assert.equal(new URL(page.url()).searchParams.get("search"), "عنوان");
   assert.ok(calls.length >= callsBeforeResume + 2);
+  // Two simulated foreground events represent separate visits, not the
+  // visibilitychange + pageshow pair from one actual restore.
+  await page.waitForTimeout(550);
 
   mode = "rich";
   publishedCategories = [categories[0]];
