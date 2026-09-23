@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, parseBuyerCategories,
-  parseBuyerPage, validBuyerSearch,
+  parseBuyerPage, reconcilePublishedBuyerCategory, validBuyerSearch,
 } from "../apps/web-marketplace/lib/buyer-catalog.ts";
 
 const CATEGORY = "2fd59aad-5834-4717-9462-c5e520dd7a31";
@@ -56,4 +56,27 @@ test("only genuine selected UUID and normalized search reach the browse query", 
   assert.equal(validBuyerSearch("کالا"), true);
   assert.equal(validBuyerSearch("x".repeat(81)), false);
   assert.equal(validBuyerSearch("a\n"), false);
+});
+
+test("only an explicitly confirmed published list can retire a removed category", () => {
+  const bookmark = {
+    categoryId: CATEGORY, search: "چای & خرما", page: 2,
+  };
+  assert.deepEqual(reconcilePublishedBuyerCategory(bookmark, [category]),
+    null, "still published: preserve category and original page");
+  assert.deepEqual(reconcilePublishedBuyerCategory(bookmark, []), {
+    categoryId: null, search: "چای & خرما", page: 1,
+  }, "published 200 empty: remove category but preserve search");
+  assert.deepEqual(reconcilePublishedBuyerCategory(bookmark, [{
+    ...category, id: "4ef06bf5-32f3-4b10-a41e-5bd69f6bb442",
+  }]), { categoryId: null, search: "چای & خرما", page: 1 });
+  assert.equal(reconcilePublishedBuyerCategory({
+    categoryId: null, search: "", page: 3,
+  }, []), null, "all-categories search is never reset");
+  assert.equal(reconcilePublishedBuyerCategory({
+    categoryId: CATEGORY.toUpperCase(), search: "", page: 2,
+  }, [category]), null, "UUID case does not cause false removal");
+  assert.deepEqual(bookmark, {
+    categoryId: CATEGORY, search: "چای & خرما", page: 2,
+  }, "caller state is not mutated");
 });

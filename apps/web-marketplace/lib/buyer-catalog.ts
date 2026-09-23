@@ -26,6 +26,25 @@ export function validBuyerSearch(search: string): boolean {
     !/[\u0000-\u001f\u007f]/.test(search);
 }
 
+/**
+ * A category can disappear from the published taxonomy after a buyer
+ * bookmarked/selected it. Only a CONFIRMED 200 published list can retire
+ * the filter; a failed/unknown list must never silently erase a URL.
+ *
+ * Return a new location only if a published category was actually removed.
+ * Keep the buyer's search term; a missing category no longer owns page N.
+ */
+export function reconcilePublishedBuyerCategory(
+  location: BuyerBrowseLocation,
+  published: BuyerCategory[],
+): BuyerBrowseLocation | null {
+  if (location.categoryId === null ||
+    published.some((entry) =>
+      entry.id.toLowerCase() === location.categoryId?.toLowerCase()))
+    return null;
+  return { categoryId: null, search: location.search, page: 1 };
+}
+
 export function buyerCatalogPath(
   page: number, categoryId: string | null, search: string,
 ): string {
