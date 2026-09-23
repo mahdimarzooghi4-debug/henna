@@ -15,6 +15,8 @@ export type BuyerBrowseState = {
   categoryId: string | null;
   search: string;
   page: number;
+  /** True only after a confirmed published-category response removed a saved filter. */
+  categoryRecovery: boolean;
 };
 
 export type BuyerBrowseLocation = {
@@ -31,6 +33,7 @@ export const initialBuyerBrowseState = (
   categoryId: location.categoryId,
   search: location.search,
   page: location.page,
+  categoryRecovery: false,
 });
 
 export function validBrowseSearch(text: string): boolean {
@@ -98,16 +101,27 @@ export class BuyerBrowseController {
     }
     // A fresh publication list may have removed the previously selected ID.
     // Do not keep filtering on an unlisted category or invent its replacement.
-    if (this.state.categoryId !== null &&
-      !result.data.some((item) => item.id === this.state.categoryId)) {
+    const selected = this.state.categoryId;
+    const published = selected === null ? null : result.data.find(
+      item => item.id.toLowerCase() === selected.toLowerCase(),
+    );
+    if (selected !== null && !published) {
+      // The old page must not be shown as an unfiltered result while a new
+      // query is pending. 503/malformed category replies never enter here.
+      this.productRequest?.abort();
       this.update({
         categories: { status: "ok", data: result.data },
-        categoryId: null, page: 1,
+        categoryId: null, page: 1, categoryRecovery: true,
+        products: { status: "loading" },
       });
       await this.refreshProducts();
       return;
     }
-    this.update({ categories: { status: "ok", data: result.data } });
+    this.update({
+      categories: { status: "ok", data: result.data },
+      // Canonicalize a case-insensitive UUID from a cold link for chip state.
+      ...(published ? { categoryId: published.id } : {}),
+    });
   }
 
   async refreshProducts(): Promise<void> {
@@ -141,15 +155,20 @@ export class BuyerBrowseController {
    */
   restoreLocation(location: BuyerBrowseLocation): void {
     if (!this.active) return;
-    const categoryId = location.categoryId !== null &&
-      this.state.categories.status === "ok" &&
-      !this.state.categories.data.some(
-        item => item.id.toLowerCase() === location.categoryId,
-      ) ? null : location.categoryId;
-    const page = categoryId === location.categoryId ? location.page : 1;
+    const published = location.categoryId !== null &&
+      this.state.categories.status === "ok"
+      ? this.state.categories.data.find(item =>
+          item.id.toLowerCase() === location.categoryId!.toLowerCase())
+      : undefined;
+    const removed = location.categoryId !== null &&
+      this.state.categories.status === "ok" && !published;
+    // While categories are loading/unavailable, keep the selected filter.
+    // Only a verified published list can prove an old link is outdated.
+    const categoryId = removed ? null : (published?.id ?? location.categoryId);
+    const page = removed ? 1 : location.page;
     this.productRequest?.abort();
     this.update({ categoryId, search: location.search, page,
-      products: { status: "loading" } });
+      categoryRecovery: removed, products: { status: "loading" } });
     void this.refreshProducts();
   }
 
@@ -157,8 +176,11 @@ export class BuyerBrowseController {
     if (!this.active || this.state.categories.status !== "ok" ||
       (id !== null && !this.state.categories.data.some((x) => x.id === id)))
       return false;
-    if (id === this.state.categoryId && this.state.page === 1) return true;
-    this.update({ categoryId: id, page: 1 });
+    if (id === this.state.categoryId && this.state.page === 1) {
+      this.update({ categoryRecovery: false });
+      return true;
+    }
+    this.update({ categoryId: id, page: 1, categoryRecovery: false });
     void this.refreshProducts();
     return true;
   }
@@ -167,10 +189,11 @@ export class BuyerBrowseController {
     if (!this.active || !validBrowseSearch(input)) return false;
     const search = input.trim();
     if (search === this.state.search && this.state.page === 1) {
+      this.update({ categoryRecovery: false });
       void this.refreshProducts();
       return true;
     }
-    this.update({ search, page: 1 });
+    this.update({ search, page: 1, categoryRecovery: false });
     void this.refreshProducts();
     return true;
   }
@@ -178,7 +201,7 @@ export class BuyerBrowseController {
   previousPage(): boolean {
     if (!this.active || this.state.products.status !== "ok" ||
       this.state.page <= 1) return false;
-    this.update({ page: this.state.page - 1 });
+    this.update({ page: this.state.page - 1, categoryRecovery: false });
     void this.refreshProducts();
     return true;
   }
@@ -188,7 +211,7 @@ export class BuyerBrowseController {
       this.state.page >= 10000 ||
       this.state.page * BROWSE_PAGE_SIZE >= this.state.products.data.total)
       return false;
-    this.update({ page: this.state.page + 1 });
+    this.update({ page: this.state.page + 1, categoryRecovery: false });
     void this.refreshProducts();
     return true;
   }
