@@ -22,6 +22,7 @@ const goods = Array.from({ length: 21 }, (_, n) => ({
   description: n === 0 ? "توضیح تأییدشدهٔ API" : null,
 }));
 let mode = "empty";
+let publishedCategories = categories;
 let calls = [];
 let web, browser;
 let logs = "";
@@ -41,7 +42,9 @@ async function fakePublicCatalog(route) {
   if (mode === "outage") return route.fulfill(json({ message: "outage" }, 503));
   if (mode === "malformed") return route.fulfill(json({ items: "invalid" }));
   if (url.pathname === "/api/catalog/categories") {
-    return route.fulfill(json({ items: mode === "empty" ? [] : categories }));
+    return route.fulfill(json({
+      items: mode === "empty" ? [] : publishedCategories,
+    }));
   }
   assert.equal(url.pathname, "/api/catalog/products");
   assert.deepEqual([...url.searchParams.keys()].sort(),
@@ -143,6 +146,41 @@ async function main() {
   mode = "rich";
   await page.getByRole("button", { name: "تلاش دوباره برای کالاها" }).click();
   await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
+
+  // A bookmarked filter can later become unpublished. Only a CONFIRMED
+  // published category list can remove it; 503 must preserve the URL.
+  const oldBookmark = "/?categoryId=" + categoryB +
+    "&search=" + encodeURIComponent("عنوان") + "&page=2";
+  mode = "outage";
+  publishedCategories = categories;
+  await page.goto(base + oldBookmark);
+  await page.getByText("دریافت دسته‌بندی‌ها از سرور تأیید نشد.").waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("categoryId"),
+    categoryB, "outage is not proof that a category was unpublished");
+  assert.equal(new URL(page.url()).searchParams.get("page"), "2");
+
+  // On a later confirmed GET, the selected category has truly disappeared.
+  // The SAME history entry is repaired and search survives; do not show an
+  // empty page two or fake published chip for a vanished category.
+  mode = "rich";
+  publishedCategories = [categories[0]];
+  await page.reload();
+  await page.getByText(
+    "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
+  ).waitFor();
+  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+  await page.getByRole("heading", {
+    name: "عنوان واقعی API در تست 1", exact: true,
+  }).waitFor();
+  assert.equal(await page.getByRole("button", {
+    name: "دستهٔ منتشرشدهٔ دو",
+  }).count(), 0);
+  assert.equal(await page.getByRole("button", {
+    name: "همه دسته‌ها",
+  }).getAttribute("aria-pressed"), "true");
+  assert.equal(calls.at(-1).params.categoryId, undefined);
+  assert.equal(calls.at(-1).params.page, "1");
+  assert.equal(calls.at(-1).params.search, "عنوان");
 
   // On the approved 390px design, real content reflows and stays in viewport.
   await page.setViewportSize({ width: 390, height: 844 });
