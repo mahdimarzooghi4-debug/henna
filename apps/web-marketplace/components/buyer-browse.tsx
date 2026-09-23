@@ -149,6 +149,36 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       window.history.replaceState(window.history.state, "", href);
   }, [categories, selected, search, page]);
 
+  useEffect(() => {
+    // Mobile browsers can freeze this page for a long time and restore it
+    // without remounting React. Do not leave the buyer looking at a cached
+    // category/product page until they manually change the search.
+    let lastRefreshAt = -Infinity;
+    function revalidateOnReturn() {
+      if (document.visibilityState !== "visible" ||
+        window.location.pathname !== "/") return;
+      // Safari can emit both visibilitychange and persisted pageshow on one
+      // return. Treat them as one refresh rather than racing duplicate GETs.
+      const now = performance.now();
+      if (now - lastRefreshAt < 500) return;
+      lastRefreshAt = now;
+      // Invalidate old result immediately, before the effect sends the new
+      // public HTTP request. Never label old items as the resumed query.
+      setProducts((current) => ({ status: "loading", key: current.key }));
+      setCategoryRetry((n) => n + 1);
+      setProductRetry((n) => n + 1);
+    }
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) revalidateOnReturn();
+    };
+    document.addEventListener("visibilitychange", revalidateOnReturn);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", revalidateOnReturn);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validBuyerSearch(draftSearch)) {

@@ -182,6 +182,65 @@ async function main() {
   assert.equal(calls.at(-1).params.page, "1");
   assert.equal(calls.at(-1).params.search, "عنوان");
 
+  // Frontend 027: returning to a frozen mobile browser tab rechecks the
+  // actual published API, without trusting stale category or product state.
+  // Only memory-only CI route fixtures produce these example products.
+  mode = "rich";
+  publishedCategories = categories;
+  const resumedBookmark = "/?categoryId=" + categoryB +
+    "&search=" + encodeURIComponent("عنوان");
+  await page.goto(base + resumedBookmark);
+  await page.getByRole("heading", {
+    name: "عنوان واقعی API در تست 2", exact: true,
+  }).waitFor();
+  const callsBeforeResume = calls.length;
+  mode = "outage";
+  await page.evaluate(() => document.dispatchEvent(
+    new Event("visibilitychange"),
+  ));
+  await page.getByText("دریافت دسته‌بندی‌ها از سرور تأیید نشد.").waitFor();
+  await page.getByRole("heading", { name: "دریافت کالاها تأیید نشد" }).waitFor();
+  assert.equal(await page.getByRole("heading", {
+    name: "عنوان واقعی API در تست 2", exact: true,
+  }).count(), 0, "old products must not remain visible after resume");
+  assert.equal(new URL(page.url()).searchParams.get("categoryId"), categoryB);
+  assert.equal(new URL(page.url()).searchParams.get("search"), "عنوان");
+  assert.ok(calls.length >= callsBeforeResume + 2);
+  // Two simulated foreground events represent separate visits, not the
+  // visibilitychange + pageshow pair from one actual restore.
+  await page.waitForTimeout(550);
+
+  mode = "rich";
+  publishedCategories = [categories[0]];
+  await page.evaluate(() => document.dispatchEvent(
+    new Event("visibilitychange"),
+  ));
+  await page.getByText(
+    "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
+  ).waitFor();
+  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+  await page.getByRole("heading", {
+    name: "عنوان واقعی API در تست 1", exact: true,
+  }).waitFor();
+  assert.equal(calls.at(-1).params.categoryId, undefined);
+  assert.equal(calls.at(-1).params.page, "1");
+
+  // Back-forward cache restores can fire pageshow(persisted) instead of a
+  // visibility transition. The same known-publication recovery must work.
+  publishedCategories = categories;
+  await page.goto(base + resumedBookmark);
+  await page.getByRole("button", {
+    name: "دستهٔ منتشرشدهٔ دو",
+  }).waitFor();
+  publishedCategories = [categories[0]];
+  await page.evaluate(() => window.dispatchEvent(
+    new PageTransitionEvent("pageshow", { persisted: true }),
+  ));
+  await page.getByText(
+    "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
+  ).waitFor();
+  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+
   // On the approved 390px design, real content reflows and stays in viewport.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("#buyer-search").fill("");
