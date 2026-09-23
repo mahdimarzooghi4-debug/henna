@@ -164,7 +164,7 @@ export class BuyerBrowseController {
       this.state.categories.status === "ok" && !published;
     // While categories are loading/unavailable, keep the selected filter.
     // Only a verified published list can prove an old link is outdated.
-    const categoryId = removed ? null : published?.id ?? location.categoryId;
+    const categoryId = removed ? null : (published?.id ?? location.categoryId);
     const page = removed ? 1 : location.page;
     this.productRequest?.abort();
     this.update({ categoryId, search: location.search, page,
