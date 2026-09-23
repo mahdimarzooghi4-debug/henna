@@ -1,4 +1,4 @@
-# The app has already been launched by simctl openurl (not launchApp).
+# Native iOS URL delivery is driven by Maestro openLink after XCTest boot.
 # No real API is configured; unavailable is the honest approved state.
 appId: ${APP_ID}
 ---
@@ -9,6 +9,12 @@ appId: ${APP_ID}
       visible: 'Open in .*حنا.*'
     commands:
       - tapOn: "Open"
+# On a loaded CI simulator, SpringBoard may accept the scheme and open the
+# app AFTER Maestro's default assert timeout. Wait for the real native text,
+# not a fixed sleep; if URL delivery never completes, this still fails.
+- extendedWaitUntil:
+    visible: "جزئیات کالا یا خدمت"
+    timeout: 120000
 - assertVisible: "جزئیات کالا یا خدمت"
 - assertVisible: "دریافت جزئیات تأیید نشد"
 - scrollUntilVisible:
@@ -18,11 +24,17 @@ appId: ${APP_ID}
 - assertVisible: "کالاها را در حنا مرور کنید"
 - assertVisible: "کالای پیوند آزمایشی"
 - openLink: "hana://products/60000000-0000-4000-8000-000000000021"
+- extendedWaitUntil:
+    visible: "جزئیات کالا یا خدمت"
+    timeout: 120000
 - assertVisible: "جزئیات کالا یا خدمت"
 - assertVisible: "دریافت جزئیات تأیید نشد"
 # The OS may deliver this custom scheme but JS must ignore the unapproved path.
 - openLink: "hana://auth"
 - assertVisible: "جزئیات کالا یا خدمت"
 - openLink: "hana://browse?search=%DA%A9%D8%A7%D9%84%D8%A7%DB%8C+%D9%BE%DB%8C%D9%88%D9%86%D8%AF+%D8%A2%D8%B2%D9%85%D8%A7%DB%8C%D8%B4%DB%8C&page=2"
+- extendedWaitUntil:
+    visible: "کالاها را در حنا مرور کنید"
+    timeout: 120000
 - assertVisible: "کالاها را در حنا مرور کنید"
 - assertVisible: "کالای پیوند آزمایشی"
