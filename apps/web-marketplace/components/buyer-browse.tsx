@@ -5,7 +5,8 @@ import Link from "next/link";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
-  parseBuyerPage, reconcilePublishedBuyerCategory, validBuyerSearch,
+  parseBuyerPage, reconcilePublishedBuyerCategory,
+  reconcilePublishedBuyerPage, validBuyerSearch,
   type BuyerBrowseLocation, type BuyerCategory, type BuyerPage,
 } from "../lib/buyer-catalog";
 
@@ -37,6 +38,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   });
   const [categoryRetry, setCategoryRetry] = useState(0);
   const [categoryRecovery, setCategoryRecovery] = useState("");
+  const [pageRecovery, setPageRecovery] = useState("");
   const [selected, setSelected] = useState<string | null>(initial.categoryId);
   const [draftSearch, setDraftSearch] = useState(initial.search);
   const [search, setSearch] = useState(initial.search);
@@ -60,6 +62,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     setPage(next.page);
     setSearchError("");
     setCategoryRecovery("");
+    setPageRecovery("");
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
     const href = buyerBrowseHref(next);
@@ -80,6 +83,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       setPage(next.page);
       setSearchError("");
       setCategoryRecovery("");
+      setPageRecovery("");
       const href = buyerBrowseHref(next);
       if (window.location.pathname + window.location.search !== href)
         window.history.replaceState(window.history.state, "", href);
@@ -141,6 +145,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     setCategoryRecovery(
       "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
     );
+    setPageRecovery("");
     // Correct this SAME history entry rather than creating a ghost "Back"
     // step that reinstates the removed category. Preserve public search.
     const href = buyerBrowseHref(next);
@@ -148,6 +153,31 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, selected, search, page]);
+
+  useEffect(() => {
+    // A real 200 may confirm that a saved page no longer exists after
+    // unpublication. Do not mislabel it "no products" when page one still
+    // contains published results; a 503/malformed response cannot repair it.
+    if (current.status !== "ok") return;
+    const next = reconcilePublishedBuyerPage(
+      { categoryId: selected, search, page }, current.data,
+    );
+    if (!next) return;
+    // Let the existing category recovery take priority when a confirmed
+    // published taxonomy has also removed the selected category.
+    if (categories.status === "ok" && reconcilePublishedBuyerCategory(
+      { categoryId: selected, search, page }, categories.data,
+    )) return;
+    setPage(next.page);
+    setPageRecovery(
+      "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
+    );
+    // Replace the SAME history entry; preserve category and Persian search.
+    const href = buyerBrowseHref(next);
+    if (window.location.pathname === "/" &&
+      window.location.pathname + window.location.search !== href)
+      window.history.replaceState(window.history.state, "", href);
+  }, [categories, current, selected, search, page]);
 
   useEffect(() => {
     // Mobile browsers can freeze this page for a long time and restore it
@@ -254,6 +284,9 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
 
       <section className="buyer-section" aria-labelledby="buyer-products-title">
         <h2 id="buyer-products-title">کالاها</h2>
+        {pageRecovery && (
+          <p className="buyer-panel" role="status">{pageRecovery}</p>
+        )}
         {current.status === "loading" ? (
           <p className="buyer-panel buyer-products-status" role="status">در حال دریافت کالاها…</p>
         ) : current.status === "unavailable" ? (
