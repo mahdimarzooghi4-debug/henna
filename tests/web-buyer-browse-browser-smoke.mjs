@@ -23,6 +23,7 @@ const goods = Array.from({ length: 21 }, (_, n) => ({
 }));
 let mode = "empty";
 let publishedCategories = categories;
+let visibleGoods = goods;
 let calls = [];
 let web, browser;
 let logs = "";
@@ -55,7 +56,7 @@ async function fakePublicCatalog(route) {
     ].sort());
   const page = Number(url.searchParams.get("page"));
   assert.equal(url.searchParams.get("pageSize"), "20");
-  let entries = mode === "empty" ? [] : goods;
+  let entries = mode === "empty" ? [] : visibleGoods;
   const id = url.searchParams.get("categoryId");
   if (id) entries = entries.filter((item) => item.categoryId === id);
   const search = url.searchParams.get("search");
@@ -241,6 +242,86 @@ async function main() {
   ).waitFor();
   await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
 
+  // Frontend 029: a once-valid saved page two can become out of range
+  // after actual published entries are withdrawn. These are ONLY CI-memory
+  // products, not seeded catalog/stock or a commerce claim.
+  mode = "rich";
+  publishedCategories = categories;
+  visibleGoods = goods.map(item => ({ ...item, categoryId: categoryB }));
+  const savedPage = "/?categoryId=" + categoryB +
+    "&search=" + encodeURIComponent("عنوان") + "&page=2";
+  await page.goto(base + savedPage);
+  await page.getByRole("heading", {
+    name: "عنوان واقعی API در تست 21", exact: true,
+  }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("page"), "2",
+    "a confirmed in-range page must never be reset");
+
+  mode = "outage";
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByRole("heading", {
+    name: "دریافت کالاها تأیید نشد",
+  }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("page"), "2");
+  assert.equal(await page.getByText(
+    "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
+  ).count(), 0, "503 cannot prove that a page expired");
+
+  // A later real 200 with total 20 and an empty requested page 2 proves it.
+  mode = "rich";
+  visibleGoods = visibleGoods.slice(0, 20);
+  await page.waitForTimeout(550);
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")));
+  await page.getByText(
+    "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
+  ).waitFor();
+  await page.waitForURL(base + "/?categoryId=" + categoryB +
+    "&search=" + encodeURIComponent("عنوان"));
+  await page.getByRole("heading", {
+    name: "عنوان واقعی API در تست 1", exact: true,
+  }).waitFor();
+  assert.equal(await page.getByRole("heading", {
+    name: "فعلاً کالایی برای نمایش نداریم",
+  }).count(), 0, "the expired page must not masquerade as an empty catalog");
+  assert.equal(await page.getByRole("button", {
+    name: "دستهٔ منتشرشدهٔ دو",
+  }).getAttribute("aria-pressed"), "true");
+  const lastProductCall = calls.filter(c =>
+    c.pathname === "/api/catalog/products").at(-1);
+  assert.equal(lastProductCall.params.page, "1");
+  assert.equal(lastProductCall.params.categoryId, categoryB);
+  assert.equal(lastProductCall.params.search, "عنوان");
+  await page.getByRole("button", { name: "همه دسته‌ها" }).click();
+  assert.equal(await page.getByText(
+    "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
+  ).count(), 0, "an explicit new filter clears the recovery notice");
+
+  // Malformed JSON cannot mutate a saved page even if the old result is empty.
+  mode = "malformed";
+  await page.goto(base + savedPage);
+  await page.getByRole("heading", {
+    name: "دریافت کالاها تأیید نشد",
+  }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("page"), "2");
+  assert.equal(new URL(page.url()).searchParams.get("categoryId"), categoryB);
+
+  // A genuine zero-result search on saved page 2 is restored to a truthful
+  // page-one EMPTY state. Keep the Persian text, do not invent results.
+  mode = "rich";
+  visibleGoods = goods;
+  await page.goto(base + "/?search=" +
+    encodeURIComponent("ناموجود") + "&page=2");
+  await page.getByText(
+    "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
+  ).waitFor();
+  await page.waitForURL(base + "/?search=" + encodeURIComponent("ناموجود"));
+  await page.getByRole("heading", {
+    name: "فعلاً کالایی برای نمایش نداریم",
+  }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("search"), "ناموجود");
+
   // On the approved 390px design, real content reflows and stays in viewport.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("#buyer-search").fill("");
@@ -251,7 +332,7 @@ async function main() {
   assert.deepEqual(errors, []);
   assert.ok(calls.length >= 10);
   await context.close();
-  console.log("Buyer browse real Chromium: empty, genuine API, filter, search, paging, 503, malformed and mobile reflow OK");
+  console.log("Buyer browse real Chromium: approved catalog, expired bookmarked page 200 vs 503/malformed, category, search and mobile reflow OK");
 }
 
 try { await main(); }

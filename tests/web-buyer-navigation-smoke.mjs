@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buyerBrowseHref, buyerBrowseQuery, buyerDetailHref,
   buyerParamsFromRecord, parseBuyerBrowseLocation,
+  reconcilePublishedBuyerPage,
 } from "../apps/web-marketplace/lib/buyer-catalog.ts";
 
 const category = "2fd59aad-5834-4717-9462-c5e520dd7a31";
@@ -59,4 +60,30 @@ test("Persian text and page bounds survive a share/reload round-trip", () => {
       new URLSearchParams(new URL(href, "https://hana.test").search),
     ), { categoryId: category, search: "جست‌وجوی فارسی و لاتین % &", page });
   }
+});
+
+test("only a confirmed empty out-of-range page repairs a saved buyer URL", () => {
+  const location = { categoryId: category, search: "دستباف & کتان", page: 2 };
+  const page = { items: [], page: 2, pageSize: 20, total: 20 };
+  assert.deepEqual(reconcilePublishedBuyerPage(location, page), {
+    ...location, page: 1,
+  });
+  assert.equal(reconcilePublishedBuyerPage(location, {
+    ...page, total: 21,
+  }), null, "a still-published second page must remain selected");
+  assert.equal(reconcilePublishedBuyerPage(location, {
+    ...page, items: [{ id: product }],
+  }), null, "nonempty results are not an expired page");
+  assert.equal(reconcilePublishedBuyerPage(location, {
+    ...page, page: 1,
+  }), null, "a response for a different request cannot change the URL");
+  assert.equal(reconcilePublishedBuyerPage({
+    ...location, page: 1,
+  }, { ...page, page: 1, total: 0 }), null,
+  "the first page is the valid empty published-catalog state");
+  assert.deepEqual(reconcilePublishedBuyerPage({
+    ...location, page: 10000,
+  }, { ...page, page: 10000, total: 0 }), {
+    ...location, page: 1,
+  });
 });
