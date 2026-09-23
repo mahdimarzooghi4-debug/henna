@@ -42,6 +42,7 @@ public static partial class CatalogImportService
         CatalogImportDocument doc;
         try
         {
+            ReviewedImportJson.RejectDuplicateProperties(json);
             doc = JsonSerializer.Deserialize<CatalogImportDocument>(
                 json, JsonOptions)
                 ?? throw new JsonException("Missing catalog document.");

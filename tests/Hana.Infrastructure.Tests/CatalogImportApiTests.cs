@@ -150,6 +150,30 @@ public sealed class CatalogImportApiTests
             Assert.Equal(2, await db.Products.AsNoTracking().CountAsync(
                 x => x.Id == productId || x.Id == hiddenProductId));
 
+            // A reviewed JSON document cannot give the operator one state
+            // while System.Text.Json silently applies the final duplicate.
+            // Both preview AND apply reject this before any EF transaction.
+            var ambiguousCategoryState = initialJson.Replace(
+                "\"state\":\"PUBLISHED\"",
+                "\"state\":\"PUBLISHED\",\"state\":\"DRAFT\"",
+                StringComparison.Ordinal);
+            Assert.NotEqual(initialJson, ambiguousCategoryState);
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(ambiguousCategoryState, dryRun: true));
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(ambiguousCategoryState, dryRun: false));
+            var escapedCategoryState = initialJson.Replace(
+                "\"state\":\"PUBLISHED\"",
+                "\"state\":\"PUBLISHED\",\"st\\u0061te\":\"DRAFT\"",
+                StringComparison.Ordinal);
+            await Assert.ThrowsAsync<InvalidDataException>(
+                () => Import(escapedCategoryState, dryRun: false));
+            Assert.Equal("گروه مورد تأیید",
+                (await db.Categories.AsNoTracking().SingleAsync(
+                    x => x.Id == categoryId)).Name);
+            Assert.Equal(HttpStatusCode.OK,
+                (await client.GetAsync(detail)).StatusCode);
+
             // Schema is strict: importer is not an offer/price/stock backdoor.
             var extraField = initialJson.Replace(
                 "\"kind\":\"GOOD\"", "\"kind\":\"GOOD\",\"price\":123");
