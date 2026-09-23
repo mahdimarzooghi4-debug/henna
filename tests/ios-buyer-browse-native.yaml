@@ -7,6 +7,11 @@ appId: ${APP_ID}
       visible: 'Open in .*حنا.*'
     commands:
       - tapOn: "Open"
+# Cold startup on macOS CI can take longer than a standard assertion retry.
+# Proceed only after the real React Native browse screen appears.
+- extendedWaitUntil:
+    visible: "کالاها را در حنا مرور کنید"
+    timeout: 120000
 - assertVisible: "کالاها را در حنا مرور کنید"
 - assertVisible: "کالای پیوند آزمایشی"
 - assertVisible: "دریافت کالاها تأیید نشد"
