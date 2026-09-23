@@ -149,10 +149,16 @@ async function main() {
   assert.equal(detailCalls(), beforeResume + 1);
   assert.equal(page.url(), savedDetail,
     "an uncertain response must not overwrite the saved browse location");
-  assert.equal(await page.getByRole("link", {
+  const backHref = await page.getByRole("link", {
     name: "بازگشت به فهرست کالاها",
-  }).getAttribute("href"), "/?search=" +
-    encodeURIComponent("جست‌وجوی فارسی") + "&page=2");
+  }).getAttribute("href");
+  const backLocation = new URL(backHref, base);
+  assert.equal(backLocation.origin, base);
+  assert.equal(backLocation.pathname, "/");
+  assert.equal(backLocation.searchParams.get("search"), "جست‌وجوی فارسی");
+  assert.equal(backLocation.searchParams.get("page"), "2");
+  assert.deepEqual([...backLocation.searchParams.keys()].sort(),
+    ["page", "search"]);
 
   mode = "published";
   await page.waitForTimeout(550);
