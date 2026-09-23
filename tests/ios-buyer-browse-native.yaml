@@ -7,6 +7,10 @@ appId: ${APP_ID}
       visible: 'Open in .*حنا.*'
     commands:
       - tapOn: "Open"
+# Keep the already-delivered cold link, but explicitly bring the target app
+# back in front of SpringBoard before reading its native accessibility tree.
+- launchApp:
+    stopApp: false
 - assertVisible: "کالاها را در حنا مرور کنید"
 - assertVisible: "کالای پیوند آزمایشی"
 - assertVisible: "دریافت کالاها تأیید نشد"
