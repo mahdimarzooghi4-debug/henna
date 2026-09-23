@@ -163,6 +163,9 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       { categoryId: selected, search, page }, current.data,
     );
     if (!next) return;
+    // When a saved category is selected, wait for its taxonomy response so
+    // simultaneous category removal takes priority over page-only recovery.
+    if (categories.status === "loading" && selected !== null) return;
     // Let the existing category recovery take priority when a confirmed
     // published taxonomy has also removed the selected category.
     if (categories.status === "ok" && reconcilePublishedBuyerCategory(
