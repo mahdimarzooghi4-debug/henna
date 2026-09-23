@@ -10,6 +10,8 @@
 
 **تصمیم مصوب پشته فناوری:** [ADR-045 — بک‌اند C# / ASP.NET Core / .NET 10 LTS، وب Next.js و اپ React Native/Expo](docs/adr/ADR-045-HANA-TECHNOLOGY-STACK-ASPNET-CORE-DOTNET-10-LTS.md). بک‌اند Modular Monolith با PostgreSQL، EF Core، Workerهای .NET و Redis فقط برای cache/coordination ساخته خواهد شد. **نسخه NestJS در اسناد قدیمی صرفاً پیشنهاد جایگزین‌شده است.**
 
+**اولویت مصوب تجربهٔ خریدار:** [ADR-047 — تقدم وب واکنش‌گرای خریدار در ایران و تعویق توسعهٔ بومی iOS](docs/adr/ADR-047-BUYER-WEB-FIRST-IRAN-IOS-NATIVE-DEFERRED.md). وب مناسب موبایل/آیفون و دسکتاپ جلوتر از قابلیت جدید بومی iOS است؛ اندروید در مسیر می‌ماند، تست‌های موجود خودبه‌خود حذف نمی‌شوند و طرح DRAFT فروشنده هنوز تأیید نشده است.
+
 [سند اولیه معماری — V0.1 (آرشیو)](docs/architecture/HANA-TECHNICAL-ARCHITECTURE-v0.1.md)
 
 **دامنه لجستیک:** [ADR-046 — بخش لجستیک در پنل ادمین حنا، با سرویس عملیاتی تأمین‌شده از بیرون و صفحه‌های Figma در زمان ساخت همان بخش](docs/adr/ADR-046-ADMIN-LOGISTICS-SECTION-EXTERNAL-SERVICE-FIGMA-DEFERRED.md). اتصال فقط طبق API/قرارداد باشد، نه ساخت سامانه ناوگان داخل هسته حنا.
