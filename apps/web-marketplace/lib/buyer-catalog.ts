@@ -45,6 +45,22 @@ export function reconcilePublishedBuyerCategory(
   return { categoryId: null, search: location.search, page: 1 };
 }
 
+/**
+ * A previously valid bookmarked page can become out of range when published
+ * products are withdrawn. Only a parsed, confirmed page-200 response for the
+ * SAME request with an empty result and authoritative total can repair it.
+ * A network outage, malformed JSON or a nonempty result is not evidence.
+ */
+export function reconcilePublishedBuyerPage(
+  location: BuyerBrowseLocation,
+  confirmed: BuyerPage,
+): BuyerBrowseLocation | null {
+  if (location.page <= 1 || confirmed.page !== location.page ||
+    confirmed.pageSize !== BUYER_PAGE_SIZE || confirmed.items.length !== 0 ||
+    confirmed.total > (location.page - 1) * BUYER_PAGE_SIZE) return null;
+  return { ...location, page: 1 };
+}
+
 export function buyerCatalogPath(
   page: number, categoryId: string | null, search: string,
 ): string {
