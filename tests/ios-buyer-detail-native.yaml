@@ -4,11 +4,13 @@ appId: ${APP_ID}
 ---
 # This cold OS URL must run AFTER the Maestro XCTest driver starts.
 - openLink: "hana://products/60000000-0000-4000-8000-000000000021?search=%DA%A9%D8%A7%D9%84%D8%A7%DB%8C+%D9%BE%DB%8C%D9%88%D9%86%D8%AF+%D8%A2%D8%B2%D9%85%D8%A7%DB%8C%D8%B4%DB%8C&page=2"
-- runFlow:
-    when:
-      visible: 'Open in .*حنا.*'
-    commands:
-      - tapOn: "Open"
+# iOS may show its first-link security prompt AFTER a conditional runFlow
+# has already skipped. Give the actual Open button its own awaited lookup.
+# On an already-trusted simulator, optional means the real screen assertion
+# below remains the mandatory gate.
+- tapOn:
+    text: "Open"
+    optional: true
 # On a loaded CI simulator, SpringBoard may accept the scheme and open the
 # app AFTER Maestro's default assert timeout. Wait for the real native text,
 # not a fixed sleep; if URL delivery never completes, this still fails.
