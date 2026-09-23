@@ -60,6 +60,25 @@ jobs:
           catalog_db_sha=$(grep '^Reviewed DB state sha256=' /tmp/catalog-preview.log | cut -d= -f2)
           test "${#catalog_db_sha}" -eq 64
           test "$catalog_sha" = "$(sha256sum /tmp/catalog-operator-ci.json | cut -d' ' -f1)"
+          # Identical object keys are ambiguous to the operator: serializer
+          # last-wins behavior must never silently override reviewed state.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/catalog-operator-ci.json')
+          text = p.read_text()
+          assert '"state":"DRAFT"' in text
+          Path('/tmp/catalog-ambiguous-ci.json').write_text(
+              text.replace('"state":"DRAFT"',
+                           '"state":"DRAFT","state":"PUBLISHED"', 1))
+          PY
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-preview /tmp/catalog-ambiguous-ci.json > /tmp/catalog-ambiguous-preview.log 2>&1; then
+            echo 'Ambiguous catalog preview succeeded'
+            exit 1
+          fi
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-ambiguous-ci.json --expected-sha256 "$(sha256sum /tmp/catalog-ambiguous-ci.json | cut -d' ' -f1)" --expected-db-state-sha256 "$catalog_db_sha" > /tmp/catalog-ambiguous-apply.log 2>&1; then
+            echo 'Ambiguous catalog apply succeeded'
+            exit 1
+          fi
           # Applying without review approval must not be possible.
           if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --catalog-apply /tmp/catalog-operator-ci.json > /tmp/catalog-unreviewed.log 2>&1; then
             echo 'Unpinned catalog apply was accepted'
@@ -103,6 +122,23 @@ jobs:
           geography_db_sha=$(grep '^Reviewed DB state sha256=' /tmp/hana-geo-preview.log | cut -d= -f2)
           test "${#geography_db_sha}" -eq 64
           test "$geography_sha" = "$(sha256sum /tmp/hana-geo-operator-ci.json | cut -d' ' -f1)"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/hana-geo-operator-ci.json')
+          text = p.read_text()
+          assert '"state":"DRAFT"' in text
+          Path('/tmp/hana-geo-ambiguous-ci.json').write_text(
+              text.replace('"state":"DRAFT"',
+                           '"state":"DRAFT","state":"SELECTABLE"', 1))
+          PY
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-preview /tmp/hana-geo-ambiguous-ci.json > /tmp/geo-ambiguous-preview.log 2>&1; then
+            echo 'Ambiguous geography preview succeeded'
+            exit 1
+          fi
+          if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-ambiguous-ci.json --expected-sha256 "$(sha256sum /tmp/hana-geo-ambiguous-ci.json | cut -d' ' -f1)" --expected-db-state-sha256 "$geography_db_sha" > /tmp/geo-ambiguous-apply.log 2>&1; then
+            echo 'Ambiguous geography apply succeeded'
+            exit 1
+          fi
           if dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --geography-apply /tmp/hana-geo-operator-ci.json > /tmp/geo-unreviewed.log 2>&1; then
             echo 'Unpinned geography apply was accepted'
             exit 1
@@ -437,6 +473,29 @@ jobs:
       - name: Generate native Android project from committed Expo configuration
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile-consumer
+      - name: Install and verify Expo-pinned Android NDK before Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ndk_version=27.1.12297006
+          ndk_dir="${ANDROID_HOME:?}/ndk/$ndk_version"
+          for attempt in 1 2 3; do
+            if test -f "$ndk_dir/source.properties" &&
+              grep -Fq "Pkg.Revision = $ndk_version" "$ndk_dir/source.properties"; then
+              echo "Verified Android NDK $ndk_version"
+              exit 0
+            fi
+            rm -rf "$ndk_dir"
+            echo "Installing pinned NDK attempt $attempt/3"
+            if "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk_version" &&
+              test -f "$ndk_dir/source.properties" &&
+              grep -Fq "Pkg.Revision = $ndk_version" "$ndk_dir/source.properties"; then
+              exit 0
+            fi
+            if test "$attempt" -lt 3; then sleep 15; fi
+          done
+          echo "Pinned Android NDK unavailable or corrupt; refusing to build"
+          exit 1
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
         run: ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-consumer/android

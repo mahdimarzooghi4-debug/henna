@@ -47,6 +47,7 @@ public static partial class GeographyImportService
         GeographyImportDocument doc;
         try
         {
+            ReviewedImportJson.RejectDuplicateProperties(json);
             doc = JsonSerializer.Deserialize<GeographyImportDocument>(
                 json, JsonOptions)
                 ?? throw new JsonException("Missing geography document.");
