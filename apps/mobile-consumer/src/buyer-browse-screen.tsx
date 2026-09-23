@@ -67,7 +67,11 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   // Keep the mounted browse coordinator and its real search/filter/page state.
   if (detailId !== null) return (
     <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
-      onBack={() => setDetailId(null)} />
+      onBack={() => {
+        setDetailId(null);
+        // A category can leave publication while the buyer reads detail.
+        void controller.refreshCategories();
+      }} />
   );
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
