@@ -30,6 +30,7 @@ function detail() {
     description: "شرح واقعی",
     status: "DRAFT",
     revision: currentRevision,
+    registeredAtUtc: null,
     createdAtUtc: "2026-09-20T10:00:00+00:00",
     updatedAtUtc: "2026-09-20T10:00:00+00:00",
     organizationId: orgId,

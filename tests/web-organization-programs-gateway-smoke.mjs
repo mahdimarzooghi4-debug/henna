@@ -85,6 +85,7 @@ try {
               "2026-09-20T10:00:00+00:00"),
             description: "شرح واقعی تست CI",
             revision: 1,
+            registeredAtUtc: null,
           }));
           return;
         }
@@ -95,6 +96,7 @@ try {
               "2026-09-21T10:00:00+00:00"),
             description: null,
             revision: 1,
+            registeredAtUtc: null,
           }));
           return;
         }

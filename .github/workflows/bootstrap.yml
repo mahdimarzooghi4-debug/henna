@@ -380,6 +380,8 @@ jobs:
         run: node tests/web-organization-programs-gateway-smoke.mjs
       - name: Test organization program draft create/edit BFF and SSR permissions
         run: node tests/web-organization-program-draft-gateway-smoke.mjs
+      - name: Test organization program Draft to Registered BFF and SSR action
+        run: node tests/web-organization-program-register-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
         run: node --experimental-strip-types --test tests/otp-resend-smoke.mjs
       - name: Verify seller return URL policy and safe draft hydration
