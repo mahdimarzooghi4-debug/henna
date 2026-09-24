@@ -19,6 +19,7 @@ export type OrganizationProgramSummary = {
 export type OrganizationProgramDetail = OrganizationProgramSummary & {
   description: string | null;
   revision: number;
+  registeredAtUtc: string | null;
 };
 
 export type OrganizationProgramList = {
@@ -178,13 +179,16 @@ export function parseOrganizationProgramDetail(
   const data = value as Record<string, unknown>;
   const description = data.description;
   const revision = data.revision;
+  const registeredAtUtc = data.registeredAtUtc;
   if (!optionalString(description, 2000) ||
-    !positiveInteger(revision, 1, 2147483646))
+    !positiveInteger(revision, 1, 2147483646) ||
+    !(registeredAtUtc === null || isoDate(registeredAtUtc)))
     return null;
   return {
     ...summary,
     description: description?.trim() || null,
     revision,
+    registeredAtUtc,
   };
 }
 

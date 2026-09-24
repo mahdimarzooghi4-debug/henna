@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { OrganizationProgramDraftForm } from "./organization-program-draft-form";
+import { OrganizationProgramRegisterAction } from "./organization-program-register-action";
 import type {
   OrganizationProfile,
   OrganizationProfileState,
@@ -385,6 +386,9 @@ function ProgramDetail({
           <Pair label="منبع افراد و مشمولان" value={programSource(program.beneficiarySource)} />
           <Pair label="تاریخ ثبت" value={programDate(program.createdAtUtc)} />
           <Pair label="آخرین به‌روزرسانی" value={programDate(program.updatedAtUtc)} />
+          {program.registeredAtUtc
+            ? <Pair label="زمان ثبت نهایی" value={programDate(program.registeredAtUtc)} />
+            : null}
         </Card>
         <Card title="اطلاعات پایه طرح">
           <Pair label="نام کامل طرح سازمانی" value={program.name} />
@@ -396,16 +400,27 @@ function ProgramDetail({
       </div>
       {profile?.memberRole === "PORTAL_ADMIN" &&
       program.status === "DRAFT" ? (
-        <Card title="ویرایش پیش‌نویس" className="org-form-card">
-          <p className="org-muted">
-            فقط پیش‌نویس قابل ویرایش است. کنترل نسخه از بازنویسی تغییرات همزمان جلوگیری می‌کند.
-          </p>
-          <OrganizationProgramDraftForm
-            mode="edit"
-            program={program}
-            defaultAllocationMethod={program.allocationMethod}
-          />
-        </Card>
+        <>
+          <Card title="ویرایش پیش‌نویس" className="org-form-card">
+            <p className="org-muted">
+              فقط پیش‌نویس قابل ویرایش است. کنترل نسخه از بازنویسی تغییرات همزمان جلوگیری می‌کند.
+            </p>
+            <OrganizationProgramDraftForm
+              mode="edit"
+              program={program}
+              defaultAllocationMethod={program.allocationMethod}
+            />
+          </Card>
+          <Card title="ثبت نهایی طرح" className="org-form-card org-register-card">
+            <p className="org-muted">
+              ثبت نهایی فقط وضعیت را از پیش‌نویس به ثبت‌شده تغییر می‌دهد؛ فعال‌سازی و تخصیص اعتبار همچنان جدا هستند.
+            </p>
+            <OrganizationProgramRegisterAction
+              programId={program.id}
+              revision={program.revision}
+            />
+          </Card>
+        </>
       ) : null}
       <div className="org-banner org-banner--muted">
         <strong>مرز داده این مرحله</strong>
