@@ -570,22 +570,32 @@ internal static class OrganizationRecipientBulkImportEndpoints
                         .Select(x => x.Phone!)
                         .Distinct(StringComparer.Ordinal)
                         .ToArray();
-                    var matchedAccounts =
-                        phones.Length == 0
-                            ? new Dictionary<string, Guid>(
-                                StringComparer.Ordinal)
-                            : await services
-                                .GetRequiredService<HanaIdentityDbContext>()
-                                .Accounts
-                                .AsNoTracking()
-                                .Where(a =>
-                                    a.PhoneVerifiedAtUtc != null &&
-                                    phones.Contains(a.NormalizedPhone))
-                                .ToDictionaryAsync(
-                                    a => a.NormalizedPhone,
-                                    a => a.Id,
-                                    StringComparer.Ordinal,
-                                    cancellationToken);
+                    Dictionary<string, Guid> matchedAccounts;
+                    if (phones.Length == 0)
+                    {
+                        matchedAccounts = new Dictionary<string, Guid>(
+                            StringComparer.Ordinal);
+                    }
+                    else
+                    {
+                        var matches = await services
+                            .GetRequiredService<HanaIdentityDbContext>()
+                            .Accounts
+                            .AsNoTracking()
+                            .Where(a =>
+                                a.PhoneVerifiedAtUtc != null &&
+                                phones.Contains(a.NormalizedPhone))
+                            .Select(a => new
+                            {
+                                a.NormalizedPhone,
+                                a.Id
+                            })
+                            .ToListAsync(cancellationToken);
+                        matchedAccounts = matches.ToDictionary(
+                            x => x.NormalizedPhone,
+                            x => x.Id,
+                            StringComparer.Ordinal);
+                    }
 
                     await using var transaction =
                         await db.Database.BeginTransactionAsync(

@@ -419,14 +419,17 @@ internal static class OrganizationRecipientImportParser
         var letters = 0;
         foreach (var ch in reference)
         {
+            if (letters >= 3)
+                return -1;
+
             if (ch is >= 'A' and <= 'Z')
             {
-                value = checked(value * 26 + (ch - 'A' + 1));
+                value = value * 26 + (ch - 'A' + 1);
                 letters++;
             }
             else if (ch is >= 'a' and <= 'z')
             {
-                value = checked(value * 26 + (ch - 'a' + 1));
+                value = value * 26 + (ch - 'a' + 1);
                 letters++;
             }
             else
@@ -491,6 +494,21 @@ internal static class OrganizationRecipientImportParser
                     "هر ستون فقط یک‌بار مجاز است."));
         }
 
+        var mappedColumns = headerMap.Values.ToHashSet();
+        foreach (var row in nonEmpty.Skip(1))
+        {
+            for (var i = 0; i < row.Cells.Count; i++)
+            {
+                if (!mappedColumns.Contains(i) &&
+                    !string.IsNullOrWhiteSpace(row.Cells[i].Value))
+                    errors.Add(new(
+                        row.RowNumber,
+                        "file",
+                        "UNMAPPED_COLUMN_DATA",
+                        "داده در ستونی خارج از قالب مجاز وجود دارد."));
+            }
+        }
+
         foreach (var required in new[]
         {
             "displayName", "externalReference", "phone"
@@ -549,6 +567,14 @@ internal static class OrganizationRecipientImportParser
                         "FORMULA_NOT_ALLOWED",
                         "سلول فرمول‌دار در فایل ورودی مجاز نیست."));
             }
+
+            if (!displayName.IsText &&
+                !string.IsNullOrWhiteSpace(displayName.Value))
+                errors.Add(new(
+                    row.RowNumber,
+                    "displayName",
+                    "TEXT_REQUIRED",
+                    "نام نمایشی در XLSX باید به‌صورت متن ذخیره شود."));
 
             if (!reference.IsText &&
                 !string.IsNullOrWhiteSpace(reference.Value))
