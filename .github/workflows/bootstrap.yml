@@ -392,6 +392,8 @@ jobs:
         run: node tests/web-organization-recipient-bulk-import-gateway-smoke.mjs
       - name: Test Organization allocation readiness Figma screens and read BFF
         run: node tests/web-organization-allocation-readiness-gateway-smoke.mjs
+      - name: Test Organization usage status Figma screen and fail-closed read BFF
+        run: node tests/web-organization-usage-status-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
         run: node --experimental-strip-types --test tests/otp-resend-smoke.mjs
       - name: Verify seller return URL policy and safe draft hydration
