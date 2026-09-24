@@ -62,3 +62,14 @@
 .org-register-confirm strong{display:block;color:var(--org-terracotta);margin-bottom:6px}
 .org-register-confirm p{margin:0;color:var(--org-muted);font-size:13px;line-height:1.9}
 .org-register-reload{margin-top:10px}
+
+.org-people-banner{background:var(--org-bg);border-color:var(--org-teal);color:var(--org-text)}
+.org-recipient-filters{margin-bottom:10px}
+.org-recipient-filter-actions{display:flex;gap:8px;grid-column:1/-1;justify-content:flex-start}
+.org-recipient-boundary{margin:0 0 18px;color:var(--org-muted);font-size:12px;line-height:1.8}
+.org-recipient-identity{display:flex;flex-direction:column;gap:3px;min-width:150px}
+.org-recipient-identity strong{font-size:13px}
+.org-recipient-identity small{font-size:11px;color:var(--org-muted)}
+.org-recipient-identity bdi{direction:ltr;unicode-bidi:isolate}
+@media(max-width:1050px){.org-recipient-filters{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.org-recipient-filters{grid-template-columns:1fr}.org-recipient-filter-actions{width:100%}.org-recipient-filter-actions .org-button{flex:1}}
