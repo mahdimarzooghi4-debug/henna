@@ -717,6 +717,9 @@ internal static class OrganizationRecipientBulkImportEndpoints
                     {
                         await transaction.RollbackAsync(
                             cancellationToken);
+                        // Release the completed transaction before issuing
+                        // reconciliation queries on the same DbContext.
+                        await transaction.DisposeAsync();
                         db.ChangeTracker.Clear();
 
                         var afterImport = await db.RecipientImports
