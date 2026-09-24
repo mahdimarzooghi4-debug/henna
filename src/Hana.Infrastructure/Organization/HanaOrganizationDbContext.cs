@@ -34,8 +34,6 @@ public sealed class HanaOrganizationDbContext(
                     "length(btrim(default_allocation_method)) > 0");
             });
             entity.HasKey(x => x.Id);
-            entity.HasAlternateKey(x => new { x.Id, x.OrganizationId })
-                .HasName("ak_organization_programs_id_organization_id");
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
             entity.Property(x => x.Name).HasColumnName("name")
                 .HasMaxLength(200).IsRequired();
@@ -121,6 +119,8 @@ public sealed class HanaOrganizationDbContext(
                     "(registration_key IS NULL AND registration_expected_revision IS NULL) OR (registration_key IS NOT NULL AND registration_expected_revision >= 1)");
             });
             entity.HasKey(x => x.Id);
+            entity.HasAlternateKey(x => new { x.Id, x.OrganizationId })
+                .HasName("ak_organization_programs_id_organization_id");
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
             entity.Property(x => x.OrganizationId).HasColumnName("organization_id")
                 .ValueGeneratedNever();
