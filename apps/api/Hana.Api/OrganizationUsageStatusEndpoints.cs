@@ -95,7 +95,8 @@ internal static class OrganizationUsageStatusEndpoints
 
                 return Results.Ok(new
                 {
-                    authorized.Access!.OrganizationType,
+                    organizationType =
+                        authorized.Access!.OrganizationType,
                     lastRecordedSyncAtUtc =
                         (DateTimeOffset?)null,
                     summary = new
