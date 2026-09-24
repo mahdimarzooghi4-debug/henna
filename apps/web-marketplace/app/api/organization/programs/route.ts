@@ -151,7 +151,9 @@ export async function POST(request: NextRequest) {
       return error("ثبت پیش‌نویس تأیید نشد؛ دوباره تلاش کنید.", 503);
 
     const program = parseOrganizationProgramDetail(await upstream.json());
-    if (!program || program.status !== "DRAFT" || program.revision !== 1)
+    if (!program ||
+      (upstream.status === 201 &&
+        (program.status !== "DRAFT" || program.revision !== 1)))
       return error("پاسخ سرویس ثبت طرح معتبر نیست.", 503);
 
     return NextResponse.json(program, {

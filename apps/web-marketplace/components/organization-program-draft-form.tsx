@@ -295,9 +295,9 @@ export function OrganizationProgramDraftForm(props: Props) {
             type="button"
             disabled={busy}
             onClick={() => {
-              setFeedback(null);
-              setConflictRevision(null);
-              router.refresh();
+              // A hard reload intentionally discards the stale local draft
+              // only after the user explicitly chooses to load the server copy.
+              window.location.reload();
             }}
           >
             بارگذاری نسخه جدید

@@ -303,6 +303,17 @@ try {
   assert.equal(updatedBody.revision, 2);
   assert.equal(updatedBody.name, "طرح ویرایش‌شده");
 
+  // The original create request remains idempotent after later edits.
+  const replayAfterEdit = await fetch(base + "/api/organization/programs", {
+    method: "POST",
+    headers: mutationHeaders(adminToken),
+    body: JSON.stringify(createBody),
+  });
+  assert.equal(replayAfterEdit.status, 200);
+  const replayAfterEditBody = await replayAfterEdit.json();
+  assert.equal(replayAfterEditBody.id, programId);
+  assert.equal(replayAfterEditBody.revision, 2);
+
   const stale = await fetch(
     base + "/api/organization/programs/" + programId,
     {
