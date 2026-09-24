@@ -28,6 +28,7 @@ import type {
 import type {
   OrganizationReportsOverviewState,
 } from "../lib/organization-reports";
+import type { OrganizationNotificationsState } from "../lib/organization-notifications";
 import {
   defaultProgramListQuery,
   organizationProgramStatusLabels,
@@ -1366,13 +1367,25 @@ function Reports({
   );
 }
 
-function Notifications() {
-  const items = [
-    ["همگام‌سازی منبع داده سازمان", "اطلاعات منبع داده سازمان همگام‌سازی شد."],
-    ["ثبت یک طرح نمونه", "یک طرح نمونه در پرتال ثبت شد."],
-    ["وضعیت یک طرح ثبت‌شده تغییر کرده است.", "جزئیات وضعیت در صفحه همان طرح قابل مشاهده است."],
-  ];
-  return <Card>{items.map(([t,d]) => <article className="org-notification" key={t}><div><h2>{t}</h2><p>{d}</p></div><small>زمان نمونه</small></article>)}</Card>;
+function Notifications({ state }: { state: OrganizationNotificationsState }) {
+  if (state.status !== "ready") {
+    const message = state.status === "unauthenticated"
+      ? "برای مشاهده اعلان‌ها وارد شوید."
+      : state.status === "forbidden"
+        ? "دسترسی سازمانی فعال نیست."
+        : "اعلان‌های سازمان فعلاً در دسترس نیستند.";
+    return <Card><p role="status">{message}</p></Card>;
+  }
+  if (state.notifications.length === 0)
+    return <Card><p role="status">هنوز اعلانی برای سازمان ثبت نشده است.</p></Card>;
+  return <Card>{state.notifications.map(item => (
+    <article className="org-notification" key={item.id}>
+      <div><h2>{item.title}</h2><p>{item.message}</p></div>
+      <small>{item.readState === "UNREAD" ? "خوانده‌نشده · " : "خوانده‌شده · "}
+        <time dateTime={item.createdAtUtc}>{new Date(item.createdAtUtc).toLocaleString("fa-IR")}</time>
+      </small>
+    </article>
+  ))}</Card>;
 }
 
 function Support() {
@@ -1429,6 +1442,7 @@ function Screen({
   allocationProgramState,
   usageStatusState,
   reportsOverviewState,
+  notificationsState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -1442,6 +1456,7 @@ function Screen({
   allocationProgramState?: OrganizationAllocationProgramState;
   usageStatusState?: OrganizationUsageStatusState;
   reportsOverviewState?: OrganizationReportsOverviewState;
+  notificationsState?: OrganizationNotificationsState;
 }) {
   const profile = profileState.status === "ready"
     ? profileState.profile : null;
@@ -1497,7 +1512,7 @@ function Screen({
         state={reportsOverviewState ?? { status: "unavailable" }}
       />
     );
-    case "notifications": return <Notifications />;
+    case "notifications": return <Notifications state={notificationsState ?? { status: "unavailable" }} />;
     case "support": return <Support />;
     case "settings": return <Settings />;
   }
@@ -1523,6 +1538,7 @@ export function OrganizationPortal({
   allocationProgramState,
   usageStatusState,
   reportsOverviewState,
+  notificationsState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -1536,6 +1552,7 @@ export function OrganizationPortal({
   allocationProgramState?: OrganizationAllocationProgramState;
   usageStatusState?: OrganizationUsageStatusState;
   reportsOverviewState?: OrganizationReportsOverviewState;
+  notificationsState?: OrganizationNotificationsState;
 }) {
   const active = activeNav(screen);
   const profile = profileState.status === "ready"
@@ -1574,6 +1591,7 @@ export function OrganizationPortal({
             allocationProgramState={allocationProgramState}
             usageStatusState={usageStatusState}
             reportsOverviewState={reportsOverviewState}
+            notificationsState={notificationsState}
           />
         </div>
       </section>
