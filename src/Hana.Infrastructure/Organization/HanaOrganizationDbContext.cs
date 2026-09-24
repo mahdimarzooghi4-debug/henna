@@ -220,6 +220,11 @@ public sealed class HanaOrganizationDbContext(
             entity.HasIndex(x => new
                 { x.OrganizationId, x.ProgramId, x.CreatedAtUtc, x.Id })
                 .HasDatabaseName("ix_organization_recipients_org_program_created");
+            // Explicitly model the composite FK index. EF creates this by
+            // convention because the FK order is ProgramId, OrganizationId;
+            // keeping it explicit makes snapshot/migration drift impossible.
+            entity.HasIndex(x => new { x.ProgramId, x.OrganizationId })
+                .HasDatabaseName("ix_organization_recipients_program_tenant");
             entity.HasIndex(x => new
                 { x.OrganizationId, x.MatchStatus, x.Source, x.CreatedAtUtc, x.Id })
                 .HasDatabaseName("ix_organization_recipients_org_match_source_created");

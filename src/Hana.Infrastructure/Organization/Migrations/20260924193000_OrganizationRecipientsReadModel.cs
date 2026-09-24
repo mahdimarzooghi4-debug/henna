@@ -95,6 +95,12 @@ public sealed class OrganizationRecipientsReadModel : Migration
             });
 
         migrationBuilder.CreateIndex(
+            name: "ix_organization_recipients_program_tenant",
+            schema: "organization",
+            table: "recipients",
+            columns: new[] { "program_id", "organization_id" });
+
+        migrationBuilder.CreateIndex(
             name: "ix_organization_recipients_org_match_source_created",
             schema: "organization",
             table: "recipients",
