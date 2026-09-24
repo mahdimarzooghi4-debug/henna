@@ -118,7 +118,7 @@ public sealed class OrganizationRecipientBulkImportApiTests
         const string url = "/api/v1/organization/recipients/import";
         var validCsv = Csv(
             "displayName,externalReference,phone",
-            $\""فرد، اول\",EMP-000001,{ToPersianDigits(matchedPhone)}",
+            $"\"فرد، اول\",EMP-000001,{ToPersianDigits(matchedPhone)}",
             "فرد دوم,EMP-000002,");
 
         Assert.Equal(
