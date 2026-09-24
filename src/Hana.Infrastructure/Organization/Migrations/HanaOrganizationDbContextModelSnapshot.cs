@@ -87,6 +87,12 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                     "length(btrim(beneficiary_source)) > 0");
                 table.HasCheckConstraint("ck_organization_programs_status",
                     "status IN ('DRAFT', 'REGISTERED', 'ACTIVE', 'PAUSED', 'ENDED')");
+                table.HasCheckConstraint("ck_organization_programs_revision",
+                    "revision >= 1");
+                table.HasCheckConstraint("ck_organization_programs_creation_key",
+                    "creation_key IS NULL OR creation_key <> '00000000-0000-0000-0000-000000000000'::uuid");
+                table.HasCheckConstraint("ck_organization_programs_creation_fingerprint",
+                    "(creation_key IS NULL AND creation_fingerprint IS NULL) OR (creation_key IS NOT NULL AND creation_fingerprint ~ '^[0-9a-f]{64}$')");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
@@ -105,6 +111,15 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             entity.Property(x => x.Status).HasColumnName("status")
                 .HasMaxLength(16).IsRequired()
                 .HasDefaultValue(OrganizationProgramStates.Draft);
+            entity.Property(x => x.Revision).HasColumnName("revision")
+                .HasDefaultValue(1).IsRequired().IsConcurrencyToken();
+            entity.Property(x => x.CreationKey).HasColumnName("creation_key");
+            entity.Property(x => x.CreationFingerprint)
+                .HasColumnName("creation_fingerprint").HasMaxLength(64);
+            entity.Property(x => x.CreatedByAccountId)
+                .HasColumnName("created_by_account_id");
+            entity.Property(x => x.UpdatedByAccountId)
+                .HasColumnName("updated_by_account_id");
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
                 .IsRequired();
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
@@ -116,6 +131,10 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             entity.HasIndex(x => new
                 { x.OrganizationId, x.Status, x.CreatedAtUtc, x.Id })
                 .HasDatabaseName("ix_organization_programs_org_status_created");
+            entity.HasIndex(x => new { x.OrganizationId, x.CreationKey })
+                .IsUnique()
+                .HasFilter("creation_key IS NOT NULL")
+                .HasDatabaseName("ix_organization_programs_org_creation_key");
         });
     }
 }
