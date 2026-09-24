@@ -110,6 +110,7 @@ if (hasIdentityDb)
 {
     builder.Services.AddScoped<AuthSessionService>();
     builder.Services.AddScoped<OrganizationAccessService>();
+    builder.Services.AddScoped<OrganizationAllocationReadinessService>();
 }
 
 if (hasIdentityDb && otpKeyConfigured)
@@ -377,6 +378,7 @@ app.MapOrganizationProfile(hasIdentityDb);
 app.MapOrganizationPrograms(hasIdentityDb);
 app.MapOrganizationRecipients(hasIdentityDb);
 app.MapOrganizationRecipientBulkImport(hasIdentityDb);
+app.MapOrganizationAllocationReadiness(hasIdentityDb);
 
 // An explicitly invoked operator process can preview or apply reviewed
 // catalog JSON. No public HTTP route or automatic product seed is installed.
