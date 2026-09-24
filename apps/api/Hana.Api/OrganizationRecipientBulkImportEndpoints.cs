@@ -758,11 +758,23 @@ internal static class OrganizationRecipientBulkImportEndpoints
                                     StatusCodes
                                         .Status503ServiceUnavailable);
 
+                            var afterProgram = await db.Programs
+                                .AsNoTracking()
+                                .SingleOrDefaultAsync(
+                                    p => p.Id == afterImport.ProgramId &&
+                                        p.OrganizationId ==
+                                            auth.Access.OrganizationId,
+                                    cancellationToken);
+                            if (afterProgram is null)
+                                return Results.StatusCode(
+                                    StatusCodes
+                                        .Status503ServiceUnavailable);
+
                             return Results.Ok(
                                 ImportResponse(
                                     afterImport,
                                     afterRows,
-                                    lockedProgram));
+                                    afterProgram));
                         }
 
                         var concurrentExisting = await db.Recipients
