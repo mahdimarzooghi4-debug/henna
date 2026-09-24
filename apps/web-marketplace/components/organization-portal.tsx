@@ -1,6 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type {
+  OrganizationProfile,
+  OrganizationProfileState,
+} from "../lib/organization-profile";
 
 export type OrgScreenKey =
   | "dashboard"
@@ -102,12 +106,21 @@ function Table({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
   );
 }
 
-function Dashboard() {
+function Dashboard({ profile }: { profile: OrganizationProfile | null }) {
   return (
     <>
       <div className="org-banner">
-        <strong>سازمان حمایتگر | روش تخصیص: الگوی حنا</strong>
-        <span>تخصیص اعتبار بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود.</span>
+        {profile ? (
+          <>
+            <strong>{profile.name} | {profile.organizationType}</strong>
+            <span>روش تخصیص پیش‌فرض: {profile.defaultAllocationMethod}</span>
+          </>
+        ) : (
+          <>
+            <strong>اطلاعات هویتی سازمان هنوز تأیید نشده است</strong>
+            <span>داده‌های عملیاتی این صفحه در این مرحله همان نمونه‌های Figma هستند.</span>
+          </>
+        )}
       </div>
       <div className="org-grid org-grid--2">
         <div className="org-stack">
@@ -145,26 +158,60 @@ function Dashboard() {
   );
 }
 
-function Profile() {
+function Profile({ state }: { state: OrganizationProfileState }) {
+  if (state.status !== "ready") {
+    const content = state.status === "unauthenticated"
+      ? {
+          title: "برای مشاهده اطلاعات سازمان وارد شوید",
+          body: "نشست معتبر سازمانی پیدا نشد.",
+          action: <Link className="org-button org-button--primary" href="/auth">ورود به حنا</Link>,
+        }
+      : state.status === "forbidden"
+        ? {
+            title: "دسترسی سازمانی فعال نیست",
+            body: "این حساب وارد شده است، اما عضویت فعال در یک سازمان برای آن ثبت نشده است.",
+            action: null,
+          }
+        : {
+            title: "اطلاعات سازمان موقتاً در دسترس نیست",
+            body: "برای جلوگیری از نمایش داده قدیمی یا ساختگی، پروفایل نمونه جایگزین نمی‌شود.",
+            action: null,
+          };
+    return (
+      <Card className="org-access-state">
+        <h2>{content.title}</h2>
+        <p>{content.body}</p>
+        {content.action}
+      </Card>
+    );
+  }
+
+  const profile = state.profile;
   return (
     <div className="org-grid org-grid--2">
       <div className="org-stack">
         <Card title="اطلاعات تماس ثبت‌شده">
-          <Pair label="تلفن ثابت سازمان" value="۰۲۱-۸۸******" />
-          <Pair label="پست الکترونیکی رسمی" value="info@org-domain.ir" />
-          <Pair label="نشانی فیزیکی ثبت‌شده" value="تهران، بلوار نلسون ماندلا، کوچه ***" />
+          <Pair label="تلفن ثابت سازمان" value={profile.phone ?? "ثبت نشده"} />
+          <Pair label="پست الکترونیکی رسمی" value={profile.email ?? "ثبت نشده"} />
+          <Pair label="نشانی فیزیکی ثبت‌شده" value={profile.address ?? "ثبت نشده"} />
         </Card>
         <Card title="اطلاعات نماینده سازمان">
-          <Pair label="نام و نام خانوادگی نماینده" value="جناب آقای محمدی" />
-          <Pair label="شماره شناسایی کاربری" value="کاربر ارشد پرتال" />
-          <Pair label="شماره تماس نماینده" value="۰۹۱۲******۴" />
+          <Pair label="نام و نام خانوادگی نماینده" value={profile.representativeName ?? "ثبت نشده"} />
+          <Pair label="نقش کاربر فعلی" value={profile.memberRole} />
+          <Pair label="شماره تماس نماینده" value={profile.representativePhone ?? "ثبت نشده"} />
         </Card>
       </div>
       <Card title="شناسه و اطلاعات هویتی سازمان">
-        <Pair label="عنوان سازمان" value="سازمان حمایتگر نمونه" />
-        <Pair label="نوع سازمان" value="سازمان حمایتگر" />
-        <Pair label="روش تخصیص پیش‌فرض" value="الگوی تخصیص حنا" />
-        <Pair label="وضعیت حساب کاربری" value={<Badge>تایید شده و فعال</Badge>} />
+        <Pair label="عنوان سازمان" value={profile.name} />
+        <Pair label="نوع سازمان" value={profile.organizationType} />
+        <Pair label="روش تخصیص پیش‌فرض" value={profile.defaultAllocationMethod} />
+        <Pair label="شناسه سازمان" value={<bdi>{profile.organizationId}</bdi>} />
+        <Pair
+          label="وضعیت حساب سازمانی"
+          value={profile.verified
+            ? <Badge>تایید شده و فعال</Badge>
+            : <Badge tone="warn">فعال، در انتظار تایید</Badge>}
+        />
       </Card>
     </div>
   );
@@ -435,10 +482,18 @@ function Settings() {
   );
 }
 
-function Screen({ screen }: { screen: OrgScreenKey }) {
+function Screen({
+  screen,
+  profileState,
+}: {
+  screen: OrgScreenKey;
+  profileState: OrganizationProfileState;
+}) {
+  const profile = profileState.status === "ready"
+    ? profileState.profile : null;
   switch (screen) {
-    case "dashboard": return <Dashboard />;
-    case "profile": return <Profile />;
+    case "dashboard": return <Dashboard profile={profile} />;
+    case "profile": return <Profile state={profileState} />;
     case "programs": return <Programs />;
     case "program-detail": return <ProgramDetail />;
     case "create-program": return <CreateProgram />;
@@ -462,23 +517,52 @@ function activeNav(screen: OrgScreenKey) {
   return screen;
 }
 
-export function OrganizationPortal({ screen }: { screen: OrgScreenKey }) {
+export function OrganizationPortal({
+  screen,
+  profileState,
+}: {
+  screen: OrgScreenKey;
+  profileState: OrganizationProfileState;
+}) {
   const active = activeNav(screen);
+  const profile = profileState.status === "ready"
+    ? profileState.profile : null;
+  const accessText = profileState.status === "ready"
+    ? "پروفایل سازمانی متصل"
+    : profileState.status === "unauthenticated"
+      ? "نشست سازمانی معتبر نیست"
+      : profileState.status === "forbidden"
+        ? "دسترسی سازمانی فعال نیست"
+        : "سرویس سازمان در دسترس نیست";
+
   return (
     <main className="org-shell" dir="rtl">
       <section className="org-content">
         <header className="org-header">
-          <div className="org-header__meta"><Badge tone="neutral">سازمان حمایتگر</Badge><span>↻ آخرین همگام‌سازی ثبت‌شده</span></div>
+          <div className="org-header__meta">
+            <Badge tone={profile ? "neutral" : "warn"}>
+              {profile?.organizationType ?? "پرتال سازمانی"}
+            </Badge>
+            <span>{profile?.name ?? accessText}</span>
+          </div>
           <h1>{titles[screen]}</h1>
         </header>
-        <div className="org-body"><Screen screen={screen} /></div>
+        <div className="org-body">
+          <Screen screen={screen} profileState={profileState} />
+        </div>
       </section>
       <aside className="org-sidebar">
         <div className="org-brand"><Image src="/hana-logo.png" alt="حنا" width={82} height={38} /><strong>پنل سازمان‌ها</strong></div>
         <nav aria-label="ناوبری پرتال سازمانی">
           {nav.map(([key,label,href,icon]) => <Link key={key} href={href} className={active === key ? "is-active" : ""}><span>{label}</span><b aria-hidden>{icon}</b></Link>)}
         </nav>
-        <div className="org-user"><div><strong>کد کاربری: ****۹۸۲</strong><small>کاربر ارشد پرتال</small></div><span>ن</span></div>
+        <div className="org-user">
+          <div>
+            <strong>{profile?.name ?? "حساب سازمانی"}</strong>
+            <small>{profile?.memberRole ?? accessText}</small>
+          </div>
+          <span>{profile?.name.trim().charAt(0) || "ح"}</span>
+        </div>
       </aside>
     </main>
   );

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { OrganizationPortal, type OrgScreenKey, organizationRouteMap } from "../../../components/organization-portal";
+import { loadCurrentOrganizationProfile } from "../../../lib/server-organization";
 
 export default async function OrganizationSectionPage({
   params,
@@ -10,5 +11,6 @@ export default async function OrganizationSectionPage({
   const route = section.join("/");
   const screen = organizationRouteMap[route] as OrgScreenKey | undefined;
   if (!screen) notFound();
-  return <OrganizationPortal screen={screen} />;
+  const profileState = await loadCurrentOrganizationProfile();
+  return <OrganizationPortal screen={screen} profileState={profileState} />;
 }

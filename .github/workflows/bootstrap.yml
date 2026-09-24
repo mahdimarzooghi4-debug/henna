@@ -372,6 +372,8 @@ jobs:
           exit 1
       - name: Test isolated web cookie gateway (CI-only mock upstream)
         run: node tests/web-auth-gateway-smoke.mjs
+      - name: Test organization HttpOnly-cookie BFF and SSR profile
+        run: node tests/web-organization-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
         run: node --experimental-strip-types --test tests/otp-resend-smoke.mjs
       - name: Verify seller return URL policy and safe draft hydration
