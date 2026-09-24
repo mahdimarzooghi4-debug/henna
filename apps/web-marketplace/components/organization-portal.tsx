@@ -8,6 +8,15 @@ import type {
   OrganizationProfileState,
 } from "../lib/organization-profile";
 import {
+  defaultRecipientListQuery,
+  organizationRecipientMatchLabels,
+  organizationRecipientSourceLabels,
+  recipientListQueryString,
+  type OrganizationRecipientListQuery,
+  type OrganizationRecipientMatchStatus,
+  type OrganizationRecipientsState,
+} from "../lib/organization-recipients";
+import {
   defaultProgramListQuery,
   organizationProgramStatusLabels,
   programListQueryString,
@@ -472,24 +481,179 @@ function CreateProgram({ profile }: { profile: OrganizationProfile | null }) {
   );
 }
 
-function People() {
-  const rows: ReactNode[][] = [
-    [<Link key="1" href="/organization/people/add">مشاهده</Link>, "استفاده شده", "تخصیص‌یافته", "طرح نمونه ۱", "API / منبع داده سازمان", <Badge key="a">حساب حنا شناسایی شده</Badge>, "فرد نمونه ۱ · شناسه: ۰۰۲****۳۲۱"],
-    ["—", "در انتظار اعتبار", "تعریف نشده", "طرح نمونه ۲", "ورود دستی", <Badge key="b" tone="warn">نیازمند تطبیق</Badge>, "فرد نمونه ۲ · شناسه: ۱۲۸****۸۹۰"],
-    ["—", "در انتظار بررسی", "تعریف نشده", "اعتبار نمونه", "ورود دستی", <Badge key="c" tone="neutral">در انتظار بررسی</Badge>, "فرد نمونه ۳ · شناسه: ۰۴۵****۴۵۶"],
-  ];
+function recipientMatchBadge(status: OrganizationRecipientMatchStatus) {
+  const tone = status === "MATCHED"
+    ? "teal"
+    : status === "NEEDS_MATCH"
+      ? "warn"
+      : "neutral";
+  return <Badge tone={tone}>{organizationRecipientMatchLabels[status]}</Badge>;
+}
+
+function recipientPageHref(
+  page: number,
+  query: OrganizationRecipientListQuery,
+) {
+  const params = recipientListQueryString({ ...query, page });
+  return "/organization/people" + (params ? "?" + params : "");
+}
+
+function People({
+  state,
+  query,
+}: {
+  state: OrganizationRecipientsState;
+  query: OrganizationRecipientListQuery;
+}) {
+  if (state.status !== "ready") {
+    const message = state.status === "unauthenticated"
+      ? "برای مشاهده افراد و مشمولان ابتدا وارد شوید."
+      : state.status === "forbidden"
+        ? "این حساب عضویت فعال برای مشاهده مشمولان سازمان ندارد."
+        : state.status === "invalid"
+          ? "فیلتر یا صفحه‌بندی واردشده معتبر نیست."
+          : "فهرست افراد و مشمولان موقتاً در دسترس نیست.";
+    return (
+      <Card className="org-access-state">
+        <h2>افراد و مشمولان نمایش داده نشد</h2>
+        <p>{message}</p>
+        {state.status === "unauthenticated"
+          ? <Link className="org-button org-button--primary" href="/auth">ورود به حنا</Link>
+          : state.status === "invalid"
+            ? <Link className="org-button" href="/organization/people">پاک‌کردن فیلترها</Link>
+            : null}
+      </Card>
+    );
+  }
+
+  const rows: ReactNode[][] = state.data.items.map((item) => [
+    "—",
+    <Badge key={item.id + "-usage"} tone="neutral">هنوز متصل نشده</Badge>,
+    <Badge key={item.id + "-allocation"} tone="neutral">هنوز متصل نشده</Badge>,
+    item.program.name,
+    organizationRecipientSourceLabels[item.source],
+    recipientMatchBadge(item.matchStatus),
+    <span className="org-recipient-identity" key={item.id}>
+      <strong>{item.displayName}</strong>
+      <small>شناسه: <bdi>{item.referenceMasked}</bdi></small>
+    </span>,
+  ]);
+
+  const programOptions = new Map<string, string>();
+  for (const item of state.data.items)
+    programOptions.set(item.program.id, item.program.name);
+  if (query.programId && !programOptions.has(query.programId))
+    programOptions.set(query.programId, "طرح انتخاب‌شده");
+
+  const hasPrevious = state.data.page > 1;
+  const hasNext =
+    state.data.page * state.data.pageSize < state.data.total;
+  const hasFilters = Boolean(
+    query.programId || query.source || query.matchStatus || query.search,
+  );
+
   return (
     <>
-      <div className="org-banner org-banner--muted">ثبت فرد در منبع داده سازمان به معنای تخصیص اعتبار نیست. در صورت وجود حساب حنا، اطلاعات فرد با همان حساب تطبیق داده می‌شود.</div>
-      <div className="org-toolbar org-toolbar--filters">
-        <Link className="org-button org-button--primary" href="/organization/people/add">افزودن مشمول</Link>
-        <input aria-label="جستجوی مشمول" placeholder="نام، شناسه موردنیاز یا شناسه کاربری..." />
-        <select aria-label="وضعیت تطبیق حنا"><option>وضعیت تطبیق حنا</option></select>
-        <select aria-label="طرح مرتبط"><option>انتخاب طرح</option></select>
-        <select aria-label="منبع ثبت"><option>همه منابع (API / دستی)</option></select>
+      <div className="org-banner org-people-banner">
+        ثبت فرد در منبع داده سازمان به معنای تخصیص اعتبار نیست. در صورت وجود
+        حساب حنا، اطلاعات فرد با همان حساب تطبیق داده می‌شود.
       </div>
+      <form
+        className="org-toolbar org-toolbar--filters org-recipient-filters"
+        action="/organization/people"
+        method="get"
+      >
+        <button
+          className="org-button org-button--primary"
+          type="button"
+          disabled
+          title="افزودن مشمول بعد از قرارداد mutation فعال می‌شود."
+        >
+          افزودن مشمول
+        </button>
+        <input
+          aria-label="جستجوی مشمول"
+          name="search"
+          defaultValue={query.search ?? ""}
+          placeholder="نام یا شناسه ماسک‌شده..."
+          maxLength={120}
+        />
+        <select
+          aria-label="وضعیت تطبیق حنا"
+          name="matchStatus"
+          defaultValue={query.matchStatus ?? ""}
+        >
+          <option value="">همه وضعیت‌های تطبیق</option>
+          <option value="MATCHED">حساب حنا شناسایی شده</option>
+          <option value="NEEDS_MATCH">نیازمند تطبیق</option>
+          <option value="PENDING_REVIEW">در انتظار بررسی</option>
+        </select>
+        <select
+          aria-label="طرح مرتبط"
+          name="programId"
+          defaultValue={query.programId ?? ""}
+        >
+          <option value="">همه طرح‌های این نتیجه</option>
+          {[...programOptions].map(([id, name]) => (
+            <option key={id} value={id}>{name}</option>
+          ))}
+        </select>
+        <select
+          aria-label="منبع ثبت"
+          name="source"
+          defaultValue={query.source ?? ""}
+        >
+          <option value="">همه منابع (API / دستی)</option>
+          <option value="API">API / منبع داده سازمان</option>
+          <option value="MANUAL">ورود دستی</option>
+        </select>
+        {query.pageSize !== 20
+          ? <input type="hidden" name="pageSize" value={query.pageSize} />
+          : null}
+        <div className="org-recipient-filter-actions">
+          <button className="org-button" type="submit">اعمال فیلتر</button>
+          {hasFilters
+            ? <Link className="org-button" href="/organization/people">پاک‌کردن</Link>
+            : null}
+        </div>
+      </form>
+      <p className="org-recipient-boundary">
+        افزودن/ویرایش مشمول، تخصیص اعتبار و وضعیت مصرف در این مرحله به backend
+        متصل نشده‌اند و از روی این فهرست استنتاج نمی‌شوند.
+      </p>
       <Card>
-        <Table headers={["عملیات", "وضعیت مصرف", "وضعیت تخصیص", "طرح مرتبط", "منبع ثبت", "وضعیت تطبیق با حنا", "شخص / شناسه موردنیاز"]} rows={rows} />
+        {rows.length > 0 ? (
+          <Table
+            headers={[
+              "عملیات",
+              "وضعیت مصرف",
+              "وضعیت تخصیص",
+              "طرح مرتبط",
+              "منبع ثبت",
+              "وضعیت تطبیق با حنا",
+              "شخص / شناسه موردنیاز",
+            ]}
+            rows={rows}
+          />
+        ) : (
+          <div className="org-empty-state">
+            <strong>مشمولی با این فیلترها پیدا نشد.</strong>
+            <span>این نتیجه از داده واقعی سازمان فعلی خوانده شده است.</span>
+          </div>
+        )}
+        <div className="org-pagination">
+          <span>
+            صفحه {state.data.page} · {state.data.total} مشمول
+          </span>
+          <div>
+            {hasPrevious
+              ? <Link className="org-button" href={recipientPageHref(state.data.page - 1, query)}>صفحه قبل</Link>
+              : null}
+            {hasNext
+              ? <Link className="org-button" href={recipientPageHref(state.data.page + 1, query)}>صفحه بعد</Link>
+              : null}
+          </div>
+        </div>
       </Card>
     </>
   );
@@ -498,24 +662,19 @@ function People() {
 function AddPeople() {
   return (
     <>
-      <div className="org-toolbar"><Link className="org-button" href="/organization/people">بازگشت به لیست مشمولان</Link></div>
-      <div className="org-grid org-grid--2">
-        <Card title="ثبت گروهی افراد (فایل اکسل / CSV)">
-          <p className="org-muted">افزودن لیست مشمولان با بارگذاری گروهی قالب پیش‌فرض — نحوه برخورد با شناسه‌های تکراری، رکوردهای ناقص و ساختار نامعتبر نیازمند تعریف است</p>
-          <label className="org-dropzone"><input type="file" accept=".csv,.xlsx" /><strong>فایل اکسل یا CSV را به اینجا بکشید یا انتخاب کنید</strong><span>قالب ستون‌ها: نام، شناسه موردنیاز، شماره همراه در صورت نیاز</span></label>
-          <div className="org-actions"><button className="org-button" type="button">دانلود نمونه قالب فایل</button><button className="org-button org-button--primary" type="button">افزودن گروهی</button></div>
-        </Card>
-        <Card title="افزودن انفرادی مشمول جدید">
-          <p className="org-muted">مشخصات هویتی و ارتباطی پایه فرد را ثبت نمایید</p>
-          <div className="org-form-grid org-form-grid--single">
-            <label>نام و عنوان نمایشی<input placeholder="مثال: محمد امینی" /></label>
-            <label>شناسه موردنیاز<input placeholder="شناسه موردنیاز سازمان" /></label>
-            <label>شماره تلفن همراه (جهت تطبیق حساب کاربری)<input placeholder="۰۹۱۲******" /></label>
-            <label>انتخاب طرح حمایتی هدف<select><option>انتخاب طرح حمایتی فعال</option></select></label>
-          </div>
-          <div className="org-actions"><Link className="org-button" href="/organization/people">انصراف</Link><button className="org-button org-button--primary" type="button">افزودن فرد</button></div>
-        </Card>
+      <div className="org-toolbar">
+        <Link className="org-button" href="/organization/people">
+          بازگشت به لیست مشمولان
+        </Link>
       </div>
+      <Card className="org-access-state">
+        <h2>افزودن مشمول هنوز فعال نشده است</h2>
+        <p>
+          Backend 040 فقط قرارداد خواندن افراد و مشمولان را اضافه کرده است.
+          تا زمانی که قرارداد mutation، اعتبارسنجی شناسه و رفتار رکوردهای
+          تکراری تعریف نشود، فرم نمونه Figma درخواست واقعی ارسال نمی‌کند.
+        </p>
+      </Card>
     </>
   );
 }
@@ -677,12 +836,16 @@ function Screen({
   programsState,
   programsQuery,
   programDetailState,
+  recipientsState,
+  recipientsQuery,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
   programsState?: OrganizationProgramsState;
   programsQuery?: OrganizationProgramListQuery;
   programDetailState?: OrganizationProgramDetailState;
+  recipientsState?: OrganizationRecipientsState;
+  recipientsQuery?: OrganizationRecipientListQuery;
 }) {
   const profile = profileState.status === "ready"
     ? profileState.profile : null;
@@ -702,7 +865,12 @@ function Screen({
       />
     );
     case "create-program": return <CreateProgram profile={profile} />;
-    case "people": return <People />;
+    case "people": return (
+      <People
+        state={recipientsState ?? { status: "unavailable" }}
+        query={recipientsQuery ?? defaultRecipientListQuery}
+      />
+    );
     case "add-people": return <AddPeople />;
     case "data-sources": return <DataSources />;
     case "allocation": return <Allocation />;
@@ -728,12 +896,16 @@ export function OrganizationPortal({
   programsState,
   programsQuery,
   programDetailState,
+  recipientsState,
+  recipientsQuery,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
   programsState?: OrganizationProgramsState;
   programsQuery?: OrganizationProgramListQuery;
   programDetailState?: OrganizationProgramDetailState;
+  recipientsState?: OrganizationRecipientsState;
+  recipientsQuery?: OrganizationRecipientListQuery;
 }) {
   const active = activeNav(screen);
   const profile = profileState.status === "ready"
@@ -765,6 +937,8 @@ export function OrganizationPortal({
             programsState={programsState}
             programsQuery={programsQuery}
             programDetailState={programDetailState}
+            recipientsState={recipientsState}
+            recipientsQuery={recipientsQuery}
           />
         </div>
       </section>
