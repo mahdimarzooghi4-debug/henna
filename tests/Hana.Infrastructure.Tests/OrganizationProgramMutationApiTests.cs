@@ -151,6 +151,7 @@ public sealed class OrganizationProgramMutationApiTests
             p => p.Id == createdId);
         Assert.Equal(firstOrg, stored.OrganizationId);
         Assert.Equal(creationKey, stored.CreationKey);
+        Assert.Matches("^[0-9a-f]{64}$", stored.CreationFingerprint!);
         Assert.Equal(adminId, stored.CreatedByAccountId);
         Assert.Equal(adminId, stored.UpdatedByAccountId);
         Assert.Equal("الگوی حنا", stored.AllocationMethod);
@@ -217,6 +218,15 @@ public sealed class OrganizationProgramMutationApiTests
                 body.RootElement.GetProperty("allocationMethod").GetString());
         }
 
+        // POST replay stays idempotent even after the resource itself changed.
+        var replayAfterEdit = await PostAsync(
+            admin, url, creationKey, payload);
+        Assert.Equal(HttpStatusCode.OK, replayAfterEdit.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await replayAfterEdit.Content.ReadAsStringAsync()))
+            Assert.Equal(createdId,
+                body.RootElement.GetProperty("id").GetGuid());
+
         var stale = await PutAsync(
             admin, url + "/" + createdId, updatePayload);
         Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
@@ -244,7 +254,7 @@ public sealed class OrganizationProgramMutationApiTests
         var locked = await PutAsync(
             admin,
             url + "/" + createdId,
-            updatePayload.Replace(""revision":1", ""revision":2"));
+            updatePayload.Replace("\"revision\":1", "\"revision\":2"));
         Assert.Equal(HttpStatusCode.Conflict, locked.StatusCode);
 
         organizations.ChangeTracker.Clear();

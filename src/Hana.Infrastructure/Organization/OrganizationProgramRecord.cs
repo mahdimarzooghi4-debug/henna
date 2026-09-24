@@ -16,6 +16,7 @@ public sealed class OrganizationProgramRecord
     public string Status { get; set; } = OrganizationProgramStates.Draft;
     public int Revision { get; set; } = 1;
     public Guid? CreationKey { get; set; }
+    public string? CreationFingerprint { get; set; }
     public Guid? CreatedByAccountId { get; set; }
     public Guid? UpdatedByAccountId { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }

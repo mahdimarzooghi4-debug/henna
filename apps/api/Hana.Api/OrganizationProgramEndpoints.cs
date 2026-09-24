@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Organization;
@@ -199,13 +201,28 @@ internal static class OrganizationProgramEndpoints
             key != Guid.Empty;
     }
 
-    private static bool SameCreatePayload(
+    private static string CreationFingerprint(DraftInput input)
+    {
+        // NUL cannot occur in accepted input, so it is an unambiguous
+        // separator. Empty/whitespace description is normalized to null.
+        var canonical = string.Join(
+            '\0',
+            input.Name,
+            input.Kind,
+            input.BeneficiarySource,
+            input.Description ?? string.Empty);
+        return Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(canonical)))
+            .ToLowerInvariant();
+    }
+
+    private static bool SameCreateRequest(
         OrganizationProgramRecord existing,
-        DraftInput input) =>
-        existing.Name == input.Name &&
-        existing.Kind == input.Kind &&
-        existing.BeneficiarySource == input.BeneficiarySource &&
-        existing.Description == input.Description;
+        string fingerprint) =>
+        string.Equals(
+            existing.CreationFingerprint,
+            fingerprint,
+            StringComparison.Ordinal);
 
     private static object ToMutationResponse(
         OrganizationProgramRecord program) => new
@@ -393,6 +410,7 @@ internal static class OrganizationProgramEndpoints
                 context, requireRevision: false, cancellationToken);
             if (parsed.Error is not null) return parsed.Error;
             var input = parsed.Input!;
+            var creationFingerprint = CreationFingerprint(input);
 
             try
             {
@@ -403,7 +421,7 @@ internal static class OrganizationProgramEndpoints
                             p.CreationKey == creationKey,
                         cancellationToken);
                 if (existing is not null)
-                    return SameCreatePayload(existing, input)
+                    return SameCreateRequest(existing, creationFingerprint)
                         ? Results.Ok(ToMutationResponse(existing))
                         : Results.Conflict(new
                         {
@@ -431,6 +449,7 @@ internal static class OrganizationProgramEndpoints
                     Status = OrganizationProgramStates.Draft,
                     Revision = 1,
                     CreationKey = creationKey,
+                    CreationFingerprint = creationFingerprint,
                     CreatedByAccountId = auth.Access.AccountId,
                     UpdatedByAccountId = auth.Access.AccountId,
                     CreatedAtUtc = now,
@@ -458,7 +477,7 @@ internal static class OrganizationProgramEndpoints
                     if (replay is null)
                         return Results.StatusCode(
                             StatusCodes.Status503ServiceUnavailable);
-                    return SameCreatePayload(replay, input)
+                    return SameCreateRequest(replay, creationFingerprint)
                         ? Results.Ok(ToMutationResponse(replay))
                         : Results.Conflict(new
                         {
