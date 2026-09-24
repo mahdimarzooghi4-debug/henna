@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { OrganizationProgramDraftForm } from "./organization-program-draft-form";
 import { OrganizationProgramRegisterAction } from "./organization-program-register-action";
 import { OrganizationRecipientCreateForm } from "./organization-recipient-create-form";
+import { OrganizationRecipientBulkImportForm } from "./organization-recipient-bulk-import-form";
 import type {
   OrganizationProfile,
   OrganizationProfileState,
@@ -622,9 +623,9 @@ function People({
         </div>
       </form>
       <p className="org-recipient-boundary">
-        افزودن انفرادی برای مدیر پرتال متصل است. ثبت گروهی، ویرایش، تخصیص
-        اعتبار و وضعیت مصرف هنوز قرارداد مستقل دارند و از این فهرست استنتاج
-        نمی‌شوند.
+        افزودن انفرادی و import گروهی برای مدیر پرتال متصل است. ویرایش،
+        تخصیص اعتبار و وضعیت مصرف هنوز قرارداد مستقل دارند و از این فهرست
+        استنتاج نمی‌شوند.
       </p>
       <Card>
         {rows.length > 0 ? (
@@ -720,35 +721,10 @@ function AddPeople({
         </Link>
       </div>
       <div className="org-grid org-grid--2 org-add-people-grid">
-        <Card title="ثبت گروهی افراد (فایل اکسل / CSV)">
-          <p className="org-muted">
-            افزودن لیست مشمولان با بارگذاری گروهی قالب پیش‌فرض — نحوه برخورد
-            با شناسه‌های تکراری، رکوردهای ناقص و ساختار نامعتبر نیازمند قرارداد
-            bulk جداگانه است.
-          </p>
-          <label className="org-dropzone org-dropzone--disabled">
-            <input type="file" accept=".csv,.xlsx" disabled />
-            <strong>فایل اکسل یا CSV را به اینجا بکشید یا انتخاب کنید</strong>
-            <span>
-              قالب ستون‌ها: نام، شناسه موردنیاز، شماره همراه در صورت نیاز
-            </span>
-          </label>
-          <div className="org-actions">
-            <button className="org-button" type="button" disabled>
-              دانلود نمونه قالب فایل
-            </button>
-            <button
-              className="org-button org-button--primary"
-              type="button"
-              disabled
-            >
-              افزودن گروهی
-            </button>
-          </div>
-          <p className="org-recipient-boundary">
-            ثبت گروهی در Backend 042 فعال نشده و این کارت هیچ فایلی ارسال
-            نمی‌کند.
-          </p>
+        <Card className="org-recipient-bulk-card">
+          <OrganizationRecipientBulkImportForm
+            programs={programsState.programs}
+          />
         </Card>
         <Card className="org-recipient-create-card">
           <OrganizationRecipientCreateForm
