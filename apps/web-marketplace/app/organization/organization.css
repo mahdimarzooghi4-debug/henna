@@ -73,3 +73,18 @@
 .org-recipient-identity bdi{direction:ltr;unicode-bidi:isolate}
 @media(max-width:1050px){.org-recipient-filters{grid-template-columns:1fr 1fr}}
 @media(max-width:760px){.org-recipient-filters{grid-template-columns:1fr}.org-recipient-filter-actions{width:100%}.org-recipient-filter-actions .org-button{flex:1}}
+
+.org-add-people-grid{align-items:start}
+.org-recipient-create-card{border-color:#d7b895;padding:32px}
+.org-recipient-create-form .org-form-grid{margin-top:0;gap:16px}
+.org-recipient-create-form .org-form-head h2{font-size:18px}
+.org-recipient-create-form .org-form-head p{margin:0}
+.org-recipient-create-form input,.org-recipient-create-form select{border-color:#d7b895;padding:10px 12px}
+.org-recipient-create-form select{background:var(--org-bg)}
+.org-field-help{font-size:11px;font-weight:400;color:var(--org-muted);line-height:1.7}
+.org-recipient-created{margin-top:16px;padding:14px;border:1px solid #b9d6d4;background:var(--org-teal-soft);border-radius:8px;display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--org-teal)}
+.org-recipient-created strong{font-size:14px;color:var(--org-text)}
+.org-recipient-created bdi{direction:ltr;unicode-bidi:isolate}
+.org-recipient-create-actions{justify-content:flex-start}
+.org-dropzone--disabled{opacity:.66;cursor:not-allowed}
+@media(max-width:760px){.org-recipient-create-card{padding:18px}}

@@ -124,7 +124,9 @@ function isMatchStatus(
     (organizationRecipientMatchStatuses as readonly string[]).includes(value);
 }
 
-function parseRecipient(value: unknown): OrganizationRecipient | null {
+export function parseOrganizationRecipient(
+  value: unknown,
+): OrganizationRecipient | null {
   if (!value || typeof value !== "object") return null;
   const data = value as Record<string, unknown>;
   const programValue = data.program;
@@ -182,7 +184,7 @@ export function parseOrganizationRecipientList(
 
   const items: OrganizationRecipient[] = [];
   for (const raw of data.items) {
-    const item = parseRecipient(raw);
+    const item = parseOrganizationRecipient(raw);
     if (!item) return null;
     items.push(item);
   }

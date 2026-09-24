@@ -49,6 +49,12 @@ export type OrganizationProgramDetailState =
   | { status: "not_found" }
   | { status: "unavailable" };
 
+export type OrganizationProgramOptionsState =
+  | { status: "ready"; programs: OrganizationProgramSummary[] }
+  | { status: "unauthenticated" }
+  | { status: "forbidden" }
+  | { status: "unavailable" };
+
 export const defaultProgramListQuery: OrganizationProgramListQuery = {
   page: 1,
   pageSize: 20,

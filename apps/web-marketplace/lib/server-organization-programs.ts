@@ -10,6 +10,9 @@ import {
   programListQueryString,
   type OrganizationProgramDetailState,
   type OrganizationProgramListQuery,
+  type OrganizationProgramOptionsState,
+  type OrganizationProgramStatus,
+  type OrganizationProgramSummary,
   type OrganizationProgramsState,
 } from "./organization-programs";
 
@@ -93,5 +96,80 @@ export async function loadCurrentOrganizationProgramDetail(
   return fetchOrganizationProgramDetail(
     jar.get(sessionCookieName)?.value,
     id,
+  );
+}
+
+
+async function fetchAllProgramsByStatus(
+  token: string,
+  status: OrganizationProgramStatus,
+): Promise<OrganizationProgramsState> {
+  const collected: OrganizationProgramSummary[] = [];
+  let page = 1;
+
+  while (page <= 10000) {
+    const result = await fetchOrganizationPrograms(token, {
+      page,
+      pageSize: 50,
+      status,
+    });
+    if (result.status !== "ready") return result;
+
+    collected.push(...result.data.items);
+    if (page * result.data.pageSize >= result.data.total) {
+      return {
+        status: "ready",
+        data: {
+          items: collected,
+          page: 1,
+          pageSize: 50,
+          total: collected.length,
+        },
+      };
+    }
+    page += 1;
+  }
+
+  return { status: "unavailable" };
+}
+
+export async function fetchOrganizationRecipientProgramOptions(
+  token: string | null | undefined,
+): Promise<OrganizationProgramOptionsState> {
+  if (!token || !accessTokenPattern.test(token))
+    return { status: "unauthenticated" };
+
+  const [registered, active] = await Promise.all([
+    fetchAllProgramsByStatus(token, "REGISTERED"),
+    fetchAllProgramsByStatus(token, "ACTIVE"),
+  ]);
+
+  for (const result of [registered, active]) {
+    if (result.status === "unauthenticated" ||
+      result.status === "forbidden")
+      return { status: result.status };
+    if (result.status !== "ready")
+      return { status: "unavailable" };
+  }
+
+  const byId = new Map<string, OrganizationProgramSummary>();
+  for (const program of [
+    ...registered.data.items,
+    ...active.data.items,
+  ])
+    byId.set(program.id, program);
+
+  return {
+    status: "ready",
+    programs: [...byId.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, "fa")),
+  };
+}
+
+export async function loadCurrentOrganizationRecipientProgramOptions():
+Promise<OrganizationProgramOptionsState> {
+  const jar = await cookies();
+  return fetchOrganizationRecipientProgramOptions(
+    jar.get(sessionCookieName)?.value,
   );
 }
