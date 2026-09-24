@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO.Compression;
 using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.Http;
 
@@ -355,7 +356,15 @@ internal static class OrganizationRecipientImportParser
     private static XDocument LoadXml(ZipArchiveEntry entry)
     {
         using var stream = entry.Open();
-        return XDocument.Load(stream, LoadOptions.None);
+        using var reader = XmlReader.Create(
+            stream,
+            new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null,
+                MaxCharactersInDocument = MaxExpandedXlsxBytes
+            });
+        return XDocument.Load(reader, LoadOptions.None);
     }
 
     private static IReadOnlyList<string> ReadSharedStrings(
@@ -616,9 +625,11 @@ internal static class OrganizationRecipientImportParser
         {
             "displayName" or "نام" or "نام و عنوان نمایشی" =>
                 "displayName",
-            "externalReference" or "شناسه" or "شناسه موردنیاز" =>
+            "externalReference" or "شناسه" or "شناسه موردنیاز" or
+                "شناسه موردنیاز سازمان" =>
                 "externalReference",
-            "phone" or "شماره همراه" or "شماره تلفن همراه" =>
+            "phone" or "شماره همراه" or "شماره تلفن همراه" or
+                "شماره همراه در صورت نیاز" =>
                 "phone",
             _ => null
         };
