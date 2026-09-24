@@ -230,14 +230,21 @@ public sealed class OrganizationProgramRegistrationApiTests
             Assert.False(items[0].TryGetProperty("programName", out _));
         }
 
-        organizations.NotificationReads.Add(new OrganizationNotificationReadRecord
-        {
-            OrganizationId = firstOrg,
-            ProgramId = draftId,
-            AccountId = viewerId,
-            ReadAtUtc = now
-        });
-        await organizations.SaveChangesAsync();
+        var readUrl = notificationsUrl + "/" + draftId + "/read";
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.PostAsync(readUrl, null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await other.PostAsync(readUrl, null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await viewer.PostAsync(notificationsUrl + "/" + staleDraftId + "/read", null))
+            .StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await viewer.PostAsync(readUrl, null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await viewer.PostAsync(readUrl, null)).StatusCode);
+        Assert.Equal(1, await organizations.NotificationReads.AsNoTracking()
+            .CountAsync(r => r.OrganizationId == firstOrg &&
+                r.ProgramId == draftId && r.AccountId == viewerId));
         using (var read = JsonDocument.Parse(
             await (await viewer.GetAsync(notificationsUrl))
                 .Content.ReadAsStringAsync()))
