@@ -351,6 +351,7 @@ app.MapSellerRegistration(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 app.MapOrganizationProfile(hasIdentityDb);
+app.MapOrganizationPrograms(hasIdentityDb);
 
 // An explicitly invoked operator process can preview or apply reviewed
 // catalog JSON. No public HTTP route or automatic product seed is installed.

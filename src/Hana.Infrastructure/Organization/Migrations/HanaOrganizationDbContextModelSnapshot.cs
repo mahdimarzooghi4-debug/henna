@@ -72,5 +72,50 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .HasFilter("is_active = TRUE")
                 .HasDatabaseName("ix_organization_memberships_active_account");
         });
+
+        modelBuilder.Entity<OrganizationProgramRecord>(entity =>
+        {
+            entity.ToTable("programs", "organization", table =>
+            {
+                table.HasCheckConstraint("ck_organization_programs_name",
+                    "length(btrim(name)) > 0");
+                table.HasCheckConstraint("ck_organization_programs_kind",
+                    "length(btrim(kind)) > 0");
+                table.HasCheckConstraint("ck_organization_programs_allocation_method",
+                    "length(btrim(allocation_method)) > 0");
+                table.HasCheckConstraint("ck_organization_programs_beneficiary_source",
+                    "length(btrim(beneficiary_source)) > 0");
+                table.HasCheckConstraint("ck_organization_programs_status",
+                    "status IN ('DRAFT', 'REGISTERED', 'ACTIVE', 'PAUSED', 'ENDED')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.OrganizationId).HasColumnName("organization_id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.Name).HasColumnName("name")
+                .HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Kind).HasColumnName("kind")
+                .HasMaxLength(120).IsRequired();
+            entity.Property(x => x.AllocationMethod).HasColumnName("allocation_method")
+                .HasMaxLength(120).IsRequired();
+            entity.Property(x => x.BeneficiarySource).HasColumnName("beneficiary_source")
+                .HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Description).HasColumnName("description")
+                .HasMaxLength(2000);
+            entity.Property(x => x.Status).HasColumnName("status")
+                .HasMaxLength(16).IsRequired()
+                .HasDefaultValue(OrganizationProgramStates.Draft);
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
+                .IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
+                .IsRequired();
+            entity.HasOne<OrganizationRecord>().WithMany()
+                .HasForeignKey(x => x.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_organization_programs_organizations");
+            entity.HasIndex(x => new
+                { x.OrganizationId, x.Status, x.CreatedAtUtc, x.Id })
+                .HasDatabaseName("ix_organization_programs_org_status_created");
+        });
     }
 }
