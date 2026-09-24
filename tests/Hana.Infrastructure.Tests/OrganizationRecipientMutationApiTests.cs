@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Hana.Infrastructure.Tests;
 
@@ -377,8 +378,9 @@ public sealed class OrganizationRecipientMutationApiTests
         Assert.All(race, response => Assert.Contains(
             response.StatusCode,
             new[] { HttpStatusCode.Created, HttpStatusCode.OK }));
-        Assert.Single(race.Where(
-            response => response.StatusCode == HttpStatusCode.Created));
+        Assert.Single(
+            race,
+            response => response.StatusCode == HttpStatusCode.Created);
 
         organizations.ChangeTracker.Clear();
         Assert.Equal(1, await organizations.Recipients.CountAsync(
@@ -438,13 +440,11 @@ public sealed class OrganizationRecipientMutationApiTests
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Development");
-                builder.ConfigureAppConfiguration((_, configuration) =>
-                    configuration.AddInMemoryCollection(
-                        new Dictionary<string, string?>
-                        {
-                            ["OrganizationRecipients:FingerprintKeyBase64"] =
-                                "invalid-base64"
-                        }));
+                // The CI process itself supplies a valid fingerprint secret.
+                // Remove the resolved service explicitly so this test exercises
+                // the real runtime path when the mutation secret is unavailable.
+                builder.ConfigureServices(services =>
+                    services.RemoveAll<OrganizationRecipientCryptography>());
             });
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
