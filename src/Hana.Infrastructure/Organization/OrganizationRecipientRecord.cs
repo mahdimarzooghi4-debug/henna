@@ -12,6 +12,10 @@ public sealed class OrganizationRecipientRecord
     public Guid ProgramId { get; set; }
     public string DisplayName { get; set; } = null!;
     public string ReferenceMasked { get; set; } = null!;
+    public string? ReferenceFingerprint { get; set; }
+    public Guid? CreationKey { get; set; }
+    public string? CreationFingerprint { get; set; }
+    public Guid? CreatedByAccountId { get; set; }
     public string Source { get; set; } = OrganizationRecipientSources.Manual;
     public string MatchStatus { get; set; } =
         OrganizationRecipientMatchStates.PendingReview;
