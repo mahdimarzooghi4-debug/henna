@@ -243,5 +243,49 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .HasFilter("import_key IS NOT NULL")
                 .HasDatabaseName("ix_organization_recipients_org_import_row");
         });
+
+        modelBuilder.Entity<OrganizationRecipientImportRecord>(entity =>
+        {
+            entity.ToTable("recipient_imports", "organization", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_organization_recipient_imports_key",
+                    "import_key <> '00000000-0000-0000-0000-000000000000'::uuid");
+                table.HasCheckConstraint(
+                    "ck_organization_recipient_imports_fingerprint",
+                    "batch_fingerprint ~ '^[0-9a-f]{64}$'");
+                table.HasCheckConstraint(
+                    "ck_organization_recipient_imports_row_count",
+                    "row_count >= 1 AND row_count <= 500");
+            });
+            entity.HasKey(x => new { x.OrganizationId, x.ImportKey });
+            entity.Property(x => x.OrganizationId)
+                .HasColumnName("organization_id").ValueGeneratedNever();
+            entity.Property(x => x.ImportKey)
+                .HasColumnName("import_key").ValueGeneratedNever();
+            entity.Property(x => x.ProgramId)
+                .HasColumnName("program_id").ValueGeneratedNever();
+            entity.Property(x => x.BatchFingerprint)
+                .HasColumnName("batch_fingerprint").HasMaxLength(64)
+                .IsRequired();
+            entity.Property(x => x.RowCount)
+                .HasColumnName("row_count").IsRequired();
+            entity.Property(x => x.CreatedByAccountId)
+                .HasColumnName("created_by_account_id").IsRequired();
+            entity.Property(x => x.CreatedAtUtc)
+                .HasColumnName("created_at_utc").IsRequired();
+
+            entity.HasOne<OrganizationRecord>().WithMany()
+                .HasForeignKey(x => x.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName(
+                    "fk_organization_recipient_imports_organizations");
+            entity.HasOne<OrganizationProgramRecord>().WithMany()
+                .HasForeignKey(x => new { x.ProgramId, x.OrganizationId })
+                .HasPrincipalKey(x => new { x.Id, x.OrganizationId })
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName(
+                    "fk_organization_recipient_imports_programs");
+        });
     }
 }
