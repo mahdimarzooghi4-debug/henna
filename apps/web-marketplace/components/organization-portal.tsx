@@ -18,6 +18,10 @@ import {
   type OrganizationRecipientMatchStatus,
   type OrganizationRecipientsState,
 } from "../lib/organization-recipients";
+import type {
+  OrganizationAllocationProgramState,
+  OrganizationAllocationReadinessState,
+} from "../lib/organization-allocation";
 import {
   defaultProgramListQuery,
   organizationProgramStatusLabels,
@@ -55,7 +59,6 @@ export const organizationRouteMap: Record<string, OrgScreenKey> = {
   "people/add": "add-people",
   "data-sources": "data-sources",
   allocation: "allocation",
-  "allocation/detail": "allocation-detail",
   usage: "usage",
   reports: "reports",
   notifications: "notifications",
@@ -755,48 +758,332 @@ function DataSources() {
   );
 }
 
-function Allocation() {
+function AllocationAccessState({
+  state,
+}: {
+  state: Exclude<OrganizationAllocationReadinessState, { status: "ready" }>;
+}) {
+  const content = state.status === "unauthenticated"
+    ? {
+        title: "برای مشاهده آمادگی تخصیص وارد شوید",
+        body: "نشست معتبر سازمانی پیدا نشد.",
+        action: (
+          <Link className="org-button org-button--primary" href="/auth">
+            ورود به حنا
+          </Link>
+        ),
+      }
+    : state.status === "forbidden"
+      ? {
+          title: "دسترسی سازمانی فعال نیست",
+          body: "این حساب عضویت فعال در سازمانی برای مشاهده آمادگی تخصیص ندارد.",
+          action: null,
+        }
+      : {
+          title: "وضعیت آمادگی تخصیص موقتاً در دسترس نیست",
+          body: "برای جلوگیری از نمایش داده قدیمی یا ساختگی، داده نمونه جایگزین نمی‌شود.",
+          action: (
+            <Link className="org-button" href="/organization/allocation">
+              تلاش مجدد
+            </Link>
+          ),
+        };
+
+  return (
+    <Card className="org-access-state">
+      <h2>{content.title}</h2>
+      <p>{content.body}</p>
+      {content.action}
+    </Card>
+  );
+}
+
+function allocationProgramBadge(status: "REGISTERED" | "ACTIVE") {
+  return status === "ACTIVE"
+    ? <Badge>فعال</Badge>
+    : <Badge tone="neutral">ثبت‌شده</Badge>;
+}
+
+function Allocation({
+  state,
+}: {
+  state: OrganizationAllocationReadinessState;
+}) {
+  if (state.status !== "ready")
+    return <AllocationAccessState state={state} />;
+
+  const data = state.data;
   return (
     <>
-      <div className="org-banner"><strong>نوع سازمان فعال: سازمان حمایتگر | روش تخصیص: الگوی حنا</strong><span>روش تخصیص سازمان معمولی: انتخاب توسط سازمان</span></div>
-      <div className="org-grid org-grid--2">
-        <Card title="قوانین و الگوهای فعال تخصیص">
-          <Pair label="الگوی فعال" value="الگوی تخصیص حنا" />
-          <Pair label="دوره فعال هدف" value="بازه نمونه" />
-          <p className="org-note">تخصیص اعتبار بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود. جزئیات قواعد داخلی تخصیص در این پنل نمایش داده نمی‌شود.</p>
-        </Card>
-        <Card title="مرور ورودی و وضعیت تخصیص">
-          <Pair label="جمعیت ثبت‌شده و منبع افراد" value="جمعیت ثبت‌شده: داده نمونه" />
-          <Pair label="رکوردهای آماده برای بررسی تخصیص" value="رکوردهای آماده: داده نمونه" />
-          <Pair label="نیازمند بررسی یا تطبیق اطلاعات" value="نیازمند بررسی: داده نمونه" />
-          <div className="org-actions"><Link className="org-button org-button--primary" href="/organization/allocation/detail">شروع فرایند تخصیص</Link></div>
-        </Card>
+      <div className="org-banner org-allocation-context">
+        <strong>
+          نوع سازمان فعال: {data.organizationType} | روش تخصیص: {data.allocationMethod}
+        </strong>
+        <span>
+          این صفحه فقط آمادگی ورودی را نمایش می‌دهد؛ اجرای مالی تخصیص هنوز فعال نیست.
+        </span>
       </div>
-      <Card title="وضعیت آخرین فرآیندهای تخصیص">
-        <div className="org-list"><Pair label="تاریخ نمونه — طرح نمونه ۱" value={<Badge>توزیع شده</Badge>} /><Pair label="تاریخ نمونه — طرح نمونه ۲" value={<Badge tone="neutral">در حال پردازش</Badge>} /></div>
+
+      <div className="org-grid org-grid--2 org-allocation-board">
+        <div className="org-stack">
+          <Card title="جمعیت ثبت‌شده و منبع افراد">
+            <div className="org-allocation-stats">
+              <Pair
+                label="اطلاعات دریافت‌شده از رکوردهای طرح‌های مجاز"
+                value={data.inputRecordCount.toLocaleString("fa-IR") + " رکورد"}
+              />
+              <Pair
+                label="رکوردهای آماده برای بررسی تخصیص"
+                value={
+                  <strong className="org-allocation-ready">
+                    {data.readyRecordCount.toLocaleString("fa-IR")} رکورد
+                  </strong>
+                }
+              />
+              <Pair
+                label="نیازمند بررسی یا تطبیق اطلاعات"
+                value={
+                  <strong className="org-allocation-review">
+                    {data.needsReviewRecordCount.toLocaleString("fa-IR")} رکورد
+                  </strong>
+                }
+              />
+            </div>
+            <div className="org-allocation-sources">
+              <span>ثبت دستی: {data.sources.manualRecordCount.toLocaleString("fa-IR")}</span>
+              <span>منبع API: {data.sources.apiRecordCount.toLocaleString("fa-IR")}</span>
+            </div>
+          </Card>
+
+          <Card title="وضعیت آخرین فرآیندهای تخصیص">
+            <div className="org-allocation-history-empty">
+              <Badge tone="neutral">تاریخچه فعال نیست</Badge>
+              <p>
+                هنوز مدل فرآیند مالی تخصیص در هسته حنا فعال نشده است؛
+                بنابراین هیچ سابقه نمونه‌ای به‌عنوان سابقه واقعی نمایش داده نمی‌شود.
+              </p>
+            </div>
+          </Card>
+        </div>
+
+        <div className="org-stack">
+          <Card title="قوانین و الگوهای فعال تخصیص">
+            <Pair label="الگوی فعال ثبت‌شده" value={data.allocationMethod} />
+            <Pair
+              label="دوره فعال هدف"
+              value={data.targetPeriod ?? "هنوز تعریف نشده"}
+            />
+            <p className="org-note">
+              این پرتال فقط روش تخصیص ثبت‌شده را نمایش می‌دهد. جزئیات قواعد
+              مالی داخلی تا تعریف و تصویب قرارداد اجرایی در این صفحه ساخته یا
+              استنتاج نمی‌شود.
+            </p>
+          </Card>
+
+          <Card
+            title={"تخصیص بر اساس " + data.allocationMethod}
+            className="org-allocation-control"
+          >
+            <p className="org-allocation-control__copy">
+              ورودی طرح‌ها و وضعیت تطبیق مشمولان قابل مرور است، اما ایجاد
+              اعتبار، مبلغ، مانده یا ثبت ledger در این نسخه انجام نمی‌شود.
+            </p>
+            <div className="org-divider" />
+            <div className="org-actions">
+              <a className="org-button" href="#allocation-programs">
+                مرور ورودی و وضعیت تخصیص
+              </a>
+              <button
+                className="org-button org-button--primary"
+                type="button"
+                disabled
+                aria-disabled="true"
+                title="قرارداد مالی تخصیص هنوز در هسته حنا فعال نشده است."
+              >
+                شروع فرایند تخصیص
+              </button>
+            </div>
+            <small className="org-allocation-boundary">
+              execution: NOT_CONFIGURED — هیچ عملیات مالی از این صفحه قابل اجرا نیست.
+            </small>
+          </Card>
+        </div>
+      </div>
+
+      <Card title="طرح‌های قابل مرور برای تخصیص" className="org-allocation-programs">
+        <div id="allocation-programs" className="org-allocation-program-list">
+          {data.programs.length === 0 ? (
+            <p className="org-muted">
+              هیچ طرح ثبت‌شده یا فعالی برای مرور آمادگی تخصیص وجود ندارد.
+            </p>
+          ) : data.programs.map(program => (
+            <article className="org-allocation-program-row" key={program.id}>
+              <div>
+                <strong>{program.name}</strong>
+                <span>
+                  {program.inputRecordCount.toLocaleString("fa-IR")} ورودی ·{" "}
+                  {program.readyRecordCount.toLocaleString("fa-IR")} آماده ·{" "}
+                  {program.needsReviewRecordCount.toLocaleString("fa-IR")} نیازمند بررسی
+                </span>
+              </div>
+              <div className="org-allocation-program-actions">
+                {allocationProgramBadge(program.status)}
+                <Link
+                  className="org-button"
+                  href={"/organization/allocation/" + program.id}
+                >
+                  مشاهده جزئیات آمادگی
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
       </Card>
     </>
   );
 }
 
-function AllocationDetail() {
+function AllocationDetailAccessState({
+  state,
+}: {
+  state: Exclude<OrganizationAllocationProgramState, { status: "ready" }>;
+}) {
+  const content = state.status === "unauthenticated"
+    ? {
+        title: "برای مشاهده جزئیات آمادگی وارد شوید",
+        body: "نشست معتبر سازمانی پیدا نشد.",
+        action: (
+          <Link className="org-button org-button--primary" href="/auth">
+            ورود به حنا
+          </Link>
+        ),
+      }
+    : state.status === "forbidden"
+      ? {
+          title: "دسترسی سازمانی فعال نیست",
+          body: "این حساب مجوز مشاهده آمادگی این سازمان را ندارد.",
+          action: null,
+        }
+      : state.status === "not_found"
+        ? {
+            title: "طرح قابل مرور پیدا نشد",
+            body: "این طرح وجود ندارد یا در وضعیت قابل بررسی تخصیص نیست.",
+            action: (
+              <Link className="org-button" href="/organization/allocation">
+                بازگشت به مدیریت تخصیص
+              </Link>
+            ),
+          }
+        : {
+            title: "جزئیات آمادگی موقتاً در دسترس نیست",
+            body: "داده نمونه جایگزین پاسخ واقعی نمی‌شود.",
+            action: (
+              <Link className="org-button" href="/organization/allocation">
+                بازگشت به مدیریت تخصیص
+              </Link>
+            ),
+          };
+
+  return (
+    <Card className="org-access-state">
+      <h2>{content.title}</h2>
+      <p>{content.body}</p>
+      {content.action}
+    </Card>
+  );
+}
+
+function AllocationDetail({
+  state,
+}: {
+  state: OrganizationAllocationProgramState;
+}) {
+  if (state.status !== "ready")
+    return <AllocationDetailAccessState state={state} />;
+
+  const { program, execution, result } = state.data;
+  const shortId = program.id.slice(0, 8) + "…";
+
   return (
     <>
-      <div className="org-toolbar"><Link className="org-button" href="/organization/allocation">بازگشت به مدیریت تخصیص‌ها</Link><div><Badge>وضعیت پردازش: تکمیل‌شده</Badge> <span className="org-code">شناسه تخصیص: ALC-***۲۴</span></div></div>
-      <div className="org-banner org-banner--muted">پردازش بر اساس قواعد و الگوی ثبت‌شده حنا انجام شده است. نتیجه نهایی تخصیص نیازمند بررسی جداگانه است.</div>
+      <div className="org-toolbar org-allocation-detail-toolbar">
+        <Link className="org-button" href="/organization/allocation">
+          بازگشت به مدیریت تخصیص‌ها
+        </Link>
+        <div>
+          <Badge tone="warn">اجرای مالی غیرفعال</Badge>
+          <span className="org-code">شناسه طرح: {shortId}</span>
+        </div>
+      </div>
+
+      <div className="org-banner org-allocation-readiness-banner">
+        <strong>این صفحه وضعیت آمادگی ورودی را نشان می‌دهد.</strong>
+        <span>
+          هیچ تخصیص اعتباری اجرا نشده و نتیجه مالی یا رکورد تخصیص قطعی وجود ندارد.
+        </span>
+      </div>
+
       <div className="org-grid org-grid--2">
-        <Card title="نتیجه نهایی تخصیص">
-          <Pair label="نتیجه تخصیص" value={<Badge tone="warn">در انتظار بررسی نهایی</Badge>} />
-          <Pair label="رکوردهای تخصیص‌یافته" value="داده نمونه" />
-          <Pair label="موارد نیازمند بررسی" value="—" />
-          <p className="org-note">اطلاعات حساب حنا نیازمند تطبیق؛ اطلاعات منبع نیازمند بررسی یا همگام‌سازی مجدد است.</p>
-        </Card>
         <Card title="اطلاعات پایه تخصیص">
-          <Pair label="طرح مرتبط" value="طرح نمونه ۱" />
-          <Pair label="روش تخصیص فعال" value="الگوی تخصیص حنا" />
-          <Pair label="تعداد رکوردهای ورودی" value="رکوردهای ورودی: داده نمونه" />
-          <Pair label="وضعیت پردازش" value={<Badge>پردازش‌شده</Badge>} />
+          <Pair label="طرح مرتبط" value={program.name} />
+          <Pair label="روش تخصیص فعال" value={program.allocationMethod} />
+          <Pair
+            label="تعداد رکوردهای ورودی"
+            value={program.inputRecordCount.toLocaleString("fa-IR") + " رکورد"}
+          />
+          <Pair
+            label="وضعیت طرح"
+            value={allocationProgramBadge(program.status)}
+          />
         </Card>
+
+        <Card title="نتیجه نهایی تخصیص">
+          <Pair
+            label="نتیجه تخصیص"
+            value={<Badge tone="warn">تخصیص اجرا نشده</Badge>}
+          />
+          <Pair label="رکوردهای تخصیص‌یافته" value="—" />
+          <Pair
+            label="رکوردهای آماده برای بررسی"
+            value={program.readyRecordCount.toLocaleString("fa-IR") + " رکورد"}
+          />
+          <Pair
+            label="موارد نیازمند بررسی"
+            value={result.needsReviewRecordCount.toLocaleString("fa-IR") + " رکورد"}
+          />
+          <p className="org-note">
+            آماده‌بودن یک رکورد فقط به معنی تکمیل تطبیق حساب در مدل فعلی است؛
+            این وضعیت به معنی ایجاد اعتبار یا تأیید واجدشرایط‌بودن مالی نیست.
+          </p>
+        </Card>
+      </div>
+
+      <Card title="موارد نیازمند بررسی">
+        <div className="org-allocation-review-grid">
+          <Pair
+            label="رکوردهای نیازمند تطبیق یا بررسی"
+            value={program.needsReviewRecordCount.toLocaleString("fa-IR")}
+          />
+          <Pair
+            label="رکوردهای آماده مرور"
+            value={program.readyRecordCount.toLocaleString("fa-IR")}
+          />
+          <Pair
+            label="ثبت دستی"
+            value={program.sources.manualRecordCount.toLocaleString("fa-IR")}
+          />
+          <Pair
+            label="منبع API"
+            value={program.sources.apiRecordCount.toLocaleString("fa-IR")}
+          />
+        </div>
+      </Card>
+
+      <div className="org-allocation-execution-note" role="status">
+        <strong>{execution.state}</strong>
+        <span>
+          قابلیت ایجاد مبلغ، مانده، entitlement یا ledger از این صفحه پشتیبانی نمی‌شود.
+        </span>
       </div>
     </>
   );
@@ -896,6 +1183,8 @@ function Screen({
   recipientsState,
   recipientsQuery,
   recipientProgramOptionsState,
+  allocationReadinessState,
+  allocationProgramState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -905,6 +1194,8 @@ function Screen({
   recipientsState?: OrganizationRecipientsState;
   recipientsQuery?: OrganizationRecipientListQuery;
   recipientProgramOptionsState?: OrganizationProgramOptionsState;
+  allocationReadinessState?: OrganizationAllocationReadinessState;
+  allocationProgramState?: OrganizationAllocationProgramState;
 }) {
   const profile = profileState.status === "ready"
     ? profileState.profile : null;
@@ -940,8 +1231,16 @@ function Screen({
       />
     );
     case "data-sources": return <DataSources />;
-    case "allocation": return <Allocation />;
-    case "allocation-detail": return <AllocationDetail />;
+    case "allocation": return (
+      <Allocation
+        state={allocationReadinessState ?? { status: "unavailable" }}
+      />
+    );
+    case "allocation-detail": return (
+      <AllocationDetail
+        state={allocationProgramState ?? { status: "unavailable" }}
+      />
+    );
     case "usage": return <Usage />;
     case "reports": return <Reports />;
     case "notifications": return <Notifications />;
@@ -966,6 +1265,8 @@ export function OrganizationPortal({
   recipientsState,
   recipientsQuery,
   recipientProgramOptionsState,
+  allocationReadinessState,
+  allocationProgramState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -975,6 +1276,8 @@ export function OrganizationPortal({
   recipientsState?: OrganizationRecipientsState;
   recipientsQuery?: OrganizationRecipientListQuery;
   recipientProgramOptionsState?: OrganizationProgramOptionsState;
+  allocationReadinessState?: OrganizationAllocationReadinessState;
+  allocationProgramState?: OrganizationAllocationProgramState;
 }) {
   const active = activeNav(screen);
   const profile = profileState.status === "ready"
@@ -1009,6 +1312,8 @@ export function OrganizationPortal({
             recipientsState={recipientsState}
             recipientsQuery={recipientsQuery}
             recipientProgramOptionsState={recipientProgramOptionsState}
+            allocationReadinessState={allocationReadinessState}
+            allocationProgramState={allocationProgramState}
           />
         </div>
       </section>
