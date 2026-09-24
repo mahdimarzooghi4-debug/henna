@@ -160,7 +160,12 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 table.HasCheckConstraint("ck_organization_recipients_reference_masked",
                     "length(btrim(reference_masked)) > 0");
                 table.HasCheckConstraint("ck_organization_recipients_reference_fingerprint",
-                    "reference_fingerprint IS NULL OR reference_fingerprint ~ '^[0-9a-f]{64}
+                    "reference_fingerprint IS NULL OR reference_fingerprint ~ '^[0-9a-f]{64}$'");
+                table.HasCheckConstraint("ck_organization_recipients_creation_key",
+                    "creation_key IS NULL OR creation_key <> '00000000-0000-0000-0000-000000000000'::uuid");
+                table.HasCheckConstraint("ck_organization_recipients_creation_fingerprint",
+                    "(creation_key IS NULL AND creation_fingerprint IS NULL) OR (creation_key IS NOT NULL AND creation_fingerprint ~ '^[0-9a-f]{64}$')");
+                table.HasCheckConstraint("ck_organization_recipients_source",
                     "source IN ('MANUAL', 'API')");
                 table.HasCheckConstraint("ck_organization_recipients_match_status",
                     "match_status IN ('MATCHED', 'NEEDS_MATCH', 'PENDING_REVIEW')");
@@ -226,115 +231,6 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .IsUnique()
                 .HasFilter("creation_key IS NOT NULL")
                 .HasDatabaseName("ix_organization_recipients_org_creation_key");
-        });
-    }
-}
-");
-                table.HasCheckConstraint("ck_organization_recipients_creation_key",
-                    "creation_key IS NULL OR creation_key <> '00000000-0000-0000-0000-000000000000'::uuid");
-                table.HasCheckConstraint("ck_organization_recipients_creation_fingerprint",
-                    "(creation_key IS NULL AND creation_fingerprint IS NULL) OR (creation_key IS NOT NULL AND creation_fingerprint ~ '^[0-9a-f]{64}
-                    "source IN ('MANUAL', 'API')");
-                table.HasCheckConstraint("ck_organization_recipients_match_status",
-                    "match_status IN ('MATCHED', 'NEEDS_MATCH', 'PENDING_REVIEW')");
-                table.HasCheckConstraint("ck_organization_recipients_match_account",
-                    "(match_status = 'MATCHED' AND matched_account_id IS NOT NULL) OR (match_status <> 'MATCHED' AND matched_account_id IS NULL)");
-            });
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
-            entity.Property(x => x.OrganizationId).HasColumnName("organization_id")
-                .ValueGeneratedNever();
-            entity.Property(x => x.ProgramId).HasColumnName("program_id")
-                .ValueGeneratedNever();
-            entity.Property(x => x.DisplayName).HasColumnName("display_name")
-                .HasMaxLength(200).IsRequired();
-            entity.Property(x => x.ReferenceMasked)
-                .HasColumnName("reference_masked").HasMaxLength(80).IsRequired();
-            entity.Property(x => x.Source).HasColumnName("source")
-                .HasMaxLength(16).IsRequired();
-            entity.Property(x => x.MatchStatus).HasColumnName("match_status")
-                .HasMaxLength(24).IsRequired();
-            entity.Property(x => x.MatchedAccountId)
-                .HasColumnName("matched_account_id");
-            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
-                .IsRequired();
-            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
-                .IsRequired();
-
-            entity.HasOne<OrganizationRecord>().WithMany()
-                .HasForeignKey(x => x.OrganizationId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_organization_recipients_organizations");
-            entity.HasOne<OrganizationProgramRecord>().WithMany()
-                .HasForeignKey(x => new { x.ProgramId, x.OrganizationId })
-                .HasPrincipalKey(x => new { x.Id, x.OrganizationId })
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_organization_recipients_programs");
-
-            entity.HasIndex(x => new
-                { x.OrganizationId, x.ProgramId, x.CreatedAtUtc, x.Id })
-                .HasDatabaseName("ix_organization_recipients_org_program_created");
-            // Explicitly model the composite FK index. EF creates this by
-            // convention because the FK order is ProgramId, OrganizationId;
-            // keeping it explicit makes snapshot/migration drift impossible.
-            entity.HasIndex(x => new { x.ProgramId, x.OrganizationId })
-                .HasDatabaseName("ix_organization_recipients_program_tenant");
-            entity.HasIndex(x => new
-                { x.OrganizationId, x.MatchStatus, x.Source, x.CreatedAtUtc, x.Id })
-                .HasDatabaseName("ix_organization_recipients_org_match_source_created");
-        });
-    }
-}
-)");
-                table.HasCheckConstraint("ck_organization_recipients_source",
-                    "source IN ('MANUAL', 'API')");
-                table.HasCheckConstraint("ck_organization_recipients_match_status",
-                    "match_status IN ('MATCHED', 'NEEDS_MATCH', 'PENDING_REVIEW')");
-                table.HasCheckConstraint("ck_organization_recipients_match_account",
-                    "(match_status = 'MATCHED' AND matched_account_id IS NOT NULL) OR (match_status <> 'MATCHED' AND matched_account_id IS NULL)");
-            });
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
-            entity.Property(x => x.OrganizationId).HasColumnName("organization_id")
-                .ValueGeneratedNever();
-            entity.Property(x => x.ProgramId).HasColumnName("program_id")
-                .ValueGeneratedNever();
-            entity.Property(x => x.DisplayName).HasColumnName("display_name")
-                .HasMaxLength(200).IsRequired();
-            entity.Property(x => x.ReferenceMasked)
-                .HasColumnName("reference_masked").HasMaxLength(80).IsRequired();
-            entity.Property(x => x.Source).HasColumnName("source")
-                .HasMaxLength(16).IsRequired();
-            entity.Property(x => x.MatchStatus).HasColumnName("match_status")
-                .HasMaxLength(24).IsRequired();
-            entity.Property(x => x.MatchedAccountId)
-                .HasColumnName("matched_account_id");
-            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
-                .IsRequired();
-            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
-                .IsRequired();
-
-            entity.HasOne<OrganizationRecord>().WithMany()
-                .HasForeignKey(x => x.OrganizationId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_organization_recipients_organizations");
-            entity.HasOne<OrganizationProgramRecord>().WithMany()
-                .HasForeignKey(x => new { x.ProgramId, x.OrganizationId })
-                .HasPrincipalKey(x => new { x.Id, x.OrganizationId })
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_organization_recipients_programs");
-
-            entity.HasIndex(x => new
-                { x.OrganizationId, x.ProgramId, x.CreatedAtUtc, x.Id })
-                .HasDatabaseName("ix_organization_recipients_org_program_created");
-            // Explicitly model the composite FK index. EF creates this by
-            // convention because the FK order is ProgramId, OrganizationId;
-            // keeping it explicit makes snapshot/migration drift impossible.
-            entity.HasIndex(x => new { x.ProgramId, x.OrganizationId })
-                .HasDatabaseName("ix_organization_recipients_program_tenant");
-            entity.HasIndex(x => new
-                { x.OrganizationId, x.MatchStatus, x.Source, x.CreatedAtUtc, x.Id })
-                .HasDatabaseName("ix_organization_recipients_org_match_source_created");
         });
     }
 }
