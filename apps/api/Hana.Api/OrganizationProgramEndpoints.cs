@@ -15,10 +15,10 @@ internal static class OrganizationProgramEndpoints
         HttpContext context,
         IServiceProvider services,
         bool hasDatabase,
+        bool isDevelopment,
         CancellationToken cancellationToken)
     {
-        if (!context.Request.IsHttps &&
-            !services.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+        if (!context.Request.IsHttps && !isDevelopment)
             return (null, Results.StatusCode(
                 StatusCodes.Status503ServiceUnavailable));
 
@@ -97,7 +97,8 @@ internal static class OrganizationProgramEndpoints
                     });
 
             var auth = await AuthorizeAsync(
-                context, services, hasDatabase, cancellationToken);
+                context, services, hasDatabase, app.Environment.IsDevelopment(),
+                cancellationToken);
             if (auth.Error is not null) return auth.Error;
 
             try
@@ -162,7 +163,8 @@ internal static class OrganizationProgramEndpoints
                     });
 
             var auth = await AuthorizeAsync(
-                context, services, hasDatabase, cancellationToken);
+                context, services, hasDatabase, app.Environment.IsDevelopment(),
+                cancellationToken);
             if (auth.Error is not null) return auth.Error;
 
             try
