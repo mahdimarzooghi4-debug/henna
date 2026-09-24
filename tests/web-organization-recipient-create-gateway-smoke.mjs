@@ -308,7 +308,9 @@ try {
   assert.match(adminHtml, /طرح ثبت‌شده واقعی/);
   assert.match(adminHtml, /طرح فعال واقعی/);
   assert.doesNotMatch(adminHtml, /طرح پیش‌نویس نباید نمایش داده شود/);
-  assert.match(adminHtml, /ثبت گروهی در Backend 042 فعال نشده/);
+  assert.match(adminHtml, /دانلود نمونه قالب فایل/);
+  assert.match(adminHtml, /\/organization-upload\.png/);
+  assert.doesNotMatch(adminHtml, /ثبت گروهی در Backend 042 فعال نشده/);
 
   const viewerPage = await fetch(base + "/organization/people/add", {
     headers: cookie(viewerToken),
