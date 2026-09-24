@@ -239,6 +239,7 @@ public sealed class OrganizationProgramApiTests
         BeneficiarySource = "API_OR_MANUAL",
         Description = "داده صرفاً تست CI",
         Status = status,
+        Revision = 1,
         CreatedAtUtc = created,
         UpdatedAtUtc = created
     };
