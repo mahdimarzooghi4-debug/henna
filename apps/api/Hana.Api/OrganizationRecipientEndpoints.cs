@@ -527,12 +527,28 @@ internal static class OrganizationRecipientEndpoints
                             r.ReferenceFingerprint == referenceFingerprint,
                         cancellationToken);
                 if (duplicate is not null)
+                {
+                    // The first same-key request may commit after our initial
+                    // replay lookup but before this duplicate lookup. Treat
+                    // that as the same successful create, not as a duplicate.
+                    if (duplicate.CreationKey == creationKey &&
+                        SameCreateRequest(duplicate, creationFingerprint))
+                        return Results.Ok(ToResponse(duplicate, program));
+
+                    if (duplicate.CreationKey == creationKey)
+                        return Results.Conflict(new
+                        {
+                            message =
+                                "این Idempotency-Key برای درخواست دیگری استفاده شده است."
+                        });
+
                     return Results.Conflict(new
                     {
                         message =
                             "این شناسه قبلاً برای همین طرح ثبت شده است.",
                         existingRecipientId = duplicate.Id
                     });
+                }
 
                 Guid? matchedAccountId = null;
                 if (input.Phone is not null)
@@ -618,12 +634,27 @@ internal static class OrganizationRecipientEndpoints
                                     referenceFingerprint,
                             cancellationToken);
                     if (afterDuplicate is not null)
+                    {
+                        if (afterDuplicate.CreationKey == creationKey &&
+                            SameCreateRequest(
+                                afterDuplicate, creationFingerprint))
+                            return Results.Ok(ToResponse(
+                                afterDuplicate, program));
+
+                        if (afterDuplicate.CreationKey == creationKey)
+                            return Results.Conflict(new
+                            {
+                                message =
+                                    "این Idempotency-Key برای درخواست دیگری استفاده شده است."
+                            });
+
                         return Results.Conflict(new
                         {
                             message =
                                 "این شناسه قبلاً برای همین طرح ثبت شده است.",
                             existingRecipientId = afterDuplicate.Id
                         });
+                    }
 
                     return Results.StatusCode(
                         StatusCodes.Status503ServiceUnavailable);
