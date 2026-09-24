@@ -59,7 +59,7 @@ public sealed class OrganizationRecipientBulkImportApiTests
         Assert.True(SessionTokenCodec.TryComputeDigest(
             viewerToken, out var viewerDigest));
 
-        const string matchedPhone = "09121112233";
+        var matchedPhone = NewPhone();
         identity.Accounts.AddRange(
             Account(adminId, NewPhone(), now),
             Account(viewerId, NewPhone(), now),
@@ -118,7 +118,7 @@ public sealed class OrganizationRecipientBulkImportApiTests
         const string url = "/api/v1/organization/recipients/import";
         var validCsv = Csv(
             "displayName,externalReference,phone",
-            "\"فرد، اول\",EMP-000001,۰۹۱۲۱۱۱۲۲۳۳",
+            $\""فرد، اول\",EMP-000001,{ToPersianDigits(matchedPhone)}",
             "فرد دوم,EMP-000002,");
 
         Assert.Equal(
@@ -333,7 +333,7 @@ public sealed class OrganizationRecipientBulkImportApiTests
             registeredProgram,
             Csv(
                 "displayName,externalReference,phone",
-                "نام تغییرکرده,EMP-000001,۰۹۱۲۱۱۱۲۲۳۳",
+                $"نام تغییرکرده,EMP-000001,{ToPersianDigits(matchedPhone)}",
                 "فرد دوم,EMP-000002,"),
             "changed.csv");
         Assert.Equal(
@@ -775,6 +775,13 @@ public sealed class OrganizationRecipientBulkImportApiTests
         CreatedAtUtc = now,
         UpdatedAtUtc = now
     };
+
+    private static string ToPersianDigits(string value) =>
+        string.Concat(value.Select(ch => ch switch
+        {
+            >= '0' and <= '9' => (char)('\u06F0' + ch - '0'),
+            _ => ch
+        }));
 
     private static string NewPhone() =>
         "09" + RandomNumberGenerator.GetInt32(1_000_000_000)
