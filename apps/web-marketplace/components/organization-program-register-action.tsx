@@ -31,7 +31,8 @@ export function OrganizationProgramRegisterAction({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [conflictRevision, setConflictRevision] = useState<number | null>(null);
+  const [conflictRevision, setConflictRevision] =
+    useState<number | "unknown" | null>(null);
   const attempt = useRef<{ revision: number; key: string } | null>(null);
 
   async function register() {
@@ -75,7 +76,7 @@ export function OrganizationProgramRegisterAction({
           Number.isSafeInteger(body.currentRevision)
             ? body.currentRevision
             : null;
-        setConflictRevision(currentRevision);
+        setConflictRevision(currentRevision ?? "unknown");
         setFeedback({
           tone: "warn",
           message: currentRevision
