@@ -19,6 +19,10 @@ public sealed class OrganizationProgramRecord
     public string? CreationFingerprint { get; set; }
     public Guid? CreatedByAccountId { get; set; }
     public Guid? UpdatedByAccountId { get; set; }
+    public Guid? RegistrationKey { get; set; }
+    public int? RegistrationExpectedRevision { get; set; }
+    public Guid? RegisteredByAccountId { get; set; }
+    public DateTimeOffset? RegisteredAtUtc { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

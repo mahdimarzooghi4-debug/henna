@@ -93,6 +93,10 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                     "creation_key IS NULL OR creation_key <> '00000000-0000-0000-0000-000000000000'::uuid");
                 table.HasCheckConstraint("ck_organization_programs_creation_fingerprint",
                     "(creation_key IS NULL AND creation_fingerprint IS NULL) OR (creation_key IS NOT NULL AND creation_fingerprint ~ '^[0-9a-f]{64}$')");
+                table.HasCheckConstraint("ck_organization_programs_registration_key",
+                    "registration_key IS NULL OR registration_key <> '00000000-0000-0000-0000-000000000000'::uuid");
+                table.HasCheckConstraint("ck_organization_programs_registration_pair",
+                    "(registration_key IS NULL AND registration_expected_revision IS NULL) OR (registration_key IS NOT NULL AND registration_expected_revision >= 1)");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
@@ -120,6 +124,14 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .HasColumnName("created_by_account_id");
             entity.Property(x => x.UpdatedByAccountId)
                 .HasColumnName("updated_by_account_id");
+            entity.Property(x => x.RegistrationKey)
+                .HasColumnName("registration_key");
+            entity.Property(x => x.RegistrationExpectedRevision)
+                .HasColumnName("registration_expected_revision");
+            entity.Property(x => x.RegisteredByAccountId)
+                .HasColumnName("registered_by_account_id");
+            entity.Property(x => x.RegisteredAtUtc)
+                .HasColumnName("registered_at_utc");
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
                 .IsRequired();
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")

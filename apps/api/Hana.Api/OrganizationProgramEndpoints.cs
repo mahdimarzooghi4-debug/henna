@@ -190,6 +190,49 @@ internal static class OrganizationProgramEndpoints
         }
     }
 
+    private static async Task<(int? Revision, IResult? Error)>
+        ReadRevisionOnlyAsync(
+            HttpContext context,
+            CancellationToken cancellationToken)
+    {
+        if (context.Request.ContentLength is > MaxMutationBodyBytes)
+            return (null, Results.StatusCode(
+                StatusCodes.Status413PayloadTooLarge));
+
+        if (context.Request.ContentType is null ||
+            !context.Request.ContentType.StartsWith(
+                "application/json", StringComparison.OrdinalIgnoreCase))
+            return (null, Results.StatusCode(
+                StatusCodes.Status415UnsupportedMediaType));
+
+        try
+        {
+            using var document = await JsonDocument.ParseAsync(
+                context.Request.Body,
+                new JsonDocumentOptions { MaxDepth = 4 },
+                cancellationToken);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return (null, Invalid(
+                    "بدنه ثبت طرح باید یک شیء JSON باشد."));
+
+            var properties = root.EnumerateObject().ToArray();
+            if (properties.Length != 1 ||
+                properties[0].Name != "revision" ||
+                properties[0].Value.ValueKind != JsonValueKind.Number ||
+                !properties[0].Value.TryGetInt32(out var revision) ||
+                revision < 1)
+                return (null, Invalid(
+                    "برای ثبت طرح فقط revision معتبر پذیرفته می‌شود."));
+
+            return (revision, null);
+        }
+        catch (JsonException)
+        {
+            return (null, Invalid("JSON درخواست معتبر نیست."));
+        }
+    }
+
     private static bool TryIdempotencyKey(
         HttpContext context,
         out Guid key)
@@ -235,6 +278,7 @@ internal static class OrganizationProgramEndpoints
         program.Description,
         program.Status,
         program.Revision,
+        program.RegisteredAtUtc,
         program.CreatedAtUtc,
         program.UpdatedAtUtc
     };
@@ -368,6 +412,7 @@ internal static class OrganizationProgramEndpoints
                         p.Description,
                         p.Status,
                         p.Revision,
+                        p.RegisteredAtUtc,
                         p.CreatedAtUtc,
                         p.UpdatedAtUtc
                     })
@@ -584,6 +629,143 @@ internal static class OrganizationProgramEndpoints
             }
         })
         .WithName("UpdateOrganizationProgramDraft")
+        .ProducesValidationProblem()
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status409Conflict);
+
+        routes.MapPost("/{id:guid}/register", async (
+            Guid id,
+            HttpContext context,
+            IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (id == Guid.Empty) return Results.NotFound();
+            if (context.Request.Query.Count != 0)
+                return Invalid("این مسیر پارامتر query نمی‌پذیرد.");
+
+            var auth = await AuthorizeAsync(
+                context, services, hasDatabase, app.Environment.IsDevelopment(),
+                cancellationToken);
+            if (auth.Error is not null) return auth.Error;
+            if (!OrganizationProgramPermissions.CanRegisterDrafts(
+                    auth.Access!.MemberRole))
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            if (!TryIdempotencyKey(context, out var registrationKey))
+                return Invalid(
+                    "Idempotency-Key معتبر و غیرخالی برای ثبت طرح الزامی است.");
+
+            var parsed = await ReadRevisionOnlyAsync(
+                context, cancellationToken);
+            if (parsed.Error is not null) return parsed.Error;
+            var expectedRevision = parsed.Revision!.Value;
+
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var current = await db.Programs.AsNoTracking()
+                    .SingleOrDefaultAsync(
+                        p => p.Id == id &&
+                            p.OrganizationId == auth.Access.OrganizationId,
+                        cancellationToken);
+                if (current is null)
+                    return Results.NotFound();
+
+                if (current.RegistrationKey == registrationKey)
+                {
+                    if (current.RegistrationExpectedRevision == expectedRevision &&
+                        current.Status == OrganizationProgramStates.Registered)
+                        return Results.Ok(ToMutationResponse(current));
+
+                    return Results.Conflict(new
+                    {
+                        message =
+                            "این Idempotency-Key با درخواست ثبت فعلی سازگار نیست.",
+                        currentStatus = current.Status,
+                        currentRevision = current.Revision
+                    });
+                }
+
+                if (current.Status != OrganizationProgramStates.Draft)
+                    return Results.Conflict(new
+                    {
+                        message = "فقط طرح پیش‌نویس قابل ثبت نهایی است.",
+                        currentStatus = current.Status,
+                        currentRevision = current.Revision
+                    });
+
+                if (current.Revision != expectedRevision)
+                    return Results.Conflict(new
+                    {
+                        message =
+                            "نسخه طرح تغییر کرده است؛ ابتدا نسخه جدید را دریافت کنید.",
+                        currentRevision = current.Revision
+                    });
+
+                var now = DateTimeOffset.UtcNow;
+                var affected = await db.Programs
+                    .Where(p => p.Id == id &&
+                        p.OrganizationId == auth.Access.OrganizationId &&
+                        p.Status == OrganizationProgramStates.Draft &&
+                        p.Revision == expectedRevision &&
+                        p.RegistrationKey == null)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(
+                            p => p.Status,
+                            OrganizationProgramStates.Registered)
+                        .SetProperty(p => p.Revision, p => p.Revision + 1)
+                        .SetProperty(
+                            p => p.RegistrationKey,
+                            (Guid?)registrationKey)
+                        .SetProperty(
+                            p => p.RegistrationExpectedRevision,
+                            (int?)expectedRevision)
+                        .SetProperty(
+                            p => p.RegisteredByAccountId,
+                            (Guid?)auth.Access.AccountId)
+                        .SetProperty(
+                            p => p.RegisteredAtUtc,
+                            (DateTimeOffset?)now)
+                        .SetProperty(
+                            p => p.UpdatedByAccountId,
+                            (Guid?)auth.Access.AccountId)
+                        .SetProperty(p => p.UpdatedAtUtc, now),
+                        cancellationToken);
+
+                var after = await db.Programs.AsNoTracking()
+                    .SingleOrDefaultAsync(
+                        p => p.Id == id &&
+                            p.OrganizationId == auth.Access.OrganizationId,
+                        cancellationToken);
+                if (after is null)
+                    return Results.NotFound();
+
+                if (affected == 1)
+                    return Results.Ok(ToMutationResponse(after));
+
+                // Same-key concurrent retry converges on the first committed
+                // transition. Different concurrent transitions fail closed.
+                if (after.RegistrationKey == registrationKey &&
+                    after.RegistrationExpectedRevision == expectedRevision &&
+                    after.Status == OrganizationProgramStates.Registered)
+                    return Results.Ok(ToMutationResponse(after));
+
+                return Results.Conflict(new
+                {
+                    message =
+                        "وضعیت یا نسخه طرح همزمان تغییر کرده است.",
+                    currentStatus = after.Status,
+                    currentRevision = after.Revision
+                });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(
+                    StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("RegisterOrganizationProgram")
         .ProducesValidationProblem()
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status409Conflict);
