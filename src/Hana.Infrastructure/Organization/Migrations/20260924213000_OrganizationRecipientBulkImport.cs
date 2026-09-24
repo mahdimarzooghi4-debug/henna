@@ -81,11 +81,34 @@ public sealed class OrganizationRecipientBulkImport : Migration
             type: "integer",
             nullable: true);
 
+        migrationBuilder.AddForeignKey(
+            name: "fk_organization_recipients_recipient_imports",
+            schema: "organization",
+            table: "recipients",
+            columns: new[] { "organization_id", "import_key" },
+            principalSchema: "organization",
+            principalTable: "recipient_imports",
+            principalColumns: new[] { "organization_id", "import_key" },
+            onDelete: ReferentialAction.Restrict);
+
         migrationBuilder.AddCheckConstraint(
             name: "ck_organization_recipients_import_pair",
             schema: "organization",
             table: "recipients",
             sql: "(import_key IS NULL AND import_row_number IS NULL) OR (import_key IS NOT NULL AND import_key <> '00000000-0000-0000-0000-000000000000'::uuid AND import_row_number >= 2)");
+
+        migrationBuilder.CreateIndex(
+            name: "ix_organization_recipient_imports_program_tenant",
+            schema: "organization",
+            table: "recipient_imports",
+            columns: new[] { "program_id", "organization_id" });
+
+        migrationBuilder.CreateIndex(
+            name: "ix_organization_recipients_org_import",
+            schema: "organization",
+            table: "recipients",
+            columns: new[] { "organization_id", "import_key" },
+            filter: "import_key IS NOT NULL");
 
         migrationBuilder.CreateIndex(
             name: "ix_organization_recipients_org_import_row",
@@ -101,6 +124,16 @@ public sealed class OrganizationRecipientBulkImport : Migration
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
+        migrationBuilder.DropForeignKey(
+            name: "fk_organization_recipients_recipient_imports",
+            schema: "organization",
+            table: "recipients");
+
+        migrationBuilder.DropIndex(
+            name: "ix_organization_recipients_org_import",
+            schema: "organization",
+            table: "recipients");
+
         migrationBuilder.DropTable(
             name: "recipient_imports",
             schema: "organization");

@@ -216,6 +216,12 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .HasPrincipalKey(x => new { x.Id, x.OrganizationId })
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_organization_recipients_programs");
+            entity.HasOne<OrganizationRecipientImportRecord>().WithMany()
+                .HasForeignKey(x => new { x.OrganizationId, x.ImportKey })
+                .HasPrincipalKey(x => new { x.OrganizationId, x.ImportKey })
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName(
+                    "fk_organization_recipients_recipient_imports");
 
             entity.HasIndex(x => new
                 { x.OrganizationId, x.ProgramId, x.CreatedAtUtc, x.Id })
@@ -237,6 +243,9 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .IsUnique()
                 .HasFilter("creation_key IS NOT NULL")
                 .HasDatabaseName("ix_organization_recipients_org_creation_key");
+            entity.HasIndex(x => new { x.OrganizationId, x.ImportKey })
+                .HasFilter("import_key IS NOT NULL")
+                .HasDatabaseName("ix_organization_recipients_org_import");
             entity.HasIndex(x => new
                 { x.OrganizationId, x.ImportKey, x.ImportRowNumber })
                 .IsUnique()
@@ -286,6 +295,10 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName(
                     "fk_organization_recipient_imports_programs");
+
+            entity.HasIndex(x => new { x.ProgramId, x.OrganizationId })
+                .HasDatabaseName(
+                    "ix_organization_recipient_imports_program_tenant");
         });
     }
 }
