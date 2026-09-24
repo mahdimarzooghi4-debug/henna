@@ -303,8 +303,14 @@ internal static class OrganizationRecipientImportParser
                 {
                     var reference = cell.Attribute("r")?.Value;
                     var column = ColumnIndex(reference);
-                    if (column is < 0 or > 50)
-                        continue;
+                    if (column < 0)
+                        return FileError(
+                            "XLSX_CELL_REFERENCE",
+                            "نشانی سلول در فایل XLSX معتبر نیست.");
+                    if (column > 50)
+                        return FileError(
+                            "XLSX_COLUMN_LIMIT",
+                            "فایل XLSX شامل ستون خارج از محدوده مجاز است.");
 
                     var hasFormula = cell.Element(main + "f") is not null;
                     var type = cell.Attribute("t")?.Value;
@@ -395,15 +401,20 @@ internal static class OrganizationRecipientImportParser
                 cell.Descendants(main + "t").Select(t => t.Value));
 
         var raw = cell.Element(main + "v")?.Value ?? string.Empty;
-        if (type == "s" &&
-            int.TryParse(
-                raw,
-                NumberStyles.None,
-                CultureInfo.InvariantCulture,
-                out var index) &&
-            index >= 0 &&
-            index < sharedStrings.Count)
+        if (type == "s")
+        {
+            if (!int.TryParse(
+                    raw,
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var index) ||
+                index < 0 ||
+                index >= sharedStrings.Count)
+                throw new InvalidDataException(
+                    "Invalid XLSX shared-string index.");
+
             return sharedStrings[index];
+        }
 
         return raw;
     }
