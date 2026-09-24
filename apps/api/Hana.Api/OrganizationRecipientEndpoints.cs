@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Hana.Domain.Identity;
@@ -141,25 +140,6 @@ internal static class OrganizationRecipientEndpoints
                 new string('*', Math.Max(3, value.Length - 2)) +
                 value[^1..];
         return value[..3] + "****" + value[^3..];
-    }
-
-    private static string Sha256(string value) =>
-        Convert.ToHexString(
-            SHA256.HashData(Encoding.UTF8.GetBytes(value)))
-            .ToLowerInvariant();
-
-    private static string ReferenceFingerprint(string normalizedReference) =>
-        Sha256(normalizedReference);
-
-    private static string CreationFingerprint(ManualRecipientInput input)
-    {
-        var canonical = string.Join(
-            '\0',
-            input.ProgramId.ToString("N"),
-            input.DisplayName,
-            input.ExternalReference,
-            input.Phone ?? string.Empty);
-        return Sha256(canonical);
     }
 
     private static bool SameCreateRequest(
@@ -478,9 +458,23 @@ internal static class OrganizationRecipientEndpoints
                 context, cancellationToken);
             if (parsed.Error is not null) return parsed.Error;
             var input = parsed.Input!;
-            var creationFingerprint = CreationFingerprint(input);
-            var referenceFingerprint =
-                ReferenceFingerprint(input.ExternalReference);
+
+            var cryptography =
+                services.GetService<OrganizationRecipientCryptography>();
+            if (cryptography is null)
+                return Results.StatusCode(
+                    StatusCodes.Status503ServiceUnavailable);
+
+            var creationFingerprint = cryptography.CreationFingerprint(
+                auth.Access.OrganizationId,
+                input.ProgramId,
+                input.DisplayName,
+                input.ExternalReference,
+                input.Phone);
+            var referenceFingerprint = cryptography.ReferenceFingerprint(
+                auth.Access.OrganizationId,
+                input.ProgramId,
+                input.ExternalReference);
 
             try
             {
@@ -578,9 +572,9 @@ internal static class OrganizationRecipientEndpoints
                 try
                 {
                     await db.SaveChangesAsync(cancellationToken);
-                    return Results.Created(
-                        $"/api/v1/organization/recipients/{recipient.Id}",
-                        ToResponse(recipient, program));
+                    return Results.Json(
+                        ToResponse(recipient, program),
+                        statusCode: StatusCodes.Status201Created);
                 }
                 catch (DbUpdateException)
                 {

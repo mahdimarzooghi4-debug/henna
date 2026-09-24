@@ -61,6 +61,28 @@ catch (FormatException)
 }
 
 
+var recipientFingerprintKeyConfigured = false;
+try
+{
+    var base64 =
+        builder.Configuration["OrganizationRecipients:FingerprintKeyBase64"];
+    if (!string.IsNullOrWhiteSpace(base64))
+    {
+        var secret = Convert.FromBase64String(base64);
+        if (secret.Length >= 32)
+        {
+            builder.Services.AddSingleton(
+                new OrganizationRecipientCryptography(secret));
+            recipientFingerprintKeyConfigured = true;
+        }
+    }
+}
+catch (FormatException)
+{
+    // Invalid recipient pseudonymization configuration fails closed.
+    // Never log secret material.
+}
+
 // Connection string is supplied via secrets/environment, never checked in.
 // The API can still report process liveness without configured PostgreSQL,
 // while database readiness will correctly fail closed.
@@ -101,6 +123,7 @@ if (hasIdentityDb && otpKeyConfigured)
 // OTP request and verification IP budgets are enforced atomically in PostgreSQL
 // after input validation and service readiness, not per-process in memory.
 // Never trust X-Forwarded-For unless explicitly configured for trusted proxies.
+_ = recipientFingerprintKeyConfigured;
 var app = builder.Build();
 if (trustedForwarding is not null)
     app.UseForwardedHeaders();

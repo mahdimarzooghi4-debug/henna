@@ -14,6 +14,8 @@ jobs:
     env:
       # Ephemeral CI-only credential. Never reuse in any deployment.
       ConnectionStrings__IdentityDb: Host=localhost;Port=5432;Database=hana_ci;Username=hana_ci;Password=hana_ci_only
+      # Fixed CI-only key for deterministic integration tests. Never deploy it.
+      OrganizationRecipients__FingerprintKeyBase64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     services:
       postgres:
         image: postgres:17
