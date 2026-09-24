@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import {
+  organizationRecipientImportErrorCodes,
+  organizationRecipientImportErrorFields,
   organizationRecipientImportMaxFileBytes,
   type OrganizationRecipientImportError,
   type OrganizationRecipientImportSummary,
@@ -61,11 +63,15 @@ function parseClientErrors(
     const item = raw as Record<string, unknown>;
     return typeof item.row === "number" &&
       typeof item.field === "string" &&
+      (organizationRecipientImportErrorFields as readonly string[])
+        .includes(item.field) &&
       typeof item.code === "string" &&
+      (organizationRecipientImportErrorCodes as readonly string[])
+        .includes(item.code) &&
       typeof item.message === "string"
       ? [{
           row: item.row,
-          field: item.field,
+          field: item.field as OrganizationRecipientImportError["field"],
           code: item.code as OrganizationRecipientImportError["code"],
           message: item.message,
         }]
