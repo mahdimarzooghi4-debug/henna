@@ -219,7 +219,7 @@ try {
               row: 3,
               field: "phone",
               code: "INVALID_PHONE",
-              message: "شماره همراه معتبر نیست.",
+              message: "شماره خام 09129999999 برای BAD-ROW معتبر نیست.",
               rawPhone: "123",
               rawReference: "BAD-ROW",
             }],
@@ -237,7 +237,7 @@ try {
               row: 2,
               field: "externalReference",
               code: "DUPLICATE_EXISTING",
-              message: "این شناسه قبلاً برای همین طرح ثبت شده است.",
+              message: "شناسه خام DUPLICATE-BULK قبلاً ثبت شده است.",
               existingRecipientId: rowOneId,
               referenceFingerprint: "MUST_NOT_LEAK",
             }],
@@ -504,6 +504,7 @@ try {
     ["code", "field", "message", "row"].sort(),
   );
   assert.ok(!invalidText.includes("BAD-ROW"));
+  assert.ok(!invalidText.includes("09129999999"));
   assert.ok(!invalidText.includes("rawPhone"));
   assert.ok(!invalidText.includes("MUST_NOT_LEAK"));
 
@@ -522,6 +523,7 @@ try {
   const duplicateText = await duplicate.text();
   const duplicateBody = JSON.parse(duplicateText);
   assert.equal(duplicateBody.errors[0].code, "DUPLICATE_EXISTING");
+  assert.ok(!duplicateText.includes("DUPLICATE-BULK"));
   assert.ok(!duplicateText.includes("existingRecipientId"));
   assert.ok(!duplicateText.includes("referenceFingerprint"));
 

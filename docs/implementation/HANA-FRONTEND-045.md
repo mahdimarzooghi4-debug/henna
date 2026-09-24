@@ -81,10 +81,13 @@ audit identifiers are not needed by this screen.
 
 422/409 row errors are strictly parsed and shown with:
 - row number
+- allowlisted field
 - stable error code
-- human-readable message
+- local human-readable message
 
-No raw identifier or phone is shown.
+The BFF does not forward the upstream error message. It maps the stable error
+code to local Persian copy, so an accidental raw identifier/phone echo in an
+upstream message cannot leak into browser JSON.
 
 The UI explicitly states that row/file failures are atomic: zero rows from that
 request were committed.

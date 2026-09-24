@@ -35,12 +35,51 @@ export const organizationRecipientImportErrorCodes = [
 export type OrganizationRecipientImportErrorCode =
   (typeof organizationRecipientImportErrorCodes)[number];
 
+export const organizationRecipientImportErrorFields = [
+  "file",
+  "displayName",
+  "externalReference",
+  "phone",
+] as const;
+
+export type OrganizationRecipientImportErrorField =
+  (typeof organizationRecipientImportErrorFields)[number];
+
 export type OrganizationRecipientImportError = {
   row: number;
-  field: string;
+  field: OrganizationRecipientImportErrorField;
   code: OrganizationRecipientImportErrorCode;
   message: string;
 };
+
+const organizationRecipientImportErrorMessages:
+  Record<OrganizationRecipientImportErrorCode, string> = {
+    FILE_SIZE: "حجم فایل معتبر نیست.",
+    FILE_TYPE: "نوع فایل پشتیبانی نمی‌شود.",
+    CSV_ENCODING: "فایل CSV باید UTF-8 معتبر باشد.",
+    CSV_FORMAT: "ساختار فایل CSV معتبر نیست.",
+    XLSX_STRUCTURE: "ساختار فایل XLSX معتبر نیست.",
+    XLSX_EXPANDED_SIZE: "حجم بازشده فایل XLSX بیش از حد مجاز است.",
+    XLSX_SHEET: "worksheet قابل خواندن در فایل XLSX پیدا نشد.",
+    XLSX_FORMAT: "فایل XLSX معتبر نیست.",
+    XLSX_XML: "ساختار XML فایل XLSX معتبر نیست.",
+    XLSX_CELL_REFERENCE: "نشانی سلول در فایل XLSX معتبر نیست.",
+    XLSX_COLUMN_LIMIT: "فایل XLSX شامل ستون خارج از محدوده مجاز است.",
+    EMPTY_FILE: "فایل هیچ ردیف قابل پردازشی ندارد.",
+    UNKNOWN_COLUMN: "فایل شامل ستون ناشناخته است.",
+    DUPLICATE_COLUMN: "یک ستون بیش از یک‌بار تکرار شده است.",
+    UNMAPPED_COLUMN_DATA: "داده‌ای خارج از ستون‌های قالب مجاز وجود دارد.",
+    MISSING_COLUMN: "یکی از ستون‌های الزامی فایل وجود ندارد.",
+    ROW_LIMIT: "تعداد ردیف‌های فایل بیش از حد مجاز است.",
+    FORMULA_NOT_ALLOWED: "سلول فرمول‌دار در فایل ورودی مجاز نیست.",
+    TEXT_REQUIRED: "این سلول در XLSX باید به‌صورت متن ذخیره شود.",
+    NO_DATA_ROWS: "فایل باید حداقل یک ردیف داده داشته باشد.",
+    INVALID_NAME: "نام نمایشی معتبر نیست.",
+    INVALID_REFERENCE: "شناسه موردنیاز معتبر نیست.",
+    INVALID_PHONE: "شماره همراه معتبر نیست.",
+    DUPLICATE_IN_FILE: "شناسه در همین فایل تکراری است.",
+    DUPLICATE_EXISTING: "این شناسه قبلاً برای همین طرح ثبت شده است.",
+  };
 
 export type OrganizationRecipientImportSummary = {
   importedCount: number;
@@ -55,8 +94,6 @@ export type OrganizationRecipientImportErrorResult = {
   atomic: true;
   errors: OrganizationRecipientImportError[];
 };
-
-const controlChars = /[\u0000-\u001f\u007f]/;
 
 function safeInteger(
   value: unknown,
@@ -80,6 +117,14 @@ function knownErrorCode(
 ): value is OrganizationRecipientImportErrorCode {
   return typeof value === "string" &&
     (organizationRecipientImportErrorCodes as readonly string[])
+      .includes(value);
+}
+
+function knownErrorField(
+  value: unknown,
+): value is OrganizationRecipientImportErrorField {
+  return typeof value === "string" &&
+    (organizationRecipientImportErrorFields as readonly string[])
       .includes(value);
 }
 
@@ -135,22 +180,15 @@ export function parseOrganizationRecipientImportErrors(
     if (!raw || typeof raw !== "object") return null;
     const error = raw as Record<string, unknown>;
     if (!safeInteger(error.row, 0, 1_000_000) ||
-      typeof error.field !== "string" ||
-      error.field.length < 1 ||
-      error.field.length > 64 ||
-      controlChars.test(error.field) ||
-      !knownErrorCode(error.code) ||
-      typeof error.message !== "string" ||
-      error.message.length < 1 ||
-      error.message.length > 300 ||
-      controlChars.test(error.message))
+      !knownErrorField(error.field) ||
+      !knownErrorCode(error.code))
       return null;
 
     errors.push({
       row: error.row,
       field: error.field,
       code: error.code,
-      message: error.message,
+      message: organizationRecipientImportErrorMessages[error.code],
     });
   }
 
