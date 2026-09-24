@@ -94,11 +94,26 @@ public sealed class OrganizationProgramRegistrationApiTests
                 builder.UseEnvironment("Development"));
         using var admin = factory.CreateClient();
         using var viewer = factory.CreateClient();
+        using var other = factory.CreateClient();
         using var anonymous = factory.CreateClient();
         admin.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", adminToken);
         viewer.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", viewerToken);
+        other.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", otherToken);
+
+        const string notificationsUrl = "/api/v1/organization/notifications";
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.GetAsync(notificationsUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await viewer.GetAsync(notificationsUrl + "?organizationId=" + secondOrg))
+            .StatusCode);
+        using (var empty = JsonDocument.Parse(
+            await (await viewer.GetAsync(notificationsUrl))
+                .Content.ReadAsStringAsync()))
+            Assert.Empty(empty.RootElement.GetProperty("notifications")
+                .EnumerateArray());
 
         string RegisterUrl(Guid id) =>
             $"/api/v1/organization/programs/{id}/register";
@@ -194,6 +209,51 @@ public sealed class OrganizationProgramRegistrationApiTests
         Assert.Equal(adminId, stored.RegisteredByAccountId);
         Assert.NotNull(stored.RegisteredAtUtc);
         Assert.Equal(adminId, stored.UpdatedByAccountId);
+
+        var notifications = await viewer.GetAsync(notificationsUrl);
+        Assert.Equal(HttpStatusCode.OK, notifications.StatusCode);
+        Assert.Equal("no-store",
+            notifications.Headers.GetValues("Cache-Control").Single());
+        using (var body = JsonDocument.Parse(
+            await notifications.Content.ReadAsStringAsync()))
+        {
+            var items = body.RootElement.GetProperty("notifications")
+                .EnumerateArray().ToArray();
+            Assert.Single(items);
+            Assert.Equal(draftId.ToString("D"),
+                items[0].GetProperty("id").GetString());
+            Assert.Equal("PROGRAM_REGISTERED",
+                items[0].GetProperty("type").GetString());
+            Assert.Equal("UNREAD",
+                items[0].GetProperty("readState").GetString());
+            Assert.False(items[0].TryGetProperty("organizationId", out _));
+            Assert.False(items[0].TryGetProperty("programName", out _));
+        }
+
+        organizations.NotificationReads.Add(new OrganizationNotificationReadRecord
+        {
+            OrganizationId = firstOrg,
+            ProgramId = draftId,
+            AccountId = viewerId,
+            ReadAtUtc = now
+        });
+        await organizations.SaveChangesAsync();
+        using (var read = JsonDocument.Parse(
+            await (await viewer.GetAsync(notificationsUrl))
+                .Content.ReadAsStringAsync()))
+            Assert.Equal("READ", read.RootElement.GetProperty("notifications")
+                [0].GetProperty("readState").GetString());
+        using (var adminUnread = JsonDocument.Parse(
+            await (await admin.GetAsync(notificationsUrl))
+                .Content.ReadAsStringAsync()))
+            Assert.Equal("UNREAD", adminUnread.RootElement
+                .GetProperty("notifications")[0]
+                .GetProperty("readState").GetString());
+        using (var foreign = JsonDocument.Parse(
+            await (await other.GetAsync(notificationsUrl))
+                .Content.ReadAsStringAsync()))
+            Assert.Empty(foreign.RootElement.GetProperty("notifications")
+                .EnumerateArray());
 
         var replay = await PostRegisterAsync(
             admin,

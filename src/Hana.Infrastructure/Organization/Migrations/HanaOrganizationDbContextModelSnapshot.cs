@@ -73,6 +73,32 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .HasDatabaseName("ix_organization_memberships_active_account");
         });
 
+        modelBuilder.Entity<OrganizationNotificationReadRecord>(entity =>
+        {
+            entity.ToTable("notification_reads", "organization");
+            entity.HasKey(x => new { x.OrganizationId, x.ProgramId, x.AccountId })
+                .HasName("pk_notification_reads");
+            entity.Property(x => x.OrganizationId).HasColumnName("organization_id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.ProgramId).HasColumnName("program_id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.AccountId).HasColumnName("account_id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.ReadAtUtc).HasColumnName("read_at_utc")
+                .IsRequired();
+            entity.HasOne<OrganizationProgramRecord>().WithMany()
+                .HasForeignKey(x => new { x.ProgramId, x.OrganizationId })
+                .HasPrincipalKey(x => new { x.Id, x.OrganizationId })
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_notification_reads_programs");
+            entity.HasOne<OrganizationMembershipRecord>().WithMany()
+                .HasForeignKey(x => new { x.OrganizationId, x.AccountId })
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_notification_reads_memberships");
+            entity.HasIndex(x => new { x.ProgramId, x.OrganizationId })
+                .HasDatabaseName("ix_notification_reads_program_org");
+        });
+
         modelBuilder.Entity<OrganizationProgramRecord>(entity =>
         {
             entity.ToTable("programs", "organization", table =>

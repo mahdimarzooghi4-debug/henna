@@ -396,6 +396,8 @@ jobs:
         run: node tests/web-organization-usage-status-gateway-smoke.mjs
       - name: Test Organization Reports Figma screen and strict read BFF
         run: node tests/web-organization-reports-gateway-smoke.mjs
+      - name: Verify organization notification payload boundary
+        run: node --experimental-strip-types tests/organization-notifications-parser.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
         run: node --experimental-strip-types --test tests/otp-resend-smoke.mjs
       - name: Verify seller return URL policy and safe draft hydration
