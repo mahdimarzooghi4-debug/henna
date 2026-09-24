@@ -5,6 +5,15 @@ import type {
   OrganizationProfile,
   OrganizationProfileState,
 } from "../lib/organization-profile";
+import {
+  defaultProgramListQuery,
+  organizationProgramStatusLabels,
+  programListQueryString,
+  type OrganizationProgramDetailState,
+  type OrganizationProgramListQuery,
+  type OrganizationProgramsState,
+  type OrganizationProgramStatus,
+} from "../lib/organization-programs";
 
 export type OrgScreenKey =
   | "dashboard"
@@ -217,69 +226,203 @@ function Profile({ state }: { state: OrganizationProfileState }) {
   );
 }
 
-function Programs() {
-  const rows: ReactNode[][] = [
-    ["مشاهده جزئیات", "تاریخ نمونه", <Badge key="a">فعال</Badge>, "الگوی حنا", "اعتبار نمونه", "طرح نمونه ۱"],
-    ["مشاهده جزئیات", "تاریخ نمونه", <Badge key="b" tone="neutral">ثبت‌شده</Badge>, "الگوی حنا", "برنامه حمایتی نمونه", "طرح نمونه ۲"],
-    ["مشاهده جزئیات", "تاریخ نمونه", <Badge key="c" tone="warn">پیش‌نویس</Badge>, "الگوی حنا", "اعتبار نمونه", "طرح نمونه ۳"],
-  ];
+function programBadge(status: OrganizationProgramStatus) {
+  const tone = status === "ACTIVE"
+    ? "teal"
+    : status === "DRAFT" || status === "PAUSED"
+      ? "warn"
+      : "neutral";
+  return <Badge tone={tone}>{organizationProgramStatusLabels[status]}</Badge>;
+}
+
+function programDate(value: string) {
+  return new Intl.DateTimeFormat("fa-IR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function programSource(value: string) {
+  return value === "API_OR_MANUAL" ? "API / ورود دستی" : value;
+}
+
+function programPageHref(
+  page: number,
+  query: OrganizationProgramListQuery,
+) {
+  const params = programListQueryString({ ...query, page });
+  return "/organization/programs" + (params ? "?" + params : "");
+}
+
+function Programs({
+  state,
+  query,
+}: {
+  state: OrganizationProgramsState;
+  query: OrganizationProgramListQuery;
+}) {
+  if (state.status !== "ready") {
+    const message = state.status === "unauthenticated"
+      ? "برای مشاهده طرح‌های سازمانی ابتدا وارد شوید."
+      : state.status === "forbidden"
+        ? "این حساب عضویت فعال برای مشاهده طرح‌های سازمانی ندارد."
+        : state.status === "invalid"
+          ? "فیلتر یا صفحه‌بندی واردشده معتبر نیست."
+          : "فهرست طرح‌های سازمانی موقتاً در دسترس نیست.";
+    return (
+      <Card className="org-access-state">
+        <h2>طرح‌های سازمانی نمایش داده نشد</h2>
+        <p>{message}</p>
+        {state.status === "unauthenticated"
+          ? <Link className="org-button org-button--primary" href="/auth">ورود به حنا</Link>
+          : state.status === "invalid"
+            ? <Link className="org-button" href="/organization/programs">پاک‌کردن فیلترها</Link>
+            : null}
+      </Card>
+    );
+  }
+
+  const rows: ReactNode[][] = state.data.items.map((item) => [
+    <Link key={item.id} href={`/organization/programs/${item.id}`}>مشاهده جزئیات</Link>,
+    programDate(item.createdAtUtc),
+    programBadge(item.status),
+    item.allocationMethod,
+    item.kind,
+    item.name,
+  ]);
+  const hasPrevious = state.data.page > 1;
+  const hasNext = state.data.page * state.data.pageSize < state.data.total;
+
   return (
     <>
       <div className="org-toolbar">
-        <Link className="org-button org-button--primary" href="/organization/programs/new">ثبت طرح جدید</Link>
-        <label>فیلتر وضعیت <select defaultValue="all"><option value="all">همه وضعیت‌ها</option><option>فعال</option><option>ثبت‌شده</option><option>پیش‌نویس</option><option>متوقف</option><option>پایان‌یافته</option></select></label>
+        <Link className="org-button" href="/organization/programs/new">فرم ثبت طرح</Link>
+        <form className="org-filter-form" action="/organization/programs" method="get">
+          {query.pageSize !== 20
+            ? <input type="hidden" name="pageSize" value={query.pageSize} />
+            : null}
+          <label>
+            فیلتر وضعیت
+            <select name="status" defaultValue={query.status ?? ""}>
+              <option value="">همه وضعیت‌ها</option>
+              <option value="ACTIVE">فعال</option>
+              <option value="REGISTERED">ثبت‌شده</option>
+              <option value="DRAFT">پیش‌نویس</option>
+              <option value="PAUSED">متوقف</option>
+              <option value="ENDED">پایان‌یافته</option>
+            </select>
+          </label>
+          <button className="org-button" type="submit">اعمال</button>
+        </form>
       </div>
       <Card title="لیست طرح‌های سازمانی">
-        <Table headers={["عملیات", "تاریخ ثبت", "وضعیت", "روش تخصیص", "نوع طرح", "نام طرح"]} rows={rows.map((r, i) => {
-          const copy = [...r]; copy[0] = <Link key={i} href="/organization/programs/detail">مشاهده جزئیات</Link>; return copy;
-        })} />
+        {rows.length > 0 ? (
+          <Table
+            headers={["عملیات", "تاریخ ثبت", "وضعیت", "روش تخصیص", "نوع طرح", "نام طرح"]}
+            rows={rows}
+          />
+        ) : (
+          <div className="org-empty-state">
+            <strong>طرحی با این وضعیت ثبت نشده است.</strong>
+            <span>این نتیجه از داده واقعی سازمان فعلی خوانده شده است.</span>
+          </div>
+        )}
+        <div className="org-pagination">
+          <span>
+            صفحه {state.data.page} · {state.data.total} طرح
+          </span>
+          <div>
+            {hasPrevious
+              ? <Link className="org-button" href={programPageHref(state.data.page - 1, query)}>صفحه قبل</Link>
+              : null}
+            {hasNext
+              ? <Link className="org-button" href={programPageHref(state.data.page + 1, query)}>صفحه بعد</Link>
+              : null}
+          </div>
+        </div>
       </Card>
     </>
   );
 }
 
-function ProgramDetail() {
+function ProgramDetail({
+  state,
+  profile,
+}: {
+  state: OrganizationProgramDetailState;
+  profile: OrganizationProfile | null;
+}) {
+  if (state.status !== "ready") {
+    const message = state.status === "unauthenticated"
+      ? "برای مشاهده جزئیات طرح ابتدا وارد شوید."
+      : state.status === "forbidden"
+        ? "این حساب دسترسی فعال به طرح‌های سازمانی ندارد."
+        : state.status === "not_found"
+          ? "این طرح وجود ندارد یا متعلق به سازمان فعلی نیست."
+          : "جزئیات طرح موقتاً در دسترس نیست.";
+    return (
+      <Card className="org-access-state">
+        <h2>جزئیات طرح نمایش داده نشد</h2>
+        <p>{message}</p>
+        <Link className="org-button" href="/organization/programs">بازگشت به طرح‌ها</Link>
+      </Card>
+    );
+  }
+
+  const program = state.program;
   return (
     <>
-      <div className="org-toolbar"><Link className="org-button" href="/organization/programs">بازگشت به طرح‌ها</Link><div><Badge>فعال</Badge> <span className="org-code">شناسه طرح: PRG-***91</span></div></div>
+      <div className="org-toolbar">
+        <Link className="org-button" href="/organization/programs">بازگشت به طرح‌ها</Link>
+        <div>{programBadge(program.status)} <span className="org-code"><bdi>{program.id}</bdi></span></div>
+      </div>
       <div className="org-grid org-grid--2">
-        <div className="org-stack">
-          <Card title="دامنه افراد و مشمولان">
-            <Pair label="منبع دریافت اطلاعات" value="API / منبع داده سازمان" />
-            <Pair label="جامعه هدف تعریف شده" value="افراد ثبت‌شده در منبع داده سازمان" />
-            <Pair label="تعداد تخصیص‌گیرندگان نهایی" value="جمعیت ثبت‌شده: داده نمونه" />
-          </Card>
-          <Card title="وضعیت تخصیص و استفاده">
-            <Pair label="وضعیت کلی توزیع اعتبار" value="وضعیت استفاده مرتبط با طرح ثبت‌شده" />
-            <Pair label="آخرین به‌روزرسانی ثبت‌شده" value="زمان نمونه" />
-            <Pair label="وضعیت همگام‌سازی اطلاعات" value={<Badge>تکمیل‌شده</Badge>} />
-          </Card>
-        </div>
-        <Card title="اطلاعات پایه طرح">
-          <Pair label="نام کامل طرح سازمانی" value="طرح نمونه ۱" />
-          <Pair label="سازمان ثبت‌کننده" value="سازمان حمایتگر" />
-          <Pair label="روش تخصیص پیش‌فرض" value="الگوی تخصیص حنا" />
-          <Pair label="وضعیت کنونی طرح" value={<Badge>فعال</Badge>} />
-          <p className="org-note">تخصیص اعتبار بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود. جزئیات قواعد داخلی تخصیص در این پنل نمایش داده نمی‌شود.</p>
+        <Card title="دامنه و تعریف طرح">
+          <Pair label="نوع اعتبار / برنامه" value={program.kind} />
+          <Pair label="منبع افراد و مشمولان" value={programSource(program.beneficiarySource)} />
+          <Pair label="تاریخ ثبت" value={programDate(program.createdAtUtc)} />
+          <Pair label="آخرین به‌روزرسانی" value={programDate(program.updatedAtUtc)} />
         </Card>
+        <Card title="اطلاعات پایه طرح">
+          <Pair label="نام کامل طرح سازمانی" value={program.name} />
+          <Pair label="سازمان ثبت‌کننده" value={profile?.name ?? "سازمان فعلی"} />
+          <Pair label="روش تخصیص" value={program.allocationMethod} />
+          <Pair label="وضعیت کنونی طرح" value={programBadge(program.status)} />
+          <Pair label="توضیحات" value={program.description ?? "ثبت نشده"} />
+        </Card>
+      </div>
+      <div className="org-banner org-banner--muted">
+        <strong>مرز داده این مرحله</strong>
+        <span>اطلاعات تخصیص، مصرف و مشمولان هنوز به این صفحه متصل نشده‌اند؛ هیچ مقدار نمونه‌ای به‌جای آن‌ها نمایش داده نمی‌شود.</span>
       </div>
     </>
   );
 }
 
-function CreateProgram() {
+function CreateProgram({ profile }: { profile: OrganizationProfile | null }) {
   return (
-    <Card className="org-form-card">
-      <div className="org-form-head"><h2>فرم راه‌اندازی و پیکربندی طرح اعتباری</h2><p>مشخصات اولیه، الگوی تخصیص و دامنه افراد مشمول را مشخص نمایید.</p></div>
-      <div className="org-form-grid">
-        <label>نوع اعتبار / برنامه<select><option>انتخاب نوع اعتبار / برنامه</option><option>اعتبار نمونه</option></select></label>
-        <label>نام طرح حمایتی<input placeholder="مثال: طرح نمونه ۱" /></label>
-        <label>منبع افراد و مشمولان<select><option>انتخاب ورود دستی یا API / منبع داده سازمان</option></select></label>
-        <label>روش تخصیص طرح<input value="روش تخصیص: الگوی حنا" readOnly /></label>
-        <label className="org-span-2">توضیحات و اهداف طرح<textarea placeholder="شرح اهداف، نحوه استفاده و اطلاعات تکمیلی برای مشمولان طرح..." /></label>
+    <>
+      <div className="org-banner org-banner--muted">
+        <strong>ثبت طرح هنوز فعال نشده است</strong>
+        <span>تا زمان تعریف صریح مجوزهای ایجاد و ویرایش طرح برای نقش‌های سازمانی، این فرم فقط نمای طراحی است و هیچ داده‌ای ارسال نمی‌کند.</span>
       </div>
-      <div className="org-actions"><Link className="org-button" href="/organization/programs">انصراف</Link><button className="org-button org-button--primary" type="button">ثبت اولیه طرح سازمانی</button></div>
-    </Card>
+      <Card className="org-form-card">
+        <div className="org-form-head"><h2>فرم راه‌اندازی و پیکربندی طرح اعتباری</h2><p>ورودی‌ها تا فعال‌شدن قرارداد دسترسی نوشتن غیرفعال هستند.</p></div>
+        <fieldset className="org-disabled-form" disabled>
+          <div className="org-form-grid">
+            <label>نوع اعتبار / برنامه<select><option>انتخاب نوع اعتبار / برنامه</option></select></label>
+            <label>نام طرح حمایتی<input placeholder="نام طرح سازمانی" /></label>
+            <label>منبع افراد و مشمولان<select><option>انتخاب منبع مشمولان</option></select></label>
+            <label>روش تخصیص طرح<input value={profile?.defaultAllocationMethod ?? "روش تخصیص سازمان"} readOnly /></label>
+            <label className="org-span-2">توضیحات و اهداف طرح<textarea placeholder="شرح اهداف و اطلاعات تکمیلی طرح..." /></label>
+          </div>
+          <div className="org-actions"><button className="org-button org-button--primary" type="button">ثبت اولیه طرح سازمانی</button></div>
+        </fieldset>
+        <div className="org-actions"><Link className="org-button" href="/organization/programs">بازگشت به طرح‌ها</Link></div>
+      </Card>
+    </>
   );
 }
 
@@ -485,18 +628,34 @@ function Settings() {
 function Screen({
   screen,
   profileState,
+  programsState,
+  programsQuery,
+  programDetailState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
+  programsState?: OrganizationProgramsState;
+  programsQuery?: OrganizationProgramListQuery;
+  programDetailState?: OrganizationProgramDetailState;
 }) {
   const profile = profileState.status === "ready"
     ? profileState.profile : null;
   switch (screen) {
     case "dashboard": return <Dashboard profile={profile} />;
     case "profile": return <Profile state={profileState} />;
-    case "programs": return <Programs />;
-    case "program-detail": return <ProgramDetail />;
-    case "create-program": return <CreateProgram />;
+    case "programs": return (
+      <Programs
+        state={programsState ?? { status: "unavailable" }}
+        query={programsQuery ?? defaultProgramListQuery}
+      />
+    );
+    case "program-detail": return (
+      <ProgramDetail
+        state={programDetailState ?? { status: "unavailable" }}
+        profile={profile}
+      />
+    );
+    case "create-program": return <CreateProgram profile={profile} />;
     case "people": return <People />;
     case "add-people": return <AddPeople />;
     case "data-sources": return <DataSources />;
@@ -520,9 +679,15 @@ function activeNav(screen: OrgScreenKey) {
 export function OrganizationPortal({
   screen,
   profileState,
+  programsState,
+  programsQuery,
+  programDetailState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
+  programsState?: OrganizationProgramsState;
+  programsQuery?: OrganizationProgramListQuery;
+  programDetailState?: OrganizationProgramDetailState;
 }) {
   const active = activeNav(screen);
   const profile = profileState.status === "ready"
@@ -548,7 +713,13 @@ export function OrganizationPortal({
           <h1>{titles[screen]}</h1>
         </header>
         <div className="org-body">
-          <Screen screen={screen} profileState={profileState} />
+          <Screen
+            screen={screen}
+            profileState={profileState}
+            programsState={programsState}
+            programsQuery={programsQuery}
+            programDetailState={programDetailState}
+          />
         </div>
       </section>
       <aside className="org-sidebar">
