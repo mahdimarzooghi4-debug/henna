@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { OrganizationProgramDraftForm } from "./organization-program-draft-form";
 import type {
   OrganizationProfile,
   OrganizationProfileState,
@@ -393,6 +394,19 @@ function ProgramDetail({
           <Pair label="توضیحات" value={program.description ?? "ثبت نشده"} />
         </Card>
       </div>
+      {profile?.memberRole === "PORTAL_ADMIN" &&
+      program.status === "DRAFT" ? (
+        <Card title="ویرایش پیش‌نویس" className="org-form-card">
+          <p className="org-muted">
+            فقط پیش‌نویس قابل ویرایش است. کنترل نسخه از بازنویسی تغییرات همزمان جلوگیری می‌کند.
+          </p>
+          <OrganizationProgramDraftForm
+            mode="edit"
+            program={program}
+            defaultAllocationMethod={program.allocationMethod}
+          />
+        </Card>
+      ) : null}
       <div className="org-banner org-banner--muted">
         <strong>مرز داده این مرحله</strong>
         <span>اطلاعات تخصیص، مصرف و مشمولان هنوز به این صفحه متصل نشده‌اند؛ هیچ مقدار نمونه‌ای به‌جای آن‌ها نمایش داده نمی‌شود.</span>
@@ -402,25 +416,42 @@ function ProgramDetail({
 }
 
 function CreateProgram({ profile }: { profile: OrganizationProfile | null }) {
+  if (!profile) {
+    return (
+      <Card className="org-access-state">
+        <h2>پروفایل سازمانی در دسترس نیست</h2>
+        <p>برای ثبت پیش‌نویس، نشست و عضویت فعال سازمانی لازم است.</p>
+        <Link className="org-button" href="/organization/programs">بازگشت به طرح‌ها</Link>
+      </Card>
+    );
+  }
+  if (profile.memberRole !== "PORTAL_ADMIN") {
+    return (
+      <Card className="org-access-state">
+        <h2>مجوز ثبت طرح ندارید</h2>
+        <p>در قرارداد فعلی فقط نقش PORTAL_ADMIN مجاز به ایجاد یا ویرایش پیش‌نویس طرح است.</p>
+        <Link className="org-button" href="/organization/programs">بازگشت به طرح‌ها</Link>
+      </Card>
+    );
+  }
   return (
     <>
-      <div className="org-banner org-banner--muted">
-        <strong>ثبت طرح هنوز فعال نشده است</strong>
-        <span>تا زمان تعریف صریح مجوزهای ایجاد و ویرایش طرح برای نقش‌های سازمانی، این فرم فقط نمای طراحی است و هیچ داده‌ای ارسال نمی‌کند.</span>
+      <div className="org-banner">
+        <strong>ثبت پیش‌نویس واقعی</strong>
+        <span>سازمان و روش تخصیص از نشست و پروفایل سازمان تعیین می‌شوند و قابل ارسال از مرورگر نیستند.</span>
       </div>
       <Card className="org-form-card">
-        <div className="org-form-head"><h2>فرم راه‌اندازی و پیکربندی طرح اعتباری</h2><p>ورودی‌ها تا فعال‌شدن قرارداد دسترسی نوشتن غیرفعال هستند.</p></div>
-        <fieldset className="org-disabled-form" disabled>
-          <div className="org-form-grid">
-            <label>نوع اعتبار / برنامه<select><option>انتخاب نوع اعتبار / برنامه</option></select></label>
-            <label>نام طرح حمایتی<input placeholder="نام طرح سازمانی" /></label>
-            <label>منبع افراد و مشمولان<select><option>انتخاب منبع مشمولان</option></select></label>
-            <label>روش تخصیص طرح<input value={profile?.defaultAllocationMethod ?? "روش تخصیص سازمان"} readOnly /></label>
-            <label className="org-span-2">توضیحات و اهداف طرح<textarea placeholder="شرح اهداف و اطلاعات تکمیلی طرح..." /></label>
-          </div>
-          <div className="org-actions"><button className="org-button org-button--primary" type="button">ثبت اولیه طرح سازمانی</button></div>
-        </fieldset>
-        <div className="org-actions"><Link className="org-button" href="/organization/programs">بازگشت به طرح‌ها</Link></div>
+        <div className="org-form-head">
+          <h2>فرم راه‌اندازی و پیکربندی طرح اعتباری</h2>
+          <p>این مرحله فقط Draft می‌سازد؛ فعال‌سازی یا تخصیص اعتبار انجام نمی‌شود.</p>
+        </div>
+        <OrganizationProgramDraftForm
+          mode="create"
+          defaultAllocationMethod={profile.defaultAllocationMethod}
+        />
+        <div className="org-actions">
+          <Link className="org-button" href="/organization/programs">بازگشت به طرح‌ها</Link>
+        </div>
       </Card>
     </>
   );
