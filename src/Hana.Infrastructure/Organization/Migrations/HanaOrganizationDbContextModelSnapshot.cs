@@ -92,7 +92,11 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 table.HasCheckConstraint("ck_organization_programs_creation_key",
                     "creation_key IS NULL OR creation_key <> '00000000-0000-0000-0000-000000000000'::uuid");
                 table.HasCheckConstraint("ck_organization_programs_creation_fingerprint",
-                    "(creation_key IS NULL AND creation_fingerprint IS NULL) OR (creation_key IS NOT NULL AND creation_fingerprint ~ '^[0-9a-f]{64}
+                    "(creation_key IS NULL AND creation_fingerprint IS NULL) OR (creation_key IS NOT NULL AND creation_fingerprint ~ '^[0-9a-f]{64}$')");
+                table.HasCheckConstraint("ck_organization_programs_registration_key",
+                    "registration_key IS NULL OR registration_key <> '00000000-0000-0000-0000-000000000000'::uuid");
+                table.HasCheckConstraint("ck_organization_programs_registration_pair",
+                    "(registration_key IS NULL AND registration_expected_revision IS NULL) OR (registration_key IS NOT NULL AND registration_expected_revision >= 1)");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
@@ -128,56 +132,6 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .HasColumnName("registered_by_account_id");
             entity.Property(x => x.RegisteredAtUtc)
                 .HasColumnName("registered_at_utc");
-            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
-                .IsRequired();
-            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
-                .IsRequired();
-            entity.HasOne<OrganizationRecord>().WithMany()
-                .HasForeignKey(x => x.OrganizationId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_organization_programs_organizations");
-            entity.HasIndex(x => new
-                { x.OrganizationId, x.Status, x.CreatedAtUtc, x.Id })
-                .HasDatabaseName("ix_organization_programs_org_status_created");
-            entity.HasIndex(x => new { x.OrganizationId, x.CreationKey })
-                .IsUnique()
-                .HasFilter("creation_key IS NOT NULL")
-                .HasDatabaseName("ix_organization_programs_org_creation_key");
-        });
-    }
-}
-)");
-                table.HasCheckConstraint("ck_organization_programs_registration_key",
-                    "registration_key IS NULL OR registration_key <> '00000000-0000-0000-0000-000000000000'::uuid");
-                table.HasCheckConstraint("ck_organization_programs_registration_pair",
-                    "(registration_key IS NULL AND registration_expected_revision IS NULL) OR (registration_key IS NOT NULL AND registration_expected_revision >= 1)");
-            });
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
-            entity.Property(x => x.OrganizationId).HasColumnName("organization_id")
-                .ValueGeneratedNever();
-            entity.Property(x => x.Name).HasColumnName("name")
-                .HasMaxLength(200).IsRequired();
-            entity.Property(x => x.Kind).HasColumnName("kind")
-                .HasMaxLength(120).IsRequired();
-            entity.Property(x => x.AllocationMethod).HasColumnName("allocation_method")
-                .HasMaxLength(120).IsRequired();
-            entity.Property(x => x.BeneficiarySource).HasColumnName("beneficiary_source")
-                .HasMaxLength(120).IsRequired();
-            entity.Property(x => x.Description).HasColumnName("description")
-                .HasMaxLength(2000);
-            entity.Property(x => x.Status).HasColumnName("status")
-                .HasMaxLength(16).IsRequired()
-                .HasDefaultValue(OrganizationProgramStates.Draft);
-            entity.Property(x => x.Revision).HasColumnName("revision")
-                .HasDefaultValue(1).IsRequired().IsConcurrencyToken();
-            entity.Property(x => x.CreationKey).HasColumnName("creation_key");
-            entity.Property(x => x.CreationFingerprint)
-                .HasColumnName("creation_fingerprint").HasMaxLength(64);
-            entity.Property(x => x.CreatedByAccountId)
-                .HasColumnName("created_by_account_id");
-            entity.Property(x => x.UpdatedByAccountId)
-                .HasColumnName("updated_by_account_id");
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
                 .IsRequired();
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
