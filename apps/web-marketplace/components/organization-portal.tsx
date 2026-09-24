@@ -5,6 +5,7 @@ import { OrganizationProgramDraftForm } from "./organization-program-draft-form"
 import { OrganizationProgramRegisterAction } from "./organization-program-register-action";
 import { OrganizationRecipientCreateForm } from "./organization-recipient-create-form";
 import { OrganizationRecipientBulkImportForm } from "./organization-recipient-bulk-import-form";
+import { OrganizationNotificationReadAction } from "./organization-notification-read-action";
 import type {
   OrganizationProfile,
   OrganizationProfileState,
@@ -1384,6 +1385,7 @@ function Notifications({ state }: { state: OrganizationNotificationsState }) {
       <small>{item.readState === "UNREAD" ? "خوانده‌نشده · " : "خوانده‌شده · "}
         <time dateTime={item.createdAtUtc}>{new Date(item.createdAtUtc).toLocaleString("fa-IR")}</time>
       </small>
+      {item.readState === "UNREAD" ? <OrganizationNotificationReadAction id={item.id} /> : null}
     </article>
   ))}</Card>;
 }

@@ -100,5 +100,93 @@ internal static class OrganizationNotificationsEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status503ServiceUnavailable);
+
+        app.MapPost("/api/v1/organization/notifications/{id:guid}/read", async (
+            Guid id,
+            HttpContext context,
+            IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (context.Request.Query.Count != 0 ||
+                context.Request.ContentLength is > 0 ||
+                context.Request.Headers.ContainsKey("Transfer-Encoding"))
+                return Results.BadRequest();
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            var authorization = context.Request.Headers.Authorization.ToString();
+            if (!authorization.StartsWith("Bearer ",
+                    StringComparison.OrdinalIgnoreCase) ||
+                !SessionTokenCodec.TryComputeDigest(authorization[7..], out _))
+                return Results.Unauthorized();
+            if (!hasDatabase)
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            try
+            {
+                var accountId = await services
+                    .GetRequiredService<AuthSessionService>()
+                    .ResolveAccountAsync(authorization[7..], cancellationToken);
+                if (accountId is null)
+                    return Results.Unauthorized();
+                var access = await services
+                    .GetRequiredService<OrganizationAccessService>()
+                    .ResolveAccessAsync(accountId.Value, cancellationToken);
+                if (access is null)
+                    return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var exists = await db.Programs.AsNoTracking().AnyAsync(p =>
+                    p.Id == id && p.OrganizationId == access.OrganizationId &&
+                    p.RegistrationKey != null && p.RegisteredAtUtc != null,
+                    cancellationToken);
+                if (!exists)
+                    return Results.NotFound();
+
+                var alreadyRead = await db.NotificationReads.AsNoTracking()
+                    .AnyAsync(r => r.OrganizationId == access.OrganizationId &&
+                        r.ProgramId == id && r.AccountId == accountId.Value,
+                        cancellationToken);
+                if (alreadyRead)
+                    return Results.NoContent();
+
+                db.NotificationReads.Add(new OrganizationNotificationReadRecord
+                {
+                    OrganizationId = access.OrganizationId,
+                    ProgramId = id,
+                    AccountId = accountId.Value,
+                    ReadAtUtc = DateTimeOffset.UtcNow
+                });
+                try
+                {
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    // Concurrent identical requests may race on the composite
+                    // primary key. Verify the exact member receipt before
+                    // treating the retry as successful.
+                    var settled = await db.NotificationReads.AsNoTracking()
+                        .AnyAsync(r => r.OrganizationId == access.OrganizationId &&
+                            r.ProgramId == id && r.AccountId == accountId.Value,
+                            cancellationToken);
+                    if (!settled) throw;
+                }
+                return Results.NoContent();
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("MarkOrganizationNotificationRead")
+        .WithTags("Organization")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status503ServiceUnavailable);
     }
 }
