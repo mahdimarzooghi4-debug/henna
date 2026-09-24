@@ -217,11 +217,15 @@ export function parseOrganizationProgramPageQuery(
   const page = parseInteger(rawPage, 1, 1, 10000);
   const pageSize = parseInteger(rawPageSize, 20, 1, 50);
   const normalized = rawStatus?.trim().toUpperCase() || null;
-  if (page === null || pageSize === null ||
-    (normalized !== null && !isStatus(normalized)))
-    return null;
+  if (page === null || pageSize === null) return null;
 
-  return { page, pageSize, status: normalized };
+  let status: OrganizationProgramStatus | null = null;
+  if (normalized !== null) {
+    if (!isStatus(normalized)) return null;
+    status = normalized;
+  }
+
+  return { page, pageSize, status };
 }
 
 export function parseOrganizationProgramUrlQuery(
