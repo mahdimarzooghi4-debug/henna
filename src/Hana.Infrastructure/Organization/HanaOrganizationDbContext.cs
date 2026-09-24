@@ -179,6 +179,12 @@ public sealed class HanaOrganizationDbContext(
                     "length(btrim(display_name)) > 0");
                 table.HasCheckConstraint("ck_organization_recipients_reference_masked",
                     "length(btrim(reference_masked)) > 0");
+                table.HasCheckConstraint("ck_organization_recipients_reference_fingerprint",
+                    "reference_fingerprint IS NULL OR reference_fingerprint ~ '^[0-9a-f]{64}$'");
+                table.HasCheckConstraint("ck_organization_recipients_creation_key",
+                    "creation_key IS NULL OR creation_key <> '00000000-0000-0000-0000-000000000000'::uuid");
+                table.HasCheckConstraint("ck_organization_recipients_creation_fingerprint",
+                    "(creation_key IS NULL AND creation_fingerprint IS NULL) OR (creation_key IS NOT NULL AND creation_fingerprint ~ '^[0-9a-f]{64}$')");
                 table.HasCheckConstraint("ck_organization_recipients_source",
                     "source IN ('MANUAL', 'API')");
                 table.HasCheckConstraint("ck_organization_recipients_match_status",
@@ -196,6 +202,14 @@ public sealed class HanaOrganizationDbContext(
                 .HasMaxLength(200).IsRequired();
             entity.Property(x => x.ReferenceMasked)
                 .HasColumnName("reference_masked").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.ReferenceFingerprint)
+                .HasColumnName("reference_fingerprint").HasMaxLength(64);
+            entity.Property(x => x.CreationKey)
+                .HasColumnName("creation_key");
+            entity.Property(x => x.CreationFingerprint)
+                .HasColumnName("creation_fingerprint").HasMaxLength(64);
+            entity.Property(x => x.CreatedByAccountId)
+                .HasColumnName("created_by_account_id");
             entity.Property(x => x.Source).HasColumnName("source")
                 .HasMaxLength(16).IsRequired();
             entity.Property(x => x.MatchStatus).HasColumnName("match_status")
@@ -228,6 +242,15 @@ public sealed class HanaOrganizationDbContext(
             entity.HasIndex(x => new
                 { x.OrganizationId, x.MatchStatus, x.Source, x.CreatedAtUtc, x.Id })
                 .HasDatabaseName("ix_organization_recipients_org_match_source_created");
+            entity.HasIndex(x => new
+                { x.OrganizationId, x.ProgramId, x.ReferenceFingerprint })
+                .IsUnique()
+                .HasFilter("reference_fingerprint IS NOT NULL")
+                .HasDatabaseName("ix_organization_recipients_org_program_reference");
+            entity.HasIndex(x => new { x.OrganizationId, x.CreationKey })
+                .IsUnique()
+                .HasFilter("creation_key IS NOT NULL")
+                .HasDatabaseName("ix_organization_recipients_org_creation_key");
         });
     }
 }
