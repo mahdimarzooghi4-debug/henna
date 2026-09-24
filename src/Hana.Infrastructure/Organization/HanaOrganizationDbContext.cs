@@ -121,6 +121,8 @@ public sealed class HanaOrganizationDbContext(
                 .HasConstraintName("fk_notification_reads_memberships");
             entity.HasIndex(x => new { x.ProgramId, x.OrganizationId })
                 .HasDatabaseName("ix_notification_reads_program_org");
+            entity.HasIndex(x => new { x.OrganizationId, x.AccountId })
+                .HasDatabaseName("ix_notification_reads_org_account");
         });
 
         modelBuilder.Entity<OrganizationProgramRecord>(entity =>

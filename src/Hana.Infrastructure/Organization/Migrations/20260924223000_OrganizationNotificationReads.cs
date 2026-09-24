@@ -46,6 +46,11 @@ public sealed class OrganizationNotificationReads : Migration
             schema: "organization",
             table: "notification_reads",
             columns: new[] { "program_id", "organization_id" });
+        migrationBuilder.CreateIndex(
+            name: "ix_notification_reads_org_account",
+            schema: "organization",
+            table: "notification_reads",
+            columns: new[] { "organization_id", "account_id" });
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
