@@ -165,6 +165,8 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                     "creation_key IS NULL OR creation_key <> '00000000-0000-0000-0000-000000000000'::uuid");
                 table.HasCheckConstraint("ck_organization_recipients_creation_fingerprint",
                     "(creation_key IS NULL AND creation_fingerprint IS NULL) OR (creation_key IS NOT NULL AND creation_fingerprint ~ '^[0-9a-f]{64}$')");
+                table.HasCheckConstraint("ck_organization_recipients_import_pair",
+                    "(import_key IS NULL AND import_row_number IS NULL) OR (import_key IS NOT NULL AND import_key <> '00000000-0000-0000-0000-000000000000'::uuid AND import_row_number >= 2)");
                 table.HasCheckConstraint("ck_organization_recipients_source",
                     "source IN ('MANUAL', 'API')");
                 table.HasCheckConstraint("ck_organization_recipients_match_status",
@@ -190,6 +192,10 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .HasColumnName("creation_fingerprint").HasMaxLength(64);
             entity.Property(x => x.CreatedByAccountId)
                 .HasColumnName("created_by_account_id");
+            entity.Property(x => x.ImportKey)
+                .HasColumnName("import_key");
+            entity.Property(x => x.ImportRowNumber)
+                .HasColumnName("import_row_number");
             entity.Property(x => x.Source).HasColumnName("source")
                 .HasMaxLength(16).IsRequired();
             entity.Property(x => x.MatchStatus).HasColumnName("match_status")
@@ -231,6 +237,11 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 .IsUnique()
                 .HasFilter("creation_key IS NOT NULL")
                 .HasDatabaseName("ix_organization_recipients_org_creation_key");
+            entity.HasIndex(x => new
+                { x.OrganizationId, x.ImportKey, x.ImportRowNumber })
+                .IsUnique()
+                .HasFilter("import_key IS NOT NULL")
+                .HasDatabaseName("ix_organization_recipients_org_import_row");
         });
     }
 }

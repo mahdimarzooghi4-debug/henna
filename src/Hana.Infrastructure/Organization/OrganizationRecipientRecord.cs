@@ -16,6 +16,8 @@ public sealed class OrganizationRecipientRecord
     public Guid? CreationKey { get; set; }
     public string? CreationFingerprint { get; set; }
     public Guid? CreatedByAccountId { get; set; }
+    public Guid? ImportKey { get; set; }
+    public int? ImportRowNumber { get; set; }
     public string Source { get; set; } = OrganizationRecipientSources.Manual;
     public string MatchStatus { get; set; } =
         OrganizationRecipientMatchStates.PendingReview;
