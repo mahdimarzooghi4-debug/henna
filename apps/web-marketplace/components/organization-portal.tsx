@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { OrganizationProgramDraftForm } from "./organization-program-draft-form";
 import { OrganizationProgramRegisterAction } from "./organization-program-register-action";
+import { OrganizationRecipientCreateForm } from "./organization-recipient-create-form";
 import type {
   OrganizationProfile,
   OrganizationProfileState,
@@ -22,6 +23,7 @@ import {
   programListQueryString,
   type OrganizationProgramDetailState,
   type OrganizationProgramListQuery,
+  type OrganizationProgramOptionsState,
   type OrganizationProgramsState,
   type OrganizationProgramStatus,
 } from "../lib/organization-programs";
@@ -501,9 +503,11 @@ function recipientPageHref(
 function People({
   state,
   query,
+  profile,
 }: {
   state: OrganizationRecipientsState;
   query: OrganizationRecipientListQuery;
+  profile: OrganizationProfile | null;
 }) {
   if (state.status !== "ready") {
     const message = state.status === "unauthenticated"
@@ -563,14 +567,14 @@ function People({
         action="/organization/people"
         method="get"
       >
-        <button
-          className="org-button org-button--primary"
-          type="button"
-          disabled
-          title="افزودن مشمول بعد از قرارداد mutation فعال می‌شود."
-        >
-          افزودن مشمول
-        </button>
+        {profile?.memberRole === "PORTAL_ADMIN" ? (
+          <Link
+            className="org-button org-button--primary"
+            href="/organization/people/add"
+          >
+            افزودن مشمول
+          </Link>
+        ) : <span />}
         <input
           aria-label="جستجوی مشمول"
           name="search"
@@ -618,8 +622,9 @@ function People({
         </div>
       </form>
       <p className="org-recipient-boundary">
-        افزودن/ویرایش مشمول، تخصیص اعتبار و وضعیت مصرف در این مرحله به backend
-        متصل نشده‌اند و از روی این فهرست استنتاج نمی‌شوند.
+        افزودن انفرادی برای مدیر پرتال متصل است. ثبت گروهی، ویرایش، تخصیص
+        اعتبار و وضعیت مصرف هنوز قرارداد مستقل دارند و از این فهرست استنتاج
+        نمی‌شوند.
       </p>
       <Card>
         {rows.length > 0 ? (
@@ -659,7 +664,54 @@ function People({
   );
 }
 
-function AddPeople() {
+function AddPeople({
+  profile,
+  programsState,
+}: {
+  profile: OrganizationProfile | null;
+  programsState: OrganizationProgramOptionsState;
+}) {
+  if (!profile) {
+    return (
+      <Card className="org-access-state">
+        <h2>فرم افزودن مشمول در دسترس نیست</h2>
+        <p>برای ثبت مشمول باید نشست و عضویت فعال سازمانی داشته باشید.</p>
+        <Link className="org-button org-button--primary" href="/auth">
+          ورود به حنا
+        </Link>
+      </Card>
+    );
+  }
+
+  if (profile.memberRole !== "PORTAL_ADMIN") {
+    return (
+      <Card className="org-access-state">
+        <h2>مجوز افزودن مشمول فعال نیست</h2>
+        <p>این عملیات فقط برای مدیر پرتال سازمان فعال است.</p>
+        <Link className="org-button" href="/organization/people">
+          بازگشت به لیست مشمولان
+        </Link>
+      </Card>
+    );
+  }
+
+  if (programsState.status !== "ready") {
+    const message = programsState.status === "unauthenticated"
+      ? "نشست معتبر نیست؛ دوباره وارد شوید."
+      : programsState.status === "forbidden"
+        ? "دسترسی سازمانی فعال برای خواندن طرح‌ها وجود ندارد."
+        : "فهرست طرح‌های قابل انتخاب موقتاً در دسترس نیست.";
+    return (
+      <Card className="org-access-state">
+        <h2>طرح‌های مجاز بارگذاری نشد</h2>
+        <p>{message}</p>
+        <Link className="org-button" href="/organization/people/add">
+          تلاش مجدد برای بارگذاری
+        </Link>
+      </Card>
+    );
+  }
+
   return (
     <>
       <div className="org-toolbar">
@@ -667,14 +719,43 @@ function AddPeople() {
           بازگشت به لیست مشمولان
         </Link>
       </div>
-      <Card className="org-access-state">
-        <h2>افزودن مشمول هنوز فعال نشده است</h2>
-        <p>
-          Backend 040 فقط قرارداد خواندن افراد و مشمولان را اضافه کرده است.
-          تا زمانی که قرارداد mutation، اعتبارسنجی شناسه و رفتار رکوردهای
-          تکراری تعریف نشود، فرم نمونه Figma درخواست واقعی ارسال نمی‌کند.
-        </p>
-      </Card>
+      <div className="org-grid org-grid--2 org-add-people-grid">
+        <Card title="ثبت گروهی افراد (فایل اکسل / CSV)">
+          <p className="org-muted">
+            افزودن لیست مشمولان با بارگذاری گروهی قالب پیش‌فرض — نحوه برخورد
+            با شناسه‌های تکراری، رکوردهای ناقص و ساختار نامعتبر نیازمند قرارداد
+            bulk جداگانه است.
+          </p>
+          <label className="org-dropzone org-dropzone--disabled">
+            <input type="file" accept=".csv,.xlsx" disabled />
+            <strong>فایل اکسل یا CSV را به اینجا بکشید یا انتخاب کنید</strong>
+            <span>
+              قالب ستون‌ها: نام، شناسه موردنیاز، شماره همراه در صورت نیاز
+            </span>
+          </label>
+          <div className="org-actions">
+            <button className="org-button" type="button" disabled>
+              دانلود نمونه قالب فایل
+            </button>
+            <button
+              className="org-button org-button--primary"
+              type="button"
+              disabled
+            >
+              افزودن گروهی
+            </button>
+          </div>
+          <p className="org-recipient-boundary">
+            ثبت گروهی در Backend 042 فعال نشده و این کارت هیچ فایلی ارسال
+            نمی‌کند.
+          </p>
+        </Card>
+        <Card className="org-recipient-create-card">
+          <OrganizationRecipientCreateForm
+            programs={programsState.programs}
+          />
+        </Card>
+      </div>
     </>
   );
 }
@@ -838,6 +919,7 @@ function Screen({
   programDetailState,
   recipientsState,
   recipientsQuery,
+  recipientProgramOptionsState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -846,6 +928,7 @@ function Screen({
   programDetailState?: OrganizationProgramDetailState;
   recipientsState?: OrganizationRecipientsState;
   recipientsQuery?: OrganizationRecipientListQuery;
+  recipientProgramOptionsState?: OrganizationProgramOptionsState;
 }) {
   const profile = profileState.status === "ready"
     ? profileState.profile : null;
@@ -869,9 +952,17 @@ function Screen({
       <People
         state={recipientsState ?? { status: "unavailable" }}
         query={recipientsQuery ?? defaultRecipientListQuery}
+        profile={profile}
       />
     );
-    case "add-people": return <AddPeople />;
+    case "add-people": return (
+      <AddPeople
+        profile={profile}
+        programsState={
+          recipientProgramOptionsState ?? { status: "unavailable" }
+        }
+      />
+    );
     case "data-sources": return <DataSources />;
     case "allocation": return <Allocation />;
     case "allocation-detail": return <AllocationDetail />;
@@ -898,6 +989,7 @@ export function OrganizationPortal({
   programDetailState,
   recipientsState,
   recipientsQuery,
+  recipientProgramOptionsState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -906,6 +998,7 @@ export function OrganizationPortal({
   programDetailState?: OrganizationProgramDetailState;
   recipientsState?: OrganizationRecipientsState;
   recipientsQuery?: OrganizationRecipientListQuery;
+  recipientProgramOptionsState?: OrganizationProgramOptionsState;
 }) {
   const active = activeNav(screen);
   const profile = profileState.status === "ready"
@@ -939,6 +1032,7 @@ export function OrganizationPortal({
             programDetailState={programDetailState}
             recipientsState={recipientsState}
             recipientsQuery={recipientsQuery}
+            recipientProgramOptionsState={recipientProgramOptionsState}
           />
         </div>
       </section>

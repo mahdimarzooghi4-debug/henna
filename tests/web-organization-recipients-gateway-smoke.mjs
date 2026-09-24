@@ -286,9 +286,9 @@ try {
   });
   assert.equal(addPage.status, 200);
   const addHtml = await addPage.text();
-  assert.match(addHtml, /افزودن مشمول هنوز فعال نشده است/);
-  assert.doesNotMatch(addHtml, /فایل اکسل یا CSV را به اینجا بکشید/);
-  assert.doesNotMatch(addHtml, /شماره تلفن همراه \(جهت تطبیق حساب کاربری\)/);
+  assert.match(addHtml, /مجوز افزودن مشمول فعال نیست/);
+  assert.doesNotMatch(addHtml, /مثال: محمد امینی/);
+  assert.doesNotMatch(addHtml, /افزودن فرد/);
 
   console.log("Organization recipients UI/BFF CI: real SSR data, filters, DTO allowlist, fail-closed mutation and financial boundaries OK");
 } finally {
