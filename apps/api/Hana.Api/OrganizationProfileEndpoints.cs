@@ -10,8 +10,7 @@ public static class OrganizationProfileEndpoints
     {
         app.MapGet("/api/v1/organization/me", async (
                 HttpContext context,
-                AuthSessionService sessions,
-                OrganizationAccessService access,
+                IServiceProvider services,
                 CancellationToken cancellationToken) =>
             {
                 context.Response.Headers.CacheControl = "no-store";
@@ -30,11 +29,15 @@ public static class OrganizationProfileEndpoints
 
                 try
                 {
+                    var sessions =
+                        services.GetRequiredService<AuthSessionService>();
                     var accountId = await sessions.ResolveAccountAsync(
                         authorization[7..], cancellationToken);
                     if (accountId is null)
                         return Results.Unauthorized();
 
+                    var access =
+                        services.GetRequiredService<OrganizationAccessService>();
                     var profile = await access.ResolveProfileAsync(
                         accountId.Value, cancellationToken);
                     if (profile is null)
