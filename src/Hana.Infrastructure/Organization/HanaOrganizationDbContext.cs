@@ -15,6 +15,8 @@ public sealed class HanaOrganizationDbContext(
         Set<OrganizationMembershipRecord>();
     public DbSet<OrganizationProgramRecord> Programs =>
         Set<OrganizationProgramRecord>();
+    public DbSet<OrganizationRecipientRecord> Recipients =>
+        Set<OrganizationRecipientRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +34,8 @@ public sealed class HanaOrganizationDbContext(
                     "length(btrim(default_allocation_method)) > 0");
             });
             entity.HasKey(x => x.Id);
+            entity.HasAlternateKey(x => new { x.Id, x.OrganizationId })
+                .HasName("ak_organization_programs_id_organization_id");
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
             entity.Property(x => x.Name).HasColumnName("name")
                 .HasMaxLength(200).IsRequired();
@@ -165,6 +169,60 @@ public sealed class HanaOrganizationDbContext(
                 .IsUnique()
                 .HasFilter("creation_key IS NOT NULL")
                 .HasDatabaseName("ix_organization_programs_org_creation_key");
+        });
+
+        modelBuilder.Entity<OrganizationRecipientRecord>(entity =>
+        {
+            entity.ToTable("recipients", table =>
+            {
+                table.HasCheckConstraint("ck_organization_recipients_display_name",
+                    "length(btrim(display_name)) > 0");
+                table.HasCheckConstraint("ck_organization_recipients_reference_masked",
+                    "length(btrim(reference_masked)) > 0");
+                table.HasCheckConstraint("ck_organization_recipients_source",
+                    "source IN ('MANUAL', 'API')");
+                table.HasCheckConstraint("ck_organization_recipients_match_status",
+                    "match_status IN ('MATCHED', 'NEEDS_MATCH', 'PENDING_REVIEW')");
+                table.HasCheckConstraint("ck_organization_recipients_match_account",
+                    "(match_status = 'MATCHED' AND matched_account_id IS NOT NULL) OR (match_status <> 'MATCHED' AND matched_account_id IS NULL)");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.OrganizationId).HasColumnName("organization_id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.ProgramId).HasColumnName("program_id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.DisplayName).HasColumnName("display_name")
+                .HasMaxLength(200).IsRequired();
+            entity.Property(x => x.ReferenceMasked)
+                .HasColumnName("reference_masked").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Source).HasColumnName("source")
+                .HasMaxLength(16).IsRequired();
+            entity.Property(x => x.MatchStatus).HasColumnName("match_status")
+                .HasMaxLength(24).IsRequired();
+            entity.Property(x => x.MatchedAccountId)
+                .HasColumnName("matched_account_id");
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
+                .IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
+                .IsRequired();
+
+            entity.HasOne<OrganizationRecord>().WithMany()
+                .HasForeignKey(x => x.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_organization_recipients_organizations");
+            entity.HasOne<OrganizationProgramRecord>().WithMany()
+                .HasForeignKey(x => new { x.ProgramId, x.OrganizationId })
+                .HasPrincipalKey(x => new { x.Id, x.OrganizationId })
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_organization_recipients_programs");
+
+            entity.HasIndex(x => new
+                { x.OrganizationId, x.ProgramId, x.CreatedAtUtc, x.Id })
+                .HasDatabaseName("ix_organization_recipients_org_program_created");
+            entity.HasIndex(x => new
+                { x.OrganizationId, x.MatchStatus, x.Source, x.CreatedAtUtc, x.Id })
+                .HasDatabaseName("ix_organization_recipients_org_match_source_created");
         });
     }
 }
