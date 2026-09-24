@@ -67,9 +67,14 @@ public sealed class OrganizationAllocationReadinessService(
             .ToListAsync(cancellationToken);
 
         var programIds = programs.Select(x => x.Id).ToArray();
-        var counts = programIds.Length == 0
-            ? []
-            : await db.Recipients
+        List<CountRow> counts;
+        if (programIds.Length == 0)
+        {
+            counts = [];
+        }
+        else
+        {
+            counts = await db.Recipients
                 .AsNoTracking()
                 .Where(x =>
                     x.OrganizationId == organizationId &&
@@ -86,6 +91,7 @@ public sealed class OrganizationAllocationReadinessService(
                     group.Key.Source,
                     group.Count()))
                 .ToListAsync(cancellationToken);
+        }
 
         var programResults = programs
             .Select(program =>
