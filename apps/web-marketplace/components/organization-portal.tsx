@@ -22,6 +22,9 @@ import type {
   OrganizationAllocationProgramState,
   OrganizationAllocationReadinessState,
 } from "../lib/organization-allocation";
+import type {
+  OrganizationUsageStatusState,
+} from "../lib/organization-usage";
 import {
   defaultProgramListQuery,
   organizationProgramStatusLabels,
@@ -1089,22 +1092,127 @@ function AllocationDetail({
   );
 }
 
-function Usage() {
-  const rows: ReactNode[][] = [
-    ["تاریخ نمونه", "مقدار نمونه", "مقدار نمونه", <Badge key="a">استفاده شده</Badge>, "***۰۰۷۲۱۶", "فرد نمونه ۱"],
-    ["تاریخ نمونه", "مقدار نمونه", "مقدار نمونه", <Badge key="b" tone="neutral">بخشی استفاده شده</Badge>, "***۰۱۲۵۴۴", "فرد نمونه ۲"],
-    ["-", "مقدار نمونه", "مقدار نمونه", <Badge key="c" tone="warn">استفاده نشده</Badge>, "***۰۴۳۹۸۱", "فرد نمونه ۳"],
-    ["تاریخ نمونه", "مقدار نمونه", "مقدار نمونه", <Badge key="d" tone="neutral">پایان‌یافته / غیرفعال</Badge>, "***۰۰۹۶۱۲", "فرد نمونه ۴"],
-  ];
+function UsageAccessState({
+  state,
+}: {
+  state: Exclude<OrganizationUsageStatusState, { status: "ready" }>;
+}) {
+  const content = state.status === "unauthenticated"
+    ? {
+        title: "برای مشاهده وضعیت استفاده وارد شوید",
+        body: "نشست معتبر سازمانی پیدا نشد.",
+        action: (
+          <Link className="org-button org-button--primary" href="/auth">
+            ورود به حنا
+          </Link>
+        ),
+      }
+    : state.status === "forbidden"
+      ? {
+          title: "دسترسی سازمانی فعال نیست",
+          body: "این حساب عضویت فعال برای مشاهده وضعیت استفاده سازمان ندارد.",
+          action: null,
+        }
+      : {
+          title: "وضعیت استفاده موقتاً در دسترس نیست",
+          body: "برای جلوگیری از نمایش مبلغ یا وضعیت ساختگی، داده نمونه جایگزین پاسخ واقعی نمی‌شود.",
+          action: (
+            <Link className="org-button" href="/organization/usage">
+              تلاش مجدد
+            </Link>
+          ),
+        };
+
+  return (
+    <Card className="org-access-state">
+      <h2>{content.title}</h2>
+      <p>{content.body}</p>
+      {content.action}
+    </Card>
+  );
+}
+
+function Usage({
+  state,
+}: {
+  state: OrganizationUsageStatusState;
+}) {
+  if (state.status !== "ready")
+    return <UsageAccessState state={state} />;
+
+  const data = state.data;
+  const unavailable = "در دسترس نیست";
+
   return (
     <>
-      <div className="org-stats">
-        <Card><strong>مقدار نمونه</strong><span>کل اعتبارات تخصیص یافته</span></Card>
-        <Card><strong>مقدار نمونه</strong><span>اعتبار فعال در حال استفاده</span></Card>
-        <Card><strong>مقدار نمونه</strong><span>اعتبار مصرف شده</span></Card>
-        <Card><strong>مقدار نمونه</strong><span>اعتبار راکد یا استفاده نشده</span></Card>
+      <div className="org-usage-context">
+        <Badge tone="neutral">{data.organizationType}</Badge>
+        <span className="org-usage-sync">
+          آخرین همگام‌سازی مالی ثبت‌شده:{" "}
+          <strong>هنوز پیکربندی نشده</strong>
+        </span>
       </div>
-      <Card title="لیست وضعیت مصرف مشمولان"><Table headers={["آخرین وضعیت ثبت‌شده", "میزان استفاده", "اعتبار تخصیص یافته", "وضعیت مصرف", "شناسه مشمول", "نام مشمول"]} rows={rows} /></Card>
+
+      <div className="org-stats org-usage-stats">
+        <Card>
+          <span>کل اعتبارات تخصیص یافته</span>
+          <strong className="org-usage-unavailable">{unavailable}</strong>
+        </Card>
+        <Card>
+          <span>اعتبار فعال در حال استفاده</span>
+          <strong className="org-usage-unavailable org-usage-unavailable--teal">
+            {unavailable}
+          </strong>
+        </Card>
+        <Card>
+          <span>اعتبار مصرف شده</span>
+          <strong className="org-usage-unavailable org-usage-unavailable--warn">
+            {unavailable}
+          </strong>
+        </Card>
+        <Card>
+          <span>اعتبار راکد یا استفاده نشده</span>
+          <strong className="org-usage-unavailable">{unavailable}</strong>
+        </Card>
+      </div>
+
+      <div className="org-banner org-banner--muted org-usage-boundary">
+        <strong>داده مالی وضعیت استفاده هنوز در هسته حنا فعال نشده است.</strong>
+        <span>
+          null در این صفحه به معنی صفر نیست. تا زمانی که مدل ledger و مصرف
+          واقعی تعریف نشود، مبلغ یا وضعیت مصرف از طرح‌ها و مشمولان استنتاج
+          نمی‌شود.
+        </span>
+      </div>
+
+      <Card title="لیست وضعیت مصرف مشمولان" className="org-usage-table-card">
+        <Table
+          headers={[
+            "آخرین وضعیت ثبت‌شده",
+            "میزان استفاده",
+            "اعتبار تخصیص یافته",
+            "وضعیت مصرف",
+            "شناسه مشمول",
+            "نام مشمول",
+          ]}
+          rows={[]}
+        />
+        <div className="org-usage-empty">
+          <Badge tone="neutral">داده مصرف موجود نیست</Badge>
+          <strong>هیچ ردیف مصرف مالی قابل نمایش نیست.</strong>
+          <span>
+            Backend 048 عمداً enrollment مشمولان را به مصرف یا اعتبار
+            تخصیص‌یافته تبدیل نمی‌کند.
+          </span>
+        </div>
+      </Card>
+
+      <div className="org-usage-capability" role="status">
+        <strong>{data.capability.state}</strong>
+        <span>
+          monetary usage read model: unavailable · ledger: unavailable
+        </span>
+      </div>
     </>
   );
 }
@@ -1185,6 +1293,7 @@ function Screen({
   recipientProgramOptionsState,
   allocationReadinessState,
   allocationProgramState,
+  usageStatusState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -1196,6 +1305,7 @@ function Screen({
   recipientProgramOptionsState?: OrganizationProgramOptionsState;
   allocationReadinessState?: OrganizationAllocationReadinessState;
   allocationProgramState?: OrganizationAllocationProgramState;
+  usageStatusState?: OrganizationUsageStatusState;
 }) {
   const profile = profileState.status === "ready"
     ? profileState.profile : null;
@@ -1241,7 +1351,11 @@ function Screen({
         state={allocationProgramState ?? { status: "unavailable" }}
       />
     );
-    case "usage": return <Usage />;
+    case "usage": return (
+      <Usage
+        state={usageStatusState ?? { status: "unavailable" }}
+      />
+    );
     case "reports": return <Reports />;
     case "notifications": return <Notifications />;
     case "support": return <Support />;
@@ -1267,6 +1381,7 @@ export function OrganizationPortal({
   recipientProgramOptionsState,
   allocationReadinessState,
   allocationProgramState,
+  usageStatusState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -1278,6 +1393,7 @@ export function OrganizationPortal({
   recipientProgramOptionsState?: OrganizationProgramOptionsState;
   allocationReadinessState?: OrganizationAllocationReadinessState;
   allocationProgramState?: OrganizationAllocationProgramState;
+  usageStatusState?: OrganizationUsageStatusState;
 }) {
   const active = activeNav(screen);
   const profile = profileState.status === "ready"
@@ -1314,6 +1430,7 @@ export function OrganizationPortal({
             recipientProgramOptionsState={recipientProgramOptionsState}
             allocationReadinessState={allocationReadinessState}
             allocationProgramState={allocationProgramState}
+            usageStatusState={usageStatusState}
           />
         </div>
       </section>
