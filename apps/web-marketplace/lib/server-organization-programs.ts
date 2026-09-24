@@ -144,13 +144,14 @@ export async function fetchOrganizationRecipientProgramOptions(
     fetchAllProgramsByStatus(token, "ACTIVE"),
   ]);
 
-  for (const result of [registered, active]) {
-    if (result.status === "unauthenticated" ||
-      result.status === "forbidden")
-      return { status: result.status };
-    if (result.status !== "ready")
-      return { status: "unavailable" };
-  }
+  if (registered.status === "unauthenticated" ||
+    active.status === "unauthenticated")
+    return { status: "unauthenticated" };
+  if (registered.status === "forbidden" ||
+    active.status === "forbidden")
+    return { status: "forbidden" };
+  if (registered.status !== "ready" || active.status !== "ready")
+    return { status: "unavailable" };
 
   const byId = new Map<string, OrganizationProgramSummary>();
   for (const program of [
