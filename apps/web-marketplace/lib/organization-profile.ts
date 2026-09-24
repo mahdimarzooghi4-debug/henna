@@ -37,33 +37,45 @@ export function parseOrganizationProfile(
 ): OrganizationProfile | null {
   if (!value || typeof value !== "object") return null;
   const data = value as Record<string, unknown>;
-  if (typeof data.organizationId !== "string" ||
-    !uuidPattern.test(data.organizationId) ||
-    !requiredString(data.name, 200) ||
-    !requiredString(data.organizationType, 80) ||
-    !requiredString(data.defaultAllocationMethod, 120) ||
-    !optionalString(data.phone, 32) ||
-    !optionalString(data.email, 254) ||
-    !optionalString(data.address, 500) ||
-    !optionalString(data.representativeName, 160) ||
-    !optionalString(data.representativePhone, 32) ||
-    typeof data.verified !== "boolean" ||
+  const organizationId = data.organizationId;
+  const name = data.name;
+  const organizationType = data.organizationType;
+  const defaultAllocationMethod = data.defaultAllocationMethod;
+  const phone = data.phone;
+  const email = data.email;
+  const address = data.address;
+  const representativeName = data.representativeName;
+  const representativePhone = data.representativePhone;
+  const verified = data.verified;
+  const memberRole = data.memberRole;
+
+  if (typeof organizationId !== "string" ||
+    !uuidPattern.test(organizationId) ||
+    !requiredString(name, 200) ||
+    !requiredString(organizationType, 80) ||
+    !requiredString(defaultAllocationMethod, 120) ||
+    !optionalString(phone, 32) ||
+    !optionalString(email, 254) ||
+    !optionalString(address, 500) ||
+    !optionalString(representativeName, 160) ||
+    !optionalString(representativePhone, 32) ||
+    typeof verified !== "boolean" ||
     data.active !== true ||
-    !requiredString(data.memberRole, 64))
+    !requiredString(memberRole, 64))
     return null;
 
   return {
-    organizationId: data.organizationId,
-    name: data.name.trim(),
-    organizationType: data.organizationType.trim(),
-    defaultAllocationMethod: data.defaultAllocationMethod.trim(),
-    phone: data.phone?.trim() || null,
-    email: data.email?.trim() || null,
-    address: data.address?.trim() || null,
-    representativeName: data.representativeName?.trim() || null,
-    representativePhone: data.representativePhone?.trim() || null,
-    verified: data.verified,
+    organizationId,
+    name: name.trim(),
+    organizationType: organizationType.trim(),
+    defaultAllocationMethod: defaultAllocationMethod.trim(),
+    phone: phone?.trim() || null,
+    email: email?.trim() || null,
+    address: address?.trim() || null,
+    representativeName: representativeName?.trim() || null,
+    representativePhone: representativePhone?.trim() || null,
+    verified,
     active: true,
-    memberRole: data.memberRole.trim(),
+    memberRole: memberRole.trim(),
   };
 }
