@@ -1,5 +1,5 @@
-import { OrganizationDashboard } from "../../components/organization-dashboard";
+import { OrganizationPortal } from "../../components/organization-portal";
 
 export default function OrganizationPage() {
-  return <OrganizationDashboard />;
+  return <OrganizationPortal screen="dashboard" />;
 }
