@@ -7,6 +7,12 @@ namespace Hana.Infrastructure.Organization;
 public static class OrganizationRecipientPermissions
 {
     public static bool CanCreateManual(string? memberRole) =>
+        IsPortalAdmin(memberRole);
+
+    public static bool CanImportBulk(string? memberRole) =>
+        IsPortalAdmin(memberRole);
+
+    private static bool IsPortalAdmin(string? memberRole) =>
         string.Equals(
             memberRole,
             OrganizationProgramPermissions.PortalAdmin,

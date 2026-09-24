@@ -67,6 +67,31 @@ public sealed class OrganizationRecipientCryptography
         return HexHmac(canonical);
     }
 
+    public string ImportFingerprint(
+        Guid organizationId,
+        Guid programId,
+        IEnumerable<(int RowNumber, string CreationFingerprint)> rows)
+    {
+        if (organizationId == Guid.Empty || programId == Guid.Empty)
+            throw new ArgumentException(
+                "Recipient import fingerprint inputs are required.");
+
+        var ordered = rows
+            .OrderBy(x => x.RowNumber)
+            .Select(x => string.Join(
+                ':',
+                x.RowNumber.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture),
+                x.CreationFingerprint));
+        var canonical = string.Join(
+            '\0',
+            "hana:organization:recipient-import:v1",
+            organizationId.ToString("N"),
+            programId.ToString("N"),
+            string.Join('|', ordered));
+        return HexHmac(canonical);
+    }
+
     private string HexHmac(string canonical) =>
         Convert.ToHexString(
             HMACSHA256.HashData(
