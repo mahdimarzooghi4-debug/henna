@@ -46,7 +46,7 @@ public sealed class ApplicantTypeProgress : Migration
             name: "ck_registration_submitted_completed",
             schema: "seller",
             table: "registration_drafts",
-            sql: "status <> 'SUBMITTED' OR completed_step = 6");
+            sql: "status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
