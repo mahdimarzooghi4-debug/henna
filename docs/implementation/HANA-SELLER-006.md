@@ -31,11 +31,11 @@
 
 از این برش، `POST /api/v1/seller/registration/submit` فقط وقتی transition به `SUBMITTED` می‌دهد که `completed_step=6` باشد.
 
-DB نیز invariant زیر را enforce می‌کند:
+DB برای جریان جدید invariant زیر را enforce می‌کند:
 
 `SUBMITTED => completed_step = 6`
 
-بنابراین UI تنها مانع نیست و caller مستقیم API نمی‌تواند مراحل ۳ تا ۶ را دور بزند.
+تنها استثنا، رکوردهای legacy است که پیش از معرفی مسیر مرحله‌ای با `SUBMITTED + completed_step=1 + applicant_type=NULL` وجود داشته‌اند؛ migration آن‌ها را به‌دروغ کامل یا دارای نوع متقاضی اعلام نمی‌کند. endpoint جدید Submit همچنان فقط با `completed_step=6` اجازه ثبت می‌دهد، بنابراین caller مستقیم API نمی‌تواند مراحل ۳ تا ۶ را دور بزند.
 
 ## Web
 
