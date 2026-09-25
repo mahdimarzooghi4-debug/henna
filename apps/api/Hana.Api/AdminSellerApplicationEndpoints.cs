@@ -144,7 +144,7 @@ internal static class AdminSellerApplicationEndpoints
         var roles = services.GetRequiredService<RoleAuthorizationService>();
         if (!await roles.HasRoleAsync(
             accountId.Value, HanaRoles.Admin, cancellationToken))
-            return (null, Results.Forbid());
+            return (null, Results.StatusCode(StatusCodes.Status403Forbidden));
 
         return (accountId, null);
     }
