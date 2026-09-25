@@ -56,6 +56,9 @@ internal static class AdminSellerApplicationEndpoints
                         x.OwnerName,
                         x.ApplicantType,
                         x.IdentityStatus,
+                        x.BusinessCategoryId,
+                        x.BusinessName,
+                        x.OfferingType,
                         x.Status,
                         x.Revision,
                         x.SubmittedAtUtc

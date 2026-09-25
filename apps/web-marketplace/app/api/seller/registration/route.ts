@@ -114,6 +114,44 @@ export async function GET(request: NextRequest) {
         return error(unavailable, 503);
     }
 
+    const businessCategoryId = "businessCategoryId" in payload
+      ? payload.businessCategoryId : null;
+    const businessCategoryName = "businessCategoryName" in payload
+      ? payload.businessCategoryName : null;
+    const businessName = "businessName" in payload
+      ? payload.businessName : null;
+    const businessDescription = "businessDescription" in payload
+      ? payload.businessDescription : null;
+    const businessPhone = "businessPhone" in payload
+      ? payload.businessPhone : null;
+    const offeringType = "offeringType" in payload
+      ? payload.offeringType : null;
+
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (completedStep < 4) {
+      if (businessCategoryId !== null || businessCategoryName !== null ||
+        businessName !== null || businessDescription !== null ||
+        businessPhone !== null || offeringType !== null)
+        return error(unavailable, 503);
+    } else if (
+      typeof businessCategoryId !== "string" ||
+      !uuidPattern.test(businessCategoryId) ||
+      typeof businessCategoryName !== "string" ||
+      !businessCategoryName.trim() || businessCategoryName.length > 120 ||
+      typeof businessName !== "string" ||
+      !businessName.trim() || businessName.length > 180 ||
+      typeof businessDescription !== "string" ||
+      !businessDescription.trim() || businessDescription.length > 500 ||
+      typeof businessPhone !== "string" ||
+      !/^0\d{10}$/.test(businessPhone) ||
+      (offeringType !== "GOOD" &&
+        offeringType !== "SERVICE" &&
+        offeringType !== "BOTH")
+    ) {
+      return error(unavailable, 503);
+    }
+
     const submittedAtUtc = "submittedAtUtc" in payload
       ? payload.submittedAtUtc : null;
     if (payload.status === "SUBMITTED" &&
@@ -135,6 +173,12 @@ export async function GET(request: NextRequest) {
           legalName,
           legalRepresentativeName,
           legalRepresentativePhone,
+          businessCategoryId,
+          businessCategoryName,
+          businessName,
+          businessDescription,
+          businessPhone,
+          offeringType,
           completedStep,
         }
         : {
@@ -148,6 +192,12 @@ export async function GET(request: NextRequest) {
           legalName,
           legalRepresentativeName,
           legalRepresentativePhone,
+          businessCategoryId,
+          businessCategoryName,
+          businessName,
+          businessDescription,
+          businessPhone,
+          offeringType,
           completedStep,
         },
       { headers: noStore });
