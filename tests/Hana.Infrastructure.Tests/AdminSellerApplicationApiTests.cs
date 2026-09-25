@@ -41,9 +41,12 @@ public sealed class AdminSellerApplicationApiTests
 
         var adminToken = SessionTokenCodec.Generate();
         var ordinaryToken = SessionTokenCodec.Generate();
+        var applicantToken = SessionTokenCodec.Generate();
         Assert.True(SessionTokenCodec.TryComputeDigest(adminToken, out var adminHash));
         Assert.True(SessionTokenCodec.TryComputeDigest(
             ordinaryToken, out var ordinaryHash));
+        Assert.True(SessionTokenCodec.TryComputeDigest(
+            applicantToken, out var applicantHash));
 
         identity.Accounts.AddRange(
             Account(adminId, NewPhone(), now),
@@ -52,7 +55,8 @@ public sealed class AdminSellerApplicationApiTests
             Account(draftOnlyId, NewPhone(), now));
         identity.AuthSessions.AddRange(
             Session(adminId, adminHash, now),
-            Session(ordinaryId, ordinaryHash, now));
+            Session(ordinaryId, ordinaryHash, now),
+            Session(applicantId, applicantHash, now));
         identity.RoleAssignments.Add(new RoleAssignmentRecord
         {
             AccountId = adminId,
@@ -132,10 +136,13 @@ public sealed class AdminSellerApplicationApiTests
         using var anon = factory.CreateClient();
         using var ordinary = factory.CreateClient();
         using var admin = factory.CreateClient();
+        using var applicant = factory.CreateClient();
         ordinary.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", ordinaryToken);
         admin.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", adminToken);
+        applicant.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", applicantToken);
 
         const string listUrl = "/api/v1/admin/seller-applications";
         Assert.Equal(HttpStatusCode.Unauthorized,
@@ -328,15 +335,89 @@ public sealed class AdminSellerApplicationApiTests
         Assert.Equal(HttpStatusCode.Conflict,
             (await Review(Guid.NewGuid(), 3, "APPROVED", null)).StatusCode);
 
+        const string amendmentUrl =
+            "/api/v1/seller/registration/amendment";
+        var amendmentState = await applicant.GetAsync(amendmentUrl);
+        Assert.Equal(HttpStatusCode.OK, amendmentState.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await amendmentState.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("HNA-A1B2C3D4E5F60718",
+                body.RootElement.GetProperty("trackingCode").GetString());
+            Assert.Equal(3,
+                body.RootElement.GetProperty("revision").GetInt32());
+            Assert.Equal("مدرک مجوز فعالیت باید تکمیل شود.",
+                body.RootElement.GetProperty("reviewerReason").GetString());
+            Assert.Equal(JsonValueKind.Null,
+                body.RootElement.GetProperty("amendment").ValueKind);
+        }
+
+        var staleSave = await applicant.PutAsJsonAsync(amendmentUrl, new
+        {
+            revision = 2,
+            responseText = "نسخه قدیمی",
+            referenceUrl = (string?)null
+        });
+        Assert.Equal(HttpStatusCode.Conflict, staleSave.StatusCode);
+
+        var savedAmendment = await applicant.PutAsJsonAsync(amendmentUrl, new
+        {
+            revision = 3,
+            responseText =
+                "اطلاعات مجوز تکمیل شد و مرجع آنلاین نیز ارائه شده است.",
+            referenceUrl = "https://example.com/license"
+        });
+        Assert.Equal(HttpStatusCode.OK, savedAmendment.StatusCode);
+        Guid amendmentId;
+        using (var body = JsonDocument.Parse(
+            await savedAmendment.Content.ReadAsStringAsync()))
+        {
+            amendmentId = body.RootElement.GetProperty("amendmentId").GetGuid();
+            Assert.Equal(3,
+                body.RootElement.GetProperty("baseRevision").GetInt32());
+        }
+
+        var restoredAmendment = await applicant.GetAsync(amendmentUrl);
+        Assert.Equal(HttpStatusCode.OK, restoredAmendment.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await restoredAmendment.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(amendmentId,
+                body.RootElement.GetProperty("amendment")
+                    .GetProperty("id").GetGuid());
+        }
+
+        var resubmitted = await applicant.PostAsJsonAsync(
+            amendmentUrl + "/resubmit", new
+            {
+                amendmentId,
+                revision = 3
+            });
+        Assert.Equal(HttpStatusCode.OK, resubmitted.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await resubmitted.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("UNDER_REVIEW",
+                body.RootElement.GetProperty("reviewStatus").GetString());
+            Assert.Equal(4,
+                body.RootElement.GetProperty("revision").GetInt32());
+            Assert.Equal("HNA-A1B2C3D4E5F60718",
+                body.RootElement.GetProperty("trackingCode").GetString());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
+        }
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await applicant.GetAsync(amendmentUrl)).StatusCode);
+
         var reviewed = await seller.RegistrationDrafts.AsNoTracking()
             .SingleAsync(x => x.AccountId == applicantId);
         Assert.Equal("SUBMITTED", reviewed.Status);
-        Assert.Equal("NEEDS_INFORMATION", reviewed.ReviewStatus);
-        Assert.Equal("مدرک مجوز فعالیت باید تکمیل شود.",
-            reviewed.ReviewReason);
-        Assert.Equal(adminId, reviewed.ReviewedByAccountId);
-        Assert.NotNull(reviewed.ReviewedAtUtc);
-        Assert.Equal(3, reviewed.Revision);
+        Assert.Equal("UNDER_REVIEW", reviewed.ReviewStatus);
+        Assert.Null(reviewed.ReviewReason);
+        Assert.Null(reviewed.ReviewedByAccountId);
+        Assert.Null(reviewed.ReviewedAtUtc);
+        Assert.Equal(4, reviewed.Revision);
 
         var audit = Assert.Single(await seller.ApplicationReviews.AsNoTracking()
             .Where(x => x.ApplicationAccountId == applicantId)
@@ -345,6 +426,16 @@ public sealed class AdminSellerApplicationApiTests
         Assert.Equal(adminId, audit.ReviewerAccountId);
         Assert.Equal("NEEDS_INFORMATION", audit.Decision);
         Assert.Equal(2, audit.ExpectedRevision);
+
+        var amendmentAudit = Assert.Single(
+            await seller.ApplicationAmendments.AsNoTracking()
+                .Where(x => x.ApplicationAccountId == applicantId)
+                .ToListAsync());
+        Assert.Equal("RESUBMITTED", amendmentAudit.Status);
+        Assert.Equal(3, amendmentAudit.BaseRevision);
+        Assert.NotNull(amendmentAudit.ResubmittedAtUtc);
+        Assert.Equal("مدرک مجوز فعالیت باید تکمیل شود.",
+            amendmentAudit.ReviewerReason);
 
         Assert.Equal(HttpStatusCode.NotFound,
             (await admin.GetAsync(listUrl + "/" + draftOnlyId)).StatusCode);
