@@ -64,6 +64,19 @@ export async function GET(request: NextRequest) {
       (payload.status !== "DRAFT" && payload.status !== "SUBMITTED") ||
       !("revision" in payload) || !validRevision(payload.revision, false))
       return error(unavailable, 503);
+    const applicantType = "applicantType" in payload
+      ? payload.applicantType : null;
+    const completedStep = "completedStep" in payload
+      ? payload.completedStep : null;
+    if ((applicantType !== null &&
+        applicantType !== "NATURAL" && applicantType !== "LEGAL") ||
+      typeof completedStep !== "number" ||
+      !Number.isSafeInteger(completedStep) ||
+      completedStep < 1 || completedStep > 6 ||
+      (completedStep < 2 && applicantType !== null) ||
+      (completedStep >= 2 && applicantType === null))
+      return error(unavailable, 503);
+
     const submittedAtUtc = "submittedAtUtc" in payload
       ? payload.submittedAtUtc : null;
     if (payload.status === "SUBMITTED" &&
@@ -77,8 +90,16 @@ export async function GET(request: NextRequest) {
           status: "SUBMITTED",
           revision: payload.revision,
           submittedAtUtc,
+          applicantType,
+          completedStep,
         }
-        : { ...fields, status: "DRAFT", revision: payload.revision },
+        : {
+          ...fields,
+          status: "DRAFT",
+          revision: payload.revision,
+          applicantType,
+          completedStep,
+        },
       { headers: noStore });
   } catch {
     return error(unavailable, 503);
