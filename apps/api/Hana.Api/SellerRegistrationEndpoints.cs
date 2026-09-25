@@ -200,7 +200,6 @@ internal static class SellerRegistrationEndpoints
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
                       AND status = 'DRAFT'
-                      AND completed_step = 6
                       AND revision = {input.Revision}
                     """, cancellationToken);
 
@@ -269,6 +268,7 @@ internal static class SellerRegistrationEndpoints
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
                       AND status = 'DRAFT'
+                      AND completed_step = 6
                       AND revision = {input.Revision}
                     """, cancellationToken);
 
