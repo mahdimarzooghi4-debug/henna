@@ -220,7 +220,7 @@ internal static class SellerRegistrationEndpoints
                     {
                         status = "SUBMITTED",
                         revision = current.Revision,
-                        submittedAtUtc
+                        submittedAtUtc = submittedAt
                     });
 
                 return Results.Conflict(new
