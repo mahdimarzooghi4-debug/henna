@@ -15,6 +15,10 @@ import {
 import { sellerLoginHref } from "../../../lib/seller-return";
 import { normalizeDigits } from "../../../lib/normalize-digits";
 import {
+  getSellerReferenceCities, getSellerReferenceProvinces,
+  type ReferenceCity, type ReferenceProvince,
+} from "../../../lib/seller-location-reference";
+import {
   chooseSellerDraftCopy, sellerFieldDifferences,
 } from "../../../lib/seller-conflict";
 import {
@@ -70,6 +74,25 @@ export function RegistrationForm() {
     useState<"GOOD" | "SERVICE" | "BOTH" | null>(null);
   const [businessFeedback, setBusinessFeedback] =
     useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [activityProvinces, setActivityProvinces] =
+    useState<ReferenceProvince[]>([]);
+  const [activityCities, setActivityCities] =
+    useState<ReferenceCity[]>([]);
+  const [activityGeoState, setActivityGeoState] =
+    useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [activityProvinceId, setActivityProvinceId] = useState("");
+  const [activityProvinceName, setActivityProvinceName] =
+    useState<string | null>(null);
+  const [activityCityId, setActivityCityId] = useState("");
+  const [activityCityName, setActivityCityName] =
+    useState<string | null>(null);
+  const [activityAddress, setActivityAddress] = useState("");
+  const [activityHours, setActivityHours] = useState("");
+  const [sellerDelivery, setSellerDelivery] = useState(false);
+  const [pickup, setPickup] = useState(false);
+  const [serviceArea, setServiceArea] = useState("");
+  const [activityFeedback, setActivityFeedback] =
+    useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [submitKey, setSubmitKey] = useState<string | null>(null);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
@@ -122,6 +145,16 @@ export function RegistrationForm() {
       setBusinessPhone(result.businessPhone ?? "");
       setOfferingType(result.offeringType);
       setBusinessFeedback(null);
+      setActivityProvinceId(result.activityProvinceId ?? "");
+      setActivityProvinceName(result.activityProvinceName);
+      setActivityCityId(result.activityCityId ?? "");
+      setActivityCityName(result.activityCityName);
+      setActivityAddress(result.activityAddress ?? "");
+      setActivityHours(result.activityHours ?? "");
+      setSellerDelivery(result.sellerDelivery ?? false);
+      setPickup(result.pickup ?? false);
+      setServiceArea(result.serviceArea ?? "");
+      setActivityFeedback(null);
       if (result.status === "submitted") {
         setSubmittedAtUtc(result.submittedAtUtc);
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
@@ -183,6 +216,45 @@ export function RegistrationForm() {
     return () => controller.abort();
   }, [access, completedStep, submittedAtUtc]);
 
+  useEffect(() => {
+    if (access !== "signedIn" || completedStep !== 4 || submittedAtUtc)
+      return;
+    const controller = new AbortController();
+    setActivityGeoState("loading");
+    void getSellerReferenceProvinces(fetch, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        if (result.status !== "ok" || result.items.length === 0) {
+          setActivityGeoState("error");
+          setActivityProvinces([]);
+          return;
+        }
+        setActivityProvinces(result.items);
+        setActivityGeoState("ready");
+      });
+    return () => controller.abort();
+  }, [access, completedStep, submittedAtUtc]);
+
+  useEffect(() => {
+    if (completedStep !== 4 || !activityProvinceId) {
+      setActivityCities([]);
+      return;
+    }
+    const controller = new AbortController();
+    void getSellerReferenceCities(
+      activityProvinceId, fetch, controller.signal,
+    ).then((result) => {
+      if (controller.signal.aborted) return;
+      if (result.status !== "ok") {
+        setActivityCities([]);
+        setActivityGeoState("error");
+        return;
+      }
+      setActivityCities(result.items);
+    });
+    return () => controller.abort();
+  }, [completedStep, activityProvinceId]);
+
 
   useEffect(() => {
     if (conflict?.status === "ready") conflictHeading.current?.focus();
@@ -203,10 +275,18 @@ export function RegistrationForm() {
       businessDescription.trim().length > 0 ||
       businessPhone.trim().length > 0 ||
       offeringType !== null);
+  const hasUnsavedActivityChanges = completedStep === 4 &&
+    (activityProvinceId.length > 0 ||
+      activityCityId.length > 0 ||
+      activityAddress.trim().length > 0 ||
+      activityHours.trim().length > 0 ||
+      sellerDelivery || pickup ||
+      serviceArea.trim().length > 0);
   const hasAnyUnsavedChanges =
     hasUnsavedChanges ||
     hasUnsavedIdentityChanges ||
-    hasUnsavedBusinessChanges;
+    hasUnsavedBusinessChanges ||
+    hasUnsavedActivityChanges;
 
   useEffect(() => {
     if (!hasAnyUnsavedChanges) return;
@@ -729,6 +809,103 @@ export function RegistrationForm() {
     }
   }
 
+  async function saveActivityArea() {
+    if (busy || access !== "signedIn" || completedStep !== 4 ||
+      revision < 1 || activityGeoState !== "ready") return;
+
+    const province = activityProvinces.find(
+      (item) => item.id === activityProvinceId,
+    );
+    const city = activityCities.find(
+      (item) => item.id === activityCityId &&
+        item.provinceId === activityProvinceId,
+    );
+    const nextAddress = activityAddress.trim();
+    const nextHours = activityHours.trim();
+    const nextServiceArea = serviceArea.trim();
+
+    if (!province || !city ||
+      !nextAddress || nextAddress.length > 500 ||
+      !nextHours || nextHours.length > 180 ||
+      !nextServiceArea || nextServiceArea.length > 240 ||
+      (!sellerDelivery && !pickup)) {
+      setActivityFeedback({
+        kind: "error",
+        text: "محدوده فعالیت کامل یا معتبر نیست.",
+      });
+      return;
+    }
+
+    setBusy(true);
+    setActivityFeedback(null);
+    try {
+      const response = await fetch(
+        "/api/seller/registration/activity-area",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provinceId: province.id,
+            cityId: city.id,
+            address: nextAddress,
+            activityHours: nextHours,
+            sellerDelivery,
+            pickup,
+            serviceArea: nextServiceArea,
+            revision,
+          }),
+          cache: "no-store",
+        },
+      );
+
+      if (response.ok) {
+        const result: unknown = await response.json();
+        if (result && typeof result === "object" &&
+          "status" in result && result.status === "DRAFT" &&
+          "revision" in result && result.revision === revision + 1 &&
+          "completedStep" in result && result.completedStep === 5 &&
+          "province" in result && result.province &&
+          typeof result.province === "object" &&
+          "name" in result.province &&
+          typeof result.province.name === "string" &&
+          "city" in result && result.city &&
+          typeof result.city === "object" &&
+          "name" in result.city &&
+          typeof result.city.name === "string") {
+          setRevision(result.revision as number);
+          setCompletedStep(5);
+          setActivityProvinceName(result.province.name);
+          setActivityCityName(result.city.name);
+          setActivityAddress(nextAddress);
+          setActivityHours(nextHours);
+          setServiceArea(nextServiceArea);
+          setActivityFeedback({
+            kind: "info",
+            text: "محدوده فعالیت ذخیره شد. مرحله بعد اطلاعات تکمیلی است.",
+          });
+          return;
+        }
+      }
+
+      if (response.status === 401) setAccess("signedOut");
+      setActivityFeedback({
+        kind: "error",
+        text: response.status === 409
+          ? "نسخه یا مرحله ثبت‌نام تغییر کرده است؛ اطلاعات واردشده حفظ شده است."
+          : response.status === 400
+            ? "استان، شهر یا اطلاعات محدوده فعالیت معتبر نیست."
+            : "ذخیره محدوده فعالیت تأیید نشد؛ دوباره تلاش کنید.",
+      });
+    } catch {
+      setActivityFeedback({
+        kind: "error",
+        text: "ذخیره محدوده فعالیت تأیید نشد؛ دوباره تلاش کنید.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitForReview() {
     if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
       revision < 1 || hasUnsavedChanges) return;
@@ -1194,6 +1371,201 @@ export function RegistrationForm() {
                 : "form-status"}
                 role={businessFeedback.kind === "error" ? "alert" : "status"}>
                 {businessFeedback.text}
+              </p>
+            )}
+          </section>
+        )}
+        {completedStep >= 4 && !submittedAtUtc && (
+          <section className="seller-activity"
+            aria-labelledby="seller-activity-heading">
+            <div className="seller-activity__intro">
+              <p className="seller-applicant-type__step">مرحله ۵ از ۸</p>
+              <h3 id="seller-activity-heading">محدوده فعالیت</h3>
+              <p>
+                استان و شهر از فهرست جغرافیای مرجع حنا انتخاب می‌شوند.
+                انتخاب شهر به معنی فعال بودن ارسال یا پوشش بازارگاه در آن شهر نیست.
+              </p>
+            </div>
+
+            {completedStep === 4 && (
+              <div className="seller-activity__body">
+                {activityGeoState === "error" && (
+                  <p className="form-status form-status--error" role="alert">
+                    فهرست جغرافیای قابل انتخاب در دسترس نیست؛
+                    برای جلوگیری از ثبت شهر نامعتبر، ذخیره غیرفعال است.
+                  </p>
+                )}
+
+                <label className="field" htmlFor="seller-activity-province">
+                  <span className="field__label">استان / شهر</span>
+                  <select id="seller-activity-province"
+                    className="field__input"
+                    value={activityProvinceId}
+                    disabled={busy || access !== "signedIn" ||
+                      activityGeoState !== "ready"}
+                    onChange={(event) => {
+                      setActivityProvinceId(event.target.value);
+                      setActivityCityId("");
+                      setActivityFeedback(null);
+                    }}>
+                    <option value="">
+                      {activityGeoState === "loading"
+                        ? "در حال دریافت استان‌ها…"
+                        : "استان را انتخاب کنید"}
+                    </option>
+                    {activityProvinces.map((province) => (
+                      <option key={province.id} value={province.id}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field" htmlFor="seller-activity-city">
+                  <span className="field__label">شهر</span>
+                  <select id="seller-activity-city"
+                    className="field__input"
+                    value={activityCityId}
+                    disabled={busy || access !== "signedIn" ||
+                      !activityProvinceId || activityGeoState !== "ready"}
+                    onChange={(event) => {
+                      setActivityCityId(event.target.value);
+                      setActivityFeedback(null);
+                    }}>
+                    <option value="">شهر را انتخاب کنید</option>
+                    {activityCities.map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <FormField id="seller-activity-address"
+                  label="آدرس محل فعالیت / فروشگاه"
+                  placeholder="مثال: خیابان آزادی، پلاک ۱۲"
+                  maxLength={500}
+                  value={activityAddress}
+                  required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setActivityAddress(event.target.value);
+                    setActivityFeedback(null);
+                  }} />
+
+                <div className="seller-activity__map" aria-label="موقعیت روی نقشه">
+                  <strong>موقعیت روی نقشه (اختیاری)</strong>
+                  <div className="seller-activity__map-placeholder">
+                    <span aria-hidden="true">⌖</span>
+                    <p>نقشه تعاملی حنا هنوز به قرارداد مختصات متصل نشده است.</p>
+                    <small>در این مرحله هیچ مختصات نمونه یا تخمینی ذخیره نمی‌شود.</small>
+                  </div>
+                </div>
+
+                <FormField id="seller-activity-hours"
+                  label="ساعات فعالیت"
+                  placeholder="مثال: شنبه تا پنجشنبه، ۸ تا ۲۲"
+                  maxLength={180}
+                  value={activityHours}
+                  required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setActivityHours(event.target.value);
+                    setActivityFeedback(null);
+                  }} />
+
+                <fieldset className="seller-activity__delivery">
+                  <legend>روش ارائه / تحویل</legend>
+                  <label>
+                    <input type="checkbox"
+                      checked={sellerDelivery}
+                      disabled={busy || access !== "signedIn"}
+                      onChange={(event) => {
+                        setSellerDelivery(event.target.checked);
+                        setActivityFeedback(null);
+                      }} />
+                    <span>ارسال توسط فروشنده</span>
+                  </label>
+                  <label>
+                    <input type="checkbox"
+                      checked={pickup}
+                      disabled={busy || access !== "signedIn"}
+                      onChange={(event) => {
+                        setPickup(event.target.checked);
+                        setActivityFeedback(null);
+                      }} />
+                    <span>تحویل حضوری</span>
+                  </label>
+                </fieldset>
+
+                <FormField id="seller-service-area"
+                  label="محدوده ارائه خدمت"
+                  placeholder="مثال: کل شهر، محدوده منطقه ۶"
+                  maxLength={240}
+                  value={serviceArea}
+                  required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setServiceArea(event.target.value);
+                    setActivityFeedback(null);
+                  }} />
+
+                <p className="seller-activity__note">
+                  محدوده فعالیت بر اساس نوع کسب‌وکار و شرایط همکاری تنظیم می‌شود.
+                </p>
+
+                <button type="button" className="primary-button"
+                  disabled={busy || access !== "signedIn" ||
+                    activityGeoState !== "ready"}
+                  onClick={() => void saveActivityArea()}>
+                  {busy ? "در حال ذخیره…" : "ذخیره و ادامه"}
+                </button>
+
+                {hasUnsavedActivityChanges && (
+                  <p className="seller-unsaved-note" role="status">
+                    اطلاعات مرحله محدوده فعالیت هنوز روی سرور ثبت نشده است.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {completedStep >= 5 && (
+              <div className="seller-activity__completed" role="status">
+                <strong>محدوده فعالیت ذخیره شد.</strong>
+                <dl>
+                  <div>
+                    <dt>استان / شهر</dt>
+                    <dd>{activityProvinceName ?? "—"} / {activityCityName ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>ساعات فعالیت</dt>
+                    <dd>{activityHours}</dd>
+                  </div>
+                  <div>
+                    <dt>روش ارائه</dt>
+                    <dd>
+                      {[
+                        sellerDelivery ? "ارسال توسط فروشنده" : null,
+                        pickup ? "تحویل حضوری" : null,
+                      ].filter(Boolean).join("، ")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>محدوده پوشش</dt>
+                    <dd>{serviceArea}</dd>
+                  </div>
+                </dl>
+                <p>{activityAddress}</p>
+                <p>مرحله بعد «اطلاعات تکمیلی» است.</p>
+              </div>
+            )}
+
+            {activityFeedback && (
+              <p className={activityFeedback.kind === "error"
+                ? "form-status form-status--error"
+                : "form-status"}
+                role={activityFeedback.kind === "error" ? "alert" : "status"}>
+                {activityFeedback.text}
               </p>
             )}
           </section>

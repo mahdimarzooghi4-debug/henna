@@ -1,5 +1,6 @@
 using Hana.Application.Time;
 using Hana.Domain.Seller;
+using Hana.Infrastructure.Geography;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,20 @@ internal static class SellerRegistrationEndpoints
                         .SingleOrDefaultAsync(cancellationToken)
                     : null;
 
+                var geography = services.GetRequiredService<HanaGeographyDbContext>();
+                var activityProvinceName = draft.ActivityProvinceId is { } provinceId
+                    ? await geography.Provinces.AsNoTracking()
+                        .Where(x => x.Id == provinceId)
+                        .Select(x => x.Name)
+                        .SingleOrDefaultAsync(cancellationToken)
+                    : null;
+                var activityCityName = draft.ActivityCityId is { } cityId
+                    ? await geography.Cities.AsNoTracking()
+                        .Where(x => x.Id == cityId)
+                        .Select(x => x.Name)
+                        .SingleOrDefaultAsync(cancellationToken)
+                    : null;
+
                 return Results.Ok(new
                 {
                     draft.StoreName,
@@ -66,6 +81,15 @@ internal static class SellerRegistrationEndpoints
                     draft.BusinessDescription,
                     draft.BusinessPhone,
                     draft.OfferingType,
+                    draft.ActivityProvinceId,
+                    activityProvinceName,
+                    draft.ActivityCityId,
+                    activityCityName,
+                    draft.ActivityAddress,
+                    draft.ActivityHours,
+                    draft.SellerDelivery,
+                    draft.Pickup,
+                    draft.ServiceArea,
                     draft.CompletedStep,
                     draft.Status,
                     draft.Revision,

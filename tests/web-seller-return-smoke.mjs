@@ -93,6 +93,15 @@ test("200 restores all fields and the EXACT persisted revision together", async 
       businessDescription: null,
       businessPhone: null,
       offeringType: null,
+      activityProvinceId: null,
+      activityProvinceName: null,
+      activityCityId: null,
+      activityCityName: null,
+      activityAddress: null,
+      activityHours: null,
+      sellerDelivery: null,
+      pickup: null,
+      serviceArea: null,
       completedStep: 1,
     });
   assert.deepEqual(emptySellerFields, {
@@ -160,6 +169,15 @@ test("in-flight hydration does not release a draft revision early", async () => 
       businessDescription: null,
       businessPhone: null,
       offeringType: null,
+      activityProvinceId: null,
+      activityProvinceName: null,
+      activityCityId: null,
+      activityCityName: null,
+      activityAddress: null,
+      activityHours: null,
+      sellerDelivery: null,
+      pickup: null,
+      serviceArea: null,
       completedStep: 1,
     });
   assert.equal(completed, true);

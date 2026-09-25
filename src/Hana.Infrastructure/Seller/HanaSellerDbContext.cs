@@ -88,6 +88,9 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 table.HasCheckConstraint("ck_registration_business_shape",
                     "(completed_step < 4 AND business_category_id IS NULL AND business_name IS NULL AND business_description IS NULL AND business_phone IS NULL AND offering_type IS NULL) OR " +
                     "(completed_step >= 4 AND business_category_id IS NOT NULL AND business_name IS NOT NULL AND business_description IS NOT NULL AND business_phone IS NOT NULL AND offering_type IS NOT NULL AND char_length(btrim(business_name)) BETWEEN 1 AND 180 AND char_length(btrim(business_description)) BETWEEN 1 AND 500 AND business_phone ~ '^0[0-9]{10}$' AND offering_type IN ('GOOD', 'SERVICE', 'BOTH'))");
+                table.HasCheckConstraint("ck_registration_activity_shape",
+                    "(completed_step < 5 AND activity_province_id IS NULL AND activity_city_id IS NULL AND activity_address IS NULL AND activity_hours IS NULL AND seller_delivery IS NULL AND pickup IS NULL AND service_area IS NULL) OR " +
+                    "(completed_step >= 5 AND activity_province_id IS NOT NULL AND activity_city_id IS NOT NULL AND char_length(btrim(activity_address)) BETWEEN 1 AND 500 AND char_length(btrim(activity_hours)) BETWEEN 1 AND 180 AND seller_delivery IS NOT NULL AND pickup IS NOT NULL AND (seller_delivery OR pickup) AND char_length(btrim(service_area)) BETWEEN 1 AND 240)");
                 table.HasCheckConstraint("ck_registration_submitted_completed",
                     "status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)");
                 table.HasCheckConstraint("ck_registration_submission_metadata",
@@ -131,6 +134,16 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasMaxLength(11);
             entity.Property(x => x.OfferingType).HasColumnName("offering_type")
                 .HasMaxLength(16);
+            entity.Property(x => x.ActivityProvinceId).HasColumnName("activity_province_id");
+            entity.Property(x => x.ActivityCityId).HasColumnName("activity_city_id");
+            entity.Property(x => x.ActivityAddress).HasColumnName("activity_address")
+                .HasMaxLength(500);
+            entity.Property(x => x.ActivityHours).HasColumnName("activity_hours")
+                .HasMaxLength(180);
+            entity.Property(x => x.SellerDelivery).HasColumnName("seller_delivery");
+            entity.Property(x => x.Pickup).HasColumnName("pickup");
+            entity.Property(x => x.ServiceArea).HasColumnName("service_area")
+                .HasMaxLength(240);
             entity.Property(x => x.CompletedStep).HasColumnName("completed_step")
                 .HasDefaultValue(1).IsRequired();
             entity.Property(x => x.Status).HasColumnName("status")

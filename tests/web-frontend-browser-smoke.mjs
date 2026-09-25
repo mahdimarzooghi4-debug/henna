@@ -165,6 +165,48 @@ async function fakeApi(route) {
       offeringType: draft.offeringType,
     }));
   }
+  if (path === "/api/seller/registration/activity-area" &&
+    req.method() === "PUT") {
+    assert.ok(signedIn, "anonymous form must never save activity area");
+    const body = req.postDataJSON();
+    assert.deepEqual(body, {
+      provinceId,
+      cityId,
+      address: "خیابان آزادی، پلاک ۱۲",
+      activityHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
+      sellerDelivery: true,
+      pickup: true,
+      serviceArea: "کل شهر",
+      revision: draft?.revision,
+    });
+    assert.equal(draft?.completedStep, 4);
+    draft = {
+      ...draft,
+      activityProvinceId: provinceId,
+      activityProvinceName: province.name,
+      activityCityId: cityId,
+      activityCityName: city.name,
+      activityAddress: body.address,
+      activityHours: body.activityHours,
+      sellerDelivery: body.sellerDelivery,
+      pickup: body.pickup,
+      serviceArea: body.serviceArea,
+      completedStep: 5,
+      revision: draft.revision + 1,
+    };
+    return route.fulfill(json({
+      status: "DRAFT",
+      revision: draft.revision,
+      completedStep: 5,
+      province: { id: provinceId, name: province.name },
+      city: { id: cityId, name: city.name },
+      address: draft.activityAddress,
+      activityHours: draft.activityHours,
+      sellerDelivery: true,
+      pickup: true,
+      serviceArea: draft.serviceArea,
+    }));
+  }
   if (path === "/api/seller/registration" && req.method() === "POST") {
     assert.ok(signedIn, "anonymous form must never submit seller registration");
     const body = req.postDataJSON();
@@ -450,10 +492,46 @@ async function main() {
     name: "ثبت درخواست برای بررسی",
   }).count(), 0);
 
+  const activityProvince = otherTab.locator("#seller-activity-province");
+  await activityProvince.waitFor();
+  await activityProvince.selectOption(provinceId);
+  await otherTab.locator("#seller-activity-city").selectOption(cityId);
+  await otherTab.locator("#seller-activity-address")
+    .fill("خیابان آزادی، پلاک ۱۲");
+  await otherTab.locator("#seller-activity-hours")
+    .fill("شنبه تا پنجشنبه، ۸ تا ۲۲");
+  await otherTab.getByLabel("ارسال توسط فروشنده").check();
+  await otherTab.getByLabel("تحویل حضوری").check();
+  await otherTab.locator("#seller-service-area").fill("کل شهر");
+  await otherTab.getByText(
+    "نقشه تعاملی حنا هنوز به قرارداد مختصات متصل نشده است.",
+  ).waitFor();
+
+  await otherTab.getByRole("button", {
+    name: "ذخیره و ادامه", exact: true,
+  }).last().click();
+  await otherTab.getByText("محدوده فعالیت ذخیره شد.", {
+    exact: true,
+  }).waitFor();
+  assert.equal(draft.completedStep, 5);
+  assert.equal(draft.revision, 7);
+  assert.equal(draft.activityProvinceId, provinceId);
+  assert.equal(draft.activityCityId, cityId);
+  assert.equal(draft.sellerDelivery, true);
+  assert.equal(draft.pickup, true);
+  await otherTab.getByText("مرحله بعد «اطلاعات تکمیلی» است.").waitFor();
+  assert.equal(await otherTab.getByRole("button", {
+    name: "ثبت درخواست برای بررسی",
+  }).count(), 0);
+
+  await otherTab.reload();
+  await otherTab.locator(".seller-activity__completed")
+    .getByText("شهر مرورگر CI", { exact: false }).waitFor();
+
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller draft → identity → business information step → submit gated OK");
+  console.log("Chromium CI frontend: OTP → seller draft → identity → business information → activity area → submit gated OK");
 }
 
 try {

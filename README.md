@@ -70,6 +70,8 @@
 
 **[Frontend 022 — آزمون نصب‌شدهٔ لینک خریدار در شبیه‌ساز iOS](docs/implementation/HANA-FRONTEND-022.md).** CI مستقل macOS/Xcode از Expo پروژهٔ native می‌سازد، `.app` بدون امضای انتشار را روی iPhone Simulator نصب و `hana://` را با سیستم‌عامل باز می‌کند؛ Maestro با رابط دسترس‌پذیری، جزئیات/اختلال واقعیِ بدون API، برگشت به جست‌وجوی فارسی، لینک گرم/سرد و مسیر نامعتبر را بررسی می‌کند. پاپ‌آپ امنیتی اولین بازشدن scheme نیز به‌عنوان رفتار خود iOS آزمایش می‌شود. دستگاه فیزیکی، iOS App Store و لینک HTTPS تأییدشده هنوز خارج از شواهد هستند.
 
+**[Seller 009 — مرحله ۵ محدوده فعالیت](docs/implementation/HANA-SELLER-009.md).** استان/شهر فقط از Geography قابل‌انتخاب ذخیره می‌شوند، روش‌های صریح Figma «ارسال توسط فروشنده» و «تحویل حضوری» هستند، و map اختیاری تا تصویب قرارداد مختصات بدون داده ساختگی باقی می‌ماند.
+
 **[Seller 008 — مرحله ۴ اطلاعات کسب‌وکار](docs/implementation/HANA-SELLER-008.md).** business taxonomy مستقل و بدون seed با reviewed operator import اضافه شد؛ فرم Figma دسته‌بندی واقعی، نام/توضیح/تلفن و نوع ارائه کالا/خدمت را با revision دقیق ذخیره می‌کند و به step 4 می‌رساند.
 
 **[Seller 007 — مرحله ۳ احراز هویت](docs/implementation/HANA-SELLER-007.md).** مسیر حقیقی فقط از verifier مجاز می‌تواند به `VERIFIED` برسد و shipping default fail-closed است؛ مسیر حقوقی اطلاعات ثبتی/نماینده را با وضعیت صریح `RECORDED` ذخیره می‌کند، بدون جعل احراز خارجی.
