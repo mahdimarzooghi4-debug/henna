@@ -94,6 +94,12 @@ public sealed class AdminSellerApplicationApiTests
                 SellerDelivery = true,
                 Pickup = true,
                 ServiceArea = "کل شهر",
+                RegistrationContactName = "مسئول ثبت‌شده",
+                RegistrationContactRole = "مدیر فروش",
+                BackupPhone = "09123456780",
+                WebsiteOrSocial = "instagram.com/admin-ci",
+                BusinessEmail = "admin@example.com",
+                ResponseHours = "۸ تا ۲۲",
                 CompletedStep = 6,
                 Status = "SUBMITTED",
                 Revision = 2,
@@ -165,6 +171,18 @@ public sealed class AdminSellerApplicationApiTests
                 body.RootElement.GetProperty("phoneMasked").GetString());
             Assert.Equal("SUBMITTED",
                 body.RootElement.GetProperty("status").GetString());
+            Assert.Equal("مسئول ثبت‌شده",
+                body.RootElement.GetProperty("registrationContactName").GetString());
+            Assert.Equal("مدیر فروش",
+                body.RootElement.GetProperty("registrationContactRole").GetString());
+            Assert.Equal("0912*******",
+                body.RootElement.GetProperty("backupPhoneMasked").GetString());
+            Assert.Equal("admin@example.com",
+                body.RootElement.GetProperty("businessEmail").GetString());
+            Assert.Equal("۸ تا ۲۲",
+                body.RootElement.GetProperty("responseHours").GetString());
+            Assert.False(body.RootElement
+                .GetProperty("documentsRequired").GetBoolean());
             Assert.False(body.RootElement.TryGetProperty("submissionKey", out _));
             Assert.False(body.RootElement.TryGetProperty(
                 "submissionExpectedRevision", out _));
