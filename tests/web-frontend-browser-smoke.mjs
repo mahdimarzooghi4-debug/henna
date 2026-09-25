@@ -307,8 +307,11 @@ async function main() {
   assert.equal(await page.locator("#store-address").inputValue(),
     "نشانی ذخیره نشده");
 
-  // Figma step 2 is now the next reachable state. A clean tab can select
-  // applicant type; final submit remains unavailable until steps 3..6 exist.
+  // Figma step 2 is the next reachable state. Refresh the clean tab
+  // after the concurrent save so applicant type uses the exact latest revision.
+  await otherTab.reload();
+  await otherTab.waitForFunction(() =>
+    document.querySelector("#store-name")?.value === "فروشگاه پنجره اول");
   await otherTab.getByRole("button", {
     name: /شخص حقیقی/,
   }).click();
