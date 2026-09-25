@@ -20,9 +20,11 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
             entity.ToTable("registration_drafts", table =>
             {
                 table.HasCheckConstraint("ck_registration_drafts_status",
-                    "status = 'DRAFT'");
+                    "status IN ('DRAFT', 'SUBMITTED')");
                 table.HasCheckConstraint("ck_registration_drafts_revision",
                     "revision >= 1");
+                table.HasCheckConstraint("ck_registration_submission_metadata",
+                    "(status = 'DRAFT' AND submission_key IS NULL AND submission_expected_revision IS NULL AND submitted_at_utc IS NULL) OR (status = 'SUBMITTED' AND submission_key IS NOT NULL AND submission_expected_revision >= 1 AND submitted_at_utc IS NOT NULL)");
             });
             entity.HasKey(x => x.AccountId);
             entity.Property(x => x.AccountId).HasColumnName("account_id")
@@ -43,6 +45,10 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasMaxLength(16).IsRequired();
             entity.Property(x => x.Revision).HasColumnName("revision")
                 .HasDefaultValue(1).IsRequired();
+            entity.Property(x => x.SubmissionKey).HasColumnName("submission_key");
+            entity.Property(x => x.SubmissionExpectedRevision)
+                .HasColumnName("submission_expected_revision");
+            entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
                 .IsRequired();
         });

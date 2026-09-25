@@ -119,6 +119,26 @@ async function main() {
             status: "DRAFT", revision: sellerDraft.revision,
           }));
         }
+      } else if (url === "/api/v1/seller/registration/submit" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "POST") {
+        const data = JSON.parse(body);
+        assert.deepEqual(Object.keys(data), ["revision"]);
+        assert.equal(data.revision, sellerDraft?.revision);
+        assert.match(request.headers["idempotency-key"] ?? "",
+          /^[0-9a-f-]{36}$/i);
+        sellerDraft = {
+          ...sellerDraft,
+          status: "SUBMITTED",
+          revision: sellerDraft.revision + 1,
+          submittedAtUtc: "2026-09-25T12:30:00Z",
+        };
+        response.writeHead(200);
+        response.end(JSON.stringify({
+          status: "SUBMITTED",
+          revision: sellerDraft.revision,
+          submittedAtUtc: sellerDraft.submittedAtUtc,
+        }));
       } else if (url === "/api/v1/auth/session" &&
         request.headers.authorization === `Bearer ${token}` &&
         request.method === "GET" && !revoked) {
@@ -288,6 +308,48 @@ async function main() {
   assert.equal((await sellerAfter.json()).storeName, "نسخه دوم");
   assert.ok(!JSON.stringify(sellerDraft).includes(token));
 
+  const submissionKey = "0f3b8bc9-61bd-4ca4-8964-7fce65f4e91b";
+  const submitCsrf = await fetch(sellerUrl, {
+    method: "POST",
+    headers: {
+      Cookie: sessionCookie, Origin: "https://other.test",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ revision: 2, idempotencyKey: submissionKey }),
+  });
+  assert.equal(submitCsrf.status, 403);
+  const submitUnknown = await fetch(sellerUrl, {
+    method: "POST",
+    headers: {
+      Cookie: sessionCookie, Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      revision: 2, idempotencyKey: submissionKey, status: "ACTIVE",
+    }),
+  });
+  assert.equal(submitUnknown.status, 400);
+  const submitted = await fetch(sellerUrl, {
+    method: "POST",
+    headers: {
+      Cookie: sessionCookie, Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ revision: 2, idempotencyKey: submissionKey }),
+  });
+  assert.equal(submitted.status, 200);
+  assert.deepEqual(await submitted.json(), {
+    status: "SUBMITTED", revision: 3,
+    submittedAtUtc: "2026-09-25T12:30:00Z",
+  });
+  assert.equal(submitted.headers.get("cache-control"), "no-store");
+
+  const sellerSubmitted = await fetch(sellerUrl, {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(sellerSubmitted.status, 200);
+  assert.equal((await sellerSubmitted.json()).status, "SUBMITTED");
+
   const categoryResponse = await fetch(base + "/api/catalog/categories", {
     headers: { Cookie: sessionCookie },
   });
@@ -353,7 +415,7 @@ async function main() {
     headers: { Cookie: sessionCookie },
   });
   assert.equal(after.status, 401);
-  console.log("CI-only web auth + seller draft gateway: 202/400/401/403/404/200/204, secure cookie, seller draft, revocation OK");
+  console.log("CI-only web auth + seller registration gateway: secure cookie, draft, submit boundary and revocation OK");
 }
 
 try {

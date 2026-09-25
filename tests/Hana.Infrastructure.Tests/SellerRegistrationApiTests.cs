@@ -178,6 +178,56 @@ public sealed class SellerRegistrationApiTests
         Assert.Equal(3, one.Revision);
         Assert.Equal(1, two.Revision);
 
+        // The Figma "review and submit" step is a single atomic transition.
+        // It grants no seller permission; it only freezes this registration
+        // version for a later reviewer workflow.
+        var submissionKey = Guid.NewGuid();
+        async Task<HttpResponseMessage> Submit(Guid key, int revision)
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post, url + "/submit")
+            {
+                Content = JsonContent.Create(new { revision })
+            };
+            request.Headers.Add("Idempotency-Key", key.ToString());
+            return await first.SendAsync(request);
+        }
+
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await first.PostAsJsonAsync(url + "/submit",
+                new { revision = 3 })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK,
+            (await Submit(submissionKey, revision: 3)).StatusCode);
+        // Lost-response retry with the same key and expected revision
+        // converges on the same submitted row.
+        Assert.Equal(HttpStatusCode.OK,
+            (await Submit(submissionKey, revision: 3)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await Submit(Guid.NewGuid(), revision: 3)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await first.PutAsJsonAsync(url,
+                Fields(firstPhone, "ویرایش پس از ثبت", revision: 4))).StatusCode);
+
+        var submitted = await seller.RegistrationDrafts.AsNoTracking()
+            .SingleAsync(x => x.AccountId == firstId);
+        Assert.Equal("SUBMITTED", submitted.Status);
+        Assert.Equal(4, submitted.Revision);
+        Assert.Equal(submissionKey, submitted.SubmissionKey);
+        Assert.Equal(3, submitted.SubmissionExpectedRevision);
+        Assert.NotNull(submitted.SubmittedAtUtc);
+
+        var submittedRead = await first.GetAsync(url);
+        Assert.Equal(HttpStatusCode.OK, submittedRead.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await submittedRead.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("SUBMITTED",
+                body.RootElement.GetProperty("status").GetString());
+            Assert.Equal(4, body.RootElement.GetProperty("revision").GetInt32());
+            Assert.True(body.RootElement.TryGetProperty("submittedAtUtc", out _));
+            Assert.False(body.RootElement.TryGetProperty("submissionKey", out _));
+        }
+
         await identity.AuthSessions
             .Where(x => x.AccountId == firstId)
             .ExecuteUpdateAsync(setters =>
