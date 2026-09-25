@@ -17,6 +17,8 @@ builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddSingleton<ISellerNaturalIdentityVerifier,
+    UnconfiguredSellerNaturalIdentityVerifier>();
 
 var trustedForwarding = TrustedForwardingConfiguration.Load(builder.Configuration);
 if (trustedForwarding is not null)
