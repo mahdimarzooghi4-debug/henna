@@ -78,6 +78,24 @@ public sealed class HanaIdentityDbContextModelSnapshot : ModelSnapshot
             entity.HasIndex(x => x.WindowStartedAtUtc)
                 .HasDatabaseName("ix_otp_ip_windows_started");
         });
+        modelBuilder.Entity<RoleAssignmentRecord>(entity =>
+        {
+            entity.ToTable("role_assignments", "identity", table =>
+            {
+                table.HasCheckConstraint("ck_role_assignments_role",
+                    "role IN ('ADMIN')");
+            });
+            entity.HasKey(x => new { x.AccountId, x.Role });
+            entity.Property(x => x.AccountId).HasColumnName("account_id");
+            entity.Property(x => x.Role).HasColumnName("role")
+                .HasMaxLength(32).IsRequired();
+            entity.Property(x => x.GrantedAtUtc).HasColumnName("granted_at_utc")
+                .IsRequired();
+            entity.HasOne<AccountRecord>().WithMany()
+                .HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_role_assignments_accounts_account_id");
+        });
+
         modelBuilder.Entity<AuthSessionRecord>(entity =>
         {
             entity.ToTable("auth_sessions", "identity", table =>
