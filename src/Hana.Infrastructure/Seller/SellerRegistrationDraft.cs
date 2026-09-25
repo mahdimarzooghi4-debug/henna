@@ -20,6 +20,11 @@ public sealed class SellerRegistrationDraft
     public string? LegalRepresentativeName { get; set; }
     public string? LegalRepresentativePhone { get; set; }
     public string? IdentityStatus { get; set; }
+    public Guid? BusinessCategoryId { get; set; }
+    public string? BusinessName { get; set; }
+    public string? BusinessDescription { get; set; }
+    public string? BusinessPhone { get; set; }
+    public string? OfferingType { get; set; }
     public int CompletedStep { get; set; } = 1;
     public string Status { get; set; } = "DRAFT";
     public int Revision { get; set; } = 1;

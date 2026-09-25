@@ -343,9 +343,20 @@ app.MapDelete("/api/v1/auth/session", async (
     .Produces(StatusCodes.Status503ServiceUnavailable);
 
 app.MapSellerRegistration(hasIdentityDb);
+app.MapSellerBusinessInformation(hasIdentityDb);
 app.MapAdminSellerApplications(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
+
+// Operator-only provisioning for the reviewed seller business taxonomy.
+// No HTTP mutation route, default seed or inferred catalog mapping is installed.
+if (args.Any(value => value.StartsWith(
+    "--seller-business-category-", StringComparison.Ordinal)))
+{
+    await SellerBusinessCategoryImportCommand.RunAsync(
+        args, app.Services, hasIdentityDb);
+    return;
+}
 
 // An explicitly invoked operator process can preview or apply reviewed
 // catalog JSON. No public HTTP route or automatic product seed is installed.

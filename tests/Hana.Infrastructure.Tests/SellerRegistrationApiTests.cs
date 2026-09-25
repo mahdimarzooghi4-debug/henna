@@ -218,14 +218,27 @@ public sealed class SellerRegistrationApiTests
                 (await first.SendAsync(incompleteRequest)).StatusCode);
         }
 
-        // Later Seller slices own steps 3..6. Seed only the progress marker
-        // in disposable CI DB so this test can continue covering Seller 005
-        // submit idempotency without inventing production identity data.
+        // Seed a structurally valid completed draft in disposable CI DB
+        // so this test can keep covering Seller 005 submit idempotency.
+        var businessCategoryId = Guid.NewGuid();
+        seller.BusinessCategories.Add(new SellerBusinessCategoryRecord
+        {
+            Id = businessCategoryId,
+            Name = "دسته‌بندی CI ثبت نهایی",
+            IsActive = true,
+            UpdatedAtUtc = now
+        });
+        await seller.SaveChangesAsync();
         await seller.RegistrationDrafts
             .Where(x => x.AccountId == firstId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.NaturalNationalCode, "0084575948")
                 .SetProperty(x => x.IdentityStatus, "VERIFIED")
+                .SetProperty(x => x.BusinessCategoryId, businessCategoryId)
+                .SetProperty(x => x.BusinessName, "کسب‌وکار CI")
+                .SetProperty(x => x.BusinessDescription, "توضیح کسب‌وکار CI")
+                .SetProperty(x => x.BusinessPhone, "02112345678")
+                .SetProperty(x => x.OfferingType, "BOTH")
                 .SetProperty(x => x.CompletedStep, 6));
 
         // The Figma "review and submit" step is a single atomic transition.
