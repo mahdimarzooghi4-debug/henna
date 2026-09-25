@@ -71,6 +71,24 @@ async function fakeApi(route) {
       status: "DRAFT", revision: draft.revision,
     }));
   }
+  if (path === "/api/seller/registration" && req.method() === "POST") {
+    assert.ok(signedIn, "anonymous form must never submit seller registration");
+    const body = req.postDataJSON();
+    assert.equal(body.revision, draft?.revision);
+    assert.match(body.idempotencyKey,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    draft = {
+      ...draft,
+      status: "SUBMITTED",
+      revision: draft.revision + 1,
+      submittedAtUtc: "2026-09-25T12:30:00Z",
+    };
+    return route.fulfill(json({
+      status: "SUBMITTED",
+      revision: draft.revision,
+      submittedAtUtc: draft.submittedAtUtc,
+    }));
+  }
   if (path === "/api/geography/provinces" && req.method() === "GET") {
     provinceReads++;
     return route.fulfill(json({ items: [province] }));
@@ -261,6 +279,24 @@ async function main() {
   assert.equal(new URL(page.url()).pathname, "/seller/register");
   assert.equal(await page.locator("#store-address").inputValue(),
     "نشانی ذخیره نشده");
+
+  // A clean second tab can submit the exact saved revision. The UI then
+  // switches to the Figma request-status state and freezes seller fields.
+  await otherTab.getByRole("button", {
+    name: "ثبت درخواست برای بررسی",
+  }).click();
+  await otherTab.getByRole("heading", {
+    name: "وضعیت درخواست",
+  }).waitFor();
+  await otherTab.getByText("درخواست شما ثبت شده و در انتظار بررسی است.")
+    .waitFor();
+  assert.equal(draft.status, "SUBMITTED");
+  assert.equal(draft.revision, 4);
+  assert.equal(await otherTab.locator("#store-name").isDisabled(), true);
+  assert.equal(await otherTab.getByRole("button", {
+    name: "ثبت درخواست برای بررسی",
+  }).count(), 0);
+
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
