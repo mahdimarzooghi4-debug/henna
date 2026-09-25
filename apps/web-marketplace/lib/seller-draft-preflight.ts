@@ -92,6 +92,7 @@ export type SellerPreflight =
     documentsRequired: false;
     completedStep: 6;
     submittedAtUtc: string;
+    trackingCode: string;
   };
 
 export async function loadSellerDraft(
@@ -307,7 +308,10 @@ export async function loadSellerDraft(
     if (draft.status === "SUBMITTED") {
       if (!("submittedAtUtc" in draft) ||
         typeof draft.submittedAtUtc !== "string" ||
-        Number.isNaN(Date.parse(draft.submittedAtUtc)))
+        Number.isNaN(Date.parse(draft.submittedAtUtc)) ||
+        !("trackingCode" in draft) ||
+        typeof draft.trackingCode !== "string" ||
+        !/^HNA-[0-9A-F]{16}$/.test(draft.trackingCode))
         return { status: "unavailable" };
       return {
         status: "submitted",
@@ -344,6 +348,7 @@ export async function loadSellerDraft(
         documentsRequired: false,
         completedStep: 6,
         submittedAtUtc: draft.submittedAtUtc,
+        trackingCode: draft.trackingCode,
       };
     }
     return {

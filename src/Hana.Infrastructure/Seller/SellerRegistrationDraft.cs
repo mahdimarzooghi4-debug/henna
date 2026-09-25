@@ -45,5 +45,6 @@ public sealed class SellerRegistrationDraft
     public int? SubmissionExpectedRevision { get; set; }
     public DateTimeOffset? SubmittedAtUtc { get; set; }
     public DateTimeOffset? AccuracyConfirmedAtUtc { get; set; }
+    public string? TrackingCode { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }
