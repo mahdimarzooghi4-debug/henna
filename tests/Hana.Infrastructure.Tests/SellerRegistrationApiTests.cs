@@ -332,6 +332,33 @@ public sealed class SellerRegistrationApiTests
                 .TryGetProperty("submissionKey", out _));
         }
 
+        await seller.RegistrationDrafts
+            .Where(x => x.AccountId == firstId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.ReviewStatus, "NEEDS_INFORMATION")
+                .SetProperty(x => x.ReviewReason,
+                    "اطلاعات تکمیلی بیشتری لازم است.")
+                .SetProperty(x => x.ReviewedByAccountId, Guid.NewGuid())
+                .SetProperty(x => x.ReviewedAtUtc, DateTimeOffset.UtcNow)
+                .SetProperty(x => x.Revision, 6));
+
+        var reviewedStatus = await first.GetAsync(
+            "/api/v1/seller/registration/status");
+        Assert.Equal(HttpStatusCode.OK, reviewedStatus.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await reviewedStatus.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("NEEDS_INFORMATION",
+                body.RootElement.GetProperty("overallStatus").GetString());
+            Assert.Equal("اطلاعات تکمیلی بیشتری لازم است.",
+                body.RootElement.GetProperty("reviewReason").GetString());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
+            Assert.Equal("NEEDS_INFORMATION",
+                body.RootElement.GetProperty("steps")[4]
+                    .GetProperty("status").GetString());
+        }
+
         await identity.AuthSessions
             .Where(x => x.AccountId == firstId)
             .ExecuteUpdateAsync(setters =>

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Hana.Infrastructure.Identity;
@@ -108,6 +109,7 @@ public sealed class AdminSellerApplicationApiTests
                 SubmittedAtUtc = now.AddMinutes(-5),
                 AccuracyConfirmedAtUtc = now.AddMinutes(-5),
                 TrackingCode = "HNA-A1B2C3D4E5F60718",
+                ReviewStatus = "UNDER_REVIEW",
                 UpdatedAtUtc = now.AddMinutes(-5)
             },
             new SellerRegistrationDraft
@@ -156,6 +158,8 @@ public sealed class AdminSellerApplicationApiTests
                 x.GetProperty("applicationId").GetGuid() == applicantId));
             Assert.Equal("SUBMITTED",
                 item.GetProperty("status").GetString());
+            Assert.Equal("UNDER_REVIEW",
+                item.GetProperty("reviewStatus").GetString());
             Assert.False(item.TryGetProperty("phone", out _));
             Assert.False(item.TryGetProperty("submissionKey", out _));
             Assert.True(body.RootElement.GetProperty("total").GetInt32() >= 1);
@@ -188,7 +192,159 @@ public sealed class AdminSellerApplicationApiTests
             Assert.False(body.RootElement.TryGetProperty("submissionKey", out _));
             Assert.False(body.RootElement.TryGetProperty(
                 "submissionExpectedRevision", out _));
+            Assert.Equal("UNDER_REVIEW",
+                body.RootElement.GetProperty("reviewStatus").GetString());
         }
+
+        // APPROVED may omit a reason; REJECTED requires one.
+        // Use a DRAFT application so validation can be exercised without
+        // consuming the real submitted application used below.
+        using (var approvedProbe = new HttpRequestMessage(
+            HttpMethod.Post, listUrl + "/" + draftOnlyId + "/review")
+        {
+            Content = JsonContent.Create(new
+            {
+                revision = 1,
+                decision = "APPROVED",
+                reason = (string?)null
+            })
+        })
+        {
+            approvedProbe.Headers.Add("Idempotency-Key",
+                Guid.NewGuid().ToString());
+            Assert.Equal(HttpStatusCode.Conflict,
+                (await admin.SendAsync(approvedProbe)).StatusCode);
+        }
+
+        using (var rejectedWithoutReason = new HttpRequestMessage(
+            HttpMethod.Post, listUrl + "/" + draftOnlyId + "/review")
+        {
+            Content = JsonContent.Create(new
+            {
+                revision = 1,
+                decision = "REJECTED",
+                reason = (string?)null
+            })
+        })
+        {
+            rejectedWithoutReason.Headers.Add("Idempotency-Key",
+                Guid.NewGuid().ToString());
+            Assert.Equal(HttpStatusCode.BadRequest,
+                (await admin.SendAsync(rejectedWithoutReason)).StatusCode);
+        }
+
+        using (var rejectedProbe = new HttpRequestMessage(
+            HttpMethod.Post, listUrl + "/" + draftOnlyId + "/review")
+        {
+            Content = JsonContent.Create(new
+            {
+                revision = 1,
+                decision = "REJECTED",
+                reason = "عدم احراز شرایط پرونده"
+            })
+        })
+        {
+            rejectedProbe.Headers.Add("Idempotency-Key",
+                Guid.NewGuid().ToString());
+            Assert.Equal(HttpStatusCode.Conflict,
+                (await admin.SendAsync(rejectedProbe)).StatusCode);
+        }
+
+        var reviewUrl = listUrl + "/" + applicantId + "/review";
+        var decisionKey = Guid.NewGuid();
+
+        using (var missingReason = new HttpRequestMessage(
+            HttpMethod.Post, reviewUrl)
+        {
+            Content = JsonContent.Create(new
+            {
+                revision = 2,
+                decision = "NEEDS_INFORMATION",
+                reason = (string?)null
+            })
+        })
+        {
+            missingReason.Headers.Add("Idempotency-Key",
+                Guid.NewGuid().ToString());
+            Assert.Equal(HttpStatusCode.BadRequest,
+                (await admin.SendAsync(missingReason)).StatusCode);
+        }
+
+        using (var forbiddenReview = new HttpRequestMessage(
+            HttpMethod.Post, reviewUrl)
+        {
+            Content = JsonContent.Create(new
+            {
+                revision = 2,
+                decision = "REJECTED",
+                reason = "دلیل تست"
+            })
+        })
+        {
+            forbiddenReview.Headers.Add("Idempotency-Key",
+                Guid.NewGuid().ToString());
+            Assert.Equal(HttpStatusCode.Forbidden,
+                (await ordinary.SendAsync(forbiddenReview)).StatusCode);
+        }
+
+        async Task<HttpResponseMessage> Review(
+            Guid key, int revision, string decision, string? reason)
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post, reviewUrl)
+            {
+                Content = JsonContent.Create(new
+                {
+                    revision,
+                    decision,
+                    reason
+                })
+            };
+            request.Headers.Add("Idempotency-Key", key.ToString());
+            return await admin.SendAsync(request);
+        }
+
+        var reviewedResponse = await Review(
+            decisionKey, 2, "NEEDS_INFORMATION",
+            "مدرک مجوز فعالیت باید تکمیل شود.");
+        Assert.Equal(HttpStatusCode.OK, reviewedResponse.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await reviewedResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("NEEDS_INFORMATION",
+                body.RootElement.GetProperty("reviewStatus").GetString());
+            Assert.Equal(3,
+                body.RootElement.GetProperty("revision").GetInt32());
+            Assert.False(body.RootElement
+                .GetProperty("sellerActivated").GetBoolean());
+        }
+
+        // Lost-response retry is idempotent.
+        Assert.Equal(HttpStatusCode.OK,
+            (await Review(decisionKey, 2, "NEEDS_INFORMATION",
+                "مدرک مجوز فعالیت باید تکمیل شود.")).StatusCode);
+
+        // A second decision on the same reviewed application is not allowed.
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await Review(Guid.NewGuid(), 3, "APPROVED", null)).StatusCode);
+
+        var reviewed = await seller.RegistrationDrafts.AsNoTracking()
+            .SingleAsync(x => x.AccountId == applicantId);
+        Assert.Equal("SUBMITTED", reviewed.Status);
+        Assert.Equal("NEEDS_INFORMATION", reviewed.ReviewStatus);
+        Assert.Equal("مدرک مجوز فعالیت باید تکمیل شود.",
+            reviewed.ReviewReason);
+        Assert.Equal(adminId, reviewed.ReviewedByAccountId);
+        Assert.NotNull(reviewed.ReviewedAtUtc);
+        Assert.Equal(3, reviewed.Revision);
+
+        var audit = Assert.Single(await seller.ApplicationReviews.AsNoTracking()
+            .Where(x => x.ApplicationAccountId == applicantId)
+            .ToListAsync());
+        Assert.Equal(decisionKey, audit.DecisionKey);
+        Assert.Equal(adminId, audit.ReviewerAccountId);
+        Assert.Equal("NEEDS_INFORMATION", audit.Decision);
+        Assert.Equal(2, audit.ExpectedRevision);
 
         Assert.Equal(HttpStatusCode.NotFound,
             (await admin.GetAsync(listUrl + "/" + draftOnlyId)).StatusCode);

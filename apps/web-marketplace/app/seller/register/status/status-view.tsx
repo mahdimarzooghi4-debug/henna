@@ -5,15 +5,18 @@ import { useEffect, useState } from "react";
 
 type StatusPayload = {
   trackingCode: string;
-  overallStatus: "UNDER_REVIEW";
+  overallStatus: "UNDER_REVIEW" | "NEEDS_INFORMATION" | "APPROVED" | "REJECTED";
   applicantType: "NATURAL" | "LEGAL";
   identityStatus: "VERIFIED" | "RECORDED";
   submittedAtUtc: string;
   accuracyConfirmedAtUtc: string;
+  reviewReason: string | null;
+  reviewedAtUtc: string | null;
   sellerPanelEnabled: false;
   steps: Array<{
     key: "IDENTITY" | "BUSINESS" | "ACTIVITY" | "ADDITIONAL" | "REVIEW";
-    status: "COMPLETED" | "UNDER_REVIEW";
+    status: "COMPLETED" | "UNDER_REVIEW" | "NEEDS_INFORMATION" |
+      "APPROVED" | "REJECTED";
   }>;
 };
 
@@ -24,6 +27,39 @@ const labels: Record<StatusPayload["steps"][number]["key"], string> = {
   ADDITIONAL: "اطلاعات تکمیلی",
   REVIEW: "بررسی درخواست",
 };
+
+const reviewCopy = {
+  UNDER_REVIEW: {
+    badge: "در حال بررسی",
+    title: "درخواست در حال بررسی است",
+    message: "اطلاعات ثبت‌نام شما دریافت شده و درخواست در حال بررسی است.",
+  },
+  NEEDS_INFORMATION: {
+    badge: "نیازمند تکمیل اطلاعات",
+    title: "اطلاعات بیشتری برای بررسی لازم است",
+    message: "بررسی‌کننده برای ادامه فرایند، تکمیل اطلاعات را درخواست کرده است.",
+  },
+  APPROVED: {
+    badge: "تأیید شده",
+    title: "درخواست فروشندگی تأیید شده است",
+    message: "بررسی درخواست با تأیید پایان یافته است؛ فعال‌سازی پنل فروشنده مرحله‌ای مستقل است.",
+  },
+  REJECTED: {
+    badge: "رد شده",
+    title: "درخواست فروشندگی تأیید نشد",
+    message: "نتیجه بررسی درخواست ثبت شده است.",
+  },
+} as const;
+
+function statusLabel(status: StatusPayload["steps"][number]["status"]) {
+  switch (status) {
+    case "COMPLETED": return "تکمیل شده";
+    case "UNDER_REVIEW": return "در حال بررسی";
+    case "NEEDS_INFORMATION": return "نیازمند تکمیل اطلاعات";
+    case "APPROVED": return "تأیید شده";
+    case "REJECTED": return "رد شده";
+  }
+}
 
 export function SellerApplicationStatusView() {
   const [state, setState] = useState<
@@ -79,16 +115,15 @@ export function SellerApplicationStatusView() {
   }
 
   const value = state.value;
+  const copy = reviewCopy[value.overallStatus];
   return (
     <section className="seller-status-card"
       aria-labelledby="seller-status-title">
       <div className="seller-status-card__hero">
-        <span className="seller-status-card__badge">در حال بررسی</span>
+        <span className="seller-status-card__badge">{copy.badge}</span>
         <div>
-          <h2 id="seller-status-title">درخواست در حال بررسی است</h2>
-          <p>
-            اطلاعات ثبت‌نام شما دریافت شده و درخواست در حال بررسی است.
-          </p>
+          <h2 id="seller-status-title">{copy.title}</h2>
+          <p>{copy.message}</p>
         </div>
         <strong dir="ltr">کد پیگیری: {value.trackingCode}</strong>
       </div>
@@ -126,12 +161,27 @@ export function SellerApplicationStatusView() {
             <span className={step.status === "COMPLETED"
               ? "seller-status-card__state seller-status-card__state--done"
               : "seller-status-card__state"}>
-              {step.status === "COMPLETED" ? "تکمیل شده" : "در حال بررسی"}
+              {statusLabel(step.status)}
             </span>
             <strong>{labels[step.key]}</strong>
           </div>
         ))}
       </div>
+
+      {value.reviewReason && (
+        <div className="seller-status-card__review-note" role="status">
+          <strong>یادداشت بررسی</strong>
+          <p>{value.reviewReason}</p>
+          {value.reviewedAtUtc && (
+            <time dateTime={value.reviewedAtUtc}>
+              {new Intl.DateTimeFormat("fa-IR", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date(value.reviewedAtUtc))}
+            </time>
+          )}
+        </div>
+      )}
 
       <div className="seller-status-card__panel-lock">
         <strong>ورود به پنل فروشنده</strong>
