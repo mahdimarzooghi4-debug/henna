@@ -71,12 +71,14 @@ export async function GET(request: NextRequest) {
         Number.isNaN(Date.parse(submittedAtUtc))))
       return error(unavailable, 503);
     return NextResponse.json(
-      {
-        ...fields,
-        status: payload.status,
-        revision: payload.revision,
-        submittedAtUtc: payload.status === "SUBMITTED" ? submittedAtUtc : null,
-      },
+      payload.status === "SUBMITTED"
+        ? {
+          ...fields,
+          status: "SUBMITTED",
+          revision: payload.revision,
+          submittedAtUtc,
+        }
+        : { ...fields, status: "DRAFT", revision: payload.revision },
       { headers: noStore });
   } catch {
     return error(unavailable, 503);
