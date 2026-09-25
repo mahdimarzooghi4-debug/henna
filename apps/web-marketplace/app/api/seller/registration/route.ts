@@ -60,11 +60,23 @@ export async function GET(request: NextRequest) {
     const payload: unknown = await response.json();
     const fields = parseFields(payload);
     if (!fields || !payload || typeof payload !== "object" ||
-      !("status" in payload) || payload.status !== "DRAFT" ||
+      !("status" in payload) ||
+      (payload.status !== "DRAFT" && payload.status !== "SUBMITTED") ||
       !("revision" in payload) || !validRevision(payload.revision, false))
       return error(unavailable, 503);
+    const submittedAtUtc = "submittedAtUtc" in payload
+      ? payload.submittedAtUtc : null;
+    if (payload.status === "SUBMITTED" &&
+      (typeof submittedAtUtc !== "string" ||
+        Number.isNaN(Date.parse(submittedAtUtc))))
+      return error(unavailable, 503);
     return NextResponse.json(
-      { ...fields, status: "DRAFT", revision: payload.revision },
+      {
+        ...fields,
+        status: payload.status,
+        revision: payload.revision,
+        submittedAtUtc: payload.status === "SUBMITTED" ? submittedAtUtc : null,
+      },
       { headers: noStore });
   } catch {
     return error(unavailable, 503);
@@ -122,6 +134,78 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       { status: "DRAFT", revision: payload.revision },
       { headers: noStore });
+  } catch {
+    return error(unavailable, 503);
+  }
+}
+
+
+export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) return error("درخواست نامعتبر است.", 403);
+  if (!request.headers.get("content-type")?.startsWith("application/json"))
+    return error("درخواست نامعتبر است.", 400);
+  const token = bearer(request);
+  if (!token) return error("برای ثبت درخواست ابتدا وارد شوید.", 401);
+  const target = hanaAuthApiUrl("/api/v1/seller/registration/submit");
+  if (!target) return error(unavailable, 503);
+
+  let revision: number | null = null;
+  let idempotencyKey: string | null = null;
+  try {
+    const raw = await request.text();
+    const body: unknown = raw.length <= 1024 ? JSON.parse(raw) : null;
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      return error("درخواست ثبت معتبر نیست.", 400);
+    const value = body as Record<string, unknown>;
+    if (Object.keys(value).some((key) =>
+      key !== "revision" && key !== "idempotencyKey"))
+      return error("درخواست ثبت معتبر نیست.", 400);
+    if (validRevision(value.revision, false)) revision = value.revision;
+    if (typeof value.idempotencyKey === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        .test(value.idempotencyKey))
+      idempotencyKey = value.idempotencyKey;
+  } catch {
+    return error("درخواست ثبت معتبر نیست.", 400);
+  }
+  if (revision === null || !idempotencyKey)
+    return error("نسخه یا کلید ثبت معتبر نیست.", 400);
+
+  try {
+    const upstream = await fetch(target, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ revision }),
+      cache: "no-store", signal: AbortSignal.timeout(8000),
+    });
+    if (upstream.status === 401)
+      return error("نشست معتبر نیست؛ دوباره وارد شوید.", 401);
+    if (upstream.status === 404)
+      return error("پیش‌نویسی برای ثبت پیدا نشد.", 404);
+    if (upstream.status === 400)
+      return error("درخواست ثبت معتبر نیست.", 400);
+    if (upstream.status === 409)
+      return error("پیش‌نویس تغییر کرده یا قبلاً ثبت شده است؛ وضعیت را دوباره بررسی کنید.", 409);
+    if (!upstream.ok) return error(unavailable, 503);
+
+    const payload: unknown = await upstream.json();
+    if (!payload || typeof payload !== "object" ||
+      !("status" in payload) || payload.status !== "SUBMITTED" ||
+      !("revision" in payload) || !validRevision(payload.revision, false) ||
+      !("submittedAtUtc" in payload) ||
+      typeof payload.submittedAtUtc !== "string" ||
+      Number.isNaN(Date.parse(payload.submittedAtUtc)))
+      return error(unavailable, 503);
+
+    return NextResponse.json({
+      status: "SUBMITTED",
+      revision: payload.revision,
+      submittedAtUtc: payload.submittedAtUtc,
+    }, { headers: noStore });
   } catch {
     return error(unavailable, 503);
   }
