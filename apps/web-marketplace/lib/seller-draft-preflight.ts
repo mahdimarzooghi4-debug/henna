@@ -22,11 +22,19 @@ export type SellerPreflight =
   | { status: "signedOut" }
   | { status: "unavailable" }
   | { status: "new"; revision: 0 }
-  | { status: "restored"; revision: number; fields: SellerFields }
+  | {
+    status: "restored";
+    revision: number;
+    fields: SellerFields;
+    applicantType: "NATURAL" | "LEGAL" | null;
+    completedStep: number;
+  }
   | {
     status: "submitted";
     revision: number;
     fields: SellerFields;
+    applicantType: "NATURAL" | "LEGAL";
+    completedStep: 6;
     submittedAtUtc: string;
   };
 
@@ -57,6 +65,22 @@ export async function loadSellerDraft(
 
     const fields = Object.fromEntries(sellerFieldKeys.map((key) =>
       [key, values[key]])) as SellerFields;
+    // Older in-memory test doubles and pre-migration cached draft responses
+    // map to step 1 only; the shipping BFF always emits both fields.
+    const applicantType = "applicantType" in draft
+      ? draft.applicantType : null;
+    const completedStep = "completedStep" in draft
+      ? draft.completedStep : 1;
+    if ((applicantType !== null &&
+        applicantType !== "NATURAL" && applicantType !== "LEGAL") ||
+      typeof completedStep !== "number" ||
+      !Number.isSafeInteger(completedStep) ||
+      completedStep < 1 || completedStep > 6 ||
+      (completedStep < 2 && applicantType !== null) ||
+      (completedStep >= 2 && applicantType === null))
+      return { status: "unavailable" };
+
+
     if (draft.status === "SUBMITTED") {
       if (!("submittedAtUtc" in draft) ||
         typeof draft.submittedAtUtc !== "string" ||
@@ -66,10 +90,18 @@ export async function loadSellerDraft(
         status: "submitted",
         revision: draft.revision,
         fields,
+        applicantType: applicantType as "NATURAL" | "LEGAL",
+        completedStep: 6,
         submittedAtUtc: draft.submittedAtUtc,
       };
     }
-    return { status: "restored", revision: draft.revision, fields };
+    return {
+      status: "restored",
+      revision: draft.revision,
+      fields,
+      applicantType: applicantType as "NATURAL" | "LEGAL" | null,
+      completedStep,
+    };
   } catch {
     return { status: "unavailable" };
   }

@@ -13,6 +13,8 @@ public sealed class SellerRegistrationDraft
     public string City { get; set; } = null!;
     public string Address { get; set; } = null!;
     public string PostalCode { get; set; } = null!;
+    public string? ApplicantType { get; set; }
+    public int CompletedStep { get; set; } = 1;
     public string Status { get; set; } = "DRAFT";
     public int Revision { get; set; } = 1;
     public Guid? SubmissionKey { get; set; }

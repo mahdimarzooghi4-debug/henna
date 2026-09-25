@@ -66,9 +66,36 @@ async function fakeApi(route) {
     assert.equal(body.phone, phone);
     if ((draft?.revision ?? 0) !== body.revision)
       return route.fulfill(json({ message: "stale" }, 409));
-    draft = { ...body, revision: body.revision + 1, status: "DRAFT" };
+    draft = {
+      ...body,
+      revision: body.revision + 1,
+      status: "DRAFT",
+      applicantType: draft?.applicantType ?? null,
+      completedStep: draft?.completedStep ?? 1,
+    };
     return route.fulfill(json({
       status: "DRAFT", revision: draft.revision,
+    }));
+  }
+  if (path === "/api/seller/registration/applicant-type" &&
+    req.method() === "PUT") {
+    assert.ok(signedIn, "anonymous form must never save applicant type");
+    const body = req.postDataJSON();
+    if (draft?.revision !== body.revision)
+      return route.fulfill(json({ message: "stale" }, 409));
+    assert.ok(body.applicantType === "NATURAL" ||
+      body.applicantType === "LEGAL");
+    draft = {
+      ...draft,
+      applicantType: body.applicantType,
+      completedStep: 2,
+      revision: draft.revision + 1,
+    };
+    return route.fulfill(json({
+      status: "DRAFT",
+      revision: draft.revision,
+      applicantType: draft.applicantType,
+      completedStep: 2,
     }));
   }
   if (path === "/api/seller/registration" && req.method() === "POST") {
@@ -280,19 +307,19 @@ async function main() {
   assert.equal(await page.locator("#store-address").inputValue(),
     "نشانی ذخیره نشده");
 
-  // A clean second tab can submit the exact saved revision. The UI then
-  // switches to the Figma request-status state and freezes seller fields.
+  // Figma step 2 is now the next reachable state. A clean tab can select
+  // applicant type; final submit remains unavailable until steps 3..6 exist.
   await otherTab.getByRole("button", {
-    name: "ثبت درخواست برای بررسی",
+    name: /شخص حقیقی/,
   }).click();
-  await otherTab.getByRole("heading", {
-    name: "وضعیت درخواست",
+  await otherTab.getByText("نوع متقاضی «شخص حقیقی» ذخیره شد", {
+    exact: false,
   }).waitFor();
-  await otherTab.getByText("درخواست شما ثبت شده و در انتظار بررسی است.")
-    .waitFor();
-  assert.equal(draft.status, "SUBMITTED");
+  assert.equal(draft.applicantType, "NATURAL");
+  assert.equal(draft.completedStep, 2);
   assert.equal(draft.revision, 4);
-  assert.equal(await otherTab.locator("#store-name").isDisabled(), true);
+  assert.equal(await otherTab.getByText(
+    "انتخاب ذخیره‌شده: شخص حقیقی", { exact: false }).count(), 1);
   assert.equal(await otherTab.getByRole("button", {
     name: "ثبت درخواست برای بررسی",
   }).count(), 0);
@@ -300,7 +327,7 @@ async function main() {
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller draft → 6 field errors → real geography helper → two-tab 409/merge → unsaved guard OK");
+  console.log("Chromium CI frontend: OTP → seller draft → geography → two-tab merge → applicant type step → submit gated OK");
 }
 
 try {

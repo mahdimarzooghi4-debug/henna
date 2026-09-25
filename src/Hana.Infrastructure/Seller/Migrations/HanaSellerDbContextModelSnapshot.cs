@@ -20,6 +20,14 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
                     "status IN ('DRAFT', 'SUBMITTED')");
                 table.HasCheckConstraint("ck_registration_drafts_revision",
                     "revision >= 1");
+                table.HasCheckConstraint("ck_registration_drafts_completed_step",
+                    "completed_step BETWEEN 1 AND 6");
+                table.HasCheckConstraint("ck_registration_drafts_applicant_type",
+                    "applicant_type IS NULL OR applicant_type IN ('NATURAL', 'LEGAL')");
+                table.HasCheckConstraint("ck_registration_applicant_type_step",
+                    "(completed_step < 2 AND applicant_type IS NULL) OR (completed_step >= 2 AND applicant_type IS NOT NULL)");
+                table.HasCheckConstraint("ck_registration_submitted_completed",
+                    "status <> 'SUBMITTED' OR completed_step = 6");
                 table.HasCheckConstraint("ck_registration_submission_metadata",
                     "(status = 'DRAFT' AND submission_key IS NULL AND submission_expected_revision IS NULL AND submitted_at_utc IS NULL) OR (status = 'SUBMITTED' AND submission_key IS NOT NULL AND submission_expected_revision >= 1 AND submitted_at_utc IS NOT NULL)");
             });
@@ -38,6 +46,10 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
                 .HasMaxLength(500).IsRequired();
             entity.Property(x => x.PostalCode).HasColumnName("postal_code")
                 .HasMaxLength(10).IsRequired();
+            entity.Property(x => x.ApplicantType).HasColumnName("applicant_type")
+                .HasMaxLength(16);
+            entity.Property(x => x.CompletedStep).HasColumnName("completed_step")
+                .HasDefaultValue(1).IsRequired();
             entity.Property(x => x.Status).HasColumnName("status")
                 .HasMaxLength(16).IsRequired();
             entity.Property(x => x.Revision).HasColumnName("revision")

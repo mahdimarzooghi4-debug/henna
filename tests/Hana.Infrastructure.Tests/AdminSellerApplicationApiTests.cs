@@ -70,6 +70,8 @@ public sealed class AdminSellerApplicationApiTests
                 City = "تهران",
                 Address = "نشانی ثبت‌شده",
                 PostalCode = "1234567890",
+                ApplicantType = "NATURAL",
+                CompletedStep = 6,
                 Status = "SUBMITTED",
                 Revision = 2,
                 SubmissionKey = Guid.NewGuid(),
