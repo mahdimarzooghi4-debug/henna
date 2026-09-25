@@ -208,8 +208,10 @@ async function main() {
           "businessName", "businessPhone", "categoryId",
           "description", "offeringType", "revision",
         ].sort());
+        const rework = sellerDraft?.status === "REWORK" &&
+          sellerDraft?.completedStep === 6;
         if (sellerDraft?.revision !== data.revision ||
-          sellerDraft?.completedStep !== 3) {
+          (!rework && sellerDraft?.completedStep !== 3)) {
           response.writeHead(409);
           response.end(JSON.stringify({ message: "stale business step" }));
         } else if (data.categoryId !== businessCategoryId) {
@@ -228,14 +230,14 @@ async function main() {
             businessDescription: data.description,
             businessPhone: data.businessPhone,
             offeringType: data.offeringType,
-            completedStep: 4,
+            completedStep: rework ? 6 : 4,
             revision: data.revision + 1,
           };
           response.writeHead(200);
           response.end(JSON.stringify({
-            status: "DRAFT",
+            status: rework ? "REWORK" : "DRAFT",
             revision: sellerDraft.revision,
-            completedStep: 4,
+            completedStep: rework ? 6 : 4,
             category: {
               id: businessCategoryId,
               name: "دسته‌بندی کسب‌وکار CI",
@@ -254,8 +256,10 @@ async function main() {
           "activityHours", "address", "cityId", "pickup",
           "provinceId", "revision", "sellerDelivery", "serviceArea",
         ].sort());
+        const rework = sellerDraft?.status === "REWORK" &&
+          sellerDraft?.completedStep === 6;
         if (sellerDraft?.revision !== data.revision ||
-          sellerDraft?.completedStep !== 4) {
+          (!rework && sellerDraft?.completedStep !== 4)) {
           response.writeHead(409);
           response.end(JSON.stringify({ message: "stale activity step" }));
         } else {
@@ -277,14 +281,14 @@ async function main() {
             sellerDelivery: data.sellerDelivery,
             pickup: data.pickup,
             serviceArea: data.serviceArea,
-            completedStep: 5,
+            completedStep: rework ? 6 : 5,
             revision: data.revision + 1,
           };
           response.writeHead(200);
           response.end(JSON.stringify({
-            status: "DRAFT",
+            status: rework ? "REWORK" : "DRAFT",
             revision: sellerDraft.revision,
-            completedStep: 5,
+            completedStep: rework ? 6 : 5,
             province: {
               id: activityProvinceId,
               name: "استان فعالیت CI",
@@ -308,8 +312,10 @@ async function main() {
           "backupPhone", "businessEmail", "contactName", "contactRole",
           "responseHours", "revision", "websiteOrSocial",
         ].sort());
+        const rework = sellerDraft?.status === "REWORK" &&
+          sellerDraft?.completedStep === 6;
         if (sellerDraft?.revision !== data.revision ||
-          sellerDraft?.completedStep !== 5) {
+          (!rework && sellerDraft?.completedStep !== 5)) {
           response.writeHead(409);
           response.end(JSON.stringify({ message: "stale additional step" }));
         } else {
@@ -318,7 +324,8 @@ async function main() {
           assert.equal(data.backupPhone, "09123456780");
           assert.equal(data.websiteOrSocial, "instagram.com/hana-ci");
           assert.equal(data.businessEmail, "info@example.com");
-          assert.equal(data.responseHours, "شنبه تا پنجشنبه، ۸ تا ۲۲");
+          assert.ok(data.responseHours === "شنبه تا پنجشنبه، ۸ تا ۲۲" ||
+            (rework && data.responseHours === "شنبه تا پنجشنبه، ۹ تا ۲۰"));
           sellerDraft = {
             ...sellerDraft,
             registrationContactName: data.contactName,
@@ -333,7 +340,7 @@ async function main() {
           };
           response.writeHead(200);
           response.end(JSON.stringify({
-            status: "DRAFT",
+            status: rework ? "REWORK" : "DRAFT",
             revision: sellerDraft.revision,
             completedStep: 6,
             contactName: sellerDraft.registrationContactName,
@@ -345,6 +352,32 @@ async function main() {
             documentsRequired: false,
           }));
         }
+      } else if (url === "/api/v1/seller/registration/reopen" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "POST") {
+        const data = JSON.parse(body);
+        assert.deepEqual(Object.keys(data), ["revision"]);
+        if (sellerDraft?.status !== "SUBMITTED" ||
+          sellerDraft?.reviewStatus !== "NEEDS_INFORMATION" ||
+          sellerDraft?.revision !== data.revision) {
+          response.writeHead(409);
+          response.end(JSON.stringify({ message: "not reopenable" }));
+        } else {
+          sellerDraft = {
+            ...sellerDraft,
+            status: "REWORK",
+            revision: data.revision + 1,
+          };
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            status: "REWORK",
+            revision: sellerDraft.revision,
+            completedStep: 6,
+            trackingCode: sellerDraft.trackingCode,
+            reviewStatus: "NEEDS_INFORMATION",
+            reviewReason: sellerDraft.reviewReason,
+          }));
+        }
       } else if (url === "/api/v1/seller/registration/submit" &&
         request.headers.authorization === `Bearer ${token}` && !revoked &&
         request.method === "POST") {
@@ -354,13 +387,18 @@ async function main() {
         assert.equal(data.confirmed, true);
         assert.match(request.headers["idempotency-key"] ?? "",
           /^[0-9a-f-]{36}$/i);
+        const preservedTracking = sellerDraft?.trackingCode ??
+          "HNA-A1B2C3D4E5F60718";
         sellerDraft = {
           ...sellerDraft,
           status: "SUBMITTED",
           revision: sellerDraft.revision + 1,
           submittedAtUtc: "2026-09-25T12:30:00Z",
           accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
-          trackingCode: "HNA-A1B2C3D4E5F60718",
+          trackingCode: preservedTracking,
+          reviewStatus: "UNDER_REVIEW",
+          reviewReason: null,
+          reviewedAtUtc: null,
         };
         response.writeHead(200);
         response.end(JSON.stringify({
@@ -380,6 +418,7 @@ async function main() {
           response.writeHead(200);
           response.end(JSON.stringify({
             trackingCode: sellerDraft.trackingCode,
+            revision: sellerDraft.revision,
             overallStatus: sellerDraft.reviewStatus ?? "UNDER_REVIEW",
             applicantType: sellerDraft.applicantType,
             identityStatus: sellerDraft.identityStatus,
@@ -950,6 +989,7 @@ async function main() {
   assert.equal(sellerStatus.headers.get("cache-control"), "no-store");
   assert.deepEqual(await sellerStatus.json(), {
     trackingCode: "HNA-A1B2C3D4E5F60718",
+    revision: 8,
     overallStatus: "UNDER_REVIEW",
     applicantType: "NATURAL",
     identityStatus: "VERIFIED",
@@ -972,6 +1012,7 @@ async function main() {
     reviewStatus: "NEEDS_INFORMATION",
     reviewReason: "مدرک مجوز فعالیت باید تکمیل شود.",
     reviewedAtUtc: "2026-09-25T13:00:00Z",
+    revision: 9,
   };
   const needsInformation = await fetch(sellerUrl + "/status", {
     headers: { Cookie: sessionCookie },
@@ -984,6 +1025,107 @@ async function main() {
   assert.equal(needsBody.reviewedAtUtc, "2026-09-25T13:00:00Z");
   assert.equal(needsBody.sellerPanelEnabled, false);
   assert.equal(needsBody.steps[4].status, "NEEDS_INFORMATION");
+  assert.equal(needsBody.revision, 9);
+
+  const reopenCsrf = await fetch(sellerUrl + "/reopen", {
+    method: "POST",
+    headers: {
+      Cookie: sessionCookie,
+      Origin: "https://other.test",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ revision: 9 }),
+  });
+  assert.equal(reopenCsrf.status, 403);
+
+  const reopenUnknown = await fetch(sellerUrl + "/reopen", {
+    method: "POST",
+    headers: {
+      Cookie: sessionCookie,
+      Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ revision: 9, status: "DRAFT" }),
+  });
+  assert.equal(reopenUnknown.status, 400);
+
+  const reopened = await fetch(sellerUrl + "/reopen", {
+    method: "POST",
+    headers: {
+      Cookie: sessionCookie,
+      Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ revision: 9 }),
+  });
+  assert.equal(reopened.status, 200);
+  assert.equal((await reopened.json()).status, "REWORK");
+  assert.equal(sellerDraft.status, "REWORK");
+  assert.equal(sellerDraft.revision, 10);
+
+  const reworkHydrated = await fetch(sellerUrl, {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(reworkHydrated.status, 200);
+  const reworkBody = await reworkHydrated.json();
+  assert.equal(reworkBody.status, "REWORK");
+  assert.equal(reworkBody.reviewStatus, "NEEDS_INFORMATION");
+  assert.equal(reworkBody.reviewReason,
+    "مدرک مجوز فعالیت باید تکمیل شود.");
+  assert.equal(reworkBody.trackingCode, "HNA-A1B2C3D4E5F60718");
+
+  const corrected = await fetch(
+    sellerUrl + "/additional-information", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contactName: "مسئول تکمیلی CI",
+        contactRole: "مدیر فروش",
+        backupPhone: "09123456780",
+        websiteOrSocial: "instagram.com/hana-ci",
+        businessEmail: "info@example.com",
+        responseHours: "شنبه تا پنجشنبه، ۹ تا ۲۰",
+        revision: 10,
+      }),
+    });
+  assert.equal(corrected.status, 200);
+  const correctedBody = await corrected.json();
+  assert.equal(correctedBody.status, "REWORK");
+  assert.equal(correctedBody.completedStep, 6);
+  assert.equal(sellerDraft.revision, 11);
+
+  const resubmitKey = "3ee26c06-0d4c-4eec-8d02-74e728b717f6";
+  const resubmitted = await fetch(sellerUrl, {
+    method: "POST",
+    headers: {
+      Cookie: sessionCookie, Origin: base,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      revision: 11,
+      idempotencyKey: resubmitKey,
+      confirmed: true,
+    }),
+  });
+  assert.equal(resubmitted.status, 200);
+  const resubmittedBody = await resubmitted.json();
+  assert.equal(resubmittedBody.status, "SUBMITTED");
+  assert.equal(resubmittedBody.revision, 12);
+  assert.equal(resubmittedBody.trackingCode, "HNA-A1B2C3D4E5F60718");
+  assert.equal(sellerDraft.reviewStatus, "UNDER_REVIEW");
+  assert.equal(sellerDraft.reviewReason, null);
+
+  const statusAgain = await fetch(sellerUrl + "/status", {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(statusAgain.status, 200);
+  const statusAgainBody = await statusAgain.json();
+  assert.equal(statusAgainBody.revision, 12);
+  assert.equal(statusAgainBody.overallStatus, "UNDER_REVIEW");
+  assert.equal(statusAgainBody.trackingCode, "HNA-A1B2C3D4E5F60718");
 
   const categoryResponse = await fetch(base + "/api/catalog/categories", {
     headers: { Cookie: sessionCookie },

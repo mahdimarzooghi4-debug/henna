@@ -93,6 +93,46 @@ export type SellerPreflight =
     completedStep: 6;
     submittedAtUtc: string;
     trackingCode: string;
+  }
+  | {
+    status: "rework";
+    revision: number;
+    fields: SellerFields;
+    applicantType: "NATURAL" | "LEGAL";
+    identityStatus: "VERIFIED" | "RECORDED";
+    nationalCodeMasked: string | null;
+    legalNationalId: string | null;
+    legalName: string | null;
+    legalRepresentativeName: string | null;
+    legalRepresentativePhone: string | null;
+    businessCategoryId: string | null;
+    businessCategoryName: string | null;
+    businessName: string | null;
+    businessDescription: string | null;
+    businessPhone: string | null;
+    offeringType: "GOOD" | "SERVICE" | "BOTH" | null;
+    activityProvinceId: string | null;
+    activityProvinceName: string | null;
+    activityCityId: string | null;
+    activityCityName: string | null;
+    activityAddress: string | null;
+    activityHours: string | null;
+    sellerDelivery: boolean | null;
+    pickup: boolean | null;
+    serviceArea: string | null;
+    registrationContactName: string | null;
+    registrationContactRole: string | null;
+    backupPhone: string | null;
+    websiteOrSocial: string | null;
+    businessEmail: string | null;
+    responseHours: string | null;
+    documentsRequired: false;
+    completedStep: 6;
+    submittedAtUtc: string;
+    trackingCode: string;
+    reviewStatus: "NEEDS_INFORMATION";
+    reviewReason: string;
+    reviewedAtUtc: string;
   };
 
 export async function loadSellerDraft(
@@ -110,7 +150,9 @@ export async function loadSellerDraft(
     const draft: unknown = await response.json();
     if (!draft || typeof draft !== "object" ||
       !("status" in draft) ||
-      (draft.status !== "DRAFT" && draft.status !== "SUBMITTED") ||
+      (draft.status !== "DRAFT" &&
+        draft.status !== "SUBMITTED" &&
+        draft.status !== "REWORK") ||
       !("revision" in draft) || typeof draft.revision !== "number" ||
       !Number.isSafeInteger(draft.revision) ||
       draft.revision < 1 || draft.revision >= 2147483647)
@@ -303,6 +345,64 @@ export async function loadSellerDraft(
       documentsRequired !== false
     ) {
       return { status: "unavailable" };
+    }
+
+    if (draft.status === "REWORK") {
+      if (!("submittedAtUtc" in draft) ||
+        typeof draft.submittedAtUtc !== "string" ||
+        Number.isNaN(Date.parse(draft.submittedAtUtc)) ||
+        !("trackingCode" in draft) ||
+        typeof draft.trackingCode !== "string" ||
+        !/^HNA-[0-9A-F]{16}$/.test(draft.trackingCode) ||
+        !("reviewStatus" in draft) ||
+        draft.reviewStatus !== "NEEDS_INFORMATION" ||
+        !("reviewReason" in draft) ||
+        typeof draft.reviewReason !== "string" ||
+        !draft.reviewReason.trim() || draft.reviewReason.length > 500 ||
+        !("reviewedAtUtc" in draft) ||
+        typeof draft.reviewedAtUtc !== "string" ||
+        Number.isNaN(Date.parse(draft.reviewedAtUtc)))
+        return { status: "unavailable" };
+      return {
+        status: "rework",
+        revision: draft.revision,
+        fields,
+        applicantType: applicantType as "NATURAL" | "LEGAL",
+        identityStatus: identityStatus as "VERIFIED" | "RECORDED",
+        nationalCodeMasked: nationalCodeMasked as string | null,
+        legalNationalId: legalNationalId as string | null,
+        legalName: legalName as string | null,
+        legalRepresentativeName: legalRepresentativeName as string | null,
+        legalRepresentativePhone: legalRepresentativePhone as string | null,
+        businessCategoryId: businessCategoryId as string | null,
+        businessCategoryName: businessCategoryName as string | null,
+        businessName: businessName as string | null,
+        businessDescription: businessDescription as string | null,
+        businessPhone: businessPhone as string | null,
+        offeringType: offeringType as "GOOD" | "SERVICE" | "BOTH" | null,
+        activityProvinceId: activityProvinceId as string | null,
+        activityProvinceName: activityProvinceName as string | null,
+        activityCityId: activityCityId as string | null,
+        activityCityName: activityCityName as string | null,
+        activityAddress: activityAddress as string | null,
+        activityHours: activityHours as string | null,
+        sellerDelivery: sellerDelivery as boolean | null,
+        pickup: pickup as boolean | null,
+        serviceArea: serviceArea as string | null,
+        registrationContactName: registrationContactName as string | null,
+        registrationContactRole: registrationContactRole as string | null,
+        backupPhone: backupPhone as string | null,
+        websiteOrSocial: websiteOrSocial as string | null,
+        businessEmail: businessEmail as string | null,
+        responseHours: responseHours as string | null,
+        documentsRequired: false,
+        completedStep: 6,
+        submittedAtUtc: draft.submittedAtUtc,
+        trackingCode: draft.trackingCode,
+        reviewStatus: "NEEDS_INFORMATION",
+        reviewReason: draft.reviewReason,
+        reviewedAtUtc: draft.reviewedAtUtc,
+      };
     }
 
     if (draft.status === "SUBMITTED") {

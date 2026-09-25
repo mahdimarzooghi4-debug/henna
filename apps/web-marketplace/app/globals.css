@@ -1178,3 +1178,45 @@ a { color: inherit; }
   color: var(--hana-muted);
   font-size: 12px;
 }
+
+/* Seller 014 — correction cycle after NEEDS_INFORMATION. */
+.seller-rework,
+.seller-status-card__correction {
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #e3d6c6;
+  border-radius: 14px;
+  background: #fffaf3;
+}
+.seller-rework {
+  display: grid;
+  gap: 8px;
+}
+.seller-rework strong,
+.seller-status-card__correction strong {
+  color: #1c3f3a;
+  font-size: 17px;
+}
+.seller-rework p,
+.seller-status-card__correction p {
+  margin: 0;
+  color: var(--hana-muted);
+}
+.seller-rework span {
+  width: fit-content;
+  margin-top: 4px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: #fff;
+  color: #1c3f3a;
+  font-weight: 700;
+}
+.seller-status-card__correction .primary-button {
+  margin-top: 12px;
+}
+@media (max-width: 720px) {
+  .seller-rework,
+  .seller-status-card__correction {
+    padding: 14px;
+  }
+}

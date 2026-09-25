@@ -122,9 +122,13 @@ export async function PUT(request: NextRequest) {
 
     const payload: unknown = await upstream.json();
     if (!payload || typeof payload !== "object" ||
-      !("status" in payload) || payload.status !== "DRAFT" ||
+      !("status" in payload) ||
+      (payload.status !== "DRAFT" && payload.status !== "REWORK") ||
       !("revision" in payload) || payload.revision !== revision + 1 ||
-      !("completedStep" in payload) || payload.completedStep !== 4 ||
+      !("completedStep" in payload) ||
+      (payload.status === "DRAFT"
+        ? payload.completedStep !== 4
+        : payload.completedStep !== 6) ||
       !("category" in payload) || !payload.category ||
       typeof payload.category !== "object" ||
       !("id" in payload.category) || payload.category.id !== categoryId ||
@@ -142,9 +146,9 @@ export async function PUT(request: NextRequest) {
       return error("ذخیره اطلاعات کسب‌وکار تأیید نشد.", 503);
 
     return NextResponse.json({
-      status: "DRAFT",
+      status: payload.status,
       revision: payload.revision,
-      completedStep: 4,
+      completedStep: payload.completedStep,
       category: {
         id: categoryId,
         name: payload.category.name.trim(),

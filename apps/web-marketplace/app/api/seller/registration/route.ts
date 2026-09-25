@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
     const fields = parseFields(payload);
     if (!fields || !payload || typeof payload !== "object" ||
       !("status" in payload) ||
-      (payload.status !== "DRAFT" && payload.status !== "SUBMITTED") ||
+      (payload.status !== "DRAFT" &&
+        payload.status !== "SUBMITTED" &&
+        payload.status !== "REWORK") ||
       !("revision" in payload) || !validRevision(payload.revision, false))
       return error(unavailable, 503);
     const applicantType = "applicantType" in payload
@@ -249,55 +251,29 @@ export async function GET(request: NextRequest) {
       ? payload.submittedAtUtc : null;
     const trackingCode = "trackingCode" in payload
       ? payload.trackingCode : null;
-    if (payload.status === "SUBMITTED" &&
+    const reviewStatus = "reviewStatus" in payload
+      ? payload.reviewStatus : null;
+    const reviewReason = "reviewReason" in payload
+      ? payload.reviewReason : null;
+    const reviewedAtUtc = "reviewedAtUtc" in payload
+      ? payload.reviewedAtUtc : null;
+    if ((payload.status === "SUBMITTED" || payload.status === "REWORK") &&
       (completedStep !== 6 ||
         typeof submittedAtUtc !== "string" ||
         Number.isNaN(Date.parse(submittedAtUtc)) ||
         typeof trackingCode !== "string" ||
         !/^HNA-[0-9A-F]{16}$/.test(trackingCode)))
       return error(unavailable, 503);
-    return NextResponse.json(
-      payload.status === "SUBMITTED"
-        ? {
+
+    if (payload.status === "REWORK" &&
+      (reviewStatus !== "NEEDS_INFORMATION" ||
+        typeof reviewReason !== "string" ||
+        !reviewReason.trim() || reviewReason.length > 500 ||
+        typeof reviewedAtUtc !== "string" ||
+        Number.isNaN(Date.parse(reviewedAtUtc))))
+      return error(unavailable, 503);
+    const base = {
           ...fields,
-          status: "SUBMITTED",
-          revision: payload.revision,
-          submittedAtUtc,
-          trackingCode,
-          applicantType,
-          identityStatus,
-          nationalCodeMasked,
-          legalNationalId,
-          legalName,
-          legalRepresentativeName,
-          legalRepresentativePhone,
-          businessCategoryId,
-          businessCategoryName,
-          businessName,
-          businessDescription,
-          businessPhone,
-          offeringType,
-          activityProvinceId,
-          activityProvinceName,
-          activityCityId,
-          activityCityName,
-          activityAddress,
-          activityHours,
-          sellerDelivery,
-          pickup,
-          serviceArea,
-          registrationContactName,
-          registrationContactRole,
-          backupPhone,
-          websiteOrSocial,
-          businessEmail,
-          responseHours,
-          documentsRequired,
-          completedStep,
-        }
-        : {
-          ...fields,
-          status: "DRAFT",
           revision: payload.revision,
           applicantType,
           identityStatus,
@@ -329,8 +305,30 @@ export async function GET(request: NextRequest) {
           responseHours,
           documentsRequired,
           completedStep,
-        },
-      { headers: noStore });
+        };
+    if (payload.status === "SUBMITTED")
+      return NextResponse.json({
+        ...base,
+        status: "SUBMITTED",
+        submittedAtUtc,
+        trackingCode,
+      }, { headers: noStore });
+
+    if (payload.status === "REWORK")
+      return NextResponse.json({
+        ...base,
+        status: "REWORK",
+        submittedAtUtc,
+        trackingCode,
+        reviewStatus,
+        reviewReason,
+        reviewedAtUtc,
+      }, { headers: noStore });
+
+    return NextResponse.json({
+      ...base,
+      status: "DRAFT",
+    }, { headers: noStore });
   } catch {
     return error(unavailable, 503);
   }

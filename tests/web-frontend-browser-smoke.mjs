@@ -142,7 +142,9 @@ async function fakeApi(route) {
     assert.equal(body.businessPhone, "02112345678");
     assert.equal(body.offeringType, "BOTH");
     assert.equal(body.revision, draft?.revision);
-    assert.equal(draft?.completedStep, 3);
+    const rework = draft?.status === "REWORK" &&
+      draft?.completedStep === 6;
+    assert.ok(rework || draft?.completedStep === 3);
     draft = {
       ...draft,
       businessCategoryId,
@@ -151,13 +153,13 @@ async function fakeApi(route) {
       businessDescription: body.description,
       businessPhone: body.businessPhone,
       offeringType: body.offeringType,
-      completedStep: 4,
+      completedStep: rework ? 6 : 4,
       revision: draft.revision + 1,
     };
     return route.fulfill(json({
-      status: "DRAFT",
+      status: rework ? "REWORK" : "DRAFT",
       revision: draft.revision,
-      completedStep: 4,
+      completedStep: rework ? 6 : 4,
       category: { id: businessCategoryId, name: "دسته‌بندی مرورگر CI" },
       businessName: draft.businessName,
       description: draft.businessDescription,
@@ -179,7 +181,9 @@ async function fakeApi(route) {
       serviceArea: "کل شهر",
       revision: draft?.revision,
     });
-    assert.equal(draft?.completedStep, 4);
+    const rework = draft?.status === "REWORK" &&
+      draft?.completedStep === 6;
+    assert.ok(rework || draft?.completedStep === 4);
     draft = {
       ...draft,
       activityProvinceId: provinceId,
@@ -191,13 +195,13 @@ async function fakeApi(route) {
       sellerDelivery: body.sellerDelivery,
       pickup: body.pickup,
       serviceArea: body.serviceArea,
-      completedStep: 5,
+      completedStep: rework ? 6 : 5,
       revision: draft.revision + 1,
     };
     return route.fulfill(json({
-      status: "DRAFT",
+      status: rework ? "REWORK" : "DRAFT",
       revision: draft.revision,
-      completedStep: 5,
+      completedStep: rework ? 6 : 5,
       province: { id: provinceId, name: province.name },
       city: { id: cityId, name: city.name },
       address: draft.activityAddress,
@@ -211,16 +215,18 @@ async function fakeApi(route) {
     req.method() === "PUT") {
     assert.ok(signedIn, "anonymous form must never save additional information");
     const body = req.postDataJSON();
-    assert.deepEqual(body, {
-      contactName: "مسئول پنجره دوم",
-      contactRole: "مدیر فروش",
-      backupPhone: "09123456780",
-      websiteOrSocial: "instagram.com/hana-browser-ci",
-      businessEmail: "browser@example.com",
-      responseHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
-      revision: draft?.revision,
-    });
-    assert.equal(draft?.completedStep, 5);
+    const rework = draft?.status === "REWORK" &&
+      draft?.completedStep === 6;
+    assert.equal(body.contactName, "مسئول پنجره دوم");
+    assert.equal(body.contactRole, "مدیر فروش");
+    assert.equal(body.backupPhone, "09123456780");
+    assert.equal(body.websiteOrSocial, "instagram.com/hana-browser-ci");
+    assert.equal(body.businessEmail, "browser@example.com");
+    assert.equal(body.revision, draft?.revision);
+    assert.equal(body.responseHours, rework
+      ? "شنبه تا پنجشنبه، ۹ تا ۲۰"
+      : "شنبه تا پنجشنبه، ۸ تا ۲۲");
+    assert.ok(rework || draft?.completedStep === 5);
     draft = {
       ...draft,
       registrationContactName: body.contactName,
@@ -234,7 +240,7 @@ async function fakeApi(route) {
       revision: draft.revision + 1,
     };
     return route.fulfill(json({
-      status: "DRAFT",
+      status: rework ? "REWORK" : "DRAFT",
       revision: draft.revision,
       completedStep: 6,
       contactName: draft.registrationContactName,
@@ -244,6 +250,28 @@ async function fakeApi(route) {
       businessEmail: draft.businessEmail,
       responseHours: draft.responseHours,
       documentsRequired: false,
+    }));
+  }
+  if (path === "/api/seller/registration/reopen" &&
+    req.method() === "POST") {
+    assert.ok(signedIn);
+    const body = req.postDataJSON();
+    assert.equal(body.revision, draft?.revision);
+    if (draft?.status !== "SUBMITTED" ||
+      draft?.reviewStatus !== "NEEDS_INFORMATION")
+      return route.fulfill(json({ message: "not reopenable" }, 409));
+    draft = {
+      ...draft,
+      status: "REWORK",
+      revision: draft.revision + 1,
+    };
+    return route.fulfill(json({
+      status: "REWORK",
+      revision: draft.revision,
+      completedStep: 6,
+      trackingCode: draft.trackingCode,
+      reviewStatus: "NEEDS_INFORMATION",
+      reviewReason: draft.reviewReason,
     }));
   }
   if (path === "/api/seller/registration" && req.method() === "POST") {
@@ -259,7 +287,8 @@ async function fakeApi(route) {
       revision: draft.revision + 1,
       submittedAtUtc: "2026-09-25T12:30:00Z",
       accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
-      trackingCode: "HNA-A1B2C3D4E5F60718",
+      trackingCode: draft?.trackingCode ??
+        "HNA-A1B2C3D4E5F60718",
       reviewStatus: "UNDER_REVIEW",
       reviewReason: null,
       reviewedAtUtc: null,
@@ -278,6 +307,7 @@ async function fakeApi(route) {
     assert.equal(draft?.status, "SUBMITTED");
     return route.fulfill(json({
       trackingCode: draft.trackingCode,
+      revision: draft.revision,
       overallStatus: draft.reviewStatus ?? "UNDER_REVIEW",
       applicantType: draft.applicantType,
       identityStatus: draft.identityStatus,
@@ -668,10 +698,63 @@ async function main() {
     exact: true,
   }).waitFor();
 
+  draft = {
+    ...draft,
+    reviewStatus: "NEEDS_INFORMATION",
+    reviewReason: "ساعات پاسخگویی را دقیق‌تر ثبت کنید.",
+    reviewedAtUtc: "2026-09-25T13:00:00Z",
+    revision: draft.revision + 1,
+  };
+  await otherTab.reload();
+  await otherTab.getByRole("heading", {
+    name: "اطلاعات بیشتری برای بررسی لازم است",
+  }).waitFor();
+  await otherTab.getByText(
+    "ساعات پاسخگویی را دقیق‌تر ثبت کنید.",
+    { exact: true },
+  ).waitFor();
+
+  await otherTab.getByRole("button", { name: "تکمیل اطلاعات" }).click();
+  await otherTab.waitForURL("**/seller/register");
+  await otherTab.getByText("تکمیل اطلاعات درخواست‌شده", {
+    exact: true,
+  }).waitFor();
+  assert.equal(draft.status, "REWORK");
+  assert.equal(await otherTab.locator("#store-name").isDisabled(), true);
+  assert.equal(await otherTab.locator("#seller-response-hours").isDisabled(),
+    false);
+
+  await otherTab.locator("#seller-response-hours")
+    .fill("شنبه تا پنجشنبه، ۹ تا ۲۰");
+  await otherTab.getByRole("button", {
+    name: "ذخیره اصلاحات اطلاعات تکمیلی",
+  }).click();
+  await otherTab.getByText("اصلاحات اطلاعات تکمیلی ذخیره شد.", {
+    exact: true,
+  }).waitFor();
+  assert.equal(draft.status, "REWORK");
+  assert.equal(draft.completedStep, 6);
+  assert.equal(draft.responseHours, "شنبه تا پنجشنبه، ۹ تا ۲۰");
+
+  const resend = otherTab.getByRole("button", {
+    name: "ارسال مجدد برای بررسی",
+  });
+  assert.equal(await resend.isDisabled(), true);
+  await otherTab.getByLabel(
+    "صحت اصلاحات واردشده را تأیید می‌کنم.",
+  ).check();
+  assert.equal(await resend.isDisabled(), false);
+  await resend.click();
+  await otherTab.getByText("درخواست ثبت شد", { exact: true }).waitFor();
+  assert.equal(draft.status, "SUBMITTED");
+  assert.equal(draft.reviewStatus, "UNDER_REVIEW");
+  assert.equal(draft.reviewReason, null);
+  assert.equal(draft.trackingCode, "HNA-A1B2C3D4E5F60718");
+
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller registration → reviewed consent → submitted → tracking status OK");
+  console.log("Chromium CI frontend: seller registration → needs information → correction → resubmit OK");
 }
 
 try {
