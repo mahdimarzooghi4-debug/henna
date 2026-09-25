@@ -78,7 +78,17 @@ test("200 restores all fields and the EXACT persisted revision together", async 
   ]);
   const restored = await loadSellerDraft(fetchFn);
   assert.deepEqual(restored,
-    { status: "restored", revision: 17, fields });
+    {
+      status: "restored", revision: 17, fields,
+      applicantType: null,
+      identityStatus: null,
+      nationalCodeMasked: null,
+      legalNationalId: null,
+      legalName: null,
+      legalRepresentativeName: null,
+      legalRepresentativePhone: null,
+      completedStep: 1,
+    });
   assert.deepEqual(emptySellerFields, {
     storeName: "", ownerName: "", phone: "",
     city: "", address: "", postalCode: "",
@@ -129,7 +139,17 @@ test("in-flight hydration does not release a draft revision early", async () => 
     "a pending GET must not unlock an assumed revision zero");
   resolve(reply(200, { ...fields, status: "DRAFT", revision: 4 }));
   assert.deepEqual(await outcome,
-    { status: "restored", revision: 4, fields });
+    {
+      status: "restored", revision: 4, fields,
+      applicantType: null,
+      identityStatus: null,
+      nationalCodeMasked: null,
+      legalNationalId: null,
+      legalName: null,
+      legalRepresentativeName: null,
+      legalRepresentativePhone: null,
+      completedStep: 1,
+    });
   assert.equal(completed, true);
 });
 

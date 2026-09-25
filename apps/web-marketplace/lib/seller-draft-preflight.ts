@@ -27,6 +27,12 @@ export type SellerPreflight =
     revision: number;
     fields: SellerFields;
     applicantType: "NATURAL" | "LEGAL" | null;
+    identityStatus: "VERIFIED" | "RECORDED" | null;
+    nationalCodeMasked: string | null;
+    legalNationalId: string | null;
+    legalName: string | null;
+    legalRepresentativeName: string | null;
+    legalRepresentativePhone: string | null;
     completedStep: number;
   }
   | {
@@ -34,6 +40,12 @@ export type SellerPreflight =
     revision: number;
     fields: SellerFields;
     applicantType: "NATURAL" | "LEGAL";
+    identityStatus: "VERIFIED" | "RECORDED";
+    nationalCodeMasked: string | null;
+    legalNationalId: string | null;
+    legalName: string | null;
+    legalRepresentativeName: string | null;
+    legalRepresentativePhone: string | null;
     completedStep: 6;
     submittedAtUtc: string;
   };
@@ -81,6 +93,43 @@ export async function loadSellerDraft(
       return { status: "unavailable" };
 
 
+    const identityStatus = "identityStatus" in draft
+      ? draft.identityStatus : null;
+    const nationalCodeMasked = "nationalCodeMasked" in draft
+      ? draft.nationalCodeMasked : null;
+    const legalNationalId = "legalNationalId" in draft
+      ? draft.legalNationalId : null;
+    const legalName = "legalName" in draft ? draft.legalName : null;
+    const legalRepresentativeName = "legalRepresentativeName" in draft
+      ? draft.legalRepresentativeName : null;
+    const legalRepresentativePhone = "legalRepresentativePhone" in draft
+      ? draft.legalRepresentativePhone : null;
+
+    if (completedStep < 3) {
+      if (identityStatus !== null || nationalCodeMasked !== null ||
+        legalNationalId !== null || legalName !== null ||
+        legalRepresentativeName !== null || legalRepresentativePhone !== null)
+        return { status: "unavailable" };
+    } else if (applicantType === "NATURAL") {
+      if (identityStatus !== "VERIFIED" ||
+        typeof nationalCodeMasked !== "string" ||
+        !/^\*{6}\d{4}$/.test(nationalCodeMasked) ||
+        legalNationalId !== null || legalName !== null ||
+        legalRepresentativeName !== null || legalRepresentativePhone !== null)
+        return { status: "unavailable" };
+    } else {
+      if (identityStatus !== "RECORDED" ||
+        nationalCodeMasked !== null ||
+        typeof legalNationalId !== "string" ||
+        !/^\d{11}$/.test(legalNationalId) ||
+        typeof legalName !== "string" || !legalName ||
+        typeof legalRepresentativeName !== "string" ||
+        !legalRepresentativeName ||
+        typeof legalRepresentativePhone !== "string" ||
+        !/^09\d{9}$/.test(legalRepresentativePhone))
+        return { status: "unavailable" };
+    }
+
     if (draft.status === "SUBMITTED") {
       if (!("submittedAtUtc" in draft) ||
         typeof draft.submittedAtUtc !== "string" ||
@@ -91,6 +140,12 @@ export async function loadSellerDraft(
         revision: draft.revision,
         fields,
         applicantType: applicantType as "NATURAL" | "LEGAL",
+        identityStatus: identityStatus as "VERIFIED" | "RECORDED",
+        nationalCodeMasked: nationalCodeMasked as string | null,
+        legalNationalId: legalNationalId as string | null,
+        legalName: legalName as string | null,
+        legalRepresentativeName: legalRepresentativeName as string | null,
+        legalRepresentativePhone: legalRepresentativePhone as string | null,
         completedStep: 6,
         submittedAtUtc: draft.submittedAtUtc,
       };
@@ -100,6 +155,12 @@ export async function loadSellerDraft(
       revision: draft.revision,
       fields,
       applicantType: applicantType as "NATURAL" | "LEGAL" | null,
+      identityStatus: identityStatus as "VERIFIED" | "RECORDED" | null,
+      nationalCodeMasked: nationalCodeMasked as string | null,
+      legalNationalId: legalNationalId as string | null,
+      legalName: legalName as string | null,
+      legalRepresentativeName: legalRepresentativeName as string | null,
+      legalRepresentativePhone: legalRepresentativePhone as string | null,
       completedStep,
     };
   } catch {

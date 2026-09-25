@@ -151,6 +151,38 @@ async function main() {
             completedStep: 2,
           }));
         }
+      } else if (url === "/api/v1/seller/registration/identity/natural" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "POST") {
+        const data = JSON.parse(body);
+        assert.deepEqual(Object.keys(data).sort(),
+          ["nationalCode", "revision"].sort());
+        if (sellerDraft?.revision !== data.revision ||
+          sellerDraft?.applicantType !== "NATURAL" ||
+          sellerDraft?.completedStep !== 2) {
+          response.writeHead(409);
+          response.end(JSON.stringify({ message: "stale identity step" }));
+        } else if (data.nationalCode === "0499370899") {
+          response.writeHead(503);
+          response.end(JSON.stringify({ message: "provider unavailable" }));
+        } else {
+          assert.equal(data.nationalCode, "0084575948");
+          sellerDraft = {
+            ...sellerDraft,
+            identityStatus: "VERIFIED",
+            nationalCodeMasked: "******5948",
+            completedStep: 3,
+            revision: data.revision + 1,
+          };
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            status: "DRAFT",
+            revision: sellerDraft.revision,
+            identityStatus: "VERIFIED",
+            nationalCodeMasked: "******5948",
+            completedStep: 3,
+          }));
+        }
       } else if (url === "/api/v1/seller/registration/submit" &&
         request.headers.authorization === `Bearer ${token}` && !revoked &&
         request.method === "POST") {
@@ -315,7 +347,14 @@ async function main() {
   assert.equal(sellerRestored.status, 200);
   assert.deepEqual(await sellerRestored.json(), {
     ...draft, phone, postalCode: "1234567890", status: "DRAFT", revision: 1,
-    applicantType: null, completedStep: 1,
+    applicantType: null,
+    identityStatus: null,
+    nationalCodeMasked: null,
+    legalNationalId: null,
+    legalName: null,
+    legalRepresentativeName: null,
+    legalRepresentativePhone: null,
+    completedStep: 1,
   });
   const sellerStale = await fetch(sellerUrl, {
     method: "PUT",
@@ -380,6 +419,66 @@ async function main() {
     applicantType: "NATURAL", completedStep: 2,
   });
 
+  const identityCsrf = await fetch(
+    sellerUrl + "/identity/natural", {
+      method: "POST",
+      headers: {
+        Cookie: sessionCookie, Origin: "https://other.test",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ nationalCode: "0084575948", revision: 3 }),
+    });
+  assert.equal(identityCsrf.status, 403);
+
+  const identityUnknown = await fetch(
+    sellerUrl + "/identity/natural", {
+      method: "POST",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nationalCode: "0084575948", revision: 3, verified: true,
+      }),
+    });
+  assert.equal(identityUnknown.status, 400);
+
+  const identityUnavailable = await fetch(
+    sellerUrl + "/identity/natural", {
+      method: "POST",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ nationalCode: "0499370899", revision: 3 }),
+    });
+  assert.equal(identityUnavailable.status, 503);
+  assert.equal(sellerDraft.revision, 3);
+  assert.equal(sellerDraft.completedStep, 2);
+
+  const identityVerified = await fetch(
+    sellerUrl + "/identity/natural", {
+      method: "POST",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ nationalCode: "0084575948", revision: 3 }),
+    });
+  assert.equal(identityVerified.status, 200);
+  assert.deepEqual(await identityVerified.json(), {
+    status: "DRAFT",
+    revision: 4,
+    identityStatus: "VERIFIED",
+    nationalCodeMasked: "******5948",
+    completedStep: 3,
+  });
+
+  // Steps 4-6 are exercised by their own slices. This gateway test advances
+  // only its in-memory upstream fixture so Seller 005's submit BFF remains
+  // covered without inventing shipping endpoints.
+  sellerDraft = { ...sellerDraft, completedStep: 6 };
+
   const submissionKey = "0f3b8bc9-61bd-4ca4-8964-7fce65f4e91b";
   const submitCsrf = await fetch(sellerUrl, {
     method: "POST",
@@ -387,7 +486,7 @@ async function main() {
       Cookie: sessionCookie, Origin: "https://other.test",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 3, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 4, idempotencyKey: submissionKey }),
   });
   assert.equal(submitCsrf.status, 403);
   const submitUnknown = await fetch(sellerUrl, {
@@ -397,7 +496,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      revision: 3, idempotencyKey: submissionKey, status: "ACTIVE",
+      revision: 4, idempotencyKey: submissionKey, status: "ACTIVE",
     }),
   });
   assert.equal(submitUnknown.status, 400);
@@ -407,11 +506,11 @@ async function main() {
       Cookie: sessionCookie, Origin: base,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 3, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 4, idempotencyKey: submissionKey }),
   });
   assert.equal(submitted.status, 200);
   assert.deepEqual(await submitted.json(), {
-    status: "SUBMITTED", revision: 4,
+    status: "SUBMITTED", revision: 5,
     submittedAtUtc: "2026-09-25T12:30:00Z",
   });
   assert.equal(submitted.headers.get("cache-control"), "no-store");

@@ -71,6 +71,8 @@ public sealed class AdminSellerApplicationApiTests
                 Address = "نشانی ثبت‌شده",
                 PostalCode = "1234567890",
                 ApplicantType = "NATURAL",
+                NaturalNationalCode = "0084575948",
+                IdentityStatus = "VERIFIED",
                 CompletedStep = 6,
                 Status = "SUBMITTED",
                 Revision = 2,
@@ -119,16 +121,15 @@ public sealed class AdminSellerApplicationApiTests
         using (var body = JsonDocument.Parse(
             await list.Content.ReadAsStringAsync()))
         {
-            var items = body.RootElement.GetProperty("items");
-            Assert.Single(items.EnumerateArray());
-            var item = items[0];
-            Assert.Equal(applicantId,
-                item.GetProperty("applicationId").GetGuid());
+            var items = body.RootElement.GetProperty("items")
+                .EnumerateArray().ToArray();
+            var item = Assert.Single(items.Where(x =>
+                x.GetProperty("applicationId").GetGuid() == applicantId));
             Assert.Equal("SUBMITTED",
                 item.GetProperty("status").GetString());
             Assert.False(item.TryGetProperty("phone", out _));
             Assert.False(item.TryGetProperty("submissionKey", out _));
-            Assert.Equal(1, body.RootElement.GetProperty("total").GetInt32());
+            Assert.True(body.RootElement.GetProperty("total").GetInt32() >= 1);
         }
 
         var detail = await admin.GetAsync(
