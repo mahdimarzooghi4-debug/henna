@@ -294,6 +294,7 @@ public sealed class SellerRegistrationApiTests
         Assert.NotNull(submitted.AccuracyConfirmedAtUtc);
         Assert.Equal(submitted.SubmittedAtUtc,
             submitted.AccuracyConfirmedAtUtc);
+        Assert.Matches("^HNA-[0-9A-F]{16}$", submitted.TrackingCode);
 
         var submittedRead = await first.GetAsync(url);
         Assert.Equal(HttpStatusCode.OK, submittedRead.StatusCode);
@@ -306,7 +307,29 @@ public sealed class SellerRegistrationApiTests
             Assert.True(body.RootElement.TryGetProperty("submittedAtUtc", out _));
             Assert.True(body.RootElement.TryGetProperty(
                 "accuracyConfirmedAtUtc", out _));
+            Assert.Equal(submitted.TrackingCode,
+                body.RootElement.GetProperty("trackingCode").GetString());
             Assert.False(body.RootElement.TryGetProperty("submissionKey", out _));
+        }
+
+        var statusRead = await first.GetAsync(
+            "/api/v1/seller/registration/status");
+        Assert.Equal(HttpStatusCode.OK, statusRead.StatusCode);
+        using (var statusBody = JsonDocument.Parse(
+            await statusRead.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("UNDER_REVIEW",
+                statusBody.RootElement.GetProperty("overallStatus").GetString());
+            Assert.Equal(submitted.TrackingCode,
+                statusBody.RootElement.GetProperty("trackingCode").GetString());
+            Assert.False(statusBody.RootElement
+                .GetProperty("sellerPanelEnabled").GetBoolean());
+            var steps = statusBody.RootElement.GetProperty("steps");
+            Assert.Equal(5, steps.GetArrayLength());
+            Assert.Equal("UNDER_REVIEW",
+                steps[4].GetProperty("status").GetString());
+            Assert.False(statusBody.RootElement
+                .TryGetProperty("submissionKey", out _));
         }
 
         await identity.AuthSessions

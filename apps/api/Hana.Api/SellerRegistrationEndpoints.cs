@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Hana.Application.Time;
 using Hana.Domain.Seller;
 using Hana.Infrastructure.Geography;
@@ -101,7 +102,8 @@ internal static class SellerRegistrationEndpoints
                     draft.Status,
                     draft.Revision,
                     draft.SubmittedAtUtc,
-                    draft.AccuracyConfirmedAtUtc
+                    draft.AccuracyConfirmedAtUtc,
+                    draft.TrackingCode
                 });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -538,6 +540,7 @@ internal static class SellerRegistrationEndpoints
                 var db = services.GetRequiredService<HanaSellerDbContext>();
                 var now = services.GetRequiredService<IClock>().UtcNow
                     .ToUniversalTime();
+                var trackingCode = TrackingCode(submissionKey);
 
                 var updated = await db.Database.ExecuteSqlInterpolatedAsync($"""
                     UPDATE seller.registration_drafts SET
@@ -547,6 +550,7 @@ internal static class SellerRegistrationEndpoints
                       submission_expected_revision = {input.Revision},
                       submitted_at_utc = {now},
                       accuracy_confirmed_at_utc = {now},
+                      tracking_code = {trackingCode},
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
                       AND status = 'DRAFT'
@@ -560,7 +564,8 @@ internal static class SellerRegistrationEndpoints
                         status = "SUBMITTED",
                         revision = input.Revision + 1,
                         submittedAtUtc = now,
-                        accuracyConfirmedAtUtc = now
+                        accuracyConfirmedAtUtc = now,
+                        trackingCode
                     });
 
                 var current = await db.RegistrationDrafts.AsNoTracking()
@@ -577,7 +582,8 @@ internal static class SellerRegistrationEndpoints
                         status = "SUBMITTED",
                         revision = current.Revision,
                         submittedAtUtc = submittedAt,
-                        accuracyConfirmedAtUtc = confirmedAt
+                        accuracyConfirmedAtUtc = confirmedAt,
+                        trackingCode = current.TrackingCode
                     });
 
                 return Results.Conflict(new
@@ -599,6 +605,15 @@ internal static class SellerRegistrationEndpoints
         })
         .WithName("SubmitMySellerRegistration")
         .ProducesValidationProblem();
+    }
+
+    private static string TrackingCode(Guid submissionKey)
+    {
+        Span<byte> input = stackalloc byte[16];
+        submissionKey.TryWriteBytes(input);
+        Span<byte> hash = stackalloc byte[32];
+        SHA256.HashData(input, hash);
+        return "HNA-" + Convert.ToHexString(hash[..8]);
     }
 
     private static string? MaskNationalCode(string? value) =>

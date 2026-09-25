@@ -247,10 +247,14 @@ export async function GET(request: NextRequest) {
 
     const submittedAtUtc = "submittedAtUtc" in payload
       ? payload.submittedAtUtc : null;
+    const trackingCode = "trackingCode" in payload
+      ? payload.trackingCode : null;
     if (payload.status === "SUBMITTED" &&
       (completedStep !== 6 ||
         typeof submittedAtUtc !== "string" ||
-        Number.isNaN(Date.parse(submittedAtUtc))))
+        Number.isNaN(Date.parse(submittedAtUtc)) ||
+        typeof trackingCode !== "string" ||
+        !/^HNA-[0-9A-F]{16}$/.test(trackingCode)))
       return error(unavailable, 503);
     return NextResponse.json(
       payload.status === "SUBMITTED"
@@ -259,6 +263,7 @@ export async function GET(request: NextRequest) {
           status: "SUBMITTED",
           revision: payload.revision,
           submittedAtUtc,
+          trackingCode,
           applicantType,
           identityStatus,
           nationalCodeMasked,
@@ -452,7 +457,10 @@ export async function POST(request: NextRequest) {
       Number.isNaN(Date.parse(payload.submittedAtUtc)) ||
       !("accuracyConfirmedAtUtc" in payload) ||
       typeof payload.accuracyConfirmedAtUtc !== "string" ||
-      Number.isNaN(Date.parse(payload.accuracyConfirmedAtUtc)))
+      Number.isNaN(Date.parse(payload.accuracyConfirmedAtUtc)) ||
+      !("trackingCode" in payload) ||
+      typeof payload.trackingCode !== "string" ||
+      !/^HNA-[0-9A-F]{16}$/.test(payload.trackingCode))
       return error(unavailable, 503);
 
     return NextResponse.json({
@@ -460,6 +468,7 @@ export async function POST(request: NextRequest) {
       revision: payload.revision,
       submittedAtUtc: payload.submittedAtUtc,
       accuracyConfirmedAtUtc: payload.accuracyConfirmedAtUtc,
+      trackingCode: payload.trackingCode,
     }, { headers: noStore });
   } catch {
     return error(unavailable, 503);

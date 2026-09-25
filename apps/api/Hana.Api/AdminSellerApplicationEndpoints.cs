@@ -61,6 +61,7 @@ internal static class AdminSellerApplicationEndpoints
                         x.OfferingType,
                         x.Status,
                         x.Revision,
+                        x.TrackingCode,
                         x.SubmittedAtUtc
                     })
                     .ToListAsync(cancellationToken);
@@ -144,6 +145,7 @@ internal static class AdminSellerApplicationEndpoints
                     application.PostalCode,
                     application.Status,
                     application.Revision,
+                    application.TrackingCode,
                     application.SubmittedAtUtc
                 });
             }
