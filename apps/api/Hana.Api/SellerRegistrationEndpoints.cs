@@ -45,7 +45,8 @@ internal static class SellerRegistrationEndpoints
                     draft.Address,
                     draft.PostalCode,
                     draft.Status,
-                    draft.Revision
+                    draft.Revision,
+                    draft.SubmittedAtUtc
                 });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -151,6 +152,93 @@ internal static class SellerRegistrationEndpoints
         })
         .WithName("SaveMySellerRegistrationDraft")
         .ProducesValidationProblem();
+
+        routes.MapPost("/submit", async (SellerRegistrationSubmitInput input,
+            HttpContext context, IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            var token = BearerToken(context);
+            if (token is null) return Results.Unauthorized();
+            if (input.Revision < 1 || input.Revision == int.MaxValue)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["revision"] = ["نسخهٔ پیش‌نویس معتبر نیست؛ صفحه را بازخوانی کنید."]
+                });
+            if (!Guid.TryParse(context.Request.Headers["Idempotency-Key"],
+                    out var submissionKey) || submissionKey == Guid.Empty)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["idempotencyKey"] = ["کلید ثبت درخواست معتبر نیست."]
+                });
+            if (!hasDatabase)
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            try
+            {
+                var accountId = await services.GetRequiredService<AuthSessionService>()
+                    .ResolveAccountAsync(token, cancellationToken);
+                if (accountId is null) return Results.Unauthorized();
+
+                var db = services.GetRequiredService<HanaSellerDbContext>();
+                var now = services.GetRequiredService<IClock>().UtcNow
+                    .ToUniversalTime();
+
+                var updated = await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    UPDATE seller.registration_drafts SET
+                      status = 'SUBMITTED',
+                      revision = revision + 1,
+                      submission_key = {submissionKey},
+                      submission_expected_revision = {input.Revision},
+                      submitted_at_utc = {now},
+                      updated_at_utc = {now}
+                    WHERE account_id = {accountId.Value}
+                      AND status = 'DRAFT'
+                      AND revision = {input.Revision}
+                    """, cancellationToken);
+
+                if (updated == 1)
+                    return Results.Ok(new
+                    {
+                        status = "SUBMITTED",
+                        revision = input.Revision + 1,
+                        submittedAtUtc = now
+                    });
+
+                var current = await db.RegistrationDrafts.AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.AccountId == accountId,
+                        cancellationToken);
+                if (current is null) return Results.NotFound();
+                if (current.Status == "SUBMITTED" &&
+                    current.SubmissionKey == submissionKey &&
+                    current.SubmissionExpectedRevision == input.Revision &&
+                    current.SubmittedAtUtc is { } submittedAt)
+                    return Results.Ok(new
+                    {
+                        status = "SUBMITTED",
+                        revision = current.Revision,
+                        submittedAtUtc
+                    });
+
+                return Results.Conflict(new
+                {
+                    message = current.Status == "SUBMITTED"
+                        ? "این درخواست قبلاً برای بررسی ثبت شده است."
+                        : "پیش‌نویس تغییر کرده است؛ قبل از ثبت نهایی تازه‌ترین نسخه را دریافت کنید.",
+                    currentRevision = current.Revision,
+                    currentStatus = current.Status
+                });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("SubmitMySellerRegistration")
+        .ProducesValidationProblem();
     }
 
     private static string? BearerToken(HttpContext context)
@@ -167,3 +255,5 @@ internal sealed record SellerRegistrationInput(
     string? StoreName, string? OwnerName, string? Phone,
     string? City, string? Address, string? PostalCode,
     int? Revision);
+
+internal sealed record SellerRegistrationSubmitInput(int Revision);
