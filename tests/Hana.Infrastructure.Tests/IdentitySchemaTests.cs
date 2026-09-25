@@ -66,6 +66,6 @@ public sealed class IdentitySchemaTests
             ORDER BY table_name
             """).ToListAsync();
 
-        Assert.Equal(new[] { "accounts", "auth_sessions", "otp_challenges", "otp_ip_windows" }, identityTables);
+        Assert.Equal(new[] { "accounts", "auth_sessions", "otp_challenges", "otp_ip_windows", "role_assignments" }, identityTables);
     }
 }
