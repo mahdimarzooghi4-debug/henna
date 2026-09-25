@@ -20,7 +20,7 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
             entity.ToTable("registration_drafts", table =>
             {
                 table.HasCheckConstraint("ck_registration_drafts_status",
-                    "status = 'DRAFT'");
+                    "status IN ('DRAFT', 'SUBMITTED')");
                 table.HasCheckConstraint("ck_registration_drafts_revision",
                     "revision >= 1");
             });
@@ -43,6 +43,10 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasMaxLength(16).IsRequired();
             entity.Property(x => x.Revision).HasColumnName("revision")
                 .HasDefaultValue(1).IsRequired();
+            entity.Property(x => x.SubmissionKey).HasColumnName("submission_key");
+            entity.Property(x => x.SubmissionExpectedRevision)
+                .HasColumnName("submission_expected_revision");
+            entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
                 .IsRequired();
         });
