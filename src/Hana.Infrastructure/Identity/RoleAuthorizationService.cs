@@ -18,11 +18,16 @@ public sealed class RoleAuthorizationService(
         var accountId = await sessions.ResolveAccountAsync(
             bearerToken, cancellationToken);
         if (accountId is null) return null;
-
-        return await db.RoleAssignments.AsNoTracking().AnyAsync(
-            x => x.AccountId == accountId && x.Role == role,
-            cancellationToken)
+        return await HasRoleAsync(accountId.Value, role, cancellationToken)
             ? accountId
             : null;
     }
+
+    public Task<bool> HasRoleAsync(
+        Guid accountId,
+        string role,
+        CancellationToken cancellationToken = default) =>
+        db.RoleAssignments.AsNoTracking().AnyAsync(
+            x => x.AccountId == accountId && x.Role == role,
+            cancellationToken);
 }
