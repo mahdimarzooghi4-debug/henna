@@ -100,7 +100,8 @@ internal static class SellerRegistrationEndpoints
                     draft.CompletedStep,
                     draft.Status,
                     draft.Revision,
-                    draft.SubmittedAtUtc
+                    draft.SubmittedAtUtc,
+                    draft.AccuracyConfirmedAtUtc
                 });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -514,6 +515,11 @@ internal static class SellerRegistrationEndpoints
                 {
                     ["revision"] = ["نسخهٔ پیش‌نویس معتبر نیست؛ صفحه را بازخوانی کنید."]
                 });
+            if (!input.Confirmed)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["confirmed"] = ["برای ثبت نهایی باید صحت اطلاعات را تأیید کنید."]
+                });
             if (!Guid.TryParse(context.Request.Headers["Idempotency-Key"],
                     out var submissionKey) || submissionKey == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
@@ -540,6 +546,7 @@ internal static class SellerRegistrationEndpoints
                       submission_key = {submissionKey},
                       submission_expected_revision = {input.Revision},
                       submitted_at_utc = {now},
+                      accuracy_confirmed_at_utc = {now},
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
                       AND status = 'DRAFT'
@@ -552,7 +559,8 @@ internal static class SellerRegistrationEndpoints
                     {
                         status = "SUBMITTED",
                         revision = input.Revision + 1,
-                        submittedAtUtc = now
+                        submittedAtUtc = now,
+                        accuracyConfirmedAtUtc = now
                     });
 
                 var current = await db.RegistrationDrafts.AsNoTracking()
@@ -562,12 +570,14 @@ internal static class SellerRegistrationEndpoints
                 if (current.Status == "SUBMITTED" &&
                     current.SubmissionKey == submissionKey &&
                     current.SubmissionExpectedRevision == input.Revision &&
-                    current.SubmittedAtUtc is { } submittedAt)
+                    current.SubmittedAtUtc is { } submittedAt &&
+                    current.AccuracyConfirmedAtUtc is { } confirmedAt)
                     return Results.Ok(new
                     {
                         status = "SUBMITTED",
                         revision = current.Revision,
-                        submittedAtUtc = submittedAt
+                        submittedAtUtc = submittedAt,
+                        accuracyConfirmedAtUtc = confirmedAt
                     });
 
                 return Results.Conflict(new
@@ -626,4 +636,6 @@ internal sealed record SellerLegalIdentityInput(
     string? RepresentativePhone,
     int Revision);
 
-internal sealed record SellerRegistrationSubmitInput(int Revision);
+internal sealed record SellerRegistrationSubmitInput(
+    int Revision,
+    bool Confirmed);
