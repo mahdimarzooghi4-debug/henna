@@ -103,7 +103,10 @@ internal static class SellerRegistrationEndpoints
                     draft.Revision,
                     draft.SubmittedAtUtc,
                     draft.AccuracyConfirmedAtUtc,
-                    draft.TrackingCode
+                    draft.TrackingCode,
+                    draft.ReviewStatus,
+                    draft.ReviewReason,
+                    draft.ReviewedAtUtc
                 });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -502,6 +505,98 @@ internal static class SellerRegistrationEndpoints
         .WithName("SaveMyLegalSellerIdentity")
         .ProducesValidationProblem();
 
+        routes.MapPost("/reopen", async (SellerRegistrationReopenInput input,
+            HttpContext context, IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            var token = BearerToken(context);
+            if (token is null) return Results.Unauthorized();
+            if (input.Revision < 1 || input.Revision == int.MaxValue)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["revision"] = ["نسخه پرونده معتبر نیست."]
+                });
+            if (!hasDatabase)
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            try
+            {
+                var accountId = await services.GetRequiredService<AuthSessionService>()
+                    .ResolveAccountAsync(token, cancellationToken);
+                if (accountId is null) return Results.Unauthorized();
+
+                var db = services.GetRequiredService<HanaSellerDbContext>();
+                var now = services.GetRequiredService<IClock>().UtcNow
+                    .ToUniversalTime();
+
+                var updated = await db.RegistrationDrafts
+                    .Where(x => x.AccountId == accountId.Value &&
+                        x.Status == "SUBMITTED" &&
+                        x.ReviewStatus == "NEEDS_INFORMATION" &&
+                        x.CompletedStep == 6 &&
+                        x.Revision == input.Revision)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(x => x.Status, "REWORK")
+                        .SetProperty(x => x.Revision, input.Revision + 1)
+                        .SetProperty(x => x.UpdatedAtUtc, now),
+                        cancellationToken);
+
+                if (updated == 1)
+                {
+                    var current = await db.RegistrationDrafts.AsNoTracking()
+                        .SingleAsync(x => x.AccountId == accountId.Value,
+                            cancellationToken);
+                    return Results.Ok(new
+                    {
+                        status = "REWORK",
+                        revision = current.Revision,
+                        completedStep = current.CompletedStep,
+                        trackingCode = current.TrackingCode,
+                        reviewStatus = current.ReviewStatus,
+                        reviewReason = current.ReviewReason
+                    });
+                }
+
+                var existing = await db.RegistrationDrafts.AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.AccountId == accountId.Value,
+                        cancellationToken);
+                if (existing is null) return Results.NotFound();
+
+                // Lost-response retry: the exact transition already happened.
+                if (existing.Status == "REWORK" &&
+                    existing.ReviewStatus == "NEEDS_INFORMATION" &&
+                    existing.Revision == input.Revision + 1)
+                    return Results.Ok(new
+                    {
+                        status = "REWORK",
+                        revision = existing.Revision,
+                        completedStep = existing.CompletedStep,
+                        trackingCode = existing.TrackingCode,
+                        reviewStatus = existing.ReviewStatus,
+                        reviewReason = existing.ReviewReason
+                    });
+
+                return Results.Conflict(new
+                {
+                    message =
+                        "پرونده قابل بازگشایی نیست یا نسخه آن تغییر کرده است.",
+                    currentStatus = existing.Status,
+                    reviewStatus = existing.ReviewStatus,
+                    currentRevision = existing.Revision
+                });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("ReopenMySellerRegistrationForCorrection")
+        .ProducesValidationProblem();
+
         routes.MapPost("/submit", async (SellerRegistrationSubmitInput input,
             HttpContext context, IServiceProvider services,
             CancellationToken cancellationToken) =>
@@ -550,25 +645,37 @@ internal static class SellerRegistrationEndpoints
                       submission_expected_revision = {input.Revision},
                       submitted_at_utc = {now},
                       accuracy_confirmed_at_utc = {now},
-                      tracking_code = {trackingCode},
+                      tracking_code = CASE
+                        WHEN status = 'REWORK' THEN tracking_code
+                        ELSE {trackingCode}
+                      END,
                       review_status = 'UNDER_REVIEW',
+                      review_reason = NULL,
+                      reviewed_by_account_id = NULL,
+                      reviewed_at_utc = NULL,
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
-                      AND status = 'DRAFT'
+                      AND status IN ('DRAFT', 'REWORK')
                       AND completed_step = 6
                       AND revision = {input.Revision}
                     """, cancellationToken);
 
                 if (updated == 1)
+                {
+                    var submitted = await db.RegistrationDrafts.AsNoTracking()
+                        .SingleAsync(x => x.AccountId == accountId.Value,
+                            cancellationToken);
                     return Results.Ok(new
                     {
                         status = "SUBMITTED",
-                        revision = input.Revision + 1,
-                        submittedAtUtc = now,
-                        accuracyConfirmedAtUtc = now,
-                        trackingCode,
-                        reviewStatus = "UNDER_REVIEW"
+                        revision = submitted.Revision,
+                        submittedAtUtc = submitted.SubmittedAtUtc,
+                        accuracyConfirmedAtUtc =
+                            submitted.AccuracyConfirmedAtUtc,
+                        trackingCode = submitted.TrackingCode,
+                        reviewStatus = submitted.ReviewStatus
                     });
+                }
 
                 var current = await db.RegistrationDrafts.AsNoTracking()
                     .SingleOrDefaultAsync(x => x.AccountId == accountId,
@@ -653,6 +760,8 @@ internal sealed record SellerLegalIdentityInput(
     string? RepresentativeName,
     string? RepresentativePhone,
     int Revision);
+
+internal sealed record SellerRegistrationReopenInput(int Revision);
 
 internal sealed record SellerRegistrationSubmitInput(
     int Revision,

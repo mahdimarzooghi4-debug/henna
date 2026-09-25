@@ -40,6 +40,7 @@ internal static class SellerApplicationStatusEndpoints
                         x.IdentityStatus,
                         x.Status,
                         x.CompletedStep,
+                        x.Revision,
                         x.TrackingCode,
                         x.SubmittedAtUtc,
                         x.AccuracyConfirmedAtUtc,
@@ -68,6 +69,7 @@ internal static class SellerApplicationStatusEndpoints
                 return Results.Ok(new
                 {
                     trackingCode = draft.TrackingCode,
+                    revision = draft.Revision,
                     overallStatus = draft.ReviewStatus,
                     applicantType = draft.ApplicantType,
                     identityStatus = draft.IdentityStatus,

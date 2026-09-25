@@ -79,34 +79,45 @@ internal static partial class SellerAdditionalInformationEndpoints
                       website_or_social = {websiteOrSocial},
                       business_email = {businessEmail},
                       response_hours = {responseHours},
-                      completed_step = 6,
+                      completed_step = CASE
+                        WHEN status = 'DRAFT' THEN 6
+                        ELSE completed_step
+                      END,
                       revision = revision + 1,
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
-                      AND status = 'DRAFT'
-                      AND completed_step = 5
+                      AND (
+                        (status = 'DRAFT' AND completed_step = 5) OR
+                        (status = 'REWORK' AND completed_step = 6 AND
+                          review_status = 'NEEDS_INFORMATION')
+                      )
                       AND revision = {input.Revision}
                     """, cancellationToken);
 
-                return updated == 1
-                    ? Results.Ok(new
-                    {
-                        status = "DRAFT",
-                        revision = input.Revision + 1,
-                        completedStep = 6,
-                        contactName,
-                        contactRole,
-                        backupPhone,
-                        websiteOrSocial,
-                        businessEmail,
-                        responseHours,
-                        documentsRequired = false
-                    })
-                    : Results.Conflict(new
+                if (updated != 1)
+                    return Results.Conflict(new
                     {
                         message =
-                            "پیش‌نویس تغییر کرده یا مرحله اطلاعات تکمیلی دیگر قابل ویرایش نیست."
+                            "پرونده تغییر کرده یا اطلاعات تکمیلی در این وضعیت قابل ویرایش نیست."
                     });
+
+                var current = await db.RegistrationDrafts.AsNoTracking()
+                    .Where(x => x.AccountId == accountId.Value)
+                    .Select(x => new { x.Status, x.CompletedStep, x.Revision })
+                    .SingleAsync(cancellationToken);
+                return Results.Ok(new
+                {
+                    status = current.Status,
+                    revision = current.Revision,
+                    completedStep = current.CompletedStep,
+                    contactName,
+                    contactRole,
+                    backupPhone,
+                    websiteOrSocial,
+                    businessEmail,
+                    responseHours,
+                    documentsRequired = false
+                });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {

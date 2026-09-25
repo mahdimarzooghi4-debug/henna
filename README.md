@@ -70,6 +70,8 @@
 
 **[Frontend 022 — آزمون نصب‌شدهٔ لینک خریدار در شبیه‌ساز iOS](docs/implementation/HANA-FRONTEND-022.md).** CI مستقل macOS/Xcode از Expo پروژهٔ native می‌سازد، `.app` بدون امضای انتشار را روی iPhone Simulator نصب و `hana://` را با سیستم‌عامل باز می‌کند؛ Maestro با رابط دسترس‌پذیری، جزئیات/اختلال واقعیِ بدون API، برگشت به جست‌وجوی فارسی، لینک گرم/سرد و مسیر نامعتبر را بررسی می‌کند. پاپ‌آپ امنیتی اولین بازشدن scheme نیز به‌عنوان رفتار خود iOS آزمایش می‌شود. دستگاه فیزیکی، iOS App Store و لینک HTTPS تأییدشده هنوز خارج از شواهد هستند.
 
+**[Seller 014 — تکمیل اطلاعات و ارسال مجدد](docs/implementation/HANA-SELLER-014.md).** پرونده `NEEDS_INFORMATION` فقط توسط مالک به `REWORK` باز می‌شود؛ Identity قفل می‌ماند، بخش‌های غیرهویتی قابل اصلاح‌اند، tracking code حفظ می‌شود و resubmit پرونده را دوباره به `UNDER_REVIEW` می‌برد.
+
 **[Seller 013 — Admin Reviewer Workflow](docs/implementation/HANA-SELLER-013.md).** تصمیم reviewer به‌صورت state مستقل و audit event idempotent ثبت می‌شود: `NEEDS_INFORMATION / APPROVED / REJECTED`. Approval هنوز هیچ Seller activation، role grant یا panel access ایجاد نمی‌کند.
 
 **[Seller 012 — مرحله ۸ وضعیت درخواست](docs/implementation/HANA-SELLER-012.md).** بعد از submit، tracking code مستقل، صفحه «درخواست ثبت شد» و status page account-scoped با وضعیت واقعی `UNDER_REVIEW` ارائه می‌شود؛ پنل فروشنده تا activation واقعی غیرفعال می‌ماند. Scope انتشار این slice وب و Android است و iOS جزو QA نیست.

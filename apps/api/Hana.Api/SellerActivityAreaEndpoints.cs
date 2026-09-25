@@ -107,34 +107,45 @@ internal static class SellerActivityAreaEndpoints
                       seller_delivery = {input.SellerDelivery},
                       pickup = {input.Pickup},
                       service_area = {serviceArea},
-                      completed_step = 5,
+                      completed_step = CASE
+                        WHEN status = 'DRAFT' THEN 5
+                        ELSE completed_step
+                      END,
                       revision = revision + 1,
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
-                      AND status = 'DRAFT'
-                      AND completed_step = 4
+                      AND (
+                        (status = 'DRAFT' AND completed_step = 4) OR
+                        (status = 'REWORK' AND completed_step = 6 AND
+                          review_status = 'NEEDS_INFORMATION')
+                      )
                       AND revision = {input.Revision}
                     """, cancellationToken);
 
-                return updated == 1
-                    ? Results.Ok(new
-                    {
-                        status = "DRAFT",
-                        revision = input.Revision + 1,
-                        completedStep = 5,
-                        province = new { id = province.Id, name = province.Name },
-                        city = new { id = city.Id, name = city.Name },
-                        address,
-                        activityHours = hours,
-                        sellerDelivery = input.SellerDelivery,
-                        pickup = input.Pickup,
-                        serviceArea
-                    })
-                    : Results.Conflict(new
+                if (updated != 1)
+                    return Results.Conflict(new
                     {
                         message =
-                            "پیش‌نویس تغییر کرده یا مرحله محدوده فعالیت دیگر قابل ویرایش نیست."
+                            "پرونده تغییر کرده یا محدوده فعالیت در این وضعیت قابل ویرایش نیست."
                     });
+
+                var current = await seller.RegistrationDrafts.AsNoTracking()
+                    .Where(x => x.AccountId == accountId.Value)
+                    .Select(x => new { x.Status, x.CompletedStep, x.Revision })
+                    .SingleAsync(cancellationToken);
+                return Results.Ok(new
+                {
+                    status = current.Status,
+                    revision = current.Revision,
+                    completedStep = current.CompletedStep,
+                    province = new { id = province.Id, name = province.Name },
+                    city = new { id = city.Id, name = city.Name },
+                    address,
+                    activityHours = hours,
+                    sellerDelivery = input.SellerDelivery,
+                    pickup = input.Pickup,
+                    serviceArea
+                });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {

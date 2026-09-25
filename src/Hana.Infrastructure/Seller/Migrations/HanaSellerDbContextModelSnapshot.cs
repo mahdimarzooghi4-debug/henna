@@ -61,7 +61,7 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
             entity.ToTable("registration_drafts", "seller", table =>
             {
                 table.HasCheckConstraint("ck_registration_drafts_status",
-                    "status IN ('DRAFT', 'SUBMITTED')");
+                    "status IN ('DRAFT', 'SUBMITTED', 'REWORK')");
                 table.HasCheckConstraint("ck_registration_drafts_revision",
                     "revision >= 1");
                 table.HasCheckConstraint("ck_registration_drafts_completed_step",
@@ -88,16 +88,18 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
                     "(completed_step < 6 AND registration_contact_name IS NULL AND registration_contact_role IS NULL AND backup_phone IS NULL AND website_or_social IS NULL AND business_email IS NULL AND response_hours IS NULL) OR " +
                     "(completed_step >= 6 AND char_length(btrim(registration_contact_name)) BETWEEN 1 AND 120 AND (registration_contact_role IS NULL OR char_length(btrim(registration_contact_role)) BETWEEN 1 AND 120) AND (backup_phone IS NULL OR backup_phone ~ '^09[0-9]{9}$') AND (website_or_social IS NULL OR char_length(btrim(website_or_social)) BETWEEN 1 AND 300) AND (business_email IS NULL OR char_length(btrim(business_email)) BETWEEN 3 AND 254) AND char_length(btrim(response_hours)) BETWEEN 1 AND 180)");
                 table.HasCheckConstraint("ck_registration_submitted_completed",
-                    "status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)");
+                    "(status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)) AND " +
+                    "(status <> 'REWORK' OR completed_step = 6)");
                 table.HasCheckConstraint("ck_registration_submission_metadata",
                     "(status = 'DRAFT' AND submission_key IS NULL AND submission_expected_revision IS NULL AND submitted_at_utc IS NULL AND accuracy_confirmed_at_utc IS NULL AND tracking_code IS NULL) OR " +
-                    "(status = 'SUBMITTED' AND submission_key IS NOT NULL AND submission_expected_revision >= 1 AND submitted_at_utc IS NOT NULL AND accuracy_confirmed_at_utc IS NOT NULL AND tracking_code IS NOT NULL AND char_length(tracking_code) BETWEEN 8 AND 24)");
+                    "(status IN ('SUBMITTED','REWORK') AND submission_key IS NOT NULL AND submission_expected_revision >= 1 AND submitted_at_utc IS NOT NULL AND accuracy_confirmed_at_utc IS NOT NULL AND tracking_code IS NOT NULL AND char_length(tracking_code) BETWEEN 8 AND 24)");
                 table.HasCheckConstraint("ck_registration_review_status",
                     "(status = 'DRAFT' AND review_status IS NULL AND review_reason IS NULL AND reviewed_by_account_id IS NULL AND reviewed_at_utc IS NULL) OR " +
                     "(status = 'SUBMITTED' AND review_status IN ('UNDER_REVIEW','NEEDS_INFORMATION','APPROVED','REJECTED') AND " +
                     "((review_status = 'UNDER_REVIEW' AND review_reason IS NULL AND reviewed_by_account_id IS NULL AND reviewed_at_utc IS NULL) OR " +
                     "(review_status <> 'UNDER_REVIEW' AND reviewed_by_account_id IS NOT NULL AND reviewed_at_utc IS NOT NULL AND " +
-                    "(review_status = 'APPROVED' OR char_length(btrim(review_reason)) BETWEEN 1 AND 500))))");
+                    "(review_status = 'APPROVED' OR char_length(btrim(review_reason)) BETWEEN 1 AND 500)))) OR " +
+                    "(status = 'REWORK' AND review_status = 'NEEDS_INFORMATION' AND reviewed_by_account_id IS NOT NULL AND reviewed_at_utc IS NOT NULL AND char_length(btrim(review_reason)) BETWEEN 1 AND 500)");
             });
             entity.HasKey(x => x.AccountId);
             entity.Property(x => x.AccountId).HasColumnName("account_id")

@@ -129,9 +129,13 @@ export async function PUT(request: NextRequest) {
 
     const payload: unknown = await upstream.json();
     if (!payload || typeof payload !== "object" ||
-      !("status" in payload) || payload.status !== "DRAFT" ||
+      !("status" in payload) ||
+      (payload.status !== "DRAFT" && payload.status !== "REWORK") ||
       !("revision" in payload) || payload.revision !== revision + 1 ||
-      !("completedStep" in payload) || payload.completedStep !== 6 ||
+      !("completedStep" in payload) ||
+      (payload.status === "DRAFT"
+        ? payload.completedStep !== 6
+        : payload.completedStep !== 6) ||
       !("contactName" in payload) || payload.contactName !== contactName ||
       !("responseHours" in payload) ||
       payload.responseHours !== responseHours ||

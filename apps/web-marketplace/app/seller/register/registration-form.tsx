@@ -74,6 +74,7 @@ export function RegistrationForm() {
     useState<"GOOD" | "SERVICE" | "BOTH" | null>(null);
   const [businessFeedback, setBusinessFeedback] =
     useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [businessTouched, setBusinessTouched] = useState(false);
   const [activityProvinces, setActivityProvinces] =
     useState<ReferenceProvince[]>([]);
   const [activityCities, setActivityCities] =
@@ -93,6 +94,7 @@ export function RegistrationForm() {
   const [serviceArea, setServiceArea] = useState("");
   const [activityFeedback, setActivityFeedback] =
     useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [activityTouched, setActivityTouched] = useState(false);
   const [registrationContactName, setRegistrationContactName] = useState("");
   const [registrationContactRole, setRegistrationContactRole] = useState("");
   const [backupPhone, setBackupPhone] = useState("");
@@ -102,6 +104,8 @@ export function RegistrationForm() {
   const [additionalTouched, setAdditionalTouched] = useState(false);
   const [additionalFeedback, setAdditionalFeedback] =
     useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [reworkMode, setReworkMode] = useState(false);
+  const [reworkReason, setReworkReason] = useState("");
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [submitKey, setSubmitKey] = useState<string | null>(null);
@@ -156,6 +160,7 @@ export function RegistrationForm() {
       setBusinessPhone(result.businessPhone ?? "");
       setOfferingType(result.offeringType);
       setBusinessFeedback(null);
+      setBusinessTouched(false);
       setActivityProvinceId(result.activityProvinceId ?? "");
       setActivityProvinceName(result.activityProvinceName);
       setActivityCityId(result.activityCityId ?? "");
@@ -166,6 +171,7 @@ export function RegistrationForm() {
       setPickup(result.pickup ?? false);
       setServiceArea(result.serviceArea ?? "");
       setActivityFeedback(null);
+      setActivityTouched(false);
       const defaultContact = result.applicantType === "LEGAL"
         ? (result.legalRepresentativeName ?? result.fields.ownerName)
         : result.fields.ownerName;
@@ -182,8 +188,20 @@ export function RegistrationForm() {
       if (result.status === "submitted") {
         setSubmittedAtUtc(result.submittedAtUtc);
         setTrackingCode(result.trackingCode);
+        setReworkMode(false);
+        setReworkReason("");
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
+      } else if (result.status === "rework") {
+        setSubmittedAtUtc(null);
+        setTrackingCode(result.trackingCode);
+        setReworkMode(true);
+        setReworkReason(result.reviewReason);
+        setReviewConfirmed(false);
+        setMessage("پرونده برای تکمیل اطلاعات باز شده است. اطلاعات هویتی قفل است و فقط بخش‌های غیرهویتی قابل اصلاح‌اند.");
       } else {
+        setSubmittedAtUtc(null);
+        setReworkMode(false);
+        setReworkReason("");
         setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
       }
       setAccess("signedIn");
@@ -196,7 +214,8 @@ export function RegistrationForm() {
   }, []);
 
   useEffect(() => {
-    if (access !== "signedIn" || completedStep !== 3 || submittedAtUtc)
+    if (access !== "signedIn" ||
+      (!reworkMode && completedStep !== 3) || submittedAtUtc)
       return;
     const controller = new AbortController();
     setBusinessCategoriesState("loading");
@@ -239,10 +258,11 @@ export function RegistrationForm() {
         setBusinessCategoriesState("error");
     });
     return () => controller.abort();
-  }, [access, completedStep, submittedAtUtc]);
+  }, [access, completedStep, submittedAtUtc, reworkMode]);
 
   useEffect(() => {
-    if (access !== "signedIn" || completedStep !== 4 || submittedAtUtc)
+    if (access !== "signedIn" ||
+      (!reworkMode && completedStep !== 4) || submittedAtUtc)
       return;
     const controller = new AbortController();
     setActivityGeoState("loading");
@@ -258,10 +278,10 @@ export function RegistrationForm() {
         setActivityGeoState("ready");
       });
     return () => controller.abort();
-  }, [access, completedStep, submittedAtUtc]);
+  }, [access, completedStep, submittedAtUtc, reworkMode]);
 
   useEffect(() => {
-    if (completedStep !== 4 || !activityProvinceId) {
+    if ((!reworkMode && completedStep !== 4) || !activityProvinceId) {
       setActivityCities([]);
       return;
     }
@@ -278,7 +298,7 @@ export function RegistrationForm() {
       setActivityCities(result.items);
     });
     return () => controller.abort();
-  }, [completedStep, activityProvinceId]);
+  }, [completedStep, activityProvinceId, reworkMode]);
 
 
   useEffect(() => {
@@ -294,21 +314,25 @@ export function RegistrationForm() {
           legalName.trim().length > 0 ||
           legalRepresentativeName.trim() !== fields.ownerName ||
           normalizeDigits(legalRepresentativePhone.trim()) !== fields.phone));
-  const hasUnsavedBusinessChanges = completedStep === 3 &&
-    (businessCategoryId.length > 0 ||
-      businessName.trim().length > 0 ||
-      businessDescription.trim().length > 0 ||
-      businessPhone.trim().length > 0 ||
-      offeringType !== null);
-  const hasUnsavedActivityChanges = completedStep === 4 &&
-    (activityProvinceId.length > 0 ||
-      activityCityId.length > 0 ||
-      activityAddress.trim().length > 0 ||
-      activityHours.trim().length > 0 ||
-      sellerDelivery || pickup ||
-      serviceArea.trim().length > 0);
+  const hasUnsavedBusinessChanges = reworkMode
+    ? businessTouched
+    : completedStep === 3 &&
+      (businessCategoryId.length > 0 ||
+        businessName.trim().length > 0 ||
+        businessDescription.trim().length > 0 ||
+        businessPhone.trim().length > 0 ||
+        offeringType !== null);
+  const hasUnsavedActivityChanges = reworkMode
+    ? activityTouched
+    : completedStep === 4 &&
+      (activityProvinceId.length > 0 ||
+        activityCityId.length > 0 ||
+        activityAddress.trim().length > 0 ||
+        activityHours.trim().length > 0 ||
+        sellerDelivery || pickup ||
+        serviceArea.trim().length > 0);
   const hasUnsavedAdditionalChanges =
-    completedStep === 5 && additionalTouched;
+    (reworkMode || completedStep === 5) && additionalTouched;
   const hasAnyUnsavedChanges =
     hasUnsavedChanges ||
     hasUnsavedIdentityChanges ||
@@ -748,7 +772,8 @@ export function RegistrationForm() {
   }
 
   async function saveBusinessInformation() {
-    if (busy || access !== "signedIn" || completedStep !== 3 ||
+    if (busy || access !== "signedIn" ||
+      (!reworkMode && completedStep !== 3) ||
       revision < 1 || businessCategoriesState !== "ready") return;
 
     const normalizedPhone = normalizeDigits(businessPhone.trim());
@@ -798,9 +823,11 @@ export function RegistrationForm() {
       if (response.ok) {
         const result: unknown = await response.json();
         if (result && typeof result === "object" &&
-          "status" in result && result.status === "DRAFT" &&
+          "status" in result &&
+          result.status === (reworkMode ? "REWORK" : "DRAFT") &&
           "revision" in result && result.revision === revision + 1 &&
-          "completedStep" in result && result.completedStep === 4 &&
+          "completedStep" in result &&
+          result.completedStep === (reworkMode ? 6 : 4) &&
           "category" in result && result.category &&
           typeof result.category === "object" &&
           "id" in result.category &&
@@ -808,11 +835,14 @@ export function RegistrationForm() {
           "name" in result.category &&
           typeof result.category.name === "string") {
           setRevision(result.revision as number);
-          setCompletedStep(4);
+          if (!reworkMode) setCompletedStep(4);
           setBusinessCategoryName(result.category.name);
+          setBusinessTouched(false);
           setBusinessFeedback({
             kind: "info",
-            text: "اطلاعات کسب‌وکار ذخیره شد. مرحله بعد محدوده فعالیت است.",
+            text: reworkMode
+              ? "اصلاحات اطلاعات کسب‌وکار ذخیره شد."
+              : "اطلاعات کسب‌وکار ذخیره شد. مرحله بعد محدوده فعالیت است.",
           });
           return;
         }
@@ -838,7 +868,8 @@ export function RegistrationForm() {
   }
 
   async function saveActivityArea() {
-    if (busy || access !== "signedIn" || completedStep !== 4 ||
+    if (busy || access !== "signedIn" ||
+      (!reworkMode && completedStep !== 4) ||
       revision < 1 || activityGeoState !== "ready") return;
 
     const province = activityProvinces.find(
@@ -889,9 +920,11 @@ export function RegistrationForm() {
       if (response.ok) {
         const result: unknown = await response.json();
         if (result && typeof result === "object" &&
-          "status" in result && result.status === "DRAFT" &&
+          "status" in result &&
+          result.status === (reworkMode ? "REWORK" : "DRAFT") &&
           "revision" in result && result.revision === revision + 1 &&
-          "completedStep" in result && result.completedStep === 5 &&
+          "completedStep" in result &&
+          result.completedStep === (reworkMode ? 6 : 5) &&
           "province" in result && result.province &&
           typeof result.province === "object" &&
           "name" in result.province &&
@@ -901,7 +934,7 @@ export function RegistrationForm() {
           "name" in result.city &&
           typeof result.city.name === "string") {
           setRevision(result.revision as number);
-          setCompletedStep(5);
+          if (!reworkMode) setCompletedStep(5);
           setActivityProvinceName(result.province.name);
           setActivityCityName(result.city.name);
           setActivityAddress(nextAddress);
@@ -914,9 +947,12 @@ export function RegistrationForm() {
           );
           setResponseHours(nextHours);
           setAdditionalTouched(false);
+          setActivityTouched(false);
           setActivityFeedback({
             kind: "info",
-            text: "محدوده فعالیت ذخیره شد. مرحله بعد اطلاعات تکمیلی است.",
+            text: reworkMode
+              ? "اصلاحات محدوده فعالیت ذخیره شد."
+              : "محدوده فعالیت ذخیره شد. مرحله بعد اطلاعات تکمیلی است.",
           });
           return;
         }
@@ -942,7 +978,8 @@ export function RegistrationForm() {
   }
 
   async function saveAdditionalInformation() {
-    if (busy || access !== "signedIn" || completedStep !== 5 ||
+    if (busy || access !== "signedIn" ||
+      (!reworkMode && completedStep !== 5) ||
       revision < 1) return;
 
     const nextContactName = registrationContactName.trim();
@@ -999,7 +1036,8 @@ export function RegistrationForm() {
       if (response.ok) {
         const result: unknown = await response.json();
         if (result && typeof result === "object" &&
-          "status" in result && result.status === "DRAFT" &&
+          "status" in result &&
+          result.status === (reworkMode ? "REWORK" : "DRAFT") &&
           "revision" in result && result.revision === revision + 1 &&
           "completedStep" in result && result.completedStep === 6 &&
           "documentsRequired" in result &&
@@ -1035,7 +1073,9 @@ export function RegistrationForm() {
           setAdditionalTouched(false);
           setAdditionalFeedback({
             kind: "info",
-            text: "اطلاعات تکمیلی ذخیره شد. مرحله بعد بازبینی و ثبت است.",
+            text: reworkMode
+              ? "اصلاحات اطلاعات تکمیلی ذخیره شد."
+              : "اطلاعات تکمیلی ذخیره شد. مرحله بعد بازبینی و ثبت است.",
           });
           return;
         }
@@ -1062,7 +1102,7 @@ export function RegistrationForm() {
 
   async function submitForReview() {
     if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
-      completedStep !== 6 || revision < 1 || hasUnsavedChanges ||
+      completedStep !== 6 || revision < 1 || hasAnyUnsavedChanges ||
       !reviewConfirmed) return;
     const key = submitKey ?? crypto.randomUUID();
     setSubmitKey(key);
@@ -1093,6 +1133,11 @@ export function RegistrationForm() {
           setRevision(result.revision);
           setSubmittedAtUtc(result.submittedAtUtc);
           setTrackingCode(result.trackingCode);
+          setReworkMode(false);
+          setReworkReason("");
+          setBusinessTouched(false);
+          setActivityTouched(false);
+          setAdditionalTouched(false);
           setReviewConfirmed(true);
           setSaved(true);
           setMessage("درخواست فروشندگی برای بررسی ثبت شد. ثبت درخواست به معنی تأیید یا فعال‌شدن فروشگاه نیست.");
@@ -1145,6 +1190,18 @@ export function RegistrationForm() {
           وضعیت پیش‌نویس فعلاً قابل بررسی نیست. برای جلوگیری از بازنویسی نسخه موجود، فرم تا بررسی موفق غیرفعال است. <button type="button" className="auth-card__secondary"
             onClick={checkInitialDraft}>بررسی دوباره بدون ترک فرم</button>
         </p>
+      )}
+      {reworkMode && (
+        <section className="seller-rework" role="status">
+          <strong>تکمیل اطلاعات درخواست‌شده</strong>
+          <p>{reworkReason}</p>
+          <p>
+            نوع متقاضی و اطلاعات هویتی قابل تغییر نیستند. فقط اطلاعات
+            کسب‌وکار، محدوده فعالیت و اطلاعات تکمیلی را اصلاح کنید و
+            سپس درخواست را دوباره برای بررسی بفرستید.
+          </p>
+          {trackingCode && <span dir="ltr">کد پیگیری: {trackingCode}</span>}
+        </section>
       )}
       <form noValidate onSubmit={handleSubmit}>
         <div className="seller-fields">
@@ -1378,8 +1435,9 @@ export function RegistrationForm() {
               </p>
             </div>
 
-            {completedStep === 3 && (
-              <div className="seller-business__body">
+            {(completedStep === 3 || reworkMode) && (
+              <div className="seller-business__body"
+                onInput={() => reworkMode && setBusinessTouched(true)}>
                 <label className="field" htmlFor="seller-business-category">
                   <span className="field__label">دسته‌بندی کسب‌وکار</span>
                   <select id="seller-business-category"
@@ -1389,6 +1447,7 @@ export function RegistrationForm() {
                       businessCategoriesState !== "ready"}
                     onChange={(event) => {
                       setBusinessCategoryId(event.target.value);
+                      if (reworkMode) setBusinessTouched(true);
                       setBusinessFeedback(null);
                     }}>
                     <option value="">
@@ -1477,6 +1536,7 @@ export function RegistrationForm() {
                         disabled={busy || access !== "signedIn"}
                         onClick={() => {
                           setOfferingType(value);
+                          if (reworkMode) setBusinessTouched(true);
                           setBusinessFeedback(null);
                         }}>
                         {label}
@@ -1489,7 +1549,11 @@ export function RegistrationForm() {
                   disabled={busy || access !== "signedIn" ||
                     businessCategoriesState !== "ready"}
                   onClick={() => void saveBusinessInformation()}>
-                  {busy ? "در حال ذخیره…" : "ذخیره و ادامه"}
+                  {busy
+                    ? "در حال ذخیره…"
+                    : reworkMode
+                      ? "ذخیره اصلاحات کسب‌وکار"
+                      : "ذخیره و ادامه"}
                 </button>
 
                 {hasUnsavedBusinessChanges && (
@@ -1500,7 +1564,7 @@ export function RegistrationForm() {
               </div>
             )}
 
-            {completedStep >= 4 && (
+            {completedStep >= 4 && !reworkMode && (
               <div className="seller-business__completed" role="status">
                 <strong>اطلاعات کسب‌وکار ذخیره شد.</strong>
                 <dl>
@@ -1552,8 +1616,9 @@ export function RegistrationForm() {
               </p>
             </div>
 
-            {completedStep === 4 && (
-              <div className="seller-activity__body">
+            {(completedStep === 4 || reworkMode) && (
+              <div className="seller-activity__body"
+                onInput={() => reworkMode && setActivityTouched(true)}>
                 {activityGeoState === "error" && (
                   <p className="form-status form-status--error" role="alert">
                     فهرست جغرافیای قابل انتخاب در دسترس نیست؛
@@ -1683,7 +1748,11 @@ export function RegistrationForm() {
                   disabled={busy || access !== "signedIn" ||
                     activityGeoState !== "ready"}
                   onClick={() => void saveActivityArea()}>
-                  {busy ? "در حال ذخیره…" : "ذخیره و ادامه"}
+                  {busy
+                    ? "در حال ذخیره…"
+                    : reworkMode
+                      ? "ذخیره اصلاحات محدوده فعالیت"
+                      : "ذخیره و ادامه"}
                 </button>
 
                 {hasUnsavedActivityChanges && (
@@ -1694,7 +1763,7 @@ export function RegistrationForm() {
               </div>
             )}
 
-            {completedStep >= 5 && (
+            {completedStep >= 5 && !reworkMode && (
               <div className="seller-activity__completed" role="status">
                 <strong>محدوده فعالیت ذخیره شد.</strong>
                 <dl>
@@ -1747,7 +1816,7 @@ export function RegistrationForm() {
               </p>
             </div>
 
-            {completedStep === 5 && (
+            {(completedStep === 5 || reworkMode) && (
               <div className="seller-additional__body">
                 <div className="seller-additional__identity-summary">
                   <p>
@@ -1853,7 +1922,11 @@ export function RegistrationForm() {
                 <button type="button" className="primary-button"
                   disabled={busy || access !== "signedIn"}
                   onClick={() => void saveAdditionalInformation()}>
-                  {busy ? "در حال ذخیره…" : "ذخیره و ادامه"}
+                  {busy
+                    ? "در حال ذخیره…"
+                    : reworkMode
+                      ? "ذخیره اصلاحات اطلاعات تکمیلی"
+                      : "ذخیره و ادامه"}
                 </button>
 
                 {hasUnsavedAdditionalChanges && (
@@ -1864,7 +1937,7 @@ export function RegistrationForm() {
               </div>
             )}
 
-            {completedStep >= 6 && (
+            {completedStep >= 6 && !reworkMode && (
               <div className="seller-additional__completed" role="status">
                 <strong>اطلاعات تکمیلی ذخیره شد.</strong>
                 <dl>
@@ -1908,11 +1981,16 @@ export function RegistrationForm() {
             aria-labelledby="seller-review-heading">
             <div className="seller-review__intro">
               <p className="seller-applicant-type__step">مرحله ۷ از ۸</p>
-              <span className="seller-review__ready">آماده ثبت نهایی</span>
-              <h3 id="seller-review-heading">بازبینی اطلاعات وارد شده</h3>
+              <span className="seller-review__ready">
+                {reworkMode ? "آماده ارسال مجدد" : "آماده ثبت نهایی"}
+              </span>
+              <h3 id="seller-review-heading">
+                {reworkMode ? "بازبینی اصلاحات" : "بازبینی اطلاعات وارد شده"}
+              </h3>
               <p>
-                لطفاً صحت تمامی اطلاعات وارد شده را بررسی و پس از تأیید،
-                درخواست خود را ثبت کنید.
+                {reworkMode
+                  ? "اصلاحات ذخیره‌شده را بررسی و پس از تأیید، پرونده را دوباره برای بررسی ارسال کنید."
+                  : "لطفاً صحت تمامی اطلاعات وارد شده را بررسی و پس از تأیید، درخواست خود را ثبت کنید."}
               </p>
             </div>
 
@@ -1991,7 +2069,9 @@ export function RegistrationForm() {
                     {registrationContactName}
                   </dd></div>
                   <div><dt>ساعات پاسخگویی</dt><dd>{responseHours}</dd></div>
-                  <div><dt>وضعیت فروشندگی</dt><dd>آماده ثبت نهایی</dd></div>
+                  <div><dt>وضعیت فروشندگی</dt><dd>
+                    {reworkMode ? "آماده ارسال مجدد" : "آماده ثبت نهایی"}
+                  </dd></div>
                 </dl>
               </article>
             </div>
@@ -2004,7 +2084,11 @@ export function RegistrationForm() {
                   setReviewConfirmed(event.target.checked);
                   setMessage("");
                 }} />
-              <span>صحت اطلاعات واردشده را تأیید می‌کنم.</span>
+              <span>
+                {reworkMode
+                  ? "صحت اصلاحات واردشده را تأیید می‌کنم."
+                  : "صحت اطلاعات واردشده را تأیید می‌کنم."}
+              </span>
             </label>
 
             <div className="seller-review__actions">
@@ -2013,7 +2097,11 @@ export function RegistrationForm() {
                   conflict !== null || hasAnyUnsavedChanges ||
                   !reviewConfirmed}
                 onClick={() => void submitForReview()}>
-                {busy ? "در حال ثبت…" : "ثبت نهایی درخواست"}
+                {busy
+                  ? "در حال ثبت…"
+                  : reworkMode
+                    ? "ارسال مجدد برای بررسی"
+                    : "ثبت نهایی درخواست"}
               </button>
               <button type="button" className="auth-card__secondary"
                 disabled={busy}

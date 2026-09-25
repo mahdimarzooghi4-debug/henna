@@ -39,6 +39,10 @@ export async function GET(request: NextRequest) {
 
     const payload: unknown = await upstream.json();
     if (!payload || typeof payload !== "object" ||
+      !("revision" in payload) ||
+      typeof payload.revision !== "number" ||
+      !Number.isSafeInteger(payload.revision) ||
+      payload.revision < 1 || payload.revision >= 2147483647 ||
       !("trackingCode" in payload) ||
       typeof payload.trackingCode !== "string" ||
       !/^HNA-[0-9A-F]{16}$/.test(payload.trackingCode) ||

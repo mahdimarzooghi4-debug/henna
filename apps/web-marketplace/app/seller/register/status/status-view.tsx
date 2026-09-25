@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 type StatusPayload = {
   trackingCode: string;
+  revision: number;
   overallStatus: "UNDER_REVIEW" | "NEEDS_INFORMATION" | "APPROVED" | "REJECTED";
   applicantType: "NATURAL" | "LEGAL";
   identityStatus: "VERIFIED" | "RECORDED";
@@ -62,6 +63,8 @@ function statusLabel(status: StatusPayload["steps"][number]["status"]) {
 }
 
 export function SellerApplicationStatusView() {
+  const [reopening, setReopening] = useState(false);
+  const [reopenError, setReopenError] = useState("");
   const [state, setState] = useState<
     | { kind: "loading" }
     | { kind: "ready"; value: StatusPayload }
@@ -116,6 +119,34 @@ export function SellerApplicationStatusView() {
 
   const value = state.value;
   const copy = reviewCopy[value.overallStatus];
+
+  async function reopenForCorrection() {
+    if (reopening || value.overallStatus !== "NEEDS_INFORMATION") return;
+    setReopening(true);
+    setReopenError("");
+    try {
+      const response = await fetch("/api/seller/registration/reopen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ revision: value.revision }),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const body: unknown = await response.json().catch(() => null);
+        setReopenError(body && typeof body === "object" &&
+          "message" in body && typeof body.message === "string"
+          ? body.message
+          : "بازگشایی پرونده تأیید نشد.");
+        return;
+      }
+      window.location.assign("/seller/register");
+    } catch {
+      setReopenError("بازگشایی پرونده تأیید نشد.");
+    } finally {
+      setReopening(false);
+    }
+  }
+
   return (
     <section className="seller-status-card"
       aria-labelledby="seller-status-title">
@@ -180,6 +211,22 @@ export function SellerApplicationStatusView() {
               }).format(new Date(value.reviewedAtUtc))}
             </time>
           )}
+        </div>
+      )}
+
+      {value.overallStatus === "NEEDS_INFORMATION" && (
+        <div className="seller-status-card__correction">
+          <strong>تکمیل اطلاعات درخواست‌شده</strong>
+          <p>
+            نوع متقاضی و اطلاعات هویتی قفل می‌مانند. اطلاعات کسب‌وکار،
+            محدوده فعالیت و اطلاعات تکمیلی قابل اصلاح هستند.
+          </p>
+          <button type="button" className="primary-button"
+            disabled={reopening}
+            onClick={() => void reopenForCorrection()}>
+            {reopening ? "در حال بازگشایی…" : "تکمیل اطلاعات"}
+          </button>
+          {reopenError && <p role="alert">{reopenError}</p>}
         </div>
       )}
 
