@@ -70,6 +70,8 @@
 
 **[Frontend 022 — آزمون نصب‌شدهٔ لینک خریدار در شبیه‌ساز iOS](docs/implementation/HANA-FRONTEND-022.md).** CI مستقل macOS/Xcode از Expo پروژهٔ native می‌سازد، `.app` بدون امضای انتشار را روی iPhone Simulator نصب و `hana://` را با سیستم‌عامل باز می‌کند؛ Maestro با رابط دسترس‌پذیری، جزئیات/اختلال واقعیِ بدون API، برگشت به جست‌وجوی فارسی، لینک گرم/سرد و مسیر نامعتبر را بررسی می‌کند. پاپ‌آپ امنیتی اولین بازشدن scheme نیز به‌عنوان رفتار خود iOS آزمایش می‌شود. دستگاه فیزیکی، iOS App Store و لینک HTTPS تأییدشده هنوز خارج از شواهد هستند.
 
+**[Seller 007 — مرحله ۳ احراز هویت](docs/implementation/HANA-SELLER-007.md).** مسیر حقیقی فقط از verifier مجاز می‌تواند به `VERIFIED` برسد و shipping default fail-closed است؛ مسیر حقوقی اطلاعات ثبتی/نماینده را با وضعیت صریح `RECORDED` ذخیره می‌کند، بدون جعل احراز خارجی.
+
 **[Seller 006 — مرحله ۲ نوع متقاضی](docs/implementation/HANA-SELLER-006.md).** انتخاب واقعی شخص حقیقی/حقوقی با revision و PostgreSQL اضافه شد؛ progress ثبت‌نام server-side است و Submit از این مرحله فقط پس از تکمیل مرحله ۶ مجاز خواهد بود.
 
 **[Admin 001 — دسترسی امن مدیریت و مشاهده درخواست‌های فروشندگی](docs/implementation/HANA-ADMIN-001.md).** RoleAssignment واقعی `ADMIN` و API فقط‌خواندنی Figma Seller Applications/Detail اضافه شد؛ حساب عادی 403 می‌گیرد، فقط درخواست `SUBMITTED` دیده می‌شود و هنوز هیچ approve/reject یا Seller activation ساخته نشده است.
