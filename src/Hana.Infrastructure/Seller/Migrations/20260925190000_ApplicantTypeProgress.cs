@@ -42,10 +42,19 @@ public sealed class ApplicantTypeProgress : Migration
             schema: "seller",
             table: "registration_drafts",
             sql: "(completed_step < 2 AND applicant_type IS NULL) OR (completed_step >= 2 AND applicant_type IS NOT NULL)");
+        migrationBuilder.AddCheckConstraint(
+            name: "ck_registration_submitted_completed",
+            schema: "seller",
+            table: "registration_drafts",
+            sql: "status <> 'SUBMITTED' OR completed_step = 6");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
+        migrationBuilder.DropCheckConstraint(
+            name: "ck_registration_submitted_completed",
+            schema: "seller",
+            table: "registration_drafts");
         migrationBuilder.DropCheckConstraint(
             name: "ck_registration_applicant_type_step",
             schema: "seller",
