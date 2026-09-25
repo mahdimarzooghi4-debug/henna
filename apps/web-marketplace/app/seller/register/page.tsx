@@ -17,9 +17,10 @@ export default function SellerRegistrationPage() {
           <p>فروشگاه شما بعد از بررسی و تأیید می‌تواند در شبکه فروشندگان حنا فعال شود.</p>
         </div>
         <nav className="registration-steps" aria-label="مراحل ثبت‌نام فروشگاه">
-          <span className="registration-steps__active" aria-current="step">۱ اطلاعات اولیه</span>
-          <span>۲ اطلاعات کسب‌وکار　۳ محدوده فعالیت</span>
-          <span>۴ مدارک و احراز　۵ بررسی نهایی</span>
+          <span className="registration-steps__active" aria-current="step">۱ شروع ثبت‌نام</span>
+          <span>۲ نوع متقاضی　۳ احراز هویت　۴ اطلاعات کسب‌وکار</span>
+          <span>۵ محدوده فعالیت　۶ اطلاعات تکمیلی</span>
+          <span>۷ بازبینی و ثبت　۸ وضعیت درخواست</span>
         </nav>
         <RegistrationForm />
       </main>
