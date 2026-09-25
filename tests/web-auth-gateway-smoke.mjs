@@ -349,8 +349,9 @@ async function main() {
         request.headers.authorization === `Bearer ${token}` && !revoked &&
         request.method === "POST") {
         const data = JSON.parse(body);
-        assert.deepEqual(Object.keys(data), ["revision"]);
+        assert.deepEqual(Object.keys(data).sort(), ["confirmed", "revision"]);
         assert.equal(data.revision, sellerDraft?.revision);
+        assert.equal(data.confirmed, true);
         assert.match(request.headers["idempotency-key"] ?? "",
           /^[0-9a-f-]{36}$/i);
         sellerDraft = {
@@ -358,12 +359,14 @@ async function main() {
           status: "SUBMITTED",
           revision: sellerDraft.revision + 1,
           submittedAtUtc: "2026-09-25T12:30:00Z",
+          accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
         };
         response.writeHead(200);
         response.end(JSON.stringify({
           status: "SUBMITTED",
           revision: sellerDraft.revision,
           submittedAtUtc: sellerDraft.submittedAtUtc,
+          accuracyConfirmedAtUtc: sellerDraft.accuracyConfirmedAtUtc,
         }));
       } else if (url === "/api/v1/auth/session" &&
         request.headers.authorization === `Bearer ${token}` &&
@@ -872,7 +875,7 @@ async function main() {
       Cookie: sessionCookie, Origin: "https://other.test",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 7, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 7, idempotencyKey: submissionKey, confirmed: true }),
   });
   assert.equal(submitCsrf.status, 403);
   const submitUnknown = await fetch(sellerUrl, {
@@ -882,7 +885,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      revision: 7, idempotencyKey: submissionKey, status: "ACTIVE",
+      revision: 7, idempotencyKey: submissionKey, confirmed: true, status: "ACTIVE",
     }),
   });
   assert.equal(submitUnknown.status, 400);
@@ -892,12 +895,13 @@ async function main() {
       Cookie: sessionCookie, Origin: base,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 7, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 7, idempotencyKey: submissionKey, confirmed: true }),
   });
   assert.equal(submitted.status, 200);
   assert.deepEqual(await submitted.json(), {
     status: "SUBMITTED", revision: 8,
     submittedAtUtc: "2026-09-25T12:30:00Z",
+    accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
   });
   assert.equal(submitted.headers.get("cache-control"), "no-store");
 

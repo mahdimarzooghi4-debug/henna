@@ -250,6 +250,7 @@ async function fakeApi(route) {
     assert.ok(signedIn, "anonymous form must never submit seller registration");
     const body = req.postDataJSON();
     assert.equal(body.revision, draft?.revision);
+    assert.equal(body.confirmed, true);
     assert.match(body.idempotencyKey,
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     draft = {
@@ -257,11 +258,13 @@ async function fakeApi(route) {
       status: "SUBMITTED",
       revision: draft.revision + 1,
       submittedAtUtc: "2026-09-25T12:30:00Z",
+      accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
     };
     return route.fulfill(json({
       status: "SUBMITTED",
       revision: draft.revision,
       submittedAtUtc: draft.submittedAtUtc,
+      accuracyConfirmedAtUtc: draft.accuracyConfirmedAtUtc,
     }));
   }
   if (path === "/api/geography/provinces" && req.method() === "GET") {
@@ -596,25 +599,31 @@ async function main() {
   assert.equal(draft.backupPhone, "09123456780");
   assert.equal(draft.documentsRequired, false);
   await otherTab.getByText("مرحله بعد «بازبینی و ثبت» است.").waitFor();
-  const step7 = otherTab.getByRole("button", {
-    name: "ادامه در مرحله ۷",
+  await otherTab.getByRole("heading", {
+    name: "بازبینی اطلاعات وارد شده",
+  }).waitFor();
+  const finalSubmit = otherTab.getByRole("button", {
+    name: "ثبت نهایی درخواست",
   });
-  assert.equal(await step7.count(), 1);
-  assert.equal(await step7.isDisabled(), true);
-  assert.equal(await otherTab.getByRole("button", {
-    name: "ثبت درخواست برای بررسی",
-  }).count(), 0);
+  assert.equal(await finalSubmit.isDisabled(), true,
+    "final submit must require explicit confirmation");
+  await otherTab.getByLabel("صحت اطلاعات واردشده را تأیید می‌کنم.").check();
+  assert.equal(await finalSubmit.isDisabled(), false);
+  await finalSubmit.click();
+  await otherTab.getByText("درخواست شما ثبت شده و در انتظار بررسی است.")
+    .waitFor();
+  assert.equal(draft.status, "SUBMITTED");
+  assert.equal(draft.revision, 9);
+  assert.equal(draft.accuracyConfirmedAtUtc, "2026-09-25T12:30:00Z");
 
   await otherTab.reload();
-  await otherTab.locator(".seller-additional__completed")
-    .getByText("مسئول پنجره دوم", { exact: true }).waitFor();
-  await otherTab.locator(".seller-additional__completed")
-    .getByText("شنبه تا پنجشنبه، ۸ تا ۲۲", { exact: true }).waitFor();
+  await otherTab.getByText("درخواست شما ثبت شده و در انتظار بررسی است.")
+    .waitFor();
 
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller draft → identity → business information → activity area → additional information → Step 7 gated OK");
+  console.log("Chromium CI frontend: OTP → seller draft → identity → business information → activity area → additional information → reviewed consent → submitted OK");
 }
 
 try {

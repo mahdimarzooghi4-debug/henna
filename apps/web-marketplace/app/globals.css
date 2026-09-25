@@ -980,3 +980,73 @@ a { color: inherit; }
     gap: 6px;
   }
 }
+
+/* Seller registration step 7 — Figma Review. */
+.seller-review--final {
+  margin-top: 24px;
+  padding: 28px;
+  border: 1px solid #eae6e1;
+  border-radius: 18px;
+  background: var(--hana-surface);
+}
+.seller-review__intro h3 { margin: 6px 0; color: #1c3f3a; font-size: 22px; }
+.seller-review__intro > p:last-child { margin: 0; color: var(--hana-muted); }
+.seller-review__ready {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f1f6f3;
+  color: #1c5a4d;
+  font-size: 12px;
+  font-weight: 700;
+}
+.seller-review__sections {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+.seller-review__card {
+  padding: 18px;
+  border: 1px solid #eae6e1;
+  border-radius: 14px;
+  background: #faf8f5;
+}
+.seller-review__card h4 { margin: 0 0 12px; color: #1c3f3a; }
+.seller-review__card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin: 0;
+}
+.seller-review__card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #ece8e3;
+}
+.seller-review__card dt { color: var(--hana-muted); }
+.seller-review__card dd { margin: 0; color: #1c3f3a; font-weight: 700; }
+.seller-review__confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #ded8d1;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+.seller-review__confirmation input { margin-top: 3px; }
+.seller-review__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+@media (max-width: 720px) {
+  .seller-review--final { padding: 18px; }
+  .seller-review__card dl { grid-template-columns: 1fr; }
+  .seller-review__actions { flex-direction: column; }
+}
