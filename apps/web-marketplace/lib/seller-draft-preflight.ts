@@ -48,6 +48,13 @@ export type SellerPreflight =
     sellerDelivery: boolean | null;
     pickup: boolean | null;
     serviceArea: string | null;
+    registrationContactName: string | null;
+    registrationContactRole: string | null;
+    backupPhone: string | null;
+    websiteOrSocial: string | null;
+    businessEmail: string | null;
+    responseHours: string | null;
+    documentsRequired: false;
     completedStep: number;
   }
   | {
@@ -76,6 +83,13 @@ export type SellerPreflight =
     sellerDelivery: boolean | null;
     pickup: boolean | null;
     serviceArea: string | null;
+    registrationContactName: string | null;
+    registrationContactRole: string | null;
+    backupPhone: string | null;
+    websiteOrSocial: string | null;
+    businessEmail: string | null;
+    responseHours: string | null;
+    documentsRequired: false;
     completedStep: 6;
     submittedAtUtc: string;
   };
@@ -244,6 +258,52 @@ export async function loadSellerDraft(
       return { status: "unavailable" };
     }
 
+    const registrationContactName =
+      "registrationContactName" in draft
+        ? draft.registrationContactName : null;
+    const registrationContactRole =
+      "registrationContactRole" in draft
+        ? draft.registrationContactRole : null;
+    const backupPhone = "backupPhone" in draft
+      ? draft.backupPhone : null;
+    const websiteOrSocial = "websiteOrSocial" in draft
+      ? draft.websiteOrSocial : null;
+    const businessEmail = "businessEmail" in draft
+      ? draft.businessEmail : null;
+    const responseHours = "responseHours" in draft
+      ? draft.responseHours : null;
+    const documentsRequired = "documentsRequired" in draft
+      ? draft.documentsRequired : false;
+    const validOptionalText = (
+      value: unknown, max: number,
+    ) => value === null ||
+      (typeof value === "string" &&
+        value.trim().length > 0 && value.length <= max &&
+        !/[\u0000-\u001f\u007f]/.test(value));
+
+    if (completedStep < 6) {
+      if (registrationContactName !== null ||
+        registrationContactRole !== null ||
+        backupPhone !== null || websiteOrSocial !== null ||
+        businessEmail !== null || responseHours !== null)
+        return { status: "unavailable" };
+    } else if (
+      typeof registrationContactName !== "string" ||
+      !registrationContactName.trim() ||
+      registrationContactName.length > 120 ||
+      !validOptionalText(registrationContactRole, 120) ||
+      !validOptionalText(websiteOrSocial, 300) ||
+      !validOptionalText(businessEmail, 254) ||
+      (backupPhone !== null &&
+        (typeof backupPhone !== "string" ||
+          !/^09\d{9}$/.test(backupPhone))) ||
+      typeof responseHours !== "string" ||
+      !responseHours.trim() || responseHours.length > 180 ||
+      documentsRequired !== false
+    ) {
+      return { status: "unavailable" };
+    }
+
     if (draft.status === "SUBMITTED") {
       if (!("submittedAtUtc" in draft) ||
         typeof draft.submittedAtUtc !== "string" ||
@@ -275,6 +335,13 @@ export async function loadSellerDraft(
         sellerDelivery: sellerDelivery as boolean | null,
         pickup: pickup as boolean | null,
         serviceArea: serviceArea as string | null,
+        registrationContactName: registrationContactName as string | null,
+        registrationContactRole: registrationContactRole as string | null,
+        backupPhone: backupPhone as string | null,
+        websiteOrSocial: websiteOrSocial as string | null,
+        businessEmail: businessEmail as string | null,
+        responseHours: responseHours as string | null,
+        documentsRequired: false,
         completedStep: 6,
         submittedAtUtc: draft.submittedAtUtc,
       };
@@ -305,6 +372,13 @@ export async function loadSellerDraft(
       sellerDelivery: sellerDelivery as boolean | null,
       pickup: pickup as boolean | null,
       serviceArea: serviceArea as string | null,
+      registrationContactName: registrationContactName as string | null,
+      registrationContactRole: registrationContactRole as string | null,
+      backupPhone: backupPhone as string | null,
+      websiteOrSocial: websiteOrSocial as string | null,
+      businessEmail: businessEmail as string | null,
+      responseHours: responseHours as string | null,
+      documentsRequired: false,
       completedStep,
     };
   } catch {

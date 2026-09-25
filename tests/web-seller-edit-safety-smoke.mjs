@@ -144,6 +144,13 @@ test("retrying an unavailable preflight only unlocks after authenticated draft o
     sellerDelivery: null,
     pickup: null,
     serviceArea: null,
+    registrationContactName: null,
+    registrationContactRole: null,
+    backupPhone: null,
+    websiteOrSocial: null,
+    businessEmail: null,
+    responseHours: null,
+    documentsRequired: false,
     completedStep: 1,
   });
   assert.equal(calls.length, 2);

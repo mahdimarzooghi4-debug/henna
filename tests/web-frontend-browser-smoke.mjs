@@ -207,6 +207,45 @@ async function fakeApi(route) {
       serviceArea: draft.serviceArea,
     }));
   }
+  if (path === "/api/seller/registration/additional-information" &&
+    req.method() === "PUT") {
+    assert.ok(signedIn, "anonymous form must never save additional information");
+    const body = req.postDataJSON();
+    assert.deepEqual(body, {
+      contactName: "مسئول پنجره دوم",
+      contactRole: "مدیر فروش",
+      backupPhone: "09123456780",
+      websiteOrSocial: "instagram.com/hana-browser-ci",
+      businessEmail: "browser@example.com",
+      responseHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
+      revision: draft?.revision,
+    });
+    assert.equal(draft?.completedStep, 5);
+    draft = {
+      ...draft,
+      registrationContactName: body.contactName,
+      registrationContactRole: body.contactRole,
+      backupPhone: body.backupPhone,
+      websiteOrSocial: body.websiteOrSocial,
+      businessEmail: body.businessEmail,
+      responseHours: body.responseHours,
+      documentsRequired: false,
+      completedStep: 6,
+      revision: draft.revision + 1,
+    };
+    return route.fulfill(json({
+      status: "DRAFT",
+      revision: draft.revision,
+      completedStep: 6,
+      contactName: draft.registrationContactName,
+      contactRole: draft.registrationContactRole,
+      backupPhone: draft.backupPhone,
+      websiteOrSocial: draft.websiteOrSocial,
+      businessEmail: draft.businessEmail,
+      responseHours: draft.responseHours,
+      documentsRequired: false,
+    }));
+  }
   if (path === "/api/seller/registration" && req.method() === "POST") {
     assert.ok(signedIn, "anonymous form must never submit seller registration");
     const body = req.postDataJSON();
@@ -528,10 +567,54 @@ async function main() {
   await otherTab.locator(".seller-activity__completed")
     .getByText("شهر مرورگر CI", { exact: false }).waitFor();
 
+  await otherTab.getByRole("heading", {
+    name: "اطلاعات تکمیلی",
+  }).last().waitFor();
+  assert.equal(await otherTab.locator("#seller-registration-contact").inputValue(),
+    "مسئول پنجره دوم");
+  assert.equal(await otherTab.locator("#seller-response-hours").inputValue(),
+    "شنبه تا پنجشنبه، ۸ تا ۲۲");
+  await otherTab.locator("#seller-registration-role").fill("مدیر فروش");
+  await otherTab.locator("#seller-backup-phone").fill("۰۹۱۲۳۴۵۶۷۸۰");
+  await otherTab.locator("#seller-website-social")
+    .fill("instagram.com/hana-browser-ci");
+  await otherTab.locator("#seller-business-email")
+    .fill("browser@example.com");
+  await otherTab.getByText(
+    "در این مرحله نیازی به بارگذاری مدرک خاصی نیست.",
+  ).waitFor();
+
+  await otherTab.getByRole("button", {
+    name: "ذخیره و ادامه", exact: true,
+  }).last().click();
+  await otherTab.getByText("اطلاعات تکمیلی ذخیره شد.", {
+    exact: true,
+  }).waitFor();
+  assert.equal(draft.completedStep, 6);
+  assert.equal(draft.revision, 8);
+  assert.equal(draft.registrationContactName, "مسئول پنجره دوم");
+  assert.equal(draft.backupPhone, "09123456780");
+  assert.equal(draft.documentsRequired, false);
+  await otherTab.getByText("مرحله بعد «بازبینی و ثبت» است.").waitFor();
+  const step7 = otherTab.getByRole("button", {
+    name: "ادامه در مرحله ۷",
+  });
+  assert.equal(await step7.count(), 1);
+  assert.equal(await step7.isDisabled(), true);
+  assert.equal(await otherTab.getByRole("button", {
+    name: "ثبت درخواست برای بررسی",
+  }).count(), 0);
+
+  await otherTab.reload();
+  await otherTab.locator(".seller-additional__completed")
+    .getByText("مسئول پنجره دوم", { exact: true }).waitFor();
+  await otherTab.locator(".seller-additional__completed")
+    .getByText("شنبه تا پنجشنبه، ۸ تا ۲۲", { exact: true }).waitFor();
+
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller draft → identity → business information → activity area → submit gated OK");
+  console.log("Chromium CI frontend: OTP → seller draft → identity → business information → activity area → additional information → Step 7 gated OK");
 }
 
 try {

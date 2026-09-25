@@ -91,6 +91,9 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 table.HasCheckConstraint("ck_registration_activity_shape",
                     "(completed_step < 5 AND activity_province_id IS NULL AND activity_city_id IS NULL AND activity_address IS NULL AND activity_hours IS NULL AND seller_delivery IS NULL AND pickup IS NULL AND service_area IS NULL) OR " +
                     "(completed_step >= 5 AND activity_province_id IS NOT NULL AND activity_city_id IS NOT NULL AND char_length(btrim(activity_address)) BETWEEN 1 AND 500 AND char_length(btrim(activity_hours)) BETWEEN 1 AND 180 AND seller_delivery IS NOT NULL AND pickup IS NOT NULL AND (seller_delivery OR pickup) AND char_length(btrim(service_area)) BETWEEN 1 AND 240)");
+                table.HasCheckConstraint("ck_registration_additional_shape",
+                    "(completed_step < 6 AND registration_contact_name IS NULL AND registration_contact_role IS NULL AND backup_phone IS NULL AND website_or_social IS NULL AND business_email IS NULL AND response_hours IS NULL) OR " +
+                    "(completed_step >= 6 AND char_length(btrim(registration_contact_name)) BETWEEN 1 AND 120 AND (registration_contact_role IS NULL OR char_length(btrim(registration_contact_role)) BETWEEN 1 AND 120) AND (backup_phone IS NULL OR backup_phone ~ '^09[0-9]{9}$') AND (website_or_social IS NULL OR char_length(btrim(website_or_social)) BETWEEN 1 AND 300) AND (business_email IS NULL OR char_length(btrim(business_email)) BETWEEN 3 AND 254) AND char_length(btrim(response_hours)) BETWEEN 1 AND 180)");
                 table.HasCheckConstraint("ck_registration_submitted_completed",
                     "status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)");
                 table.HasCheckConstraint("ck_registration_submission_metadata",
@@ -144,6 +147,18 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
             entity.Property(x => x.Pickup).HasColumnName("pickup");
             entity.Property(x => x.ServiceArea).HasColumnName("service_area")
                 .HasMaxLength(240);
+            entity.Property(x => x.RegistrationContactName).HasColumnName("registration_contact_name")
+                .HasMaxLength(120);
+            entity.Property(x => x.RegistrationContactRole).HasColumnName("registration_contact_role")
+                .HasMaxLength(120);
+            entity.Property(x => x.BackupPhone).HasColumnName("backup_phone")
+                .HasMaxLength(11);
+            entity.Property(x => x.WebsiteOrSocial).HasColumnName("website_or_social")
+                .HasMaxLength(300);
+            entity.Property(x => x.BusinessEmail).HasColumnName("business_email")
+                .HasMaxLength(254);
+            entity.Property(x => x.ResponseHours).HasColumnName("response_hours")
+                .HasMaxLength(180);
             entity.Property(x => x.CompletedStep).HasColumnName("completed_step")
                 .HasDefaultValue(1).IsRequired();
             entity.Property(x => x.Status).HasColumnName("status")

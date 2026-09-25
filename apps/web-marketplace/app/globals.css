@@ -878,3 +878,105 @@ a { color: inherit; }
   .buyer-detail-category, .buyer-detail-description { font-size: 14px; }
   .buyer-detail-button { width: 100%; min-height: 54px; font-size: 14px; }
 }
+
+/* Seller registration step 6 — Figma Additional Information. */
+.seller-additional {
+  margin-top: 24px;
+  padding: 28px;
+  border: 1px solid #eae6e1;
+  border-radius: 18px;
+  background: var(--hana-surface);
+}
+.seller-additional__intro h3 {
+  margin: 2px 0 4px;
+  color: #1c3f3a;
+  font-size: 22px;
+}
+.seller-additional__intro > p:last-child {
+  margin: 0;
+  color: var(--hana-muted);
+}
+.seller-additional__body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+  margin-top: 22px;
+}
+.seller-additional__identity-summary,
+.seller-additional__documents,
+.seller-additional__body > .primary-button,
+.seller-additional__body > .seller-unsaved-note {
+  grid-column: 1 / -1;
+}
+.seller-additional__identity-summary,
+.seller-additional__documents,
+.seller-additional__completed {
+  padding: 18px;
+  border: 1px solid #eae6e1;
+  border-radius: 14px;
+  background: #faf8f5;
+}
+.seller-additional__identity-summary p {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+}
+.seller-additional__documents > strong,
+.seller-additional__completed > strong {
+  color: #1c3f3a;
+  font-size: 17px;
+}
+.seller-additional__documents p {
+  margin: 8px 0;
+  color: var(--hana-muted);
+}
+.seller-additional__documents-empty {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px dashed #d7d0c9;
+  border-radius: 10px;
+  background: white;
+  color: var(--hana-muted);
+}
+.seller-additional__completed {
+  margin-top: 22px;
+}
+.seller-additional__completed dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.seller-additional__completed dl > div {
+  padding: 12px 14px;
+  border: 1px solid #eae6e1;
+  border-radius: 10px;
+  background: white;
+}
+.seller-additional__completed dt {
+  color: var(--hana-muted);
+  font-size: 12px;
+}
+.seller-additional__completed dd {
+  margin: 4px 0 0;
+  color: #1c3f3a;
+  font-weight: 700;
+}
+.seller-additional__completed p {
+  margin: 8px 0 0;
+  color: var(--hana-muted);
+}
+@media (max-width: 720px) {
+  .seller-additional { padding: 18px; }
+  .seller-additional__body,
+  .seller-additional__completed dl { grid-template-columns: 1fr; }
+  .seller-additional__identity-summary,
+  .seller-additional__documents,
+  .seller-additional__body > .primary-button,
+  .seller-additional__body > .seller-unsaved-note { grid-column: auto; }
+  .seller-additional__identity-summary p {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
