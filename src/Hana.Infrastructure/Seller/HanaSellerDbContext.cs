@@ -30,7 +30,7 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 table.HasCheckConstraint("ck_registration_applicant_type_step",
                     "(completed_step < 2 AND applicant_type IS NULL) OR (completed_step >= 2 AND applicant_type IS NOT NULL)");
                 table.HasCheckConstraint("ck_registration_submitted_completed",
-                    "status <> 'SUBMITTED' OR completed_step = 6");
+                    "status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)");
                 table.HasCheckConstraint("ck_registration_submission_metadata",
                     "(status = 'DRAFT' AND submission_key IS NULL AND submission_expected_revision IS NULL AND submitted_at_utc IS NULL) OR (status = 'SUBMITTED' AND submission_key IS NOT NULL AND submission_expected_revision >= 1 AND submitted_at_utc IS NOT NULL)");
             });
