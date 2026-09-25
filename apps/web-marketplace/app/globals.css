@@ -293,6 +293,77 @@ a { color: inherit; }
   font-weight: 700;
 }
 
+.seller-identity {
+  margin-top: 24px;
+  padding: 28px;
+  border: 1px solid #eae6e1;
+  border-radius: 18px;
+  background: var(--hana-surface);
+}
+.seller-identity__intro h3 {
+  margin: 2px 0 4px;
+  color: #1c3f3a;
+  font-size: 22px;
+}
+.seller-identity__intro > p:last-child {
+  margin: 0;
+  color: var(--hana-muted);
+}
+.seller-identity__body {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+.seller-identity__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.seller-identity__summary p {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid #eae6e1;
+  border-radius: 12px;
+  background: #faf8f5;
+}
+.seller-identity__summary strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--hana-muted);
+  font-size: 12px;
+}
+.seller-identity__legal-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.seller-identity__legal-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--hana-pale-teal);
+  color: var(--hana-teal);
+  font-size: 13px;
+}
+.seller-identity__legal-grid .primary-button {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+.seller-identity__completed {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid #eae6e1;
+  border-radius: 14px;
+  background: #faf8f5;
+}
+.seller-identity__completed strong {
+  color: #1c3f3a;
+  font-size: 17px;
+}
+.seller-identity__completed p {
+  margin: 6px 0 0;
+  color: var(--hana-muted);
+}
+
 /* Inline recovery for a real 409 on the Figma-approved seller step one.
    No separate or unapproved registration screen is introduced. */
 .seller-conflict {
@@ -422,6 +493,11 @@ a { color: inherit; }
   .seller-applicant-type { padding: 18px; }
   .seller-applicant-type__options { grid-template-columns: 1fr; gap: 12px; }
   .seller-applicant-type__option { min-height: 0; padding: 16px; }
+  .seller-identity { padding: 18px; }
+  .seller-identity__summary,
+  .seller-identity__legal-grid { grid-template-columns: 1fr; }
+  .seller-identity__legal-note,
+  .seller-identity__legal-grid .primary-button { grid-column: auto; }
   .seller-conflict__versions { grid-template-columns: 1fr; }
   .seller-conflict__actions { display: grid; }
   .seller-conflict__actions button { width: 100%; }
