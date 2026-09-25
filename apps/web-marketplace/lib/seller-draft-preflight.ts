@@ -65,10 +65,12 @@ export async function loadSellerDraft(
 
     const fields = Object.fromEntries(sellerFieldKeys.map((key) =>
       [key, values[key]])) as SellerFields;
+    // Older in-memory test doubles and pre-migration cached draft responses
+    // map to step 1 only; the shipping BFF always emits both fields.
     const applicantType = "applicantType" in draft
       ? draft.applicantType : null;
     const completedStep = "completedStep" in draft
-      ? draft.completedStep : null;
+      ? draft.completedStep : 1;
     if ((applicantType !== null &&
         applicantType !== "NATURAL" && applicantType !== "LEGAL") ||
       typeof completedStep !== "number" ||
