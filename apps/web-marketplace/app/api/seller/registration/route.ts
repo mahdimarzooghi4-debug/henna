@@ -152,6 +152,52 @@ export async function GET(request: NextRequest) {
       return error(unavailable, 503);
     }
 
+    const activityProvinceId = "activityProvinceId" in payload
+      ? payload.activityProvinceId : null;
+    const activityProvinceName = "activityProvinceName" in payload
+      ? payload.activityProvinceName : null;
+    const activityCityId = "activityCityId" in payload
+      ? payload.activityCityId : null;
+    const activityCityName = "activityCityName" in payload
+      ? payload.activityCityName : null;
+    const activityAddress = "activityAddress" in payload
+      ? payload.activityAddress : null;
+    const activityHours = "activityHours" in payload
+      ? payload.activityHours : null;
+    const sellerDelivery = "sellerDelivery" in payload
+      ? payload.sellerDelivery : null;
+    const pickup = "pickup" in payload ? payload.pickup : null;
+    const serviceArea = "serviceArea" in payload
+      ? payload.serviceArea : null;
+
+    if (completedStep < 5) {
+      if (activityProvinceId !== null || activityProvinceName !== null ||
+        activityCityId !== null || activityCityName !== null ||
+        activityAddress !== null || activityHours !== null ||
+        sellerDelivery !== null || pickup !== null || serviceArea !== null)
+        return error(unavailable, 503);
+    } else if (
+      typeof activityProvinceId !== "string" ||
+      !uuidPattern.test(activityProvinceId) ||
+      typeof activityProvinceName !== "string" ||
+      !activityProvinceName.trim() || activityProvinceName.length > 120 ||
+      typeof activityCityId !== "string" ||
+      !uuidPattern.test(activityCityId) ||
+      typeof activityCityName !== "string" ||
+      !activityCityName.trim() || activityCityName.length > 120 ||
+      typeof activityAddress !== "string" ||
+      !activityAddress.trim() || activityAddress.length > 500 ||
+      typeof activityHours !== "string" ||
+      !activityHours.trim() || activityHours.length > 180 ||
+      typeof sellerDelivery !== "boolean" ||
+      typeof pickup !== "boolean" ||
+      (!sellerDelivery && !pickup) ||
+      typeof serviceArea !== "string" ||
+      !serviceArea.trim() || serviceArea.length > 240
+    ) {
+      return error(unavailable, 503);
+    }
+
     const submittedAtUtc = "submittedAtUtc" in payload
       ? payload.submittedAtUtc : null;
     if (payload.status === "SUBMITTED" &&
@@ -179,6 +225,15 @@ export async function GET(request: NextRequest) {
           businessDescription,
           businessPhone,
           offeringType,
+          activityProvinceId,
+          activityProvinceName,
+          activityCityId,
+          activityCityName,
+          activityAddress,
+          activityHours,
+          sellerDelivery,
+          pickup,
+          serviceArea,
           completedStep,
         }
         : {
@@ -198,6 +253,15 @@ export async function GET(request: NextRequest) {
           businessDescription,
           businessPhone,
           offeringType,
+          activityProvinceId,
+          activityProvinceName,
+          activityCityId,
+          activityCityName,
+          activityAddress,
+          activityHours,
+          sellerDelivery,
+          pickup,
+          serviceArea,
           completedStep,
         },
       { headers: noStore });

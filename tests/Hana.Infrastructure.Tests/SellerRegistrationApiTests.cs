@@ -239,6 +239,13 @@ public sealed class SellerRegistrationApiTests
                 .SetProperty(x => x.BusinessDescription, "توضیح کسب‌وکار CI")
                 .SetProperty(x => x.BusinessPhone, "02112345678")
                 .SetProperty(x => x.OfferingType, "BOTH")
+                .SetProperty(x => x.ActivityProvinceId, Guid.NewGuid())
+                .SetProperty(x => x.ActivityCityId, Guid.NewGuid())
+                .SetProperty(x => x.ActivityAddress, "نشانی فعالیت CI")
+                .SetProperty(x => x.ActivityHours, "۸ تا ۲۲")
+                .SetProperty(x => x.SellerDelivery, true)
+                .SetProperty(x => x.Pickup, true)
+                .SetProperty(x => x.ServiceArea, "کل شهر")
                 .SetProperty(x => x.CompletedStep, 6));
 
         // The Figma "review and submit" step is a single atomic transition.
