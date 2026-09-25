@@ -1178,3 +1178,53 @@ a { color: inherit; }
   color: var(--hana-muted);
   font-size: 12px;
 }
+
+.seller-status-card__action-required,
+.seller-amendment {
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #e2d9cd;
+  border-radius: 16px;
+  background: var(--hana-surface);
+}
+.seller-status-card__action-required p,
+.seller-amendment__note {
+  color: var(--hana-muted);
+}
+.seller-amendment {
+  max-width: 860px;
+  margin: 24px auto 56px;
+}
+.seller-amendment__reason {
+  padding: 18px;
+  border-radius: 14px;
+  background: #fffaf3;
+}
+.seller-amendment__reason h2 { margin: 10px 0 6px; color: #1c3f3a; }
+.seller-amendment__reason p { margin: 0; white-space: pre-wrap; }
+.seller-amendment__field {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  color: #1c3f3a;
+  font-weight: 700;
+}
+.seller-amendment__field textarea,
+.seller-amendment__field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d9d3cc;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-weight: 400;
+}
+.seller-amendment__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+@media (max-width: 720px) {
+  .seller-amendment { padding: 16px; }
+  .seller-amendment__actions { flex-direction: column; }
+}
