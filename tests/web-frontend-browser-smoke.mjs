@@ -280,8 +280,11 @@ async function main() {
   assert.equal(await page.locator("#store-address").inputValue(),
     "نشانی ذخیره نشده");
 
-  // A clean second tab can submit the exact saved revision. The UI then
-  // switches to the Figma request-status state and freezes seller fields.
+  // Refresh the clean second tab after the other tab saved a newer
+  // revision; final submit is always bound to the exact server version.
+  await otherTab.reload();
+  await otherTab.waitForFunction(() =>
+    document.querySelector("#store-name")?.value === "فروشگاه پنجره اول");
   await otherTab.getByRole("button", {
     name: "ثبت درخواست برای بررسی",
   }).click();
