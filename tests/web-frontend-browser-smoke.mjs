@@ -260,6 +260,9 @@ async function fakeApi(route) {
       submittedAtUtc: "2026-09-25T12:30:00Z",
       accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
       trackingCode: "HNA-A1B2C3D4E5F60718",
+      reviewStatus: "UNDER_REVIEW",
+      reviewReason: null,
+      reviewedAtUtc: null,
     };
     return route.fulfill(json({
       status: "SUBMITTED",
@@ -275,18 +278,20 @@ async function fakeApi(route) {
     assert.equal(draft?.status, "SUBMITTED");
     return route.fulfill(json({
       trackingCode: draft.trackingCode,
-      overallStatus: "UNDER_REVIEW",
+      overallStatus: draft.reviewStatus ?? "UNDER_REVIEW",
       applicantType: draft.applicantType,
       identityStatus: draft.identityStatus,
       submittedAtUtc: draft.submittedAtUtc,
       accuracyConfirmedAtUtc: draft.accuracyConfirmedAtUtc,
+      reviewReason: draft.reviewReason ?? null,
+      reviewedAtUtc: draft.reviewedAtUtc ?? null,
       sellerPanelEnabled: false,
       steps: [
         { key: "IDENTITY", status: "COMPLETED" },
         { key: "BUSINESS", status: "COMPLETED" },
         { key: "ACTIVITY", status: "COMPLETED" },
         { key: "ADDITIONAL", status: "COMPLETED" },
-        { key: "REVIEW", status: "UNDER_REVIEW" },
+        { key: "REVIEW", status: draft.reviewStatus ?? "UNDER_REVIEW" },
       ],
     }));
   }
@@ -633,7 +638,7 @@ async function main() {
   await otherTab.getByLabel("صحت اطلاعات واردشده را تأیید می‌کنم.").check();
   assert.equal(await finalSubmit.isDisabled(), false);
   await finalSubmit.click();
-  await otherTab.getByText("درخواست شما ثبت شده و در انتظار بررسی است.")
+  await otherTab.getByText("درخواست ثبت شد", { exact: true })
     .waitFor();
   assert.equal(draft.status, "SUBMITTED");
   assert.equal(draft.revision, 9);

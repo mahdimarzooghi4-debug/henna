@@ -380,18 +380,20 @@ async function main() {
           response.writeHead(200);
           response.end(JSON.stringify({
             trackingCode: sellerDraft.trackingCode,
-            overallStatus: "UNDER_REVIEW",
+            overallStatus: sellerDraft.reviewStatus ?? "UNDER_REVIEW",
             applicantType: sellerDraft.applicantType,
             identityStatus: sellerDraft.identityStatus,
             submittedAtUtc: sellerDraft.submittedAtUtc,
             accuracyConfirmedAtUtc: sellerDraft.accuracyConfirmedAtUtc,
+            reviewReason: sellerDraft.reviewReason ?? null,
+            reviewedAtUtc: sellerDraft.reviewedAtUtc ?? null,
             sellerPanelEnabled: false,
             steps: [
               { key: "IDENTITY", status: "COMPLETED" },
               { key: "BUSINESS", status: "COMPLETED" },
               { key: "ACTIVITY", status: "COMPLETED" },
               { key: "ADDITIONAL", status: "COMPLETED" },
-              { key: "REVIEW", status: "UNDER_REVIEW" },
+              { key: "REVIEW", status: sellerDraft.reviewStatus ?? "UNDER_REVIEW" },
             ],
           }));
         }
@@ -953,6 +955,8 @@ async function main() {
     identityStatus: "VERIFIED",
     submittedAtUtc: "2026-09-25T12:30:00Z",
     accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
+    reviewReason: null,
+    reviewedAtUtc: null,
     sellerPanelEnabled: false,
     steps: [
       { key: "IDENTITY", status: "COMPLETED" },
@@ -962,6 +966,24 @@ async function main() {
       { key: "REVIEW", status: "UNDER_REVIEW" },
     ],
   });
+
+  sellerDraft = {
+    ...sellerDraft,
+    reviewStatus: "NEEDS_INFORMATION",
+    reviewReason: "مدرک مجوز فعالیت باید تکمیل شود.",
+    reviewedAtUtc: "2026-09-25T13:00:00Z",
+  };
+  const needsInformation = await fetch(sellerUrl + "/status", {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(needsInformation.status, 200);
+  const needsBody = await needsInformation.json();
+  assert.equal(needsBody.overallStatus, "NEEDS_INFORMATION");
+  assert.equal(needsBody.reviewReason,
+    "مدرک مجوز فعالیت باید تکمیل شود.");
+  assert.equal(needsBody.reviewedAtUtc, "2026-09-25T13:00:00Z");
+  assert.equal(needsBody.sellerPanelEnabled, false);
+  assert.equal(needsBody.steps[4].status, "NEEDS_INFORMATION");
 
   const categoryResponse = await fetch(base + "/api/catalog/categories", {
     headers: { Cookie: sessionCookie },

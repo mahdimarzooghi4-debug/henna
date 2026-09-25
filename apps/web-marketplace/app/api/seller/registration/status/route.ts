@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
       typeof payload.trackingCode !== "string" ||
       !/^HNA-[0-9A-F]{16}$/.test(payload.trackingCode) ||
       !("overallStatus" in payload) ||
-      payload.overallStatus !== "UNDER_REVIEW" ||
+      !["UNDER_REVIEW", "NEEDS_INFORMATION", "APPROVED", "REJECTED"]
+        .includes(String(payload.overallStatus)) ||
       !("applicantType" in payload) ||
       (payload.applicantType !== "NATURAL" &&
         payload.applicantType !== "LEGAL") ||
@@ -56,6 +57,23 @@ export async function GET(request: NextRequest) {
       !("accuracyConfirmedAtUtc" in payload) ||
       typeof payload.accuracyConfirmedAtUtc !== "string" ||
       Number.isNaN(Date.parse(payload.accuracyConfirmedAtUtc)) ||
+      !("reviewReason" in payload) ||
+      !("reviewedAtUtc" in payload) ||
+      (payload.overallStatus === "UNDER_REVIEW"
+        ? payload.reviewReason !== null || payload.reviewedAtUtc !== null
+        : (payload.reviewedAtUtc === null ||
+          typeof payload.reviewedAtUtc !== "string" ||
+          Number.isNaN(Date.parse(payload.reviewedAtUtc)) ||
+          ((payload.overallStatus === "NEEDS_INFORMATION" ||
+            payload.overallStatus === "REJECTED") &&
+            (typeof payload.reviewReason !== "string" ||
+              !payload.reviewReason.trim() ||
+              payload.reviewReason.length > 500)) ||
+          (payload.overallStatus === "APPROVED" &&
+            payload.reviewReason !== null &&
+            (typeof payload.reviewReason !== "string" ||
+              !payload.reviewReason.trim() ||
+              payload.reviewReason.length > 500)))) ||
       !("sellerPanelEnabled" in payload) ||
       payload.sellerPanelEnabled !== false ||
       !("steps" in payload) ||
@@ -68,7 +86,7 @@ export async function GET(request: NextRequest) {
       ["BUSINESS", "COMPLETED"],
       ["ACTIVITY", "COMPLETED"],
       ["ADDITIONAL", "COMPLETED"],
-      ["REVIEW", "UNDER_REVIEW"],
+      ["REVIEW", String(payload.overallStatus)],
     ];
     if (steps.length !== expected.length ||
       !expected.every(([key, status], index) => {
