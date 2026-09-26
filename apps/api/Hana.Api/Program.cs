@@ -15,6 +15,8 @@ var builder = WebApplication.CreateBuilder(args);
 // or independent logistics provider are ready.
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+    options.MultipartBodyLengthLimit = 5_308_576);
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<ISellerNaturalIdentityVerifier,
@@ -99,6 +101,11 @@ if (hasIdentityDb && otpKeyConfigured)
 // OTP request and verification IP budgets are enforced atomically in PostgreSQL
 // after input validation and service readiness, not per-process in memory.
 // Never trust X-Forwarded-For unless explicitly configured for trusted proxies.
+var catalogMediaStorage = CatalogMediaStorageOptions.Load(
+    builder.Configuration, builder.Environment.IsDevelopment());
+if (catalogMediaStorage is not null)
+    builder.Services.AddCatalogMediaStorage(catalogMediaStorage);
+
 var app = builder.Build();
 if (trustedForwarding is not null)
     app.UseForwardedHeaders();
@@ -352,6 +359,7 @@ app.MapSellerAccess(hasIdentityDb);
 app.MapAdminSellerApplications(hasIdentityDb);
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
+app.MapCatalogMedia(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 
 // Operator-only provisioning for the reviewed seller business taxonomy.
