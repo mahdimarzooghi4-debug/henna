@@ -12,6 +12,8 @@ type StatusPayload = {
   accuracyConfirmedAtUtc: string;
   reviewReason: string | null;
   reviewedAtUtc: string | null;
+  activatedAtUtc: string | null;
+  sellerAccessEnabled: boolean;
   sellerPanelEnabled: false;
   steps: Array<{
     key: "IDENTITY" | "BUSINESS" | "ACTIVITY" | "ADDITIONAL" | "REVIEW";
@@ -198,11 +200,24 @@ export function SellerApplicationStatusView() {
       )}
 
       <div className="seller-status-card__panel-lock">
-        <strong>ورود به پنل فروشنده</strong>
+        <strong>
+          {value.sellerAccessEnabled
+            ? "دسترسی فروشندگی فعال شد"
+            : "ورود به پنل فروشنده"}
+        </strong>
         <p>
-          پس از تأیید نهایی درخواست و فعال‌سازی، پنل فروشنده در دسترس
-          خواهد بود.
+          {value.sellerAccessEnabled
+            ? "نقش فروشنده برای این حساب فعال است. رابط پنل فروشنده در مرحله مستقل بعدی متصل می‌شود."
+            : "پس از تأیید نهایی و فعال‌سازی، دسترسی فروشندگی برای این حساب ایجاد می‌شود."}
         </p>
+        {value.activatedAtUtc && (
+          <time dateTime={value.activatedAtUtc}>
+            زمان فعال‌سازی: {new Intl.DateTimeFormat("fa-IR", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            }).format(new Date(value.activatedAtUtc))}
+          </time>
+        )}
         <button type="button" disabled>
           ورود به پنل فروشنده
         </button>

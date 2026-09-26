@@ -65,6 +65,7 @@ internal static class AdminSellerApplicationEndpoints
                         x.TrackingCode,
                         x.ReviewStatus,
                         x.ReviewedAtUtc,
+                        x.ActivatedAtUtc,
                         x.SubmittedAtUtc
                     })
                     .ToListAsync(cancellationToken);
@@ -152,6 +153,8 @@ internal static class AdminSellerApplicationEndpoints
                     application.ReviewStatus,
                     application.ReviewReason,
                     application.ReviewedAtUtc,
+                    application.ActivatedAtUtc,
+                    application.ActivatedByAccountId,
                     application.SubmittedAtUtc
                 });
             }
