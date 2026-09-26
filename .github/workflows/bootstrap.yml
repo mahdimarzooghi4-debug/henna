@@ -398,6 +398,8 @@ jobs:
         run: node tests/web-geography-gateway-smoke.mjs
       - name: Test Seller Offer BFF over isolated CI HTTPS
         run: node tests/web-seller-offer-bff-smoke.mjs
+      - name: Test Admin seller application read BFF over isolated CI HTTPS
+        run: node tests/web-admin-seller-applications-bff-smoke.mjs
       - name: Test buyer browse public catalog parsing and query policy
         run: node --experimental-strip-types --test tests/web-buyer-browse-smoke.mjs
       - name: Test web public product detail DTO and ID policy
