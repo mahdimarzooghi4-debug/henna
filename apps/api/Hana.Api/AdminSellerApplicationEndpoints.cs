@@ -19,6 +19,7 @@ internal static class AdminSellerApplicationEndpoints
             IServiceProvider services,
             int? page,
             int? pageSize,
+            string? reviewStatus,
             CancellationToken cancellationToken) =>
         {
             context.Response.Headers.CacheControl = "no-store";
@@ -31,18 +32,29 @@ internal static class AdminSellerApplicationEndpoints
 
             var requestedPage = page ?? 1;
             var requestedPageSize = pageSize ?? 20;
+            var requestedReviewStatus = reviewStatus?.Trim().ToUpperInvariant();
             if (requestedPage < 1 || requestedPage > 10_000 ||
-                requestedPageSize < 1 || requestedPageSize > 50)
+                requestedPageSize < 1 || requestedPageSize > 50 ||
+                (requestedReviewStatus is not null &&
+                    requestedReviewStatus is not ("ALL" or "UNDER_REVIEW" or
+                        "NEEDS_INFORMATION" or "APPROVED" or "REJECTED")))
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["pagination"] = ["صفحه‌بندی معتبر نیست."]
+                    [requestedReviewStatus is not null &&
+                        requestedReviewStatus is not ("ALL" or "UNDER_REVIEW" or
+                            "NEEDS_INFORMATION" or "APPROVED" or "REJECTED")
+                        ? "reviewStatus" : "pagination"] =
+                        ["فیلتر یا صفحه‌بندی معتبر نیست."]
                 });
 
             try
             {
                 var db = services.GetRequiredService<HanaSellerDbContext>();
                 var query = db.RegistrationDrafts.AsNoTracking()
-                    .Where(x => x.Status == "SUBMITTED")
+                    .Where(x => x.Status == "SUBMITTED");
+                if (requestedReviewStatus is not null and not "ALL")
+                    query = query.Where(x => x.ReviewStatus == requestedReviewStatus);
+                query = query
                     .OrderByDescending(x => x.SubmittedAtUtc)
                     .ThenBy(x => x.AccountId);
 
@@ -110,6 +122,19 @@ internal static class AdminSellerApplicationEndpoints
                         cancellationToken);
                 if (application is null) return Results.NotFound();
 
+                var reviewHistory = await db.ApplicationReviews.AsNoTracking()
+                    .Where(x => x.ApplicationAccountId == applicationId)
+                    .OrderBy(x => x.CreatedAtUtc)
+                    .ThenBy(x => x.Id)
+                    .Select(x => new
+                    {
+                        x.ExpectedRevision,
+                        x.Decision,
+                        x.Reason,
+                        x.CreatedAtUtc
+                    })
+                    .ToListAsync(cancellationToken);
+
                 return Results.Ok(new
                 {
                     applicationId = application.AccountId,
@@ -119,7 +144,8 @@ internal static class AdminSellerApplicationEndpoints
                     application.IdentityStatus,
                     nationalCodeMasked = MaskNationalCode(
                         application.NaturalNationalCode),
-                    application.LegalNationalId,
+                    legalNationalIdMasked = MaskLegalNationalId(
+                        application.LegalNationalId),
                     application.LegalName,
                     application.LegalRepresentativeName,
                     legalRepresentativePhoneMasked = MaskOptionalPhone(
@@ -155,7 +181,8 @@ internal static class AdminSellerApplicationEndpoints
                     application.ReviewedAtUtc,
                     application.ActivatedAtUtc,
                     application.ActivatedByAccountId,
-                    application.SubmittedAtUtc
+                    application.SubmittedAtUtc,
+                    reviewHistory
                 });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -355,6 +382,11 @@ internal static class AdminSellerApplicationEndpoints
             ? "******" + nationalCode[^4..]
             : null;
 
+    private static string? MaskLegalNationalId(string? nationalId) =>
+        nationalId is { Length: 10 or 11 }
+            ? new string('*', nationalId.Length - 4) + nationalId[^4..]
+            : null;
+
     private static bool TryDecision(string? value, out string decision)
     {
         decision = value?.Trim().ToUpperInvariant() ?? "";
@@ -389,4 +421,3 @@ internal sealed record AdminSellerReviewInput(
     int Revision,
     string? Decision,
     string? Reason);
-
