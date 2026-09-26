@@ -349,6 +349,14 @@ jobs:
               test "$seller_anonymous" = "401"
               seller_anonymous_get=$(curl --silent --output /tmp/hana-seller-anonymous-get.json --write-out "%{http_code}" http://127.0.0.1:3000/api/seller/registration)
               test "$seller_anonymous_get" = "401"
+              seller_offers_anonymous=$(curl --silent --output /tmp/hana-seller-offers-anonymous.json --write-out "%{http_code}" http://127.0.0.1:3000/api/seller/offers)
+              test "$seller_offers_anonymous" = "401"
+              seller_offers_query=$(curl --silent --output /tmp/hana-seller-offers-query.json --write-out "%{http_code}" 'http://127.0.0.1:3000/api/seller/offers?accountId=123')
+              test "$seller_offers_query" = "400"
+              seller_offers_csrf=$(curl --silent --output /tmp/hana-seller-offers-csrf.json --write-out "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: https://malicious.test" -d '{}' http://127.0.0.1:3000/api/seller/offers)
+              test "$seller_offers_csrf" = "403"
+              seller_offers_anonymous_post=$(curl --silent --output /tmp/hana-seller-offers-post.json --write-out "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: http://127.0.0.1:3000" -H "Idempotency-Key: 123e4567-e89b-42d3-a456-426614174001" -d '{"catalogProductId":"123e4567-e89b-42d3-a456-426614174000"}' http://127.0.0.1:3000/api/seller/offers)
+              test "$seller_offers_anonymous_post" = "401"
               # Without the required HTTPS upstream configuration, public
               # catalog gateway must fail closed, not show an empty catalog.
               for route in categories products products/123e4567-e89b-42d3-a456-426614174000; do
@@ -386,6 +394,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-seller-location-reference-smoke.mjs
       - name: Verify public geography Next gateway over isolated CI HTTPS
         run: node tests/web-geography-gateway-smoke.mjs
+      - name: Test Seller Offer BFF over isolated CI HTTPS
+        run: node tests/web-seller-offer-bff-smoke.mjs
       - name: Test buyer browse public catalog parsing and query policy
         run: node --experimental-strip-types --test tests/web-buyer-browse-smoke.mjs
       - name: Test web public product detail DTO and ID policy
