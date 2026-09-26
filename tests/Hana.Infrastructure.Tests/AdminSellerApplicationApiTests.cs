@@ -151,6 +151,8 @@ public sealed class AdminSellerApplicationApiTests
             (await ordinary.GetAsync(listUrl)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest,
             (await admin.GetAsync(listUrl + "?pageSize=51")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await admin.GetAsync(listUrl + "?reviewStatus=INCOMPLETE")).StatusCode);
 
         var list = await admin.GetAsync(listUrl);
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
@@ -161,8 +163,8 @@ public sealed class AdminSellerApplicationApiTests
         {
             var items = body.RootElement.GetProperty("items")
                 .EnumerateArray().ToArray();
-            var item = Assert.Single(items.Where(x =>
-                x.GetProperty("applicationId").GetGuid() == applicantId));
+            var item = Assert.Single(items, x =>
+                x.GetProperty("applicationId").GetGuid() == applicantId);
             Assert.Equal("SUBMITTED",
                 item.GetProperty("status").GetString());
             Assert.Equal("UNDER_REVIEW",
@@ -170,6 +172,19 @@ public sealed class AdminSellerApplicationApiTests
             Assert.False(item.TryGetProperty("phone", out _));
             Assert.False(item.TryGetProperty("submissionKey", out _));
             Assert.True(body.RootElement.GetProperty("total").GetInt32() >= 1);
+        }
+
+        var underReviewList = await admin.GetAsync(
+            listUrl + "?reviewStatus=under_review");
+        Assert.Equal(HttpStatusCode.OK, underReviewList.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await underReviewList.Content.ReadAsStringAsync()))
+        {
+            var items = body.RootElement.GetProperty("items")
+                .EnumerateArray().ToArray();
+            Assert.NotEmpty(items);
+            Assert.All(items, item => Assert.Equal("UNDER_REVIEW",
+                item.GetProperty("reviewStatus").GetString()));
         }
 
         var detail = await admin.GetAsync(
@@ -201,6 +216,15 @@ public sealed class AdminSellerApplicationApiTests
                 "submissionExpectedRevision", out _));
             Assert.Equal("UNDER_REVIEW",
                 body.RootElement.GetProperty("reviewStatus").GetString());
+            Assert.Equal("******5948",
+                body.RootElement.GetProperty("nationalCodeMasked").GetString());
+            Assert.False(body.RootElement.TryGetProperty(
+                "naturalNationalCode", out _));
+            Assert.False(body.RootElement.TryGetProperty("legalNationalId", out _));
+            Assert.Equal(JsonValueKind.Null,
+                body.RootElement.GetProperty("legalNationalIdMasked").ValueKind);
+            Assert.Equal(JsonValueKind.Array,
+                body.RootElement.GetProperty("reviewHistory").ValueKind);
         }
 
         // APPROVED may omit a reason; REJECTED requires one.
@@ -324,6 +348,36 @@ public sealed class AdminSellerApplicationApiTests
                 body.RootElement.GetProperty("revision").GetInt32());
             Assert.False(body.RootElement
                 .GetProperty("sellerActivated").GetBoolean());
+        }
+
+        var needsInformationList = await admin.GetAsync(
+            listUrl + "?reviewStatus=NEEDS_INFORMATION");
+        Assert.Equal(HttpStatusCode.OK, needsInformationList.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await needsInformationList.Content.ReadAsStringAsync()))
+        {
+            var item = Assert.Single(body.RootElement.GetProperty("items")
+                .EnumerateArray(), x =>
+                    x.GetProperty("applicationId").GetGuid() == applicantId);
+            Assert.Equal("NEEDS_INFORMATION",
+                item.GetProperty("reviewStatus").GetString());
+        }
+
+        var reviewedDetail = await admin.GetAsync(
+            listUrl + "/" + applicantId);
+        Assert.Equal(HttpStatusCode.OK, reviewedDetail.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await reviewedDetail.Content.ReadAsStringAsync()))
+        {
+            var reviewHistoryEntry = Assert.Single(body.RootElement
+                .GetProperty("reviewHistory").EnumerateArray());
+            Assert.Equal(2, reviewHistoryEntry.GetProperty("expectedRevision").GetInt32());
+            Assert.Equal("NEEDS_INFORMATION",
+                reviewHistoryEntry.GetProperty("decision").GetString());
+            Assert.Equal("مدرک مجوز فعالیت باید تکمیل شود.",
+                reviewHistoryEntry.GetProperty("reason").GetString());
+            Assert.False(reviewHistoryEntry.TryGetProperty("decisionKey", out _));
+            Assert.False(reviewHistoryEntry.TryGetProperty("reviewerAccountId", out _));
         }
 
         // Lost-response retry is idempotent.
