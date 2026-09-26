@@ -1,6 +1,6 @@
 # ADR-047 — اولویت وب واکنش‌گرای خریدار در ایران و تعویق توسعهٔ بومی iOS
 
-**وضعیت:** تصمیم صریح مالک محصول دربارهٔ اولویت فعلی؛ نه حذف دائمی iOS  
+**وضعیت:** جایگزین‌شده با [ADR-048](ADR-048-ANDROID-AND-WEB-ONLY.md) در ۲۰۲۶-۰۹-۲۶
 **تاریخ ثبت:** ۲۰۲۶-۰۹-۲۳  
 **حوزه:** Buyer Web, Mobile Web, Android Consumer, iOS Native, Delivery Priorities  
 **مکمل:** [ADR-045 — پشتهٔ فنی مصوب](ADR-045-HANA-TECHNOLOGY-STACK-ASPNET-CORE-DOTNET-10-LTS.md)، [معماری محصول V1.0](../architecture/HANA-FULL-PRODUCT-NATIONAL-ARCHITECTURE-v1.0.md)
