@@ -440,6 +440,8 @@ jobs:
       - name: Check Expo compatibility
         run: npx expo install --check
         working-directory: apps/mobile-consumer
+      - name: Verify the consumer app targets Android only
+        run: node -e 'const {expo}=require("./apps/mobile-consumer/app.json"); if (JSON.stringify(expo.platforms)!=="[\"android\"]" || Object.hasOwn(expo,"ios")) process.exit(1)'
       - name: Typecheck consumer app
         run: npm run mobile:typecheck
       - name: Test mobile OTP and SecureStore session semantics (CI-only mocked API/store)
