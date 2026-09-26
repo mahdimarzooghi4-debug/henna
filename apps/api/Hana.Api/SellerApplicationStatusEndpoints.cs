@@ -87,7 +87,7 @@ internal static class SellerApplicationStatusEndpoints
                     reviewedAtUtc = draft.ReviewedAtUtc,
                     activatedAtUtc = draft.ActivatedAtUtc,
                     sellerAccessEnabled,
-                    sellerPanelEnabled = false,
+                    sellerPanelEnabled = sellerAccessEnabled,
                     steps = new[]
                     {
                         new { key = "IDENTITY", status = "COMPLETED" },
