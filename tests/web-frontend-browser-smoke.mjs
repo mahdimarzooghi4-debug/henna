@@ -287,7 +287,7 @@ async function fakeApi(route) {
       reviewedAtUtc: draft.reviewedAtUtc ?? null,
       activatedAtUtc: draft.activatedAtUtc ?? null,
       sellerAccessEnabled: Boolean(draft.activatedAtUtc),
-      sellerPanelEnabled: false,
+      sellerPanelEnabled: Boolean(draft.activatedAtUtc),
       steps: [
         { key: "IDENTITY", status: "COMPLETED" },
         { key: "BUSINESS", status: "COMPLETED" },
@@ -295,6 +295,33 @@ async function fakeApi(route) {
         { key: "ADDITIONAL", status: "COMPLETED" },
         { key: "REVIEW", status: draft.reviewStatus ?? "UNDER_REVIEW" },
       ],
+    }));
+  }
+  if (path === "/api/seller/access" && req.method() === "GET") {
+    assert.ok(signedIn);
+    if (!draft?.activatedAtUtc || draft.reviewStatus !== "APPROVED")
+      return route.fulfill(json({
+        message: "دسترسی فروشندگی برای این حساب فعال نیست.",
+      }, 403));
+    return route.fulfill(json({
+      sellerAccess: true,
+      sellerPanelEnabled: true,
+      trackingCode: draft.trackingCode,
+      activatedAtUtc: draft.activatedAtUtc,
+      storeName: draft.storeName,
+      businessName: draft.businessName,
+      offeringType: draft.offeringType,
+      activityProvinceId: draft.activityProvinceId,
+      activityCityId: draft.activityCityId,
+      capabilities: {
+        dashboard: true,
+        orders: false,
+        listings: false,
+        inventory: false,
+        pricing: false,
+        settlements: false,
+        reports: false,
+      },
     }));
   }
   if (path === "/api/geography/provinces" && req.method() === "GET") {
@@ -670,10 +697,43 @@ async function main() {
     exact: true,
   }).waitFor();
 
+  draft = {
+    ...draft,
+    reviewStatus: "APPROVED",
+    reviewReason: null,
+    reviewedAtUtc: "2026-09-25T13:30:00Z",
+    activatedAtUtc: "2026-09-25T13:45:00Z",
+  };
+  await otherTab.reload();
+  await otherTab.getByRole("heading", {
+    name: "درخواست فروشندگی تأیید شده است",
+  }).waitFor();
+  const panelLink = otherTab.getByRole("link", {
+    name: "ورود به پنل فروشنده",
+  });
+  await panelLink.waitFor();
+  await panelLink.click();
+  await otherTab.waitForURL("**/seller");
+  await otherTab.getByRole("heading", {
+    name: "پیشخوان مدیریت کسب‌وکار",
+  }).waitFor();
+  await otherTab.getByText("کسب‌وکار مرورگر", {
+    exact: true,
+  }).first().waitFor();
+  await otherTab.getByText("فروشگاه پنجره اول", {
+    exact: true,
+  }).waitFor();
+  assert.equal(await otherTab.getByText("هنوز متصل نشده", {
+    exact: true,
+  }).count(), 6);
+  await otherTab.getByText("دسترسی فروشندگی فعال است.", {
+    exact: true,
+  }).waitFor();
+
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller registration → reviewed consent → submitted → tracking status OK");
+  console.log("Chromium CI frontend: OTP → registration → activation status → real seller dashboard shell OK");
 }
 
 try {

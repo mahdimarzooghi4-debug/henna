@@ -14,7 +14,7 @@ type StatusPayload = {
   reviewedAtUtc: string | null;
   activatedAtUtc: string | null;
   sellerAccessEnabled: boolean;
-  sellerPanelEnabled: false;
+  sellerPanelEnabled: boolean;
   steps: Array<{
     key: "IDENTITY" | "BUSINESS" | "ACTIVITY" | "ADDITIONAL" | "REVIEW";
     status: "COMPLETED" | "UNDER_REVIEW" | "NEEDS_INFORMATION" |
@@ -207,7 +207,7 @@ export function SellerApplicationStatusView() {
         </strong>
         <p>
           {value.sellerAccessEnabled
-            ? "نقش فروشنده برای این حساب فعال است. رابط پنل فروشنده در مرحله مستقل بعدی متصل می‌شود."
+            ? "نقش فروشنده و پنل پایه برای این حساب فعال است."
             : "پس از تأیید نهایی و فعال‌سازی، دسترسی فروشندگی برای این حساب ایجاد می‌شود."}
         </p>
         {value.activatedAtUtc && (
@@ -218,9 +218,15 @@ export function SellerApplicationStatusView() {
             }).format(new Date(value.activatedAtUtc))}
           </time>
         )}
-        <button type="button" disabled>
-          ورود به پنل فروشنده
-        </button>
+        {value.sellerPanelEnabled ? (
+          <Link className="primary-button" href="/seller">
+            ورود به پنل فروشنده
+          </Link>
+        ) : (
+          <button type="button" disabled>
+            ورود به پنل فروشنده
+          </button>
+        )}
       </div>
 
       <p className="seller-status-card__note">

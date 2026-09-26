@@ -80,10 +80,11 @@ export async function GET(request: NextRequest) {
           Number.isNaN(Date.parse(payload.activatedAtUtc)))) ||
       !("sellerAccessEnabled" in payload) ||
       typeof payload.sellerAccessEnabled !== "boolean" ||
-      (payload.sellerAccessEnabled !==
-        (payload.activatedAtUtc !== null)) ||
+      (payload.sellerAccessEnabled &&
+        payload.activatedAtUtc === null) ||
       !("sellerPanelEnabled" in payload) ||
-      payload.sellerPanelEnabled !== false ||
+      typeof payload.sellerPanelEnabled !== "boolean" ||
+      payload.sellerPanelEnabled !== payload.sellerAccessEnabled ||
       !("steps" in payload) ||
       !Array.isArray(payload.steps))
       return error("وضعیت درخواست قابل تأیید نیست.", 503);

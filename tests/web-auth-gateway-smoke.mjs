@@ -389,7 +389,7 @@ async function main() {
             reviewedAtUtc: sellerDraft.reviewedAtUtc ?? null,
             activatedAtUtc: sellerDraft.activatedAtUtc ?? null,
             sellerAccessEnabled: Boolean(sellerDraft.activatedAtUtc),
-            sellerPanelEnabled: false,
+            sellerPanelEnabled: Boolean(sellerDraft.activatedAtUtc),
             steps: [
               { key: "IDENTITY", status: "COMPLETED" },
               { key: "BUSINESS", status: "COMPLETED" },
@@ -397,6 +397,36 @@ async function main() {
               { key: "ADDITIONAL", status: "COMPLETED" },
               { key: "REVIEW", status: sellerDraft.reviewStatus ?? "UNDER_REVIEW" },
             ],
+          }));
+        }
+      } else if (url === "/api/v1/seller/access" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "GET") {
+        if (!sellerDraft?.activatedAtUtc ||
+          sellerDraft.reviewStatus !== "APPROVED") {
+          response.writeHead(403);
+          response.end("{}");
+        } else {
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            sellerAccess: true,
+            sellerPanelEnabled: true,
+            trackingCode: sellerDraft.trackingCode,
+            activatedAtUtc: sellerDraft.activatedAtUtc,
+            storeName: sellerDraft.storeName,
+            businessName: sellerDraft.businessName,
+            offeringType: sellerDraft.offeringType,
+            activityProvinceId: sellerDraft.activityProvinceId,
+            activityCityId: sellerDraft.activityCityId,
+            capabilities: {
+              dashboard: true,
+              orders: false,
+              listings: false,
+              inventory: false,
+              pricing: false,
+              settlements: false,
+              reports: false,
+            },
           }));
         }
       } else if (url === "/api/v1/auth/session" &&
@@ -988,6 +1018,49 @@ async function main() {
   assert.equal(needsBody.reviewedAtUtc, "2026-09-25T13:00:00Z");
   assert.equal(needsBody.sellerPanelEnabled, false);
   assert.equal(needsBody.steps[4].status, "NEEDS_INFORMATION");
+
+  sellerDraft = {
+    ...sellerDraft,
+    reviewStatus: "APPROVED",
+    reviewReason: null,
+    reviewedAtUtc: "2026-09-25T13:30:00Z",
+    activatedAtUtc: "2026-09-25T13:45:00Z",
+  };
+
+  const activatedStatus = await fetch(sellerUrl + "/status", {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(activatedStatus.status, 200);
+  const activatedStatusBody = await activatedStatus.json();
+  assert.equal(activatedStatusBody.overallStatus, "APPROVED");
+  assert.equal(activatedStatusBody.sellerAccessEnabled, true);
+  assert.equal(activatedStatusBody.sellerPanelEnabled, true);
+
+  const sellerAccess = await fetch(base + "/api/seller/access", {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(sellerAccess.status, 200);
+  assert.equal(sellerAccess.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await sellerAccess.json(), {
+    sellerAccess: true,
+    sellerPanelEnabled: true,
+    trackingCode: "HNA-A1B2C3D4E5F60718",
+    activatedAtUtc: "2026-09-25T13:45:00Z",
+    storeName: "نسخه دوم",
+    businessName: "کسب‌وکار CI",
+    offeringType: "BOTH",
+    activityProvinceId,
+    activityCityId,
+    capabilities: {
+      dashboard: true,
+      orders: false,
+      listings: false,
+      inventory: false,
+      pricing: false,
+      settlements: false,
+      reports: false,
+    },
+  });
 
   const categoryResponse = await fetch(base + "/api/catalog/categories", {
     headers: { Cookie: sessionCookie },
