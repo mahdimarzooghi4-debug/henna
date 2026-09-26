@@ -36,14 +36,48 @@ internal static class SellerOfferDraftEndpoints
             try
             {
                 var db = services.GetRequiredService<HanaSellerDbContext>();
-                var items = await db.OfferDrafts.AsNoTracking()
+                var drafts = await db.OfferDrafts.AsNoTracking()
                     .Where(x => x.SellerAccountId == gate.AccountId!.Value)
                     .OrderByDescending(x => x.CreatedAtUtc)
                     .ThenByDescending(x => x.Id)
-                    .Select(x => new SellerOfferDraftResponse(
+                    .Select(x => new SellerOfferDraftListRow(
                         x.Id, x.CatalogProductId, x.Status, x.Revision,
                         x.CreatedAtUtc, x.UpdatedAtUtc))
                     .ToListAsync(cancellationToken);
+
+                var catalogIds = drafts.Select(x => x.CatalogProductId)
+                    .Distinct().ToArray();
+                var currentCatalogProducts = catalogIds.Length == 0
+                    ? new Dictionary<Guid, SellerCatalogProductData>()
+                    : await services.GetRequiredService<HanaCatalogDbContext>()
+                        .Products.AsNoTracking()
+                        .Where(x => catalogIds.Contains(x.Id) &&
+                            x.Kind == CatalogProductKinds.Good &&
+                            x.State == PublicationStates.Published &&
+                            x.Category.State == PublicationStates.Published)
+                        .Select(x => new SellerCatalogProductData(
+                            x.Id, x.Name, x.Category.Name, x.Description,
+                            x.PrimaryMediaAssetId))
+                        .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+                var items = drafts.Select(draft =>
+                {
+                    SellerCatalogProductResponse? product = null;
+                    if (currentCatalogProducts.TryGetValue(
+                        draft.CatalogProductId, out var current))
+                    {
+                        product = new SellerCatalogProductResponse(
+                            current.Id, current.Name, current.CategoryName,
+                            current.Description,
+                            current.PrimaryMediaAssetId is { } mediaId
+                                ? $"/api/v1/catalog/media/{mediaId:D}" : null);
+                    }
+
+                    return new SellerOfferDraftListItemResponse(
+                        draft.Id, draft.CatalogProductId, draft.Status,
+                        draft.Revision, draft.CreatedAtUtc, draft.UpdatedAtUtc,
+                        product);
+                }).ToList();
                 return Results.Ok(new { items });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -229,5 +263,22 @@ internal static class SellerOfferDraftEndpoints
 internal sealed record CreateSellerOfferDraftRequest(Guid CatalogProductId);
 
 internal sealed record SellerOfferDraftResponse(
+    Guid Id, Guid CatalogProductId, string Status, int Revision,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+
+internal sealed record SellerOfferDraftListItemResponse(
+    Guid Id, Guid CatalogProductId, string Status, int Revision,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc,
+    SellerCatalogProductResponse? CatalogProduct);
+
+internal sealed record SellerCatalogProductResponse(
+    Guid Id, string Name, string CategoryName, string? Description,
+    string? ImageUrl);
+
+internal sealed record SellerCatalogProductData(
+    Guid Id, string Name, string CategoryName, string? Description,
+    Guid? PrimaryMediaAssetId);
+
+internal sealed record SellerOfferDraftListRow(
     Guid Id, Guid CatalogProductId, string Status, int Revision,
     DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);

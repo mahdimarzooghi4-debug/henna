@@ -38,7 +38,9 @@ Eligibility is checked against the real Catalog database at create time: the pro
 
 `GET /api/v1/seller/offers`
 
-Return only records whose owner is the seller account derived from the current Identity session. Each row contains only offer ID, Catalog product ID, `DRAFT` state, revision, and timestamps. The client cannot request another seller's account ID.
+Return only records whose owner is the seller account derived from the current Identity session. The client cannot request another seller's account ID.
+
+Each row contains offer ID, Catalog product ID, `DRAFT` state, revision, timestamps, and a nullable `catalogProduct` read projection. For currently eligible Catalog `GOOD` identities, that projection contains Catalog ID, name, category name, description, and the current approved media route when present. Read current Catalog values at request time; do not copy them into Seller storage or add a cross-module foreign key. If the Catalog identity or category is no longer published, or the identity is no longer a `GOOD`, retain the Seller draft and return `catalogProduct: null`.
 
 All responses use `Cache-Control: no-store`. Errors fail closed.
 

@@ -89,10 +89,12 @@ public sealed class SellerOfferDraftApiTests
         await seller.SaveChangesAsync();
 
         var catalogCategoryId = Guid.NewGuid();
+        var catalogCategoryName =
+            "دسته آزمون " + Guid.NewGuid().ToString("N")[..8];
         catalog.Categories.Add(new CategoryRecord
         {
             Id = catalogCategoryId,
-            Name = "دسته آزمون " + Guid.NewGuid().ToString("N")[..8],
+            Name = catalogCategoryName,
             Slug = "seller-offer-" + Guid.NewGuid().ToString("N"),
             State = PublicationStates.Published,
             CreatedAtUtc = now
@@ -182,11 +184,27 @@ public sealed class SellerOfferDraftApiTests
         Assert.Equal(HttpStatusCode.Conflict,
             (await owner.SendAsync(reusedKey)).StatusCode);
 
-        var ownerList = await owner.GetFromJsonAsync<JsonElement>(endpoint);
-        var ownerItems = ownerList.GetProperty("items");
+        using var ownerListResponse = await owner.GetAsync(endpoint);
+        Assert.Equal("no-store",
+            ownerListResponse.Headers.CacheControl?.ToString());
+        using var ownerListJson = JsonDocument.Parse(
+            await ownerListResponse.Content.ReadAsStringAsync());
+        var ownerItems = ownerListJson.RootElement.GetProperty("items");
         Assert.Single(ownerItems.EnumerateArray());
-        Assert.Equal(offerId,
-            ownerItems[0].GetProperty("id").GetGuid());
+        var ownerItem = ownerItems[0];
+        Assert.Equal(offerId, ownerItem.GetProperty("id").GetGuid());
+        var catalogProjection = ownerItem.GetProperty("catalogProduct");
+        Assert.Equal(goodId, catalogProjection.GetProperty("id").GetGuid());
+        Assert.Equal("کالای آزمون " + goodId.ToString("N")[..8],
+            catalogProjection.GetProperty("name").GetString());
+        Assert.Equal(catalogCategoryName,
+            catalogProjection.GetProperty("categoryName").GetString());
+        Assert.Equal("توضیح Catalog آزمون " + goodId.ToString("N")[..8],
+            catalogProjection.GetProperty("description").GetString());
+        Assert.Equal(JsonValueKind.Null,
+            catalogProjection.GetProperty("imageUrl").ValueKind);
+        Assert.False(catalogProjection.TryGetProperty("price", out _));
+        Assert.False(catalogProjection.TryGetProperty("quantity", out _));
 
         var secondList = await second.GetFromJsonAsync<JsonElement>(endpoint);
         Assert.Empty(secondList.GetProperty("items").EnumerateArray());
@@ -208,6 +226,22 @@ public sealed class SellerOfferDraftApiTests
         Assert.False(publicProduct.TryGetProperty("sellerAccountId", out _));
         Assert.False(publicProduct.TryGetProperty("price", out _));
         Assert.False(publicProduct.TryGetProperty("stock", out _));
+
+        // A draft reference survives Catalog unpublication, while the live
+        // Catalog projection is omitted rather than serving stale identity.
+        var goodProduct = await catalog.Products.SingleAsync(
+            x => x.Id == goodId);
+        goodProduct.State = PublicationStates.Draft;
+        await catalog.SaveChangesAsync();
+        using var unpublishedListResponse = await owner.GetAsync(endpoint);
+        using var unpublishedListJson = JsonDocument.Parse(
+            await unpublishedListResponse.Content.ReadAsStringAsync());
+        var retainedDraft = Assert.Single(
+            unpublishedListJson.RootElement.GetProperty("items")
+                .EnumerateArray());
+        Assert.Equal(offerId, retainedDraft.GetProperty("id").GetGuid());
+        Assert.Equal(JsonValueKind.Null,
+            retainedDraft.GetProperty("catalogProduct").ValueKind);
 
         // This suite shares the CI PostgreSQL database with Catalog read tests.
         await seller.OfferDrafts.Where(x =>
@@ -276,7 +310,7 @@ public sealed class SellerOfferDraftApiTests
         Name = "کالای آزمون " + id.ToString("N")[..8],
         Kind = kind,
         State = state,
-        Description = null,
+        Description = "توضیح Catalog آزمون " + id.ToString("N")[..8],
         CreatedAtUtc = now
     };
 
