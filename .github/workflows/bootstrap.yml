@@ -351,6 +351,8 @@ jobs:
               test "$seller_anonymous_get" = "401"
               seller_offers_anonymous=$(curl --silent --output /tmp/hana-seller-offers-anonymous.json --write-out "%{http_code}" http://127.0.0.1:3000/api/seller/offers)
               test "$seller_offers_anonymous" = "401"
+              seller_catalog_goods_anonymous=$(curl --silent --output /tmp/hana-seller-catalog-goods-anonymous.json --write-out "%{http_code}" http://127.0.0.1:3000/api/seller/catalog/goods)
+              test "$seller_catalog_goods_anonymous" = "401"
               seller_offers_query=$(curl --silent --output /tmp/hana-seller-offers-query.json --write-out "%{http_code}" 'http://127.0.0.1:3000/api/seller/offers?accountId=123')
               test "$seller_offers_query" = "400"
               seller_offers_csrf=$(curl --silent --output /tmp/hana-seller-offers-csrf.json --write-out "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: https://malicious.test" -d '{}' http://127.0.0.1:3000/api/seller/offers)

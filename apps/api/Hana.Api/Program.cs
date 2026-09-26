@@ -357,6 +357,7 @@ app.MapSellerApplicationStatus(hasIdentityDb);
 app.MapSellerApplicationAmendments(hasIdentityDb);
 app.MapSellerAccess(hasIdentityDb);
 app.MapSellerOfferDrafts(hasIdentityDb);
+app.MapSellerCatalogGoods(hasIdentityDb);
 app.MapAdminSellerApplications(hasIdentityDb);
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);

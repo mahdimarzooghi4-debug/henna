@@ -212,7 +212,7 @@ internal static class SellerOfferDraftEndpoints
         .Produces(StatusCodes.Status409Conflict);
     }
 
-    private static async Task<SellerGate> ResolveSellerAsync(
+    internal static async Task<SellerGate> ResolveSellerAsync(
         WebApplication app, HttpContext context, IServiceProvider services,
         bool hasDatabase, CancellationToken cancellationToken)
     {
@@ -257,7 +257,7 @@ internal static class SellerOfferDraftEndpoints
         new(value.Id, value.CatalogProductId, value.Status,
             value.Revision, value.CreatedAtUtc, value.UpdatedAtUtc);
 
-    private sealed record SellerGate(Guid? AccountId, int? RejectionStatus);
+    internal sealed record SellerGate(Guid? AccountId, int? RejectionStatus);
 }
 
 internal sealed record CreateSellerOfferDraftRequest(Guid CatalogProductId);
