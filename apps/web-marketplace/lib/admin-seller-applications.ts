@@ -215,3 +215,37 @@ export function parseSellerApplicationDetail(value: unknown): JsonObject | null 
 export function validSellerApplicationId(value: string): boolean {
   return validId(value);
 }
+
+export function parseSellerReviewResult(
+  value: unknown, applicationId: string, expectedRevision: number,
+): JsonObject | null {
+  if (!isRecord(value) || !exactKeys(value, [
+    "applicationId", "status", "revision", "trackingCode", "reviewStatus",
+    "reviewReason", "reviewedAtUtc", "sellerActivated",
+  ]) || value.applicationId !== applicationId || value.status !== "SUBMITTED" ||
+    !Number.isSafeInteger(value.revision) ||
+    (value.revision as number) < expectedRevision + 1 ||
+    typeof value.trackingCode !== "string" || !trackingCode.test(value.trackingCode) ||
+    !reviewStatus(value.reviewStatus) || !nullableText(value.reviewReason, 500) ||
+    !nullableTimestamp(value.reviewedAtUtc) || value.sellerActivated !== false)
+    return null;
+
+  if (value.reviewStatus === "UNDER_REVIEW"
+    ? value.reviewReason !== null || value.reviewedAtUtc !== null
+    : value.reviewedAtUtc === null ||
+      ((value.reviewStatus === "NEEDS_INFORMATION" ||
+        value.reviewStatus === "REJECTED") &&
+        (typeof value.reviewReason !== "string" ||
+          !value.reviewReason.trim() || value.reviewReason.length > 500)))
+    return null;
+
+  return {
+    applicationId,
+    status: "SUBMITTED",
+    revision: value.revision,
+    trackingCode: value.trackingCode,
+    reviewStatus: value.reviewStatus,
+    reviewReason: value.reviewReason,
+    reviewedAtUtc: value.reviewedAtUtc,
+  };
+}
