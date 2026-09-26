@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const productId="123e4567-e89b-42d3-a456-426614174000";
+const categoryId="123e4567-e89b-42d3-a456-426614174005";
 const offerId="123e4567-e89b-42d3-a456-426614174003";
 const mediaId="123e4567-e89b-42d3-a456-426614174004";
 const keyId="123e4567-e89b-42d3-a456-426614174001";
@@ -29,6 +30,22 @@ try {
       assert.equal(req.headers.authorization,"Bearer "+token);
       res.setHeader("Content-Type","application/json");
       res.setHeader("Cache-Control","no-store");
+      if(req.method==="GET"&&req.url?.startsWith("/api/v1/seller/catalog/goods?")){
+        const url=new URL(req.url,"https://127.0.0.1:5202");
+        assert.equal(url.searchParams.get("page"),"2");
+        assert.equal(url.searchParams.get("pageSize"),"10");
+        assert.equal(url.searchParams.get("categoryId"),categoryId);
+        assert.equal(url.searchParams.get("search"),"milk & bread");
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          items:[{id:productId,categoryId,name:"کالای آزمون",
+            categoryName:"دسته آزمون",description:null,
+            imageUrl:"/api/v1/catalog/media/"+mediaId}],
+          categories:[{id:categoryId,name:"دسته آزمون",slug:"test-category"}],
+          page:2,pageSize:10,total:21
+        }));
+        return;
+      }
       if(req.method==="GET"&&req.url==="/api/v1/seller/offers"){
         res.writeHead(200);
         res.end(JSON.stringify({items:[{
@@ -78,6 +95,17 @@ try {
   assert.deepEqual(list.items[0].catalogProduct,{
     id:productId,name:"کالای آزمون",categoryName:"دسته آزمون",
     description:null,primaryMediaRoute:"/api/v1/catalog/media/"+mediaId});
+  const candidates=await fetch(base+"/api/seller/catalog/goods?page=2&pageSize=10&categoryId="+categoryId+"&search="+encodeURIComponent("milk & bread"),{headers:{Cookie:cookie}});
+  assert.equal(candidates.status,200);
+  assert.equal(candidates.headers.get("cache-control"),"no-store");
+  const candidatePage=await candidates.json();
+  assert.deepEqual(candidatePage,{
+    items:[{id:productId,categoryId,name:"کالای آزمون",
+      categoryName:"دسته آزمون",description:null,
+      imageUrl:"/api/v1/catalog/media/"+mediaId}],
+    categories:[{id:categoryId,name:"دسته آزمون",slug:"test-category"}],
+    page:2,pageSize:10,total:21
+  });
   const created=await fetch(base+"/api/seller/offers",{method:"POST",
     headers:{Cookie:cookie,Origin:base,"Content-Type":"application/json",
       "Idempotency-Key":keyId},
@@ -90,6 +118,11 @@ try {
   const callsBefore=calls;
   assert.equal((await fetch(base+"/api/seller/offers?accountId=x",
     {headers:{Cookie:cookie}})).status,400);
+  assert.equal((await fetch(base+"/api/seller/catalog/goods?accountId=x",
+    {headers:{Cookie:cookie}})).status,400);
+  assert.equal((await fetch(base+"/api/seller/catalog/goods?page=1&page=2",
+    {headers:{Cookie:cookie}})).status,400);
+  assert.equal((await fetch(base+"/api/seller/catalog/goods")).status,401);
   assert.equal((await fetch(base+"/api/seller/offers",{method:"POST",
     headers:{Cookie:cookie,Origin:"https://malicious.test",
       "Content-Type":"application/json","Idempotency-Key":keyId},
@@ -100,7 +133,7 @@ try {
     body:JSON.stringify({catalogProductId:productId,name:"untrusted"})})).status,400);
   assert.equal((await fetch(base+"/api/seller/offers")).status,401);
   assert.equal(calls,callsBefore,"rejected requests must not reach upstream");
-  console.log("Seller Offer BFF CI: cookie isolation, bearer and idempotency forwarding, DTO allowlist, same-origin, no-store and rejection paths OK");
+  console.log("Seller Offer BFF CI: offer and Catalog-goods routes preserve cookie isolation, bearer forwarding, DTO allowlists, no-store and rejection paths OK");
 } finally {
   if(next?.pid){try{process.kill(-next.pid,"SIGTERM")}catch{}}
   if(server) await new Promise(resolve=>server.close(resolve));
