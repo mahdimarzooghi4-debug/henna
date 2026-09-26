@@ -13,13 +13,13 @@ const provinceId = "123e4567-e89b-42d3-a456-426614174006";
 const cityId = "123e4567-e89b-42d3-a456-426614174007";
 const adminId = "123e4567-e89b-42d3-a456-426614174008";
 const applicantId = "123e4567-e89b-42d3-a456-426614174009";
-const idempotencyKey = "123e4567-e89b-42d3-a456-426614174011";
 const token = "hn1_" + "A".repeat(43);
 const nonAdminToken = "hn1_" + "B".repeat(43);
 const at = "2026-09-26T10:00:00+00:00";
 const dir = mkdtempSync(join(tmpdir(), "hana-admin-apps-bff-"));
 const cert = join(dir, "cert.pem"), privateKey = join(dir, "key.pem");
 let server, next, output = "", upstreamCalls = 0;
+const reviewKeys = [];
 
 const summary = {
   applicationId, storeName: "فروشگاه آزمون", ownerName: "متقاضی آزمون",
@@ -88,7 +88,9 @@ try {
       }
       if (req.method === "POST" &&
         url.pathname === `/api/v1/admin/seller-applications/${applicationId}/review`) {
-        assert.equal(req.headers["idempotency-key"], idempotencyKey);
+        assert.match(req.headers["idempotency-key"] ?? "",
+          /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+        reviewKeys.push(req.headers["idempotency-key"]);
         let raw = "";
         for await (const part of req) raw += part.toString();
         assert.deepEqual(JSON.parse(raw), {
@@ -154,7 +156,7 @@ try {
     applicationId + "/review";
   const submitReview = () => fetch(reviewPath, { method: "POST",
     headers: { Cookie: cookie, Origin: base, "Content-Type": "application/json",
-      "Idempotency-Key": idempotencyKey },
+    },
     body: JSON.stringify({ revision: 3, decision: "NEEDS_INFORMATION",
       reason: "اطلاعات تکمیلی لازم است." }) });
   const reviewed = await submitReview();
@@ -162,10 +164,16 @@ try {
   assert.equal(reviewed.headers.get("cache-control"), "no-store");
   const reviewResult = await reviewed.json();
   assert.equal(reviewResult.reviewStatus, "NEEDS_INFORMATION");
+  assert.equal(reviewed.headers.get("cache-control"), "no-store");
   assert.equal(Object.hasOwn(reviewResult, "sellerActivated"), false);
   assert.equal(Object.hasOwn(reviewResult, "idempotencyKey"), false);
+  assert.equal(JSON.stringify(reviewResult).includes(reviewKeys[0]), false,
+    "the server-only idempotency key must not be returned to the browser");
   assert.deepEqual(await (await submitReview()).json(), reviewResult,
     "same-key retry must preserve the confirmed response");
+  assert.equal(reviewKeys.length, 2);
+  assert.equal(reviewKeys[0], reviewKeys[1],
+    "the BFF must derive one stable server-only key for an identical retry");
   const malformed = await fetch(
     base + "/api/admin/seller-applications/" + malformedId,
     { headers: { Cookie: cookie } });
@@ -189,13 +197,13 @@ try {
     { headers: { Cookie: `__Host-hana_session=${nonAdminToken}` } })).status, 403);
   const invalidReview = await fetch(reviewPath, { method: "POST",
     headers: { Cookie: cookie, Origin: "https://malicious.test",
-      "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      "Content-Type": "application/json" },
     body: JSON.stringify({ revision: 3, decision: "NEEDS_INFORMATION",
       reason: "اطلاعات تکمیلی لازم است." }) });
   assert.equal(invalidReview.status, 403);
   const missingReason = await fetch(reviewPath, { method: "POST",
     headers: { Cookie: cookie, Origin: base, "Content-Type": "application/json",
-      "Idempotency-Key": idempotencyKey },
+    },
     body: JSON.stringify({ revision: 3, decision: "NEEDS_INFORMATION" }) });
   assert.equal(missingReason.status, 400);
   assert.equal(upstreamCalls, beforeRejected + 1,

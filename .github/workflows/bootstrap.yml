@@ -321,12 +321,18 @@ jobs:
             if curl --fail --silent http://127.0.0.1:3000/auth -o /tmp/hana-auth.html; then
               curl --fail --silent http://127.0.0.1:3000/seller/register -o /tmp/hana-seller.html
               curl --fail --silent http://127.0.0.1:3000/hana-logo.png -o /tmp/hana-logo.png
+              curl --fail --silent http://127.0.0.1:3000/admin/seller-applications -o /tmp/hana-admin-applications.html
+              curl --fail --silent http://127.0.0.1:3000/admin/seller-applications/123e4567-e89b-42d3-a456-426614174000 -o /tmp/hana-admin-application.html
+              curl --fail --silent http://127.0.0.1:3000/admin-assets/list-imgLogo.png -o /tmp/hana-admin-logo.png
               grep -q 'ورود به حنا' /tmp/hana-auth.html
               grep -q 'ثبت‌نام فروشگاه در حنا' /tmp/hana-seller.html
+              grep -q 'درخواست‌های ثبت‌نام فروشنده' /tmp/hana-admin-applications.html
+              grep -q 'جزئیات درخواست ثبت‌نام فروشنده' /tmp/hana-admin-application.html
               # No input is editable until the authenticated draft GET and
               # revision have both been loaded by the client.
               grep -q 'disabled=""' /tmp/hana-seller.html
               test -s /tmp/hana-logo.png
+              test -s /tmp/hana-admin-logo.png
               # Route mutations need an exact same-origin Origin header.
               auth_proxy_status=$(curl --silent --output /tmp/hana-auth-proxy.json --write-out "%{http_code}" -H "Content-Type: application/json" -H "Origin: http://127.0.0.1:3000" -d '{"phone":"09123456789"}' http://127.0.0.1:3000/api/auth/otp/request)
               echo "CI WEB auth_proxy_status=$auth_proxy_status"
@@ -426,6 +432,8 @@ jobs:
         run: node tests/web-buyer-product-detail-browser-smoke.mjs
       - name: Browser test saved browse URLs and history across buyer detail
         run: node tests/web-buyer-navigation-browser-smoke.mjs
+      - name: Browser test Admin seller application review UI
+        run: node tests/web-admin-seller-applications-browser-smoke.mjs
 
   mobile:
     runs-on: ubuntu-latest
