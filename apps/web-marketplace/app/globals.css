@@ -1710,3 +1710,20 @@ a { color: inherit; }
     grid-template-columns: 1fr;
   }
 }
+/* Organization Portal profile: Figma 386:161, populated only by persisted data. */
+.organization-page { min-height: 100vh; background: #f7f3ed; color: #2d2d2d; }
+.organization-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 32px; background: #fff; border-bottom: 1px solid #e8e1d8; }
+.organization-header span { padding: 4px 10px; border-radius: 6px; background: #f7f3ed; font-size: 12px; }
+.organization-header h1 { margin: 0; font-size: 20px; }
+.organization-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding: 32px; }
+.organization-card { align-self: start; padding: 24px; border: 1px solid #e8e1d8; border-radius: 12px; background: #fff; }
+.organization-card-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.organization-card-title h2 { margin: 0; font-size: 17px; }
+.organization-card-title span { color: #0b6665; font-size: 13px; }
+.organization-divider { height: 1px; margin: 16px 0; background: #e8e1d8; }
+.organization-fields { display: grid; gap: 14px; margin: 0; font-size: 14px; }
+.organization-fields div { display: flex; justify-content: space-between; gap: 20px; }
+.organization-fields dt { color: #555; }
+.organization-fields dd { margin: 0; font-weight: 600; text-align: left; }
+.organization-notice { grid-column: 1 / -1; padding: 20px 24px; border: 1px solid #e8e1d8; border-radius: 12px; background: #fff; }
+@media (max-width: 720px) { .organization-header { align-items: flex-start; flex-direction: column-reverse; padding: 16px; } .organization-content { grid-template-columns: 1fr; padding: 16px; } .organization-fields div { align-items: flex-start; flex-direction: column; gap: 4px; } }
