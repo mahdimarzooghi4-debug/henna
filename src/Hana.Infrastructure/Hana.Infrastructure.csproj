@@ -2,5 +2,6 @@
   <ItemGroup>
     <ProjectReference Include="../Hana.Application/Hana.Application.csproj" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.16.4" />
   </ItemGroup>
 </Project>

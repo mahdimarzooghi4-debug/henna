@@ -13,6 +13,7 @@ public sealed class ProductRecord
     public string? Description { get; set; }
     public string State { get; set; } = PublicationStates.Draft;
     public DateTimeOffset CreatedAtUtc { get; set; }
+    public Guid? PrimaryMediaAssetId { get; set; }
 }
 
 public static class PublicationStates

@@ -83,12 +83,19 @@ internal static class CatalogReadEndpoints
                     .Skip((number - 1) * size).Take(size)
                     .Select(p => new
                     {
-                        p.Id, p.CategoryId, p.Name, p.Kind, p.Description
+                        p.Id, p.CategoryId, p.Name, p.Kind, p.Description,
+                        p.PrimaryMediaAssetId
                     })
                     .ToListAsync(cancellationToken);
                 return Results.Ok(new
                 {
-                    items, page = number, pageSize = size, total
+                    items = items.Select(p => new
+                    {
+                        p.Id, p.CategoryId, p.Name, p.Kind, p.Description,
+                        imageUrl = p.PrimaryMediaAssetId is { } mediaId
+                            ? $"/api/v1/catalog/media/{mediaId:D}" : null
+                    }),
+                    page = number, pageSize = size, total
                 });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -117,10 +124,17 @@ internal static class CatalogReadEndpoints
                         p.Category.State == PublicationStates.Published)
                     .Select(p => new
                     {
-                        p.Id, p.CategoryId, p.Name, p.Kind, p.Description
+                        p.Id, p.CategoryId, p.Name, p.Kind, p.Description,
+                        p.PrimaryMediaAssetId
                     })
                     .SingleOrDefaultAsync(cancellationToken);
-                return item is null ? Results.NotFound() : Results.Ok(item);
+                return item is null ? Results.NotFound() : Results.Ok(new
+                {
+                    item.Id, item.CategoryId, item.Name, item.Kind,
+                    item.Description,
+                    imageUrl = item.PrimaryMediaAssetId is { } mediaId
+                        ? $"/api/v1/catalog/media/{mediaId:D}" : null
+                });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
