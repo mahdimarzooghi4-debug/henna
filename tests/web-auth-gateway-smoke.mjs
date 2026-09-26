@@ -387,6 +387,8 @@ async function main() {
             accuracyConfirmedAtUtc: sellerDraft.accuracyConfirmedAtUtc,
             reviewReason: sellerDraft.reviewReason ?? null,
             reviewedAtUtc: sellerDraft.reviewedAtUtc ?? null,
+            activatedAtUtc: sellerDraft.activatedAtUtc ?? null,
+            sellerAccessEnabled: Boolean(sellerDraft.activatedAtUtc),
             sellerPanelEnabled: false,
             steps: [
               { key: "IDENTITY", status: "COMPLETED" },
@@ -957,6 +959,8 @@ async function main() {
     accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
     reviewReason: null,
     reviewedAtUtc: null,
+    activatedAtUtc: null,
+    sellerAccessEnabled: false,
     sellerPanelEnabled: false,
     steps: [
       { key: "IDENTITY", status: "COMPLETED" },

@@ -98,6 +98,9 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
                     "((review_status = 'UNDER_REVIEW' AND review_reason IS NULL AND reviewed_by_account_id IS NULL AND reviewed_at_utc IS NULL) OR " +
                     "(review_status <> 'UNDER_REVIEW' AND reviewed_by_account_id IS NOT NULL AND reviewed_at_utc IS NOT NULL AND " +
                     "(review_status = 'APPROVED' OR char_length(btrim(review_reason)) BETWEEN 1 AND 500))))");
+                table.HasCheckConstraint("ck_registration_activation",
+                    "(activated_at_utc IS NULL AND activated_by_account_id IS NULL) OR " +
+                    "(status = 'SUBMITTED' AND review_status = 'APPROVED' AND activated_at_utc IS NOT NULL AND activated_by_account_id IS NOT NULL)");
             });
             entity.HasKey(x => x.AccountId);
             entity.Property(x => x.AccountId).HasColumnName("account_id")
@@ -180,6 +183,9 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
             entity.Property(x => x.ReviewedByAccountId)
                 .HasColumnName("reviewed_by_account_id");
             entity.Property(x => x.ReviewedAtUtc).HasColumnName("reviewed_at_utc");
+            entity.Property(x => x.ActivatedAtUtc).HasColumnName("activated_at_utc");
+            entity.Property(x => x.ActivatedByAccountId)
+                .HasColumnName("activated_by_account_id");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
                 .IsRequired();
             entity.HasIndex(x => x.TrackingCode)
@@ -237,6 +243,35 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
                 .HasForeignKey(x => x.ApplicationAccountId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_application_amendments_registration_drafts");
+        });
+
+        modelBuilder.Entity<SellerActivationRecord>(entity =>
+        {
+            entity.ToTable("seller_activations", "seller", table =>
+            {
+                table.HasCheckConstraint("ck_seller_activations_revision",
+                    "expected_revision >= 1");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.ApplicationAccountId)
+                .HasColumnName("application_account_id").IsRequired();
+            entity.Property(x => x.ActivatedByAccountId)
+                .HasColumnName("activated_by_account_id").IsRequired();
+            entity.Property(x => x.ActivationKey).HasColumnName("activation_key")
+                .IsRequired();
+            entity.Property(x => x.ExpectedRevision)
+                .HasColumnName("expected_revision").IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
+                .IsRequired();
+            entity.HasIndex(x => x.ActivationKey).IsUnique()
+                .HasDatabaseName("ux_seller_activations_activation_key");
+            entity.HasIndex(x => x.ApplicationAccountId).IsUnique()
+                .HasDatabaseName("ux_seller_activations_application");
+            entity.HasOne<SellerRegistrationDraft>().WithMany()
+                .HasForeignKey(x => x.ApplicationAccountId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_seller_activations_registration_drafts");
         });
 
         modelBuilder.Entity<SellerApplicationReviewRecord>(entity =>

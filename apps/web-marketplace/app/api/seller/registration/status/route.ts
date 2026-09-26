@@ -74,6 +74,14 @@ export async function GET(request: NextRequest) {
             (typeof payload.reviewReason !== "string" ||
               !payload.reviewReason.trim() ||
               payload.reviewReason.length > 500)))) ||
+      !("activatedAtUtc" in payload) ||
+      (payload.activatedAtUtc !== null &&
+        (typeof payload.activatedAtUtc !== "string" ||
+          Number.isNaN(Date.parse(payload.activatedAtUtc)))) ||
+      !("sellerAccessEnabled" in payload) ||
+      typeof payload.sellerAccessEnabled !== "boolean" ||
+      (payload.sellerAccessEnabled !==
+        (payload.activatedAtUtc !== null)) ||
       !("sellerPanelEnabled" in payload) ||
       payload.sellerPanelEnabled !== false ||
       !("steps" in payload) ||

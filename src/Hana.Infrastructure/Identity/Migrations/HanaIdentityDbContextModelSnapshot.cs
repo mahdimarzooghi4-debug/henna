@@ -83,7 +83,7 @@ public sealed class HanaIdentityDbContextModelSnapshot : ModelSnapshot
             entity.ToTable("role_assignments", "identity", table =>
             {
                 table.HasCheckConstraint("ck_role_assignments_role",
-                    "role IN ('ADMIN')");
+                    "role IN ('ADMIN','SELLER')");
             });
             entity.HasKey(x => new { x.AccountId, x.Role });
             entity.Property(x => x.AccountId).HasColumnName("account_id");

@@ -50,5 +50,7 @@ public sealed class SellerRegistrationDraft
     public string? ReviewReason { get; set; }
     public Guid? ReviewedByAccountId { get; set; }
     public DateTimeOffset? ReviewedAtUtc { get; set; }
+    public DateTimeOffset? ActivatedAtUtc { get; set; }
+    public Guid? ActivatedByAccountId { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

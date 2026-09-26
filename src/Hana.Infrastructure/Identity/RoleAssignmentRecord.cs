@@ -14,4 +14,5 @@ public sealed class RoleAssignmentRecord
 public static class HanaRoles
 {
     public const string Admin = "ADMIN";
+    public const string Seller = "SELLER";
 }
