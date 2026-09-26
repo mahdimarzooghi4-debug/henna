@@ -70,6 +70,8 @@
 
 **[Frontend 022 — آزمون نصب‌شدهٔ لینک خریدار در شبیه‌ساز iOS](docs/implementation/HANA-FRONTEND-022.md).** CI مستقل macOS/Xcode از Expo پروژهٔ native می‌سازد، `.app` بدون امضای انتشار را روی iPhone Simulator نصب و `hana://` را با سیستم‌عامل باز می‌کند؛ Maestro با رابط دسترس‌پذیری، جزئیات/اختلال واقعیِ بدون API، برگشت به جست‌وجوی فارسی، لینک گرم/سرد و مسیر نامعتبر را بررسی می‌کند. پاپ‌آپ امنیتی اولین بازشدن scheme نیز به‌عنوان رفتار خود iOS آزمایش می‌شود. دستگاه فیزیکی، iOS App Store و لینک HTTPS تأییدشده هنوز خارج از شواهد هستند.
 
+**[Seller 018 — Seller Offers Foundation Backlog](docs/implementation/HANA-SELLER-018.md).** Captures the selected published-Catalog product policy and operator-reviewed imagery; seller offers remain blocked on Catalog media, durable image hosting, unit/availability contracts, and publication policy.
+
 **[Seller 017 — Seller Orders read-only list/detail backlog](docs/implementation/HANA-SELLER-017.md).** Figma desktop/mobile list and detail frames are identified, but runtime work is blocked until the canonical checkout/order domain and seller-scoped read API exist; Figma sample records are never used as runtime data.
 
 **[Seller 016 — Activated Seller Panel Shell](docs/implementation/HANA-SELLER-016.md).** route واقعی `/seller` فقط با نقش `SELLER` و activation معتبر باز می‌شود؛ ماژول‌های بدون backend با وضعیت «هنوز متصل نشده» مشخص‌اند و دادهٔ نمونه وارد runtime نمی‌شود.
