@@ -212,6 +212,82 @@ internal static class OrganizationEndpoints
             catch (DbUpdateException) when (!cancellationToken.IsCancellationRequested) { return Results.Conflict(); }
             catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
         }).WithTags("Organization").WithName("CreateOrganizationProgramDraft");
+
+        app.MapGet("/api/v1/organization/programs/{programId:guid}/funding-instruction", async (
+            Guid programId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var account = await OrganizationAccount(context, services, hasDatabase, cancellationToken);
+            if (account.Error is not null) return account.Error;
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var instruction = await (from membership in db.Memberships.AsNoTracking()
+                    join program in db.Programs.AsNoTracking() on membership.OrganizationId equals program.OrganizationId
+                    join item in db.FundingInstructions.AsNoTracking() on program.Id equals item.ProgramId
+                    where membership.AccountId == account.AccountId && membership.RevokedAtUtc == null && program.Id == programId
+                    select item).SingleOrDefaultAsync(cancellationToken);
+                return instruction is null ? Results.NotFound() : Results.Ok(FundingInstructionProjection(instruction));
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Organization").WithName("GetOrganizationProgramFundingInstruction");
+
+        app.MapPost("/api/v1/organization/programs/{programId:guid}/funding-instruction", async (
+            Guid programId, OrganizationFundingInstructionInput input, HttpContext context,
+            IServiceProvider services, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var account = await OrganizationAccount(context, services, hasDatabase, cancellationToken);
+            if (account.Error is not null) return account.Error;
+            var reference = input.SourceInstructionReference?.Trim();
+            if (programId == Guid.Empty || input.ProgramRevision < 1 || string.IsNullOrWhiteSpace(reference) ||
+                reference.Length > 160 || reference.Any(char.IsControl))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["fundingInstruction"] = ["ارجاع دستور تأمین مالی یا نسخهٔ طرح معتبر نیست."]
+                });
+            if (!Guid.TryParse(context.Request.Headers["Idempotency-Key"], out var key) || key == Guid.Empty)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["idempotencyKey"] = ["کلید یکتای درخواست معتبر نیست."] });
+
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var access = await (from membership in db.Memberships.AsNoTracking()
+                    join program in db.Programs.AsNoTracking() on membership.OrganizationId equals program.OrganizationId
+                    where membership.AccountId == account.AccountId && membership.RevokedAtUtc == null && program.Id == programId
+                    select new { Program = program, membership.Role }).SingleOrDefaultAsync(cancellationToken);
+                if (access is null) return Results.NotFound();
+                if (access.Role == OrganizationRoles.TechnicalOperator) return Results.StatusCode(403);
+                if (access.Program.State != "DRAFT" || access.Program.Revision != input.ProgramRevision) return Results.Conflict();
+
+                var prior = await db.FundingInstructions.AsNoTracking().SingleOrDefaultAsync(x => x.CreationKey == key, cancellationToken);
+                if (prior is not null)
+                {
+                    if (prior.ProgramId != programId || prior.ProgramRevision != input.ProgramRevision ||
+                        prior.SourceInstructionReference != reference || prior.SubmittedByAccountId != account.AccountId)
+                        return Results.Conflict();
+                    return Results.Ok(FundingInstructionProjection(prior));
+                }
+                if (await db.FundingInstructions.AnyAsync(x => x.ProgramId == programId, cancellationToken))
+                    return Results.Conflict();
+
+                var record = new OrganizationFundingInstructionRecord
+                {
+                    Id = Guid.NewGuid(), ProgramId = programId, ProgramRevision = access.Program.Revision,
+                    AllocationMode = access.Program.AllocationMode, SourceInstructionReference = reference,
+                    State = "PENDING_VERIFICATION", Revision = 1,
+                    SubmittedAtUtc = services.GetRequiredService<IClock>().UtcNow.ToUniversalTime(),
+                    SubmittedByAccountId = account.AccountId!.Value, CreationKey = key
+                };
+                db.FundingInstructions.Add(record);
+                await db.SaveChangesAsync(cancellationToken);
+                return Results.Created($"/api/v1/organization/programs/{programId}/funding-instruction", FundingInstructionProjection(record));
+            }
+            catch (DbUpdateException) when (!cancellationToken.IsCancellationRequested) { return Results.Conflict(); }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Organization").WithName("SubmitOrganizationProgramFundingInstruction");
     }
 
     private static async Task<(Guid? AccountId, IResult? Error)> OrganizationAccount(HttpContext context, IServiceProvider services, bool hasDatabase, CancellationToken cancellationToken)
@@ -234,6 +310,14 @@ internal static class OrganizationEndpoints
     {
         programId = program.Id, organizationId, name = program.Name, allocationMode = program.AllocationMode,
         description = program.Description, state = program.State, revision = program.Revision, createdAtUtc = program.CreatedAtUtc
+    };
+
+    private static object FundingInstructionProjection(OrganizationFundingInstructionRecord instruction) => new
+    {
+        instructionId = instruction.Id, programId = instruction.ProgramId,
+        programRevision = instruction.ProgramRevision, allocationMode = instruction.AllocationMode,
+        sourceInstructionReference = instruction.SourceInstructionReference, state = instruction.State,
+        revision = instruction.Revision, submittedAtUtc = instruction.SubmittedAtUtc
     };
 
     private static async Task<(Guid? AccountId, IResult? Error)> Admin(HttpContext context, IServiceProvider services, bool hasDatabase, CancellationToken cancellationToken)
@@ -261,3 +345,4 @@ internal static class OrganizationEndpoints
 internal sealed record ProvisionOrganizationInput(string? Name, Guid InitialAccountId, string Role);
 internal sealed record GrantOrganizationMembershipInput(Guid AccountId, string Role);
 internal sealed record OrganizationProgramInput(Guid OrganizationId, string? Name, string AllocationMode, string? Description);
+internal sealed record OrganizationFundingInstructionInput(int ProgramRevision, string? SourceInstructionReference);

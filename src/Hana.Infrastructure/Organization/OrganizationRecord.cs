@@ -48,6 +48,25 @@ public sealed class OrganizationProgramRecord
     public Guid CreationKey { get; set; }
 }
 
+/// <summary>
+/// An organization-submitted reference to a funding instruction. PENDING_VERIFICATION
+/// means the organization supplied a reference; it does not assert that the source
+/// or authority has been verified and it never creates a credit allocation.
+/// </summary>
+public sealed class OrganizationFundingInstructionRecord
+{
+    public Guid Id { get; set; }
+    public Guid ProgramId { get; set; }
+    public int ProgramRevision { get; set; }
+    public string AllocationMode { get; set; } = null!;
+    public string SourceInstructionReference { get; set; } = null!;
+    public string State { get; set; } = "PENDING_VERIFICATION";
+    public int Revision { get; set; } = 1;
+    public DateTimeOffset SubmittedAtUtc { get; set; }
+    public Guid SubmittedByAccountId { get; set; }
+    public Guid CreationKey { get; set; }
+}
+
 public static class OrganizationAllocationModes
 {
     public const string HennaNeedsBased = "HENNA_NEEDS_BASED";

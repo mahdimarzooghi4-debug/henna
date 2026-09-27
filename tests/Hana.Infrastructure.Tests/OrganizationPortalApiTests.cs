@@ -23,20 +23,23 @@ public sealed class OrganizationPortalApiTests
         var adminId = Guid.NewGuid();
         var memberId = Guid.NewGuid();
         var unrelatedId = Guid.NewGuid();
+        var outsiderId = Guid.NewGuid();
         var adminToken = SessionTokenCodec.Generate();
         var memberToken = SessionTokenCodec.Generate();
         var unrelatedToken = SessionTokenCodec.Generate();
+        var outsiderToken = SessionTokenCodec.Generate();
         Assert.True(SessionTokenCodec.TryComputeDigest(adminToken, out var adminHash));
         Assert.True(SessionTokenCodec.TryComputeDigest(memberToken, out var memberHash));
         Assert.True(SessionTokenCodec.TryComputeDigest(unrelatedToken, out var unrelatedHash));
+        Assert.True(SessionTokenCodec.TryComputeDigest(outsiderToken, out var outsiderHash));
         var identityOptions = new DbContextOptionsBuilder<HanaIdentityDbContext>().UseNpgsql(connection).Options;
         var organizationOptions = new DbContextOptionsBuilder<HanaOrganizationDbContext>().UseNpgsql(connection, pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "organization")).Options;
         await using var identity = new HanaIdentityDbContext(identityOptions);
         await using var organizations = new HanaOrganizationDbContext(organizationOptions);
         Assert.Empty(await identity.Database.GetPendingMigrationsAsync());
         Assert.Empty(await organizations.Database.GetPendingMigrationsAsync());
-        identity.Accounts.AddRange(Account(adminId, now), Account(memberId, now), Account(unrelatedId, now));
-        identity.AuthSessions.AddRange(Session(adminId, adminHash, now), Session(memberId, memberHash, now), Session(unrelatedId, unrelatedHash, now));
+        identity.Accounts.AddRange(Account(adminId, now), Account(memberId, now), Account(unrelatedId, now), Account(outsiderId, now));
+        identity.AuthSessions.AddRange(Session(adminId, adminHash, now), Session(memberId, memberHash, now), Session(unrelatedId, unrelatedHash, now), Session(outsiderId, outsiderHash, now));
         identity.RoleAssignments.Add(new RoleAssignmentRecord { AccountId = adminId, Role = HanaRoles.Admin, GrantedAtUtc = now });
         await identity.SaveChangesAsync();
 
@@ -44,10 +47,12 @@ public sealed class OrganizationPortalApiTests
         using var admin = factory.CreateClient();
         using var member = factory.CreateClient();
         using var unrelated = factory.CreateClient();
+        using var outsider = factory.CreateClient();
         using var anonymous = factory.CreateClient();
         admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
         member.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", memberToken);
         unrelated.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", unrelatedToken);
+        outsider.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", outsiderToken);
 
         const string profileUrl = "/api/v1/organization/profiles";
         const string programsUrl = "/api/v1/organization/programs";
@@ -102,6 +107,7 @@ public sealed class OrganizationPortalApiTests
         var hennaModeReplay = await member.PostAsJsonAsync(programsUrl, hennaModeRequest);
         Assert.Equal(HttpStatusCode.OK, hennaModeReplay.StatusCode);
         using var hennaModeBody = JsonDocument.Parse(await hennaModeCreated.Content.ReadAsStringAsync());
+        var hennaProgramId = hennaModeBody.RootElement.GetProperty("programId").GetGuid();
         Assert.Equal(OrganizationAllocationModes.HennaNeedsBased, hennaModeBody.RootElement.GetProperty("allocationMode").GetString());
         Assert.Equal("DRAFT", hennaModeBody.RootElement.GetProperty("state").GetString());
         Assert.Equal(1, hennaModeBody.RootElement.GetProperty("revision").GetInt32());
@@ -117,6 +123,7 @@ public sealed class OrganizationPortalApiTests
         var changedReplay = await member.PostAsJsonAsync(programsUrl, new { organizationId = orgId, name = "طرح تخصیص سازمان", allocationMode = OrganizationAllocationModes.HennaNeedsBased, description = "پیش‌نویس" });
         Assert.Equal(HttpStatusCode.Conflict, changedReplay.StatusCode);
         using var organizationModeBody = JsonDocument.Parse(await organizationModeCreated.Content.ReadAsStringAsync());
+        var organizationProgramId = organizationModeBody.RootElement.GetProperty("programId").GetGuid();
         Assert.Equal(OrganizationAllocationModes.OrganizationDefined, organizationModeBody.RootElement.GetProperty("allocationMode").GetString());
 
         member.DefaultRequestHeaders.Remove("Idempotency-Key");
@@ -130,6 +137,67 @@ public sealed class OrganizationPortalApiTests
         unrelated.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
         var technicalOperatorCreate = await unrelated.PostAsJsonAsync(programsUrl, new { organizationId = orgId, name = "اپراتور مجاز نیست", allocationMode = OrganizationAllocationModes.HennaNeedsBased, description = "پیش‌نویس" });
         Assert.Equal(HttpStatusCode.Forbidden, technicalOperatorCreate.StatusCode);
+
+        const string fundingInstructionSuffix = "/funding-instruction";
+        var instructionUrl = $"{programsUrl}/{hennaProgramId}{fundingInstructionSuffix}";
+        Assert.Equal(HttpStatusCode.Forbidden, (await outsider.GetAsync(instructionUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await outsider.PostAsJsonAsync(instructionUrl, new { programRevision = 1, sourceInstructionReference = "OUTSIDE-1" })).StatusCode);
+
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        member.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        Assert.Equal(HttpStatusCode.Conflict, (await member.PostAsJsonAsync(instructionUrl, new { programRevision = 2, sourceInstructionReference = "ORG-INSTRUCTION-1405-01" })).StatusCode);
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        member.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        Assert.Equal(HttpStatusCode.BadRequest, (await member.PostAsJsonAsync(instructionUrl, new { programRevision = 1, sourceInstructionReference = "  " })).StatusCode);
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        var hennaInstructionKey = Guid.NewGuid();
+        member.DefaultRequestHeaders.Add("Idempotency-Key", hennaInstructionKey.ToString());
+        var hennaInstructionRequest = new { programRevision = 1, sourceInstructionReference = "ORG-INSTRUCTION-1405-01" };
+        var hennaInstruction = await member.PostAsJsonAsync(instructionUrl, hennaInstructionRequest);
+        Assert.Equal(HttpStatusCode.Created, hennaInstruction.StatusCode);
+        Assert.Equal("no-store", hennaInstruction.Headers.GetValues("Cache-Control").Single());
+        var hennaInstructionReplay = await member.PostAsJsonAsync(instructionUrl, hennaInstructionRequest);
+        Assert.Equal(HttpStatusCode.OK, hennaInstructionReplay.StatusCode);
+        using var hennaInstructionBody = JsonDocument.Parse(await hennaInstruction.Content.ReadAsStringAsync());
+        using var hennaInstructionReplayBody = JsonDocument.Parse(await hennaInstructionReplay.Content.ReadAsStringAsync());
+        var instructionId = hennaInstructionBody.RootElement.GetProperty("instructionId").GetGuid();
+        Assert.Equal(instructionId, hennaInstructionReplayBody.RootElement.GetProperty("instructionId").GetGuid());
+        Assert.Equal(OrganizationAllocationModes.HennaNeedsBased, hennaInstructionBody.RootElement.GetProperty("allocationMode").GetString());
+        Assert.Equal("PENDING_VERIFICATION", hennaInstructionBody.RootElement.GetProperty("state").GetString());
+        Assert.False(hennaInstructionBody.RootElement.TryGetProperty("amount", out _));
+        Assert.False(hennaInstructionBody.RootElement.TryGetProperty("balance", out _));
+        var changedInstructionReplay = await member.PostAsJsonAsync(instructionUrl, new { programRevision = 1, sourceInstructionReference = "ORG-INSTRUCTION-CHANGED" });
+        Assert.Equal(HttpStatusCode.Conflict, changedInstructionReplay.StatusCode);
+        var readInstructionResponse = await member.GetAsync(instructionUrl);
+        Assert.Equal("no-store", readInstructionResponse.Headers.GetValues("Cache-Control").Single());
+        using var readInstruction = JsonDocument.Parse(await readInstructionResponse.Content.ReadAsStringAsync());
+        Assert.Equal(instructionId, readInstruction.RootElement.GetProperty("instructionId").GetGuid());
+
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        member.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        Assert.Equal(HttpStatusCode.Conflict, (await member.PostAsJsonAsync(instructionUrl,
+            new { programRevision = 1, sourceInstructionReference = "ORG-INSTRUCTION-DUPLICATE" })).StatusCode);
+
+        var organizationInstructionUrl = $"{programsUrl}/{organizationProgramId}{fundingInstructionSuffix}";
+        unrelated.DefaultRequestHeaders.Remove("Idempotency-Key");
+        unrelated.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        Assert.Equal(HttpStatusCode.Forbidden, (await unrelated.PostAsJsonAsync(organizationInstructionUrl, new { programRevision = 1, sourceInstructionReference = "TECH-OP-1" })).StatusCode);
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        member.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var organizationInstruction = await member.PostAsJsonAsync(organizationInstructionUrl, new
+        {
+            programRevision = 1, sourceInstructionReference = "ORG-INSTRUCTION-1405-02",
+            allocationMode = OrganizationAllocationModes.HennaNeedsBased, amount = 99_000_000
+        });
+        Assert.Equal(HttpStatusCode.Created, organizationInstruction.StatusCode);
+        using var organizationInstructionBody = JsonDocument.Parse(await organizationInstruction.Content.ReadAsStringAsync());
+        Assert.Equal(OrganizationAllocationModes.OrganizationDefined, organizationInstructionBody.RootElement.GetProperty("allocationMode").GetString());
+        Assert.False(organizationInstructionBody.RootElement.TryGetProperty("amount", out _));
+
+        var storedInstructions = await organizations.FundingInstructions.OrderBy(x => x.ProgramId).ToListAsync();
+        Assert.Equal(2, storedInstructions.Count);
+        Assert.Contains(storedInstructions, item => item.ProgramId == hennaProgramId && item.AllocationMode == OrganizationAllocationModes.HennaNeedsBased && item.State == "PENDING_VERIFICATION");
+        Assert.Contains(storedInstructions, item => item.ProgramId == organizationProgramId && item.AllocationMode == OrganizationAllocationModes.OrganizationDefined && item.State == "PENDING_VERIFICATION");
 
         admin.DefaultRequestHeaders.Remove("Idempotency-Key");
         var revokeKey = Guid.NewGuid();

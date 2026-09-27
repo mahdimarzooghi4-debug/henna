@@ -72,5 +72,28 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             entity.HasIndex(x => new { x.OrganizationId, x.CreatedAtUtc }).HasDatabaseName("ix_organization_programs_org_created_at");
             entity.HasIndex(x => x.CreationKey).IsUnique().HasDatabaseName("ux_organization_programs_creation_key");
         });
+        modelBuilder.Entity<OrganizationFundingInstructionRecord>(entity =>
+        {
+            entity.ToTable("funding_instructions", "organization", table =>
+            {
+                table.HasCheckConstraint("ck_organization_funding_instructions_reference", "char_length(btrim(source_instruction_reference)) BETWEEN 1 AND 160");
+                table.HasCheckConstraint("ck_organization_funding_instructions_mode", "allocation_mode IN ('HENNA_NEEDS_BASED','ORGANIZATION_DEFINED')");
+                table.HasCheckConstraint("ck_organization_funding_instructions_state", "state = 'PENDING_VERIFICATION' AND program_revision = 1 AND revision = 1");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.ProgramId).HasColumnName("program_id").IsRequired();
+            entity.Property(x => x.ProgramRevision).HasColumnName("program_revision").IsRequired();
+            entity.Property(x => x.AllocationMode).HasColumnName("allocation_mode").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.SourceInstructionReference).HasColumnName("source_instruction_reference").HasMaxLength(160).IsRequired();
+            entity.Property(x => x.State).HasColumnName("state").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.Revision).HasColumnName("revision").IsRequired();
+            entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc").IsRequired();
+            entity.Property(x => x.SubmittedByAccountId).HasColumnName("submitted_by_account_id").IsRequired();
+            entity.Property(x => x.CreationKey).HasColumnName("creation_key").IsRequired();
+            entity.HasOne<OrganizationProgramRecord>().WithMany().HasForeignKey(x => x.ProgramId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_organization_funding_instructions_programs");
+            entity.HasIndex(x => x.ProgramId).IsUnique().HasDatabaseName("ux_organization_funding_instructions_program");
+            entity.HasIndex(x => x.CreationKey).IsUnique().HasDatabaseName("ux_organization_funding_instructions_creation_key");
+        });
     }
 }
