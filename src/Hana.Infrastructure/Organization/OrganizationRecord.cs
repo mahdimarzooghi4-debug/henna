@@ -65,6 +65,29 @@ public sealed class OrganizationFundingInstructionRecord
     public DateTimeOffset SubmittedAtUtc { get; set; }
     public Guid SubmittedByAccountId { get; set; }
     public Guid CreationKey { get; set; }
+    public Guid? ReviewedByAccountId { get; set; }
+    public DateTimeOffset? ReviewedAtUtc { get; set; }
+    public string? ReviewReason { get; set; }
+}
+
+public sealed class OrganizationFundingInstructionEventRecord
+{
+    public Guid Id { get; set; }
+    public Guid FundingInstructionId { get; set; }
+    public int Revision { get; set; }
+    public string EventType { get; set; } = null!;
+    public string SourceInstructionReference { get; set; } = null!;
+    public string? Reason { get; set; }
+    public Guid ActorAccountId { get; set; }
+    public DateTimeOffset OccurredAtUtc { get; set; }
+    public Guid IdempotencyKey { get; set; }
+}
+
+public static class OrganizationFundingInstructionEvents
+{
+    public const string Verified = "VERIFIED";
+    public const string Rejected = "REJECTED";
+    public const string Resubmitted = "RESUBMITTED";
 }
 
 /// <summary>

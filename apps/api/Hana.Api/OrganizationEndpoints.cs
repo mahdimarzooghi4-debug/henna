@@ -398,7 +398,8 @@ internal static class OrganizationEndpoints
         instructionId = instruction.Id, programId = instruction.ProgramId,
         programRevision = instruction.ProgramRevision, allocationMode = instruction.AllocationMode,
         sourceInstructionReference = instruction.SourceInstructionReference, state = instruction.State,
-        revision = instruction.Revision, submittedAtUtc = instruction.SubmittedAtUtc
+        revision = instruction.Revision, submittedAtUtc = instruction.SubmittedAtUtc,
+        reviewReason = instruction.ReviewReason, reviewedAtUtc = instruction.ReviewedAtUtc
     };
 
     private static object HouseholdReferralProjection(OrganizationHouseholdReferralRecord referral, IReadOnlyCollection<OrganizationHouseholdMemberRecord> members) => new

@@ -41,8 +41,15 @@ try {
       assert.equal(req.headers["idempotency-key"], idempotencyKey);
       let raw = ""; for await (const part of req) raw += part.toString();
       assert.deepEqual(JSON.parse(raw), { programRevision: 1, sourceInstructionReference: "نامه رسمی ۱۴۰۵" });
-      instruction = { instructionId, programId, programRevision: 1, allocationMode: "ORGANIZATION_DEFINED", sourceInstructionReference: "نامه رسمی ۱۴۰۵", state: "PENDING_VERIFICATION", revision: 1, submittedAtUtc: at };
+      instruction = { instructionId, programId, programRevision: 1, allocationMode: "ORGANIZATION_DEFINED", sourceInstructionReference: "نامه رسمی ۱۴۰۵", state: "PENDING_VERIFICATION", revision: 1, submittedAtUtc: at, reviewReason: null, reviewedAtUtc: null };
       res.writeHead(201); res.end(JSON.stringify(instruction)); return;
+    }
+    if (req.url === path && req.method === "PUT") {
+      assert.equal(req.headers["idempotency-key"], "123e4567-e89b-42d3-a456-426614174009");
+      let raw = ""; for await (const part of req) raw += part.toString();
+      assert.deepEqual(JSON.parse(raw), { revision: 2, sourceInstructionReference: "نامه اصلاحی ۱۴۰۵" });
+      instruction = { ...instruction, sourceInstructionReference: "نامه اصلاحی ۱۴۰۵", state: "PENDING_VERIFICATION", revision: 3, reviewReason: null, reviewedAtUtc: null };
+      res.writeHead(200); res.end(JSON.stringify(instruction)); return;
     }
     const referralPath = `/api/v1/organization/programs/${programId}/household-referrals`;
     if (req.url === referralPath && req.method === "GET") {
@@ -88,6 +95,15 @@ try {
   const callsAfterCreate = calls;
   const badBody = await fetch(path, { method: "POST", headers: { Cookie: cookie, Origin: base, "Content-Type": "application/json", "Idempotency-Key": idempotencyKey }, body: JSON.stringify({ programRevision: 1, sourceInstructionReference: "نامه رسمی ۱۴۰۵", amount: 100 }) });
   assert.equal(badBody.status, 400); assert.equal(calls, callsAfterCreate, "unexpected fields must fail before upstream");
+  const correctionKey = "123e4567-e89b-42d3-a456-426614174009";
+  const crossOriginCorrection = await fetch(path, { method: "PUT", headers: { Cookie: cookie, Origin: "https://attacker.test", "Content-Type": "application/json", "Idempotency-Key": correctionKey }, body: JSON.stringify({ revision: 2, sourceInstructionReference: "نامه اصلاحی ۱۴۰۵" }) });
+  assert.equal(crossOriginCorrection.status, 403); assert.equal(calls, callsAfterCreate, "cross-origin correction must not reach API");
+  const corrected = await fetch(path, { method: "PUT", headers: { Cookie: cookie, Origin: base, "Content-Type": "application/json", "Idempotency-Key": correctionKey }, body: JSON.stringify({ revision: 2, sourceInstructionReference: "نامه اصلاحی ۱۴۰۵" }) });
+  assert.equal(corrected.status, 200); assert.equal(corrected.headers.get("cache-control"), "no-store");
+  const correctedBody = await corrected.json();
+  assert.equal(correctedBody.state, "PENDING_VERIFICATION"); assert.equal(correctedBody.revision, 3);
+  assert.equal(correctedBody.sourceInstructionReference, "نامه اصلاحی ۱۴۰۵");
+  assert.equal(correctedBody.reviewReason, null); assert.equal(Object.hasOwn(correctedBody, "amount"), false);
   const referralPath = `${base}/api/organization/programs/${programId}/household-referrals`;
   const referralInput = { programRevision: 1, externalReference: "CASE-ORG-001", provinceId, cityId, settlementType: "URBAN", members: [{ genderCategory: "FEMALE", lifeStage: "ADULT", educationLevel: "NOT_REPORTED", healthNeed: "NOT_REPORTED" }] };
   const beforeReferral = calls;
@@ -103,7 +119,7 @@ try {
   const referralRead = await fetch(referralPath, { headers: { Cookie: cookie } });
   assert.equal(referralRead.status, 200); assert.equal(referralRead.headers.get("cache-control"), "no-store");
   assert.equal((await referralRead.json()).referrals[0].externalReference, "CASE-ORG-001");
-  console.log("Organization BFF: cookie isolation, server bearer forwarding, strict origin/body, idempotency and no-store verified for funding and household referral routes");
+  console.log("Organization BFF: cookie isolation, server bearer forwarding, strict origin/body, idempotency and no-store verified for funding create/correction and household referral routes");
 } finally {
   if (next?.pid) { try { process.kill(-next.pid, "SIGTERM"); } catch { } }
   if (server) await new Promise(resolve => server.close(resolve));
