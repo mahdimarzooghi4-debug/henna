@@ -134,7 +134,107 @@ internal static class OrganizationEndpoints
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
         }).WithTags("Organization").WithName("GetOrganizationProfiles");
+
+        app.MapGet("/api/v1/organization/programs", async (HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var account = await OrganizationAccount(context, services, hasDatabase, cancellationToken);
+            if (account.Error is not null) return account.Error;
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var programs = await (from membership in db.Memberships.AsNoTracking()
+                    join program in db.Programs.AsNoTracking() on membership.OrganizationId equals program.OrganizationId
+                    join organization in db.Organizations.AsNoTracking() on program.OrganizationId equals organization.Id
+                    where membership.AccountId == account.AccountId && membership.RevokedAtUtc == null
+                    orderby program.CreatedAtUtc descending, program.Id
+                    select new
+                    {
+                        programId = program.Id,
+                        organizationId = organization.Id,
+                        organizationName = organization.Name,
+                        name = program.Name,
+                        allocationMode = program.AllocationMode,
+                        description = program.Description,
+                        state = program.State,
+                        revision = program.Revision,
+                        createdAtUtc = program.CreatedAtUtc
+                    }).Take(200).ToListAsync(cancellationToken);
+                return Results.Ok(new { programs });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Organization").WithName("GetOrganizationPrograms");
+
+        app.MapPost("/api/v1/organization/programs", async (
+            OrganizationProgramInput input, HttpContext context,
+            IServiceProvider services, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var account = await OrganizationAccount(context, services, hasDatabase, cancellationToken);
+            if (account.Error is not null) return account.Error;
+            var name = input.Name?.Trim();
+            var description = input.Description?.Trim() ?? string.Empty;
+            if (input.OrganizationId == Guid.Empty || string.IsNullOrWhiteSpace(name) || name.Length > 120 || description.Length > 1200 ||
+                input.AllocationMode is not (OrganizationAllocationModes.HennaNeedsBased or OrganizationAllocationModes.OrganizationDefined))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["program"] = ["مشخصات طرح یا روش تخصیص معتبر نیست."] });
+            if (!Guid.TryParse(context.Request.Headers["Idempotency-Key"], out var key) || key == Guid.Empty)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["idempotencyKey"] = ["کلید یکتای درخواست معتبر نیست."] });
+
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var membership = await db.Memberships.AsNoTracking().SingleOrDefaultAsync(x =>
+                    x.OrganizationId == input.OrganizationId && x.AccountId == account.AccountId && x.RevokedAtUtc == null, cancellationToken);
+                if (membership is null) return Results.StatusCode(StatusCodes.Status403Forbidden);
+                if (membership.Role == OrganizationRoles.TechnicalOperator) return Results.StatusCode(403);
+
+                var prior = await db.Programs.AsNoTracking().SingleOrDefaultAsync(x => x.CreationKey == key, cancellationToken);
+                if (prior is not null)
+                {
+                    if (prior.CreatedByAccountId != account.AccountId || prior.OrganizationId != input.OrganizationId || prior.Name != name ||
+                        prior.AllocationMode != input.AllocationMode || prior.Description != description) return Results.Conflict();
+                    return Results.Ok(ProgramProjection(prior, membership.OrganizationId));
+                }
+
+                var record = new OrganizationProgramRecord
+                {
+                    Id = Guid.NewGuid(), OrganizationId = membership.OrganizationId, Name = name,
+                    AllocationMode = input.AllocationMode, Description = description, State = "DRAFT", Revision = 1,
+                    CreatedAtUtc = services.GetRequiredService<IClock>().UtcNow.ToUniversalTime(),
+                    CreatedByAccountId = account.AccountId!.Value, CreationKey = key
+                };
+                db.Programs.Add(record);
+                await db.SaveChangesAsync(cancellationToken);
+                return Results.Created($"/api/v1/organization/programs/{record.Id}", ProgramProjection(record, membership.OrganizationId));
+            }
+            catch (DbUpdateException) when (!cancellationToken.IsCancellationRequested) { return Results.Conflict(); }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Organization").WithName("CreateOrganizationProgramDraft");
     }
+
+    private static async Task<(Guid? AccountId, IResult? Error)> OrganizationAccount(HttpContext context, IServiceProvider services, bool hasDatabase, CancellationToken cancellationToken)
+    {
+        var token = BearerToken(context);
+        if (token is null) return (null, Results.Unauthorized());
+        if (!hasDatabase) return (null, Results.StatusCode(503));
+        var accountId = await services.GetRequiredService<AuthSessionService>().ResolveAccountAsync(token, cancellationToken);
+        if (accountId is null) return (null, Results.Unauthorized());
+        try
+        {
+            var db = services.GetRequiredService<HanaOrganizationDbContext>();
+            return await db.Memberships.AsNoTracking().AnyAsync(x => x.AccountId == accountId.Value && x.RevokedAtUtc == null, cancellationToken)
+                ? (accountId, null) : (null, Results.StatusCode(403));
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested) { return (null, Results.StatusCode(503)); }
+    }
+
+    private static object ProgramProjection(OrganizationProgramRecord program, Guid organizationId) => new
+    {
+        programId = program.Id, organizationId, name = program.Name, allocationMode = program.AllocationMode,
+        description = program.Description, state = program.State, revision = program.Revision, createdAtUtc = program.CreatedAtUtc
+    };
 
     private static async Task<(Guid? AccountId, IResult? Error)> Admin(HttpContext context, IServiceProvider services, bool hasDatabase, CancellationToken cancellationToken)
     {
@@ -160,3 +260,4 @@ internal static class OrganizationEndpoints
 
 internal sealed record ProvisionOrganizationInput(string? Name, Guid InitialAccountId, string Role);
 internal sealed record GrantOrganizationMembershipInput(Guid AccountId, string Role);
+internal sealed record OrganizationProgramInput(Guid OrganizationId, string? Name, string AllocationMode, string? Description);

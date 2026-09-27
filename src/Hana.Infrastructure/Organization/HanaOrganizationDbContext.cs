@@ -8,6 +8,7 @@ public sealed class HanaOrganizationDbContext(
 {
     public DbSet<OrganizationRecord> Organizations => Set<OrganizationRecord>();
     public DbSet<OrganizationMembershipRecord> Memberships => Set<OrganizationMembershipRecord>();
+    public DbSet<OrganizationProgramRecord> Programs => Set<OrganizationProgramRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,6 +55,33 @@ public sealed class HanaOrganizationDbContext(
                 .HasDatabaseName("ux_organization_memberships_active_account");
             entity.HasIndex(x => x.GrantKey).IsUnique().HasDatabaseName("ux_organization_memberships_grant_key");
             entity.HasIndex(x => x.RevokeKey).IsUnique().HasDatabaseName("ux_organization_memberships_revoke_key");
+        });
+        modelBuilder.Entity<OrganizationProgramRecord>(entity =>
+        {
+            entity.ToTable("programs", table =>
+            {
+                table.HasCheckConstraint("ck_organization_programs_name", "char_length(btrim(name)) BETWEEN 1 AND 120");
+                table.HasCheckConstraint("ck_organization_programs_allocation_mode", "allocation_mode IN ('HENNA_NEEDS_BASED','ORGANIZATION_DEFINED')");
+                table.HasCheckConstraint("ck_organization_programs_description", "char_length(description) <= 1200");
+                table.HasCheckConstraint("ck_organization_programs_state", "state = 'DRAFT' AND revision = 1");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.OrganizationId).HasColumnName("organization_id").IsRequired();
+            entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(120).IsRequired();
+            entity.Property(x => x.AllocationMode).HasColumnName("allocation_mode").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.Description).HasColumnName("description").HasMaxLength(1200).IsRequired();
+            entity.Property(x => x.State).HasColumnName("state").HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Revision).HasColumnName("revision").IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
+            entity.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id").IsRequired();
+            entity.Property(x => x.CreationKey).HasColumnName("creation_key").IsRequired();
+            entity.HasOne<OrganizationRecord>().WithMany().HasForeignKey(x => x.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_organization_programs_organizations");
+            entity.HasIndex(x => new { x.OrganizationId, x.CreatedAtUtc })
+                .HasDatabaseName("ix_organization_programs_org_created_at");
+            entity.HasIndex(x => x.CreationKey).IsUnique()
+                .HasDatabaseName("ux_organization_programs_creation_key");
         });
     }
 }

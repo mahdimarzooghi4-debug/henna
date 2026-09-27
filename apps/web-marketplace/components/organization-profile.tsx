@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Role = "ORG_LEAD" | "ORG_REPRESENTATIVE" | "ORG_TECHNICAL_OPERATOR";
 type Profile = { organizationId: string; organizationName: string; memberRole: Role; membershipId: string };
@@ -29,7 +30,7 @@ export function OrganizationProfile() {
 
   return (
     <main className="organization-page" dir="rtl">
-      <header className="organization-header"><span>پرتال سازمان</span><h1>اطلاعات و پروفایل سازمان</h1></header>
+      <header className="organization-header"><span>پرتال سازمان</span><h1>اطلاعات و پروفایل سازمان</h1><Link className="organization-outline-button" href="/organization/programs">طرح‌ها و اعتبارها</Link></header>
       <section className="organization-content" aria-live="polite">
         {state.loading ? <p role="status">در حال بررسی عضویت سازمانی…</p> : state.message ? <div className="organization-notice">{state.message}</div> : state.profiles.length === 0 ? <div className="organization-notice">برای این حساب، پروفایل سازمانی در دسترس نیست.</div> : state.profiles.map((profile) => (
           <article className="organization-card" key={profile.membershipId}>

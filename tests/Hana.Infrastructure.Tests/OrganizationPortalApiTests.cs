@@ -50,9 +50,11 @@ public sealed class OrganizationPortalApiTests
         unrelated.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", unrelatedToken);
 
         const string profileUrl = "/api/v1/organization/profiles";
+        const string programsUrl = "/api/v1/organization/programs";
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(profileUrl)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await unrelated.PostAsJsonAsync("/api/v1/admin/organizations", new { name = "داده سازمان تست", initialAccountId = memberId, role = OrganizationRoles.Representative })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await unrelated.GetAsync(profileUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await unrelated.GetAsync(programsUrl)).StatusCode);
 
         var key = Guid.NewGuid();
         admin.DefaultRequestHeaders.Add("Idempotency-Key", key.ToString());
@@ -89,6 +91,45 @@ public sealed class OrganizationPortalApiTests
         using var grantedBody = JsonDocument.Parse(await granted.Content.ReadAsStringAsync());
         var membershipId = grantedBody.RootElement.GetProperty("membershipId").GetGuid();
         Assert.Equal(HttpStatusCode.OK, (await unrelated.GetAsync(profileUrl)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(programsUrl)).StatusCode);
+
+        var hennaModeKey = Guid.NewGuid();
+        member.DefaultRequestHeaders.Add("Idempotency-Key", hennaModeKey.ToString());
+        var hennaModeRequest = new { organizationId = orgId, name = "طرح محاسبه حنا", allocationMode = OrganizationAllocationModes.HennaNeedsBased, description = "پیش‌نویس" };
+        var hennaModeCreated = await member.PostAsJsonAsync(programsUrl, hennaModeRequest);
+        Assert.Equal(HttpStatusCode.Created, hennaModeCreated.StatusCode);
+        var hennaModeReplay = await member.PostAsJsonAsync(programsUrl, hennaModeRequest);
+        Assert.Equal(HttpStatusCode.OK, hennaModeReplay.StatusCode);
+        using var hennaModeBody = JsonDocument.Parse(await hennaModeCreated.Content.ReadAsStringAsync());
+        Assert.Equal(OrganizationAllocationModes.HennaNeedsBased, hennaModeBody.RootElement.GetProperty("allocationMode").GetString());
+        Assert.Equal("DRAFT", hennaModeBody.RootElement.GetProperty("state").GetString());
+        Assert.Equal(1, hennaModeBody.RootElement.GetProperty("revision").GetInt32());
+        Assert.False(hennaModeBody.RootElement.TryGetProperty("balance", out _));
+        Assert.False(hennaModeBody.RootElement.TryGetProperty("amount", out _));
+
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        var organizationModeKey = Guid.NewGuid();
+        member.DefaultRequestHeaders.Add("Idempotency-Key", organizationModeKey.ToString());
+        var organizationModeRequest = new { organizationId = orgId, name = "طرح تخصیص سازمان", allocationMode = OrganizationAllocationModes.OrganizationDefined, description = "پیش‌نویس" };
+        var organizationModeCreated = await member.PostAsJsonAsync(programsUrl, organizationModeRequest);
+        Assert.Equal(HttpStatusCode.Created, organizationModeCreated.StatusCode);
+        var changedReplay = await member.PostAsJsonAsync(programsUrl, new { organizationId = orgId, name = "طرح تخصیص سازمان", allocationMode = OrganizationAllocationModes.HennaNeedsBased, description = "پیش‌نویس" });
+        Assert.Equal(HttpStatusCode.Conflict, changedReplay.StatusCode);
+        using var organizationModeBody = JsonDocument.Parse(await organizationModeCreated.Content.ReadAsStringAsync());
+        Assert.Equal(OrganizationAllocationModes.OrganizationDefined, organizationModeBody.RootElement.GetProperty("allocationMode").GetString());
+
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        var listedPrograms = await member.GetAsync(programsUrl);
+        Assert.Equal(HttpStatusCode.OK, listedPrograms.StatusCode);
+        using var listedBody = JsonDocument.Parse(await listedPrograms.Content.ReadAsStringAsync());
+        var programs = listedBody.RootElement.GetProperty("programs").EnumerateArray().ToArray();
+        Assert.Equal(2, programs.Length);
+        Assert.All(programs, item => Assert.Equal(orgId, item.GetProperty("organizationId").GetGuid()));
+
+        unrelated.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var technicalOperatorCreate = await unrelated.PostAsJsonAsync(programsUrl, new { organizationId = orgId, name = "اپراتور مجاز نیست", allocationMode = OrganizationAllocationModes.HennaNeedsBased, description = "پیش‌نویس" });
+        Assert.Equal(HttpStatusCode.Forbidden, technicalOperatorCreate.StatusCode);
 
         admin.DefaultRequestHeaders.Remove("Idempotency-Key");
         var revokeKey = Guid.NewGuid();

@@ -438,6 +438,8 @@ jobs:
         run: node tests/web-admin-seller-applications-browser-smoke.mjs
       - name: Browser test Organization Portal profile
         run: node tests/web-organization-profile-browser-smoke.mjs
+      - name: Browser test Organization program allocation modes
+        run: node tests/web-organization-programs-browser-smoke.mjs
 
   mobile:
     runs-on: ubuntu-latest
