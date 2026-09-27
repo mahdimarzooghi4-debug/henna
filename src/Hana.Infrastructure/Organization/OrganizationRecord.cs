@@ -67,6 +67,67 @@ public sealed class OrganizationFundingInstructionRecord
     public Guid CreationKey { get; set; }
 }
 
+/// <summary>
+/// An organization-referred household for a program. This record is intake only:
+/// it does not assert eligibility, award support, or trigger an allocation.
+/// </summary>
+public sealed class OrganizationHouseholdReferralRecord
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid ProgramId { get; set; }
+    public string ExternalReference { get; set; } = null!;
+    public Guid ProvinceId { get; set; }
+    public Guid? CityId { get; set; }
+    public string SettlementType { get; set; } = null!;
+    public int Revision { get; set; } = 1;
+    public DateTimeOffset SubmittedAtUtc { get; set; }
+    public Guid SubmittedByAccountId { get; set; }
+    public Guid CreationKey { get; set; }
+}
+
+/// <summary>Only non-identifying qualitative categories required for later review.</summary>
+public sealed class OrganizationHouseholdMemberRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdReferralId { get; set; }
+    public int MemberNumber { get; set; }
+    public string GenderCategory { get; set; } = null!;
+    public string LifeStage { get; set; } = null!;
+    public string EducationLevel { get; set; } = null!;
+    public string HealthNeed { get; set; } = null!;
+}
+
+public static class OrganizationSettlementTypes
+{
+    public const string Urban = "URBAN";
+    public const string Rural = "RURAL";
+}
+
+public static class OrganizationHouseholdCategories
+{
+    public const string Female = "FEMALE";
+    public const string Male = "MALE";
+    public const string NotReported = "NOT_REPORTED";
+
+    public const string Infant = "INFANT";
+    public const string Preschool = "PRESCHOOL";
+    public const string SchoolAge = "SCHOOL_AGE";
+    public const string Adult = "ADULT";
+    public const string OlderAdult = "OLDER_ADULT";
+
+    public const string NoFormalEducation = "NO_FORMAL_EDUCATION";
+    public const string Primary = "PRIMARY";
+    public const string Secondary = "SECONDARY";
+    public const string Diploma = "DIPLOMA";
+    public const string HigherEducation = "HIGHER_EDUCATION";
+    public const string EducationNotReported = "NOT_REPORTED";
+
+    public const string NoKnownChronicNeed = "NO_KNOWN_CHRONIC_NEED";
+    public const string ChronicNeed = "CHRONIC_NEED";
+    public const string HealthNotReported = "NOT_REPORTED";
+}
+
 public static class OrganizationAllocationModes
 {
     public const string HennaNeedsBased = "HENNA_NEEDS_BASED";

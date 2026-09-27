@@ -1771,6 +1771,17 @@ a { color: inherit; }
 .organization-instruction-form > p { margin: -6px 0 18px; color: #756d65; font-size: 13px; }
 .organization-instruction-form form { display: grid; gap: 14px; }
 .organization-instruction-form .organization-primary-button { justify-self: start; }
+.organization-referral-form { display: grid; gap: 14px; margin: 20px 0; }
+.organization-referral-form label { display: grid; gap: 7px; color: #514638; font-size: 13px; }
+.organization-referral-form input, .organization-referral-form select { width: 100%; min-height: 42px; border: 1px solid #d8d0c7; border-radius: 6px; padding: 8px 10px; background: #fff; color: #302920; font: inherit; }
+.organization-form-hint { margin: -4px 0 0; color: #756d65; font-size: 12px; }
+.organization-form-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.organization-referral-form h3, .organization-referral-list h3 { margin: 10px 0 0; font-size: 15px; }
+.organization-member-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 14px; border: 1px solid #e8e1d8; border-radius: 8px; }
+.organization-member-card legend { padding: 0 6px; color: #0f5b5a; font-weight: 600; }
+.organization-referral-list { display: grid; gap: 10px; margin-top: 24px; }
+.organization-referral-item { display: grid; gap: 5px; padding: 14px; border: 1px solid #e8e1d8; border-radius: 8px; font-size: 13px; }
+.organization-referral-item span { color: #756d65; }
 .organization-program-form-area { padding: 24px 32px; }
 .organization-form-card { max-width: 980px; margin: 0 auto; padding: 24px; border: 1px solid #e8e1d8; border-radius: 10px; background: #fff; }
 .organization-back-link { display: inline-block; margin-bottom: 18px; color: #0b6665; font-size: 13px; text-decoration: none; }
@@ -1791,3 +1802,4 @@ a { color: inherit; }
 @media (max-width: 800px) { .organization-sidebar { width: 190px; flex-basis: 190px; } .organization-programs-content, .organization-program-form-area { padding: 18px 16px; } .organization-topbar { padding: 12px 16px; } }
 @media (max-width: 620px) { .organization-shell { display: block; } .organization-sidebar { width: 100%; padding: 10px 12px; border-left: 0; border-bottom: 1px solid #e8e1d8; } .organization-brand { padding-bottom: 8px; } .organization-sidebar nav { display: flex; overflow-x: auto; gap: 5px; } .organization-sidebar nav a, .organization-sidebar nav span { flex: 0 0 auto; border: 1px solid #eee8e0; } .organization-section-head { align-items: flex-start; flex-direction: column; padding: 16px; } .organization-form-card { padding: 18px; } }
 @media (max-width: 720px) { .organization-detail-content { padding: 18px 16px; } .organization-detail-grid { grid-template-columns: 1fr; } .organization-detail-card dl div { align-items: flex-start; flex-direction: column; gap: 2px; } .organization-detail-card dd { text-align: right; } }
+@media (max-width: 720px) { .organization-form-row, .organization-member-card { grid-template-columns: 1fr; } }

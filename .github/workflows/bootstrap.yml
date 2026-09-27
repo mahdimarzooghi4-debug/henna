@@ -444,6 +444,8 @@ jobs:
         run: node tests/web-organization-funding-instruction-browser-smoke.mjs
       - name: Test Organization funding instruction BFF over isolated CI HTTPS
         run: node tests/web-organization-funding-instruction-bff-smoke.mjs
+      - name: Browser test Organization household referrals
+        run: node tests/web-organization-household-referrals-browser-smoke.mjs
 
   mobile:
     runs-on: ubuntu-latest

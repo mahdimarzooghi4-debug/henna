@@ -1,4 +1,5 @@
 using Hana.Application.Time;
+using Hana.Infrastructure.Geography;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Organization;
 using Microsoft.EntityFrameworkCore;
@@ -288,6 +289,86 @@ internal static class OrganizationEndpoints
             catch (DbUpdateException) when (!cancellationToken.IsCancellationRequested) { return Results.Conflict(); }
             catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
         }).WithTags("Organization").WithName("SubmitOrganizationProgramFundingInstruction");
+
+        app.MapGet("/api/v1/organization/programs/{programId:guid}/household-referrals", async (
+            Guid programId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var account = await OrganizationAccount(context, services, hasDatabase, cancellationToken);
+            if (account.Error is not null) return account.Error;
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var program = await db.Programs.AsNoTracking().SingleOrDefaultAsync(p => p.Id == programId, cancellationToken);
+                if (program is null) return Results.NotFound();
+                if (!await db.Memberships.AsNoTracking().AnyAsync(m => m.OrganizationId == program.OrganizationId && m.AccountId == account.AccountId && m.RevokedAtUtc == null, cancellationToken)) return Results.NotFound();
+                var referrals = await db.HouseholdReferrals.AsNoTracking().Where(x => x.ProgramId == programId)
+                    .OrderByDescending(x => x.SubmittedAtUtc).ThenBy(x => x.Id).Take(500).ToListAsync(cancellationToken);
+                var ids = referrals.Select(x => x.Id).ToArray();
+                var members = await db.HouseholdMembers.AsNoTracking().Where(x => ids.Contains(x.HouseholdReferralId))
+                    .OrderBy(x => x.MemberNumber).ToListAsync(cancellationToken);
+                return Results.Ok(new { referrals = referrals.Select(x => HouseholdReferralProjection(x, members.Where(m => m.HouseholdReferralId == x.Id).ToList())) });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Organization").WithName("GetOrganizationHouseholdReferrals");
+
+        app.MapPost("/api/v1/organization/programs/{programId:guid}/household-referrals", async (
+            Guid programId, OrganizationHouseholdReferralInput input, HttpContext context,
+            IServiceProvider services, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var account = await OrganizationAccount(context, services, hasDatabase, cancellationToken);
+            if (account.Error is not null) return account.Error;
+            var reference = input.ExternalReference?.Trim();
+            if (programId == Guid.Empty || input.ProgramRevision < 1 || string.IsNullOrWhiteSpace(reference) || reference.Length > 120 || reference.Any(char.IsControl) ||
+                input.ProvinceId == Guid.Empty || input.CityId == Guid.Empty || input.SettlementType is not (OrganizationSettlementTypes.Urban or OrganizationSettlementTypes.Rural) ||
+                input.SettlementType == OrganizationSettlementTypes.Urban && input.CityId is null ||
+                input.Members is null || input.Members.Count is < 1 or > 20 || input.Members.Any(m => m is null ||
+                    !Allowed(m.GenderCategory, OrganizationHouseholdCategories.Female, OrganizationHouseholdCategories.Male, OrganizationHouseholdCategories.NotReported) ||
+                    !Allowed(m.LifeStage, OrganizationHouseholdCategories.Infant, OrganizationHouseholdCategories.Preschool, OrganizationHouseholdCategories.SchoolAge, OrganizationHouseholdCategories.Adult, OrganizationHouseholdCategories.OlderAdult) ||
+                    !Allowed(m.EducationLevel, OrganizationHouseholdCategories.NoFormalEducation, OrganizationHouseholdCategories.Primary, OrganizationHouseholdCategories.Secondary, OrganizationHouseholdCategories.Diploma, OrganizationHouseholdCategories.HigherEducation, OrganizationHouseholdCategories.EducationNotReported) ||
+                    !Allowed(m.HealthNeed, OrganizationHouseholdCategories.NoKnownChronicNeed, OrganizationHouseholdCategories.ChronicNeed, OrganizationHouseholdCategories.HealthNotReported)))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["referral"] = ["ارجاع خانوار یا دسته‌بندی اعضا معتبر نیست."] });
+            if (!Guid.TryParse(context.Request.Headers["Idempotency-Key"], out var key) || key == Guid.Empty)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["idempotencyKey"] = ["کلید یکتای درخواست معتبر نیست."] });
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var program = await db.Programs.AsNoTracking().SingleOrDefaultAsync(x => x.Id == programId, cancellationToken);
+                if (program is null) return Results.NotFound();
+                var membership = await db.Memberships.AsNoTracking().SingleOrDefaultAsync(x => x.OrganizationId == program.OrganizationId && x.AccountId == account.AccountId && x.RevokedAtUtc == null, cancellationToken);
+                if (membership is null) return Results.NotFound();
+                if (membership.Role == OrganizationRoles.TechnicalOperator) return Results.StatusCode(403);
+                if (program.State != "DRAFT" || input.ProgramRevision != program.Revision) return Results.Conflict(new { currentRevision = program.Revision });
+
+                var geography = services.GetRequiredService<HanaGeographyDbContext>();
+                var provinceSelectable = await geography.Provinces.AsNoTracking().AnyAsync(x => x.Id == input.ProvinceId && x.State == GeographyStates.Selectable, cancellationToken);
+                var citySelectable = input.CityId is null || await geography.Cities.AsNoTracking().AnyAsync(x => x.Id == input.CityId && x.ProvinceId == input.ProvinceId && x.State == GeographyStates.Selectable && x.Province.State == GeographyStates.Selectable, cancellationToken);
+                if (!provinceSelectable || !citySelectable) return Results.ValidationProblem(new Dictionary<string, string[]> { ["geography"] = ["استان و شهر باید قابل انتخاب باشند و شهر به همان استان تعلق داشته باشد."] });
+
+                var prior = await db.HouseholdReferrals.AsNoTracking().SingleOrDefaultAsync(x => x.CreationKey == key, cancellationToken);
+                if (prior is not null)
+                {
+                    var priorMembers = await db.HouseholdMembers.AsNoTracking().Where(x => x.HouseholdReferralId == prior.Id).OrderBy(x => x.MemberNumber).ToListAsync(cancellationToken);
+                    if (prior.SubmittedByAccountId != account.AccountId || prior.ProgramId != programId || prior.OrganizationId != program.OrganizationId || prior.ExternalReference != reference || prior.ProvinceId != input.ProvinceId || prior.CityId != input.CityId || prior.SettlementType != input.SettlementType || !SameMembers(priorMembers, input.Members)) return Results.Conflict();
+                    return Results.Ok(HouseholdReferralProjection(prior, priorMembers));
+                }
+                if (await db.HouseholdReferrals.AnyAsync(x => x.OrganizationId == program.OrganizationId && x.ProgramId == programId && x.ExternalReference == reference, cancellationToken)) return Results.Conflict();
+                var now = services.GetRequiredService<IClock>().UtcNow.ToUniversalTime();
+                var record = new OrganizationHouseholdReferralRecord { Id = Guid.NewGuid(), OrganizationId = program.OrganizationId, ProgramId = programId, ExternalReference = reference, ProvinceId = input.ProvinceId, CityId = input.CityId, SettlementType = input.SettlementType, Revision = 1, SubmittedAtUtc = now, SubmittedByAccountId = account.AccountId!.Value, CreationKey = key };
+                var memberRecords = input.Members.Select((m, index) => new OrganizationHouseholdMemberRecord { Id = Guid.NewGuid(), HouseholdReferralId = record.Id, MemberNumber = index + 1, GenderCategory = m.GenderCategory, LifeStage = m.LifeStage, EducationLevel = m.EducationLevel, HealthNeed = m.HealthNeed }).ToList();
+                await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+                db.HouseholdReferrals.Add(record);
+                db.HouseholdMembers.AddRange(memberRecords);
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return Results.Created($"/api/v1/organization/programs/{programId}/household-referrals/{record.Id}", HouseholdReferralProjection(record, memberRecords));
+            }
+            catch (DbUpdateException) when (!cancellationToken.IsCancellationRequested) { return Results.Conflict(); }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Organization").WithName("CreateOrganizationHouseholdReferral");
     }
 
     private static async Task<(Guid? AccountId, IResult? Error)> OrganizationAccount(HttpContext context, IServiceProvider services, bool hasDatabase, CancellationToken cancellationToken)
@@ -320,6 +401,20 @@ internal static class OrganizationEndpoints
         revision = instruction.Revision, submittedAtUtc = instruction.SubmittedAtUtc
     };
 
+    private static object HouseholdReferralProjection(OrganizationHouseholdReferralRecord referral, IReadOnlyCollection<OrganizationHouseholdMemberRecord> members) => new
+    {
+        referralId = referral.Id, programId = referral.ProgramId, externalReference = referral.ExternalReference,
+        provinceId = referral.ProvinceId, cityId = referral.CityId, settlementType = referral.SettlementType,
+        revision = referral.Revision, submittedAtUtc = referral.SubmittedAtUtc,
+        members = members.OrderBy(x => x.MemberNumber).Select(x => new { x.MemberNumber, x.GenderCategory, x.LifeStage, x.EducationLevel, x.HealthNeed })
+    };
+
+    private static bool Allowed(string value, params string[] allowed) => allowed.Contains(value, StringComparer.Ordinal);
+
+    private static bool SameMembers(IReadOnlyList<OrganizationHouseholdMemberRecord> stored, IReadOnlyList<OrganizationHouseholdMemberInput> requested) =>
+        stored.Count == requested.Count && stored.Select((item, index) => item.MemberNumber == index + 1 && item.GenderCategory == requested[index].GenderCategory &&
+            item.LifeStage == requested[index].LifeStage && item.EducationLevel == requested[index].EducationLevel && item.HealthNeed == requested[index].HealthNeed).All(x => x);
+
     private static async Task<(Guid? AccountId, IResult? Error)> Admin(HttpContext context, IServiceProvider services, bool hasDatabase, CancellationToken cancellationToken)
     {
         var token = BearerToken(context);
@@ -346,3 +441,5 @@ internal sealed record ProvisionOrganizationInput(string? Name, Guid InitialAcco
 internal sealed record GrantOrganizationMembershipInput(Guid AccountId, string Role);
 internal sealed record OrganizationProgramInput(Guid OrganizationId, string? Name, string AllocationMode, string? Description);
 internal sealed record OrganizationFundingInstructionInput(int ProgramRevision, string? SourceInstructionReference);
+internal sealed record OrganizationHouseholdReferralInput(int ProgramRevision, string? ExternalReference, Guid ProvinceId, Guid? CityId, string SettlementType, IReadOnlyList<OrganizationHouseholdMemberInput> Members);
+internal sealed record OrganizationHouseholdMemberInput(string GenderCategory, string LifeStage, string EducationLevel, string HealthNeed);
