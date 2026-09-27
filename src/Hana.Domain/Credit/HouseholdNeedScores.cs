@@ -1,33 +1,23 @@
 namespace Hana.Domain.Credit;
 
-/// <summary>
-/// Quantified, versioned inputs supplied by the approved qualitative-to-score
-/// mapping. Each dimension is on the inclusive 0–3 scale.
-/// </summary>
 public sealed record HouseholdNeedScores
 {
     public int Health { get; }
     public int EconomicHardship { get; }
-    public int AgeAndDependency { get; }
-    public int HouseholdSize { get; }
+    public decimal AgeAndDependency { get; }
+    public decimal HouseholdSize { get; }
     public int CareAndSupport { get; }
     public int Education { get; }
 
-    public HouseholdNeedScores(
-        int health,
-        int economicHardship,
-        int ageAndDependency,
-        int householdSize,
-        int careAndSupport,
-        int education)
+    public HouseholdNeedScores(int health, int economicHardship, decimal ageAndDependency,
+        decimal householdSize, int careAndSupport, int education)
     {
-        ValidateScore(health, nameof(health));
-        ValidateScore(economicHardship, nameof(economicHardship));
-        ValidateScore(ageAndDependency, nameof(ageAndDependency));
-        ValidateScore(householdSize, nameof(householdSize));
-        ValidateScore(careAndSupport, nameof(careAndSupport));
-        ValidateScore(education, nameof(education));
-
+        Check(health, nameof(health));
+        Check(economicHardship, nameof(economicHardship));
+        Check(ageAndDependency, nameof(ageAndDependency));
+        Check(householdSize, nameof(householdSize));
+        Check(careAndSupport, nameof(careAndSupport));
+        Check(education, nameof(education));
         Health = health;
         EconomicHardship = economicHardship;
         AgeAndDependency = ageAndDependency;
@@ -36,12 +26,10 @@ public sealed record HouseholdNeedScores
         Education = education;
     }
 
-    private static void ValidateScore(int score, string name)
+    private static void Check(decimal score, string name)
     {
-        if (score is < 0 or > 3)
-        {
+        if (score is < 0m or > 3m)
             throw new ArgumentOutOfRangeException(name, score,
                 "Household need scores must be between 0 and 3.");
-        }
     }
 }
