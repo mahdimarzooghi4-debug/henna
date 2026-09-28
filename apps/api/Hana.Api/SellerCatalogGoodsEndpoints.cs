@@ -94,8 +94,8 @@ internal static class SellerCatalogGoodsEndpoints
                         product.Name,
                         product.Category.Name,
                         product.Description,
-                        product.PrimaryMediaAssetId,
-                        product.UnitName!, product.QuantityScale!.Value))
+                        product.UnitName!, product.QuantityScale!.Value,
+                        product.PrimaryMediaAssetId))
                     .ToListAsync(cancellationToken);
 
                 var items = rows.Select(product =>
