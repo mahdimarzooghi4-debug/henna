@@ -14,7 +14,7 @@ type SellerAccess = {
   capabilities: {
     dashboard: true;
     orders: false;
-    listings: false;
+    listings: boolean;
     inventory: false;
     pricing: false;
     settlements: false;
@@ -22,26 +22,10 @@ type SellerAccess = {
   };
 };
 
-const navigation = [
-  ["داشبورد", true],
-  ["سفارش‌ها", false],
-  ["کالاها و خدمات", false],
-  ["کتابخانه تصاویر", false],
-  ["موجودی و دسترس‌پذیری", false],
-  ["قیمت‌گذاری", false],
-  ["طرح‌ها و اعتبارها", false],
-  ["ارسال و محدوده فعالیت", false],
-  ["تسویه‌حساب‌ها", false],
-  ["گزارش‌ها", false],
-  ["اعلان‌ها", false],
-  ["اطلاعات کسب‌وکار", false],
-  ["پشتیبانی", false],
-  ["تنظیمات", false],
-] as const;
 
 const capabilityCards = [
   ["سفارش‌ها", "orders"],
-  ["کالاها و خدمات", "listings"],
+  ["کالاهای فروشگاه", "listings"],
   ["موجودی و دسترس‌پذیری", "inventory"],
   ["قیمت‌گذاری", "pricing"],
   ["تسویه‌حساب‌ها", "settlements"],
@@ -117,6 +101,19 @@ export function SellerDashboardView() {
   }
 
   const seller = state.value;
+  const navigation = [
+    { label: "داشبورد", href: "/seller", enabled: true, active: true },
+    { label: "سفارش‌ها", href: "", enabled: false, active: false },
+    { label: "کالاهای فروشگاه", href: "/seller/offers", enabled: seller.capabilities.listings, active: false },
+    { label: "موجودی و دسترس‌پذیری", href: "", enabled: false, active: false },
+    { label: "قیمت‌گذاری", href: "", enabled: false, active: false },
+    { label: "طرح‌ها و اعتبارها", href: "", enabled: false, active: false },
+    { label: "ارسال و محدوده فعالیت", href: "", enabled: false, active: false },
+    { label: "تسویه‌حساب‌ها", href: "", enabled: false, active: false },
+    { label: "گزارش‌ها", href: "", enabled: false, active: false },
+    { label: "اطلاعات کسب‌وکار", href: "", enabled: false, active: false },
+    { label: "پشتیبانی", href: "", enabled: false, active: false },
+  ] as const;
   return (
     <main className="seller-panel">
       <aside className="seller-panel__sidebar"
@@ -130,9 +127,11 @@ export function SellerDashboardView() {
         </div>
 
         <nav className="seller-panel__nav">
-          {navigation.map(([label, enabled]) => enabled
-            ? <Link key={label} href="/seller"
-                className="seller-panel__nav-item seller-panel__nav-item--active">
+          {navigation.map(({ label, href, enabled, active }) => enabled
+            ? <Link key={label} href={href}
+                className={active
+                  ? "seller-panel__nav-item seller-panel__nav-item--active"
+                  : "seller-panel__nav-item"}>
                 {label}
               </Link>
             : <span key={label}

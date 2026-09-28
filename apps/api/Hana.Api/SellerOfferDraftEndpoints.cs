@@ -58,7 +58,7 @@ internal static class SellerOfferDraftEndpoints
                             x.Category.State == PublicationStates.Published)
                         .Select(x => new SellerCatalogProductData(
                             x.Id, x.Name, x.Category.Name, x.Description,
-                            x.PrimaryMediaAssetId))
+                            x.PrimaryMediaAssetId, x.UnitName, x.QuantityScale))
                         .ToDictionaryAsync(x => x.Id, cancellationToken);
 
                 var items = drafts.Select(draft =>
@@ -71,7 +71,8 @@ internal static class SellerOfferDraftEndpoints
                             current.Id, current.Name, current.CategoryName,
                             current.Description,
                             current.PrimaryMediaAssetId is { } mediaId
-                                ? $"/api/v1/catalog/media/{mediaId:D}" : null);
+                                ? $"/api/v1/catalog/media/{mediaId:D}" : null,
+                            current.UnitName, current.QuantityScale);
                     }
 
                     return new SellerOfferDraftListItemResponse(
@@ -244,12 +245,13 @@ internal static class SellerOfferDraftEndpoints
 
         var sellerDb = services.GetRequiredService<HanaSellerDbContext>();
         var activated = await sellerDb.RegistrationDrafts.AsNoTracking()
-            .AnyAsync(x =>
-                x.AccountId == accountId.Value &&
-                x.Status == "SUBMITTED" &&
-                x.ReviewStatus == "APPROVED" &&
-                x.ActivatedAtUtc != null,
-                cancellationToken);
+                .AnyAsync(x =>
+                    x.AccountId == accountId.Value &&
+                    x.Status == "SUBMITTED" &&
+                    x.ReviewStatus == "APPROVED" &&
+                    x.ActivatedAtUtc != null &&
+                    (x.OfferingType == "GOOD" || x.OfferingType == "BOTH"),
+                    cancellationToken);
         return activated
             ? new(accountId.Value, null)
             : new(null, StatusCodes.Status403Forbidden);
@@ -279,11 +281,11 @@ internal sealed record SellerOfferDraftListItemResponse(
 
 internal sealed record SellerCatalogProductResponse(
     Guid Id, string Name, string CategoryName, string? Description,
-    string? ImageUrl);
+    string? ImageUrl, string? UnitName, short? QuantityScale);
 
 internal sealed record SellerCatalogProductData(
     Guid Id, string Name, string CategoryName, string? Description,
-    Guid? PrimaryMediaAssetId);
+    Guid? PrimaryMediaAssetId, string? UnitName, short? QuantityScale);
 
 internal sealed record SellerOfferDraftListRow(
     Guid Id, Guid CatalogProductId, string Status, int Revision,
