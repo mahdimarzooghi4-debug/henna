@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { parseBuyerProduct, validBuyerProductId, type BuyerProduct } from "../lib/buyer-catalog";
-import { parseReferenceCart, type ReferenceCart } from "../lib/buyer-cart";
+import { parseCartOfferComparison, parseReferenceCart, type CartOfferComparison, type ReferenceCart } from "../lib/buyer-cart";
 
 type CartState = { status: "loading" | "signed-out" | "error" } | { status: "ready"; cart: ReferenceCart };
 async function readCart(): Promise<ReferenceCart> {
@@ -170,8 +170,88 @@ export function BuyerReferenceCartPage() {
           </li>;
         })}</ul>
       </section>}
+    {cart && cart.items.length > 0 && <BuyerCartOffers cart={cart} products={products} />}
     {message && <p role="status">{message}</p>}
     <p className="buyer-cart-later">هر سفارش آینده فقط به یک فروشنده وابسته خواهد بود؛ اقلام تأمین‌نشده با انتخاب شما نگه داشته یا حذف می‌شوند.</p>
     <Link className="buyer-cart-back" href="/">بازگشت به فهرست کالاها</Link>
   </main>;
+}
+
+type CartOfferState =
+  | { status: "loading"; revision: number }
+  | { status: "unavailable"; revision: number }
+  | { status: "ready"; revision: number; data: CartOfferComparison };
+
+function BuyerCartOffers({ cart, products }: {
+  cart: ReferenceCart; products: Record<string, ProductView>;
+}) {
+  const [retry, setRetry] = useState(0);
+  const [state, setState] = useState<CartOfferState>({ status: "loading", revision: cart.revision });
+  const current: CartOfferState = state.revision === cart.revision
+    ? state : { status: "loading", revision: cart.revision };
+  useEffect(() => {
+    const abort = new AbortController();
+    let active = true;
+    setState({ status: "loading", revision: cart.revision });
+    void (async () => {
+      try {
+        const response = await fetch("/api/buyer/cart/offers", {
+          method: "GET", cache: "no-store", credentials: "same-origin", redirect: "error",
+          headers: { Accept: "application/json", "Cache-Control": "no-store" }, signal: abort.signal,
+        });
+        if (response.status !== 200 || !response.headers.get("content-type")?.includes("application/json")) throw Error("comparison unavailable");
+        const data = parseCartOfferComparison(await response.json() as unknown);
+        if (!data || data.cartRevision !== cart.revision) throw Error("cart changed");
+        if (active) setState({ status: "ready", revision: cart.revision, data });
+      } catch {
+        if (active) setState({ status: "unavailable", revision: cart.revision });
+      }
+    })();
+    return () => { active = false; abort.abort(); };
+  }, [cart.revision, retry]);
+
+  const title = (productId: string) => {
+    const product = products[productId];
+    return product?.status === "ok" ? product.product.name : "کالای سبد مرجع";
+  };
+  return <section className="buyer-cart-comparison" aria-labelledby="buyer-cart-comparison-title">
+    <div className="buyer-cart-comparison__head">
+      <div><h2 id="buyer-cart-comparison-title">مقایسهٔ پیشنهادهای فروشندگان</h2>
+        <p>پیشنهادهای منتشرشده برای اقلام سبد مرجع را کنار هم ببینید.</p></div>
+      <button type="button" onClick={() => setRetry(value => value + 1)}>بازخوانی پیشنهادها</button>
+    </div>
+    <p className="buyer-cart-comparison__notice">قیمت و مقدار، اطلاعات اعلام‌شدهٔ فروشنده‌اند و موجودی زنده، قیمت نهایی یا رزرو را تضمین نمی‌کنند. این مقایسه هیچ سفارشی ثبت نمی‌کند.</p>
+    {current.status === "loading" ? <p className="buyer-cart-comparison__status" role="status">در حال دریافت پیشنهادهای فعلی…</p> :
+      current.status === "unavailable" ? <p className="buyer-cart-comparison__status" role="alert">وضعیت پیشنهادها نامشخص است؛ آن را نبود پیشنهاد فرض نمی‌کنیم. دوباره تلاش کنید.</p> :
+        <>
+          {current.data.items.some(item => item.status !== "HAS_PUBLISHED_OFFERS") && <div className="buyer-cart-comparison__unmatched">
+            {current.data.items.filter(item => item.status !== "HAS_PUBLISHED_OFFERS").map(item => <p key={item.productId}>
+              <strong>{title(item.productId)}</strong>{" · "}
+              {item.status === "NO_PUBLISHED_OFFERS" ? "پیشنهاد منتشرشده‌ای پیدا نشد." : item.status === "CATALOG_CHANGED" ? "واحد کاتالوگ تغییر کرده؛ مقدار این قلم نیازمند بازبینی است." : "وضعیت کالای کاتالوگ قابل تأیید نیست."}
+            </p>)}
+          </div>}
+          {current.data.sellers.length === 0 ? <p className="buyer-cart-comparison__status">برای اقلام قابل‌مقایسه، پیشنهاد منتشرشده‌ای دریافت نشد.</p> :
+            <div className="buyer-cart-comparison__sellers">{current.data.sellers.map(seller => {
+              const covered = seller.offers.length === current.data.items.length && seller.offers.every(offer => offer.coversRequestedQuantity);
+              return <article className="buyer-cart-comparison__seller" key={seller.sellerPublicId}>
+                <div className="buyer-cart-comparison__seller-head"><h3>{seller.sellerName}</h3><span className={covered ? "is-covered" : "is-partial"}>{covered ? "پوشش کامل مقدار درخواستی" : "پوشش کامل ندارد"}</span></div>
+                <ul>{seller.offers.map(offer => <li key={offer.offerId}>
+                  <strong>{title(offer.productId)}</strong>
+                  <span>قیمت هر {offer.unitName}: {formatRials(offer.priceRials)}</span>
+                  <span>مقدار اعلام‌شده: {formatQuantity(offer.sellableQuantity, offer.quantityScale)} {offer.unitName}</span>
+                  <span>{offer.coversRequestedQuantity ? "برای مقدار درخواستی کافی است" : `برای مقدار درخواستی (${formatQuantity(offer.requestedQuantity, offer.quantityScale)} ${offer.unitName}) کافی نیست`}</span>
+                  <small>به‌روزرسانی پیشنهاد: {new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(offer.updatedAtUtc))} UTC</small>
+                </li>)}</ul>
+              </article>;
+            })}</div>}
+        </>}
+    <p className="buyer-cart-comparison__footnote">اگر بعداً سفارشی ساخته شود، به یک فروشنده محدود خواهد بود و اقلام تأمین‌نشده به انتخاب شما نگه داشته یا حذف می‌شوند. در این مرحله انتخابی ذخیره نمی‌شود.</p>
+  </section>;
+}
+
+function formatRials(value: number) {
+  return new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 0 }).format(value) + " ریال";
+}
+function formatQuantity(value: number, scale: number) {
+  return new Intl.NumberFormat("fa-IR", { minimumFractionDigits: scale, maximumFractionDigits: scale }).format(value);
 }

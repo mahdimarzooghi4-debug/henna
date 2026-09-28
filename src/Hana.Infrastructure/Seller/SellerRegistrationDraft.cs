@@ -7,6 +7,8 @@ namespace Hana.Infrastructure.Seller;
 public sealed class SellerRegistrationDraft
 {
     public Guid AccountId { get; set; }
+    /// <summary>Opaque stable public identity for grouping seller offers.</summary>
+    public Guid PublicSellerId { get; set; }
     public string StoreName { get; set; } = null!;
     public string OwnerName { get; set; } = null!;
     public string Phone { get; set; } = null!;
