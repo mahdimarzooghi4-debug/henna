@@ -8,8 +8,10 @@ type JsonObject = Record<string, unknown>;
 type OfferDraft = {
   id: string;
   catalogProductId: string;
-  status: "DRAFT";
+  status: "DRAFT" | "PUBLISHED" | "PAUSED";
   revision: number;
+  priceRials: number | null;
+  sellableQuantity: number | null;
   createdAtUtc: string;
   updatedAtUtc: string;
   catalogProduct: {
@@ -57,9 +59,18 @@ function parseCatalogProduct(value: unknown, productId: string): OfferDraft["cat
 
 function parseDraft(value: unknown, allowMissingCatalogProduct = false): OfferDraft | null {
   if (!isRecord(value) || !validId(value.id) ||
-    !validId(value.catalogProductId) || value.status !== "DRAFT" ||
+    !validId(value.catalogProductId) ||
+    !["DRAFT", "PUBLISHED", "PAUSED"].includes(String(value.status)) ||
     typeof value.revision !== "number" ||
     !Number.isSafeInteger(value.revision) || value.revision < 1 ||
+    !(value.priceRials === null || (typeof value.priceRials === "number" &&
+      Number.isSafeInteger(value.priceRials) && value.priceRials > 0)) ||
+    !(value.sellableQuantity === null || (typeof value.sellableQuantity === "number" &&
+      Number.isFinite(value.sellableQuantity) && value.sellableQuantity >= 0)) ||
+    ((value.priceRials === null) !== (value.sellableQuantity === null)) ||
+    (value.status === "PUBLISHED" &&
+      (typeof value.priceRials !== "number" ||
+        typeof value.sellableQuantity !== "number" || value.sellableQuantity <= 0)) ||
     !validTimestamp(value.createdAtUtc) ||
     !validTimestamp(value.updatedAtUtc))
     return null;
@@ -70,7 +81,10 @@ function parseDraft(value: unknown, allowMissingCatalogProduct = false): OfferDr
   if (catalogProduct === undefined) return null;
   return {
     id: value.id, catalogProductId: value.catalogProductId,
-    status: "DRAFT", revision: value.revision,
+    status: value.status as OfferDraft["status"], revision: value.revision,
+    priceRials: typeof value.priceRials === "number" ? value.priceRials : null,
+    sellableQuantity: typeof value.sellableQuantity === "number"
+      ? value.sellableQuantity : null,
     createdAtUtc: value.createdAtUtc, updatedAtUtc: value.updatedAtUtc,
     catalogProduct,
   };

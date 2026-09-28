@@ -11,6 +11,8 @@ const categoryId="123e4567-e89b-42d3-a456-426614174005";
 const offerId="123e4567-e89b-42d3-a456-426614174003";
 const mediaId="123e4567-e89b-42d3-a456-426614174004";
 const keyId="123e4567-e89b-42d3-a456-426614174001";
+const updateKey="123e4567-e89b-42d3-a456-426614174006";
+const publishKey="123e4567-e89b-42d3-a456-426614174007";
 const token="hn1_"+"A".repeat(43);
 const at="2026-09-26T10:00:00+00:00";
 const dir=mkdtempSync(join(tmpdir(),"hana-offer-bff-"));
@@ -51,6 +53,7 @@ try {
         res.writeHead(200);
         res.end(JSON.stringify({items:[{
           id:offerId,catalogProductId:productId,status:"DRAFT",revision:1,
+          priceRials:null,sellableQuantity:null,
           createdAtUtc:at,updatedAtUtc:at,
           catalogProduct:{id:productId,name:"کالای آزمون",
             categoryName:"دسته آزمون",description:null,
@@ -65,7 +68,32 @@ try {
         assert.deepEqual(JSON.parse(raw),{catalogProductId:productId});
         res.writeHead(201);
         res.end(JSON.stringify({id:offerId,catalogProductId:productId,
-          status:"DRAFT",revision:1,createdAtUtc:at,updatedAtUtc:at}));
+          status:"DRAFT",revision:1,priceRials:null,sellableQuantity:null,
+          createdAtUtc:at,updatedAtUtc:at}));
+        return;
+      }
+      if(req.method==="PUT"&&req.url==="/api/v1/seller/offers/"+offerId){
+        assert.equal(req.headers["idempotency-key"],updateKey);
+        let raw="";
+        for await(const part of req) raw+=part.toString();
+        assert.deepEqual(JSON.parse(raw),{expectedRevision:1,
+          priceRials:1250000,sellableQuantity:2.125});
+        res.writeHead(200);
+        res.end(JSON.stringify({id:offerId,catalogProductId:productId,
+          status:"DRAFT",revision:2,priceRials:1250000,
+          sellableQuantity:2.125,createdAtUtc:at,updatedAtUtc:at}));
+        return;
+      }
+      if(req.method==="POST"&&
+        req.url==="/api/v1/seller/offers/"+offerId+"/publish"){
+        assert.equal(req.headers["idempotency-key"],publishKey);
+        let raw="";
+        for await(const part of req) raw+=part.toString();
+        assert.deepEqual(JSON.parse(raw),{expectedRevision:2});
+        res.writeHead(200);
+        res.end(JSON.stringify({id:offerId,catalogProductId:productId,
+          status:"PUBLISHED",revision:3,priceRials:1250000,
+          sellableQuantity:2.125,createdAtUtc:at,updatedAtUtc:at}));
         return;
       }
       res.writeHead(404);res.end("{}");
@@ -117,6 +145,33 @@ try {
   const createdBody=await created.json();
   assert.equal(createdBody.catalogProductId,productId);
   assert.equal(createdBody.catalogProduct,null);
+  const changed=await fetch(base+"/api/seller/offers/"+offerId,{method:"PUT",
+    headers:{Cookie:cookie,Origin:base,"Content-Type":"application/json",
+      "Idempotency-Key":updateKey},
+    body:JSON.stringify({expectedRevision:1,priceRials:1250000,
+      sellableQuantity:2.125})});
+  assert.equal(changed.status,200);
+  assert.equal(changed.headers.get("cache-control"),"no-store");
+  assert.deepEqual(await changed.json(),{id:offerId,catalogProductId:productId,
+    status:"DRAFT",revision:2,priceRials:1250000,sellableQuantity:2.125,
+    createdAtUtc:at,updatedAtUtc:at});
+  const published=await fetch(base+"/api/seller/offers/"+offerId+
+    "/publish",{method:"POST",
+    headers:{Cookie:cookie,Origin:base,"Content-Type":"application/json",
+      "Idempotency-Key":publishKey},
+    body:JSON.stringify({expectedRevision:2})});
+  assert.equal(published.status,200);
+  assert.equal((await published.json()).status,"PUBLISHED");
+  assert.equal((await fetch(base+"/api/seller/offers/"+offerId,{method:"PUT",
+    headers:{Cookie:cookie,"Content-Type":"application/json",
+      "Idempotency-Key":updateKey},
+    body:JSON.stringify({expectedRevision:1,priceRials:1250000,
+      sellableQuantity:2.125})})).status,403);
+  assert.equal((await fetch(base+"/api/seller/offers/"+offerId,{method:"PUT",
+    headers:{Cookie:cookie,Origin:base,"Content-Type":"application/json",
+      "Idempotency-Key":updateKey},
+    body:JSON.stringify({expectedRevision:1,priceRials:1250000,
+      sellableQuantity:2.1234567,forgedSellerId:offerId})})).status,400);
   const callsBefore=calls;
   assert.equal((await fetch(base+"/api/seller/offers?accountId=x",
     {headers:{Cookie:cookie}})).status,400);

@@ -2,7 +2,7 @@
 
 ## Scope
 
-The web server exposes same-origin routes for the existing Seller Offer draft API. Seller UI remains deferred until an approved responsive Catalog picker design is available. Scope is supermarket GOODS only; services, price, unit, quantity, stock, delivery, publication, and buyer visibility remain out of scope.
+The web server exposes same-origin routes for the Seller Offer draft and lifecycle API. It supports saving a Catalog reference, updating validated price/quantity, and explicitly publishing a seller-owned offer. Seller UI remains a later slice. Scope is supermarket GOODS only; services, checkout reservations, payment, shipping, and buyer visibility remain out of scope.
 
 ## Routes
 
