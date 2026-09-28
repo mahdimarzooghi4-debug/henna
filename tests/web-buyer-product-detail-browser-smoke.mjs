@@ -14,11 +14,23 @@ const published = {
   id: ID, categoryId: A, name: "نام تأییدشدهٔ جزئیات CI",
   kind: "SERVICE", description: "شرح منتشرشدهٔ CI",
 };
+const good = {
+  ...published, id: OTHER, name: "کالای قابل خرید آیندهٔ CI", kind: "GOOD",
+};
+const offers = {
+  items: [{
+    id: "70000000-0000-4000-8000-000000000001",
+    sellerName: "فروشگاه تأییدشدهٔ CI", priceRials: 1250000,
+    sellableQuantity: 2.5, unitName: "کیلوگرم", quantityScale: 1,
+    updatedAtUtc: "2026-09-28T12:30:00Z",
+  }], page: 1, pageSize: 20, total: 1,
+};
 const json = (body, status = 200) => ({
   status, contentType: "application/json; charset=utf-8",
   headers: { "Cache-Control": "no-store" }, body: JSON.stringify(body),
 });
 let mode = "published";
+let offerMode = "published";
 let calls = [];
 let web, browser, logs = "";
 async function startWeb() {
@@ -58,9 +70,15 @@ async function main() {
         items: [published], total: 1, page: 1, pageSize: 20,
       }));
     if (url.pathname === "/api/catalog/products/" + OTHER)
-      return route.fulfill(json({
-        ...published, id: OTHER, name: "کالای دیگر", description: null,
-      }));
+      return route.fulfill(json(good));
+    if (url.pathname === "/api/catalog/products/" + OTHER + "/offers") {
+      assert.equal(url.searchParams.get("page"), "1");
+      assert.equal(url.searchParams.get("pageSize"), "20");
+      if (offerMode === "503") return route.fulfill(json({}, 503));
+      if (offerMode === "malformed") return route.fulfill(json({ ...offers, items: [{ ...offers.items[0], sellerAccountId: "SECRET" }] }));
+      if (offerMode === "empty") return route.fulfill(json({ items: [], page: 1, pageSize: 20, total: 0 }));
+      return route.fulfill(json(offers));
+    }
     assert.equal(url.pathname, "/api/catalog/products/" + ID);
     if (mode === "404") return route.fulfill(json({}, 404));
     if (mode === "503") return route.fulfill(json({}, 503));
@@ -88,8 +106,26 @@ async function main() {
   assert.equal(new URL(page.url()).pathname, "/");
 
   await page.goto(base + "/products/" + OTHER);
-  await page.getByRole("heading", { name: "کالای دیگر" }).waitFor();
-  assert.equal(await page.getByText("شرح منتشرشدهٔ CI").count(), 0);
+  await page.getByRole("heading", { name: good.name }).waitFor();
+  await page.getByText("فروشگاه تأییدشدهٔ CI", { exact: true }).waitFor();
+  await page.getByText(/۱٬۲۵۰٬۰۰۰ ریال/).waitFor();
+  await page.getByText(/۲٫۵ کیلوگرم/).waitFor();
+  assert.equal(await page.getByRole("button", { name: /سبد|خرید/ }).count(), 0);
+  assert.equal(await page.getByText("شرح منتشرشدهٔ CI").count(), 1);
+
+  offerMode = "503";
+  await page.reload();
+  await page.getByText(/دریافت پیشنهادها تأیید نشد/).waitFor();
+  assert.equal(await page.getByText("فروشگاه تأییدشدهٔ CI", { exact: true }).count(), 0,
+    "uncertain offer reads must not keep stale seller or price data visible");
+  offerMode = "malformed";
+  await page.getByRole("button", { name: "تلاش دوباره" }).click();
+  await page.getByText(/دریافت پیشنهادها تأیید نشد/).waitFor();
+  assert.equal(await page.getByText(/۱٬۲۵۰٬۰۰۰ ریال/).count(), 0);
+  offerMode = "empty";
+  await page.getByRole("button", { name: "تلاش دوباره" }).click();
+  await page.getByText(/پیشنهاد منتشرشده‌ای برای این کالا ثبت نشده/).waitFor();
+  offerMode = "published";
 
   mode = "404";
   await page.goto(base + "/products/" + ID);

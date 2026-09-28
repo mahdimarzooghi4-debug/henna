@@ -8,6 +8,19 @@ export type BuyerPage = {
   items: BuyerProduct[]; page: number; pageSize: number; total: number;
 };
 export const BUYER_PAGE_SIZE = 20;
+export const BUYER_OFFERS_PAGE_SIZE = 20;
+export type BuyerOffer = {
+  id: string;
+  sellerName: string;
+  priceRials: number;
+  sellableQuantity: number;
+  unitName: string;
+  quantityScale: number;
+  updatedAtUtc: string;
+};
+export type BuyerOfferPage = {
+  items: BuyerOffer[]; page: number; pageSize: number; total: number;
+};
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const object = (x: unknown): Record<string, unknown> | null =>
   x !== null && typeof x === "object" && !Array.isArray(x)
@@ -106,6 +119,47 @@ export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage |
   return {
     items, page: requestedPage, pageSize: BUYER_PAGE_SIZE, total: x.total,
   };
+}
+
+/** Parse only the reviewed public offer fields; ignore no unknown additions. */
+export function parseBuyerOfferPage(
+  raw: unknown, requestedPage: number,
+  requestedSize = BUYER_OFFERS_PAGE_SIZE,
+): BuyerOfferPage | null {
+  const x = object(raw);
+  if (!x || !integer(requestedPage, 1, 10000) ||
+    !integer(requestedSize, 1, 50) || x.page !== requestedPage ||
+    x.pageSize !== requestedSize ||
+    !integer(x.total, 0, Number.MAX_SAFE_INTEGER) ||
+    !Array.isArray(x.items) || x.items.length > requestedSize ||
+    x.items.length > x.total) return null;
+  const items: BuyerOffer[] = [];
+  const allowed = ["id", "sellerName", "priceRials", "sellableQuantity",
+    "unitName", "quantityScale", "updatedAtUtc"].sort().join("|");
+  for (const candidate of x.items) {
+    const offer = object(candidate);
+    if (!offer || Object.keys(offer).sort().join("|") !== allowed ||
+      !id(offer.id) || !words(offer.sellerName, 160) ||
+      !integer(offer.priceRials, 1, Number.MAX_SAFE_INTEGER) ||
+      typeof offer.sellableQuantity !== "number" ||
+      !Number.isFinite(offer.sellableQuantity) ||
+      offer.sellableQuantity <= 0 || offer.sellableQuantity > 1_000_000_000_000 ||
+      !words(offer.unitName, 40) || !integer(offer.quantityScale, 0, 6) ||
+      typeof offer.updatedAtUtc !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?Z$/.test(offer.updatedAtUtc) ||
+      !Number.isFinite(Date.parse(offer.updatedAtUtc))) return null;
+    const quantityFactor = 10 ** offer.quantityScale;
+    if (Math.abs(offer.sellableQuantity * quantityFactor -
+      Math.round(offer.sellableQuantity * quantityFactor)) > 1e-7) return null;
+    items.push({
+      id: offer.id, sellerName: offer.sellerName,
+      priceRials: offer.priceRials,
+      sellableQuantity: offer.sellableQuantity,
+      unitName: offer.unitName, quantityScale: offer.quantityScale,
+      updatedAtUtc: offer.updatedAtUtc,
+    });
+  }
+  return { items, page: requestedPage, pageSize: requestedSize, total: x.total };
 }
 
 /** A product identity is not a seller offer, price or stock claim. */
