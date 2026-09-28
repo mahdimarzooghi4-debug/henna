@@ -5,6 +5,7 @@ using Hana.Infrastructure.Seller;
 using Hana.Infrastructure.Catalog;
 using Hana.Infrastructure.Geography;
 using Hana.Infrastructure.Organization;
+using Hana.Infrastructure.Buyer;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
@@ -86,6 +87,9 @@ if (hasIdentityDb)
     builder.Services.AddDbContext<HanaOrganizationDbContext>(options =>
         options.UseNpgsql(identityConnectionString, postgres =>
             postgres.MigrationsHistoryTable("__EFMigrationsHistory", "organization")));
+    builder.Services.AddDbContext<HanaBuyerDbContext>(options =>
+        options.UseNpgsql(identityConnectionString, postgres =>
+            postgres.MigrationsHistoryTable("__EFMigrationsHistory", "buyer")));
 }
 
 if (hasIdentityDb)
@@ -142,19 +146,22 @@ app.MapGet("/health/ready", async (IServiceProvider services,
         var catalogDb = scope.ServiceProvider.GetRequiredService<HanaCatalogDbContext>();
         var geographyDb = scope.ServiceProvider.GetRequiredService<HanaGeographyDbContext>();
         var organizationDb = scope.ServiceProvider.GetRequiredService<HanaOrganizationDbContext>();
+        var buyerDb = scope.ServiceProvider.GetRequiredService<HanaBuyerDbContext>();
         var pending = await db.Database.GetPendingMigrationsAsync(cancellationToken);
         var sellerPending = await sellerDb.Database.GetPendingMigrationsAsync(cancellationToken);
         var catalogPending = await catalogDb.Database.GetPendingMigrationsAsync(cancellationToken);
         var geographyPending = await geographyDb.Database.GetPendingMigrationsAsync(cancellationToken);
         var organizationPending = await organizationDb.Database.GetPendingMigrationsAsync(cancellationToken);
+        var buyerPending = await buyerDb.Database.GetPendingMigrationsAsync(cancellationToken);
         return pending.Any() || sellerPending.Any() || catalogPending.Any() ||
-            geographyPending.Any() || organizationPending.Any() ||
+            geographyPending.Any() || organizationPending.Any() || buyerPending.Any() ||
             !await sellerDb.Database.CanConnectAsync(cancellationToken) ||
             !await catalogDb.Database.CanConnectAsync(cancellationToken) ||
             !await geographyDb.Database.CanConnectAsync(cancellationToken)
             || !await organizationDb.Database.CanConnectAsync(cancellationToken)
+            || !await buyerDb.Database.CanConnectAsync(cancellationToken)
             ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
-            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller", "catalog", "geography", "organization" } });
+            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller", "catalog", "geography", "organization", "buyer" } });
     }
     catch
     {
@@ -370,6 +377,7 @@ app.MapAdminSellerApplications(hasIdentityDb);
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapPublicOfferReads(hasIdentityDb);
+app.MapBuyerReferenceCart(hasIdentityDb);
 app.MapCatalogMedia(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 app.MapOrganization(hasIdentityDb);
@@ -421,6 +429,8 @@ if (args.Contains("--apply-migrations", StringComparer.Ordinal))
     await geographyDb.Database.MigrateAsync();
     var organizationDb = scope.ServiceProvider.GetRequiredService<HanaOrganizationDbContext>();
     await organizationDb.Database.MigrateAsync();
+    var buyerDb = scope.ServiceProvider.GetRequiredService<HanaBuyerDbContext>();
+    await buyerDb.Database.MigrateAsync();
     return;
 }
 
