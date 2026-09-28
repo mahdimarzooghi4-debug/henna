@@ -50,27 +50,33 @@ public sealed class SellerOfferDraftApiTests
         var now = DateTimeOffset.UtcNow;
         var ownerId = Guid.NewGuid();
         var secondSellerId = Guid.NewGuid();
+        var serviceOnlySellerId = Guid.NewGuid();
         var unactivatedId = Guid.NewGuid();
         var regularAccountId = Guid.NewGuid();
         var ownerToken = SessionTokenCodec.Generate();
         var secondToken = SessionTokenCodec.Generate();
+        var serviceOnlyToken = SessionTokenCodec.Generate();
         var unactivatedToken = SessionTokenCodec.Generate();
         var regularToken = SessionTokenCodec.Generate();
         Assert.True(SessionTokenCodec.TryComputeDigest(ownerToken, out var ownerDigest));
         Assert.True(SessionTokenCodec.TryComputeDigest(secondToken, out var secondDigest));
+        Assert.True(SessionTokenCodec.TryComputeDigest(serviceOnlyToken, out var serviceOnlyDigest));
         Assert.True(SessionTokenCodec.TryComputeDigest(unactivatedToken, out var unactivatedDigest));
         Assert.True(SessionTokenCodec.TryComputeDigest(regularToken, out var regularDigest));
 
         identity.Accounts.AddRange(
             Account(ownerId, now), Account(secondSellerId, now),
+            Account(serviceOnlySellerId, now),
             Account(unactivatedId, now), Account(regularAccountId, now));
         identity.AuthSessions.AddRange(
             Session(ownerId, ownerDigest, now),
             Session(secondSellerId, secondDigest, now),
+            Session(serviceOnlySellerId, serviceOnlyDigest, now),
             Session(unactivatedId, unactivatedDigest, now),
             Session(regularAccountId, regularDigest, now));
         identity.RoleAssignments.AddRange(
             SellerRole(ownerId, now), SellerRole(secondSellerId, now),
+            SellerRole(serviceOnlySellerId, now),
             SellerRole(unactivatedId, now));
         await identity.SaveChangesAsync();
 
@@ -82,9 +88,13 @@ public sealed class SellerOfferDraftApiTests
             IsActive = true,
             UpdatedAtUtc = now
         });
+        var serviceOnlyApplication = Application(
+            serviceOnlySellerId, businessCategory, now, activated: true);
+        serviceOnlyApplication.OfferingType = "SERVICE";
         seller.RegistrationDrafts.AddRange(
             Application(ownerId, businessCategory, now, activated: true),
             Application(secondSellerId, businessCategory, now, activated: true),
+            serviceOnlyApplication,
             Application(unactivatedId, businessCategory, now, activated: false));
         await seller.SaveChangesAsync();
 
@@ -130,12 +140,15 @@ public sealed class SellerOfferDraftApiTests
         using var anonymous = factory.CreateClient();
         using var owner = factory.CreateClient();
         using var second = factory.CreateClient();
+        using var serviceOnly = factory.CreateClient();
         using var unactivated = factory.CreateClient();
         using var regular = factory.CreateClient();
         owner.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", ownerToken);
         second.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", secondToken);
+        serviceOnly.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", serviceOnlyToken);
         unactivated.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", unactivatedToken);
         regular.DefaultRequestHeaders.Authorization =
@@ -151,6 +164,18 @@ public sealed class SellerOfferDraftApiTests
             (await regular.GetAsync(endpoint)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
             (await unactivated.GetAsync(endpoint)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await serviceOnly.GetAsync(endpoint)).StatusCode);
+        using (var serviceAccess = await serviceOnly.GetAsync(
+            "/api/v1/seller/access"))
+        {
+            Assert.Equal(HttpStatusCode.OK, serviceAccess.StatusCode);
+            using var serviceAccessJson = JsonDocument.Parse(
+                await serviceAccess.Content.ReadAsStringAsync());
+            Assert.False(serviceAccessJson.RootElement
+                .GetProperty("capabilities").GetProperty("listings")
+                .GetBoolean());
+        }
 
         const string goodsEndpoint = "/api/v1/seller/catalog/goods";
         Assert.Equal(HttpStatusCode.Unauthorized,
@@ -358,6 +383,10 @@ public sealed class SellerOfferDraftApiTests
             catalogProjection.GetProperty("categoryName").GetString());
         Assert.Equal("توضیح Catalog آزمون " + goodId.ToString("N")[..8],
             catalogProjection.GetProperty("description").GetString());
+        Assert.Equal("کیلوگرم",
+            catalogProjection.GetProperty("unitName").GetString());
+        Assert.Equal(3,
+            catalogProjection.GetProperty("quantityScale").GetInt32());
         Assert.Equal(JsonValueKind.Null,
             catalogProjection.GetProperty("imageUrl").ValueKind);
         Assert.False(catalogProjection.TryGetProperty("price", out _));
@@ -409,10 +438,12 @@ public sealed class SellerOfferDraftApiTests
         await seller.OfferDrafts.Where(x =>
             x.SellerAccountId == ownerId ||
             x.SellerAccountId == secondSellerId ||
+            x.SellerAccountId == serviceOnlySellerId ||
             x.SellerAccountId == unactivatedId).ExecuteDeleteAsync();
         await seller.RegistrationDrafts.Where(x =>
             x.AccountId == ownerId ||
             x.AccountId == secondSellerId ||
+            x.AccountId == serviceOnlySellerId ||
             x.AccountId == unactivatedId).ExecuteDeleteAsync();
         await seller.BusinessCategories
             .Where(x => x.Id == businessCategory).ExecuteDeleteAsync();
@@ -426,15 +457,18 @@ public sealed class SellerOfferDraftApiTests
         await identity.AuthSessions.Where(x =>
             x.AccountId == ownerId ||
             x.AccountId == secondSellerId ||
+            x.AccountId == serviceOnlySellerId ||
             x.AccountId == unactivatedId ||
             x.AccountId == regularAccountId).ExecuteDeleteAsync();
         await identity.RoleAssignments.Where(x =>
             x.AccountId == ownerId ||
             x.AccountId == secondSellerId ||
+            x.AccountId == serviceOnlySellerId ||
             x.AccountId == unactivatedId).ExecuteDeleteAsync();
         await identity.Accounts.Where(x =>
             x.Id == ownerId ||
             x.Id == secondSellerId ||
+            x.Id == serviceOnlySellerId ||
             x.Id == unactivatedId ||
             x.Id == regularAccountId).ExecuteDeleteAsync();
     }

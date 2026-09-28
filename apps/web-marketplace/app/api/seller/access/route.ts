@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const expected: Record<string, boolean> = {
       dashboard: true,
       orders: false,
-      listings: false,
+      listings: payload.offeringType === "GOOD" || payload.offeringType === "BOTH",
       inventory: false,
       pricing: false,
       settlements: false,

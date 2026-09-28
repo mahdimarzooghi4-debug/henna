@@ -421,7 +421,7 @@ async function main() {
             capabilities: {
               dashboard: true,
               orders: false,
-              listings: false,
+              listings: true,
               inventory: false,
               pricing: false,
               settlements: false,
@@ -1054,7 +1054,7 @@ async function main() {
     capabilities: {
       dashboard: true,
       orders: false,
-      listings: false,
+      listings: true,
       inventory: false,
       pricing: false,
       settlements: false,
