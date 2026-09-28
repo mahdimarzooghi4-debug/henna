@@ -12,6 +12,16 @@ export type CartOfferComparisonItem = ReferenceCartItem & {
 export type CartOfferComparison = {
   cartRevision: number; items: CartOfferComparisonItem[]; sellers: CartOfferSeller[];
 };
+export type PurchaseDraftLine = {
+  productId: string; offerId: string; quantity: number; unitName: string;
+  quantityScale: number; expectedPriceRials: number; currentPriceRials: number | null;
+  currentSellableQuantity: number | null; priceChanged: boolean;
+  offerAvailable: boolean; coversRequestedQuantity: boolean;
+};
+export type PurchaseDraft = {
+  revision: number; sellerPublicId: string | null; updatedAtUtc: string | null;
+  lines: PurchaseDraftLine[];
+};
 type Obj = Record<string, unknown>;
 const object = (x: unknown): x is Obj => x !== null && typeof x === "object" && !Array.isArray(x);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -68,4 +78,39 @@ export function parseCartOfferComparison(raw: unknown): CartOfferComparison | nu
     if ((item.status === "HAS_PUBLISHED_OFFERS") !== (count > 0)) return null;
   }
   return { cartRevision: raw.cartRevision as number, items, sellers };
+}
+
+/** Strictly parse the saved buyer selection; a null seller means cleared. */
+export function parsePurchaseDraft(raw: unknown): PurchaseDraft | null {
+  if (!object(raw) || Object.keys(raw).sort().join("|") !== "lines|revision|sellerPublicId|updatedAtUtc" ||
+      !Number.isSafeInteger(raw.revision) || (raw.revision as number) < 0 || !Array.isArray(raw.lines) || raw.lines.length > 100) return null;
+  if (raw.sellerPublicId === null) {
+    return raw.lines.length === 0 && raw.updatedAtUtc === null
+      ? { revision: raw.revision as number, sellerPublicId: null, updatedAtUtc: null, lines: [] } : null;
+  }
+  if (!validId(raw.sellerPublicId) || !date(raw.updatedAtUtc) || raw.lines.length === 0) return null;
+  const lines: PurchaseDraftLine[] = [], products = new Set<string>(), offers = new Set<string>();
+  for (const value of raw.lines) {
+    if (!object(value) || Object.keys(value).sort().join("|") !== "coversRequestedQuantity|currentPriceRials|currentSellableQuantity|expectedPriceRials|offerAvailable|offerId|priceChanged|productId|quantity|quantityScale|unitName" ||
+        !validId(value.productId) || !validId(value.offerId) ||
+        !validQuantity(value.quantity, value.quantityScale) || !words(value.unitName, 40) ||
+        !Number.isSafeInteger(value.expectedPriceRials) || (value.expectedPriceRials as number) <= 0 ||
+        !(value.currentPriceRials === null || (Number.isSafeInteger(value.currentPriceRials) && (value.currentPriceRials as number) > 0)) ||
+        !(value.currentSellableQuantity === null || validQuantity(value.currentSellableQuantity, value.quantityScale)) ||
+        typeof value.priceChanged !== "boolean" || typeof value.offerAvailable !== "boolean" ||
+        typeof value.coversRequestedQuantity !== "boolean" ||
+        value.priceChanged !== (value.currentPriceRials !== null && value.currentPriceRials !== value.expectedPriceRials) ||
+        value.coversRequestedQuantity !== (value.offerAvailable && value.currentSellableQuantity !== null && value.currentSellableQuantity >= value.quantity) ||
+        products.has((value.productId as string).toLowerCase()) || offers.has((value.offerId as string).toLowerCase())) return null;
+    products.add((value.productId as string).toLowerCase()); offers.add((value.offerId as string).toLowerCase());
+    lines.push({ productId: value.productId, offerId: value.offerId, quantity: value.quantity,
+      unitName: value.unitName, quantityScale: value.quantityScale as number,
+      expectedPriceRials: value.expectedPriceRials as number,
+      currentPriceRials: value.currentPriceRials as number | null,
+      currentSellableQuantity: value.currentSellableQuantity as number | null,
+      priceChanged: value.priceChanged, offerAvailable: value.offerAvailable,
+      coversRequestedQuantity: value.coversRequestedQuantity });
+  }
+  return { revision: raw.revision as number, sellerPublicId: raw.sellerPublicId as string,
+    updatedAtUtc: raw.updatedAtUtc as string, lines };
 }

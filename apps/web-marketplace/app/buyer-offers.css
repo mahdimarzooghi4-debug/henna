@@ -37,9 +37,27 @@
 .buyer-cart-comparison__seller li strong { color: var(--hana-charcoal, #2d2d2d); }
 .buyer-cart-comparison__seller li small { color: #897f75; font-size: 11px; }
 .buyer-cart-comparison__footnote { margin-top: 0; }
+.buyer-purchase-draft__choose,
+.buyer-purchase-draft__editor button,
+.buyer-purchase-draft__saved button { min-height: 42px; border: 1px solid var(--hana-teal); border-radius: 9px; padding: 8px 14px; background: #fff; color: var(--hana-teal); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.buyer-purchase-draft__choose { margin-top: 12px; }
+.buyer-purchase-draft__editor,
+.buyer-purchase-draft__saved { display: grid; gap: 10px; margin-top: 12px; padding: 14px; border: 1px solid var(--hana-border); border-radius: 10px; background: #fbf8f4; color: var(--hana-charcoal); }
+.buyer-purchase-draft__editor p,
+.buyer-purchase-draft__saved p { margin: 0; color: var(--hana-muted); font-size: 13px; line-height: 1.8; }
+.buyer-purchase-draft__saved h3 { margin: 0; color: var(--hana-teal); font-size: 17px; }
+.buyer-purchase-draft__line,
+.buyer-purchase-draft__confirm { display: flex; align-items: flex-start; gap: 8px; color: var(--hana-teal); font-size: 13px; line-height: 1.8; }
+.buyer-purchase-draft__line input,
+.buyer-purchase-draft__confirm input { flex: 0 0 auto; margin-top: 5px; accent-color: var(--hana-teal); }
+.buyer-purchase-draft__editor button:disabled,
+.buyer-purchase-draft__saved button:disabled { opacity: .5; cursor: default; }
 @media (max-width: 720px) {
   .buyer-cart-comparison { gap: 12px; padding: 16px 14px; }
   .buyer-cart-comparison__head { flex-direction: column; }
   .buyer-cart-comparison__head h2 { font-size: 17px; }
   .buyer-cart-comparison__sellers { grid-template-columns: 1fr; }
+  .buyer-purchase-draft__choose,
+  .buyer-purchase-draft__editor button,
+  .buyer-purchase-draft__saved button { width: 100%; }
 }
