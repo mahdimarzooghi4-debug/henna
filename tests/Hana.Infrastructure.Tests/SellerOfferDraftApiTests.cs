@@ -176,6 +176,8 @@ public sealed class SellerOfferDraftApiTests
             Assert.Equal(goodId, item.GetProperty("id").GetGuid());
             Assert.Equal(catalogCategoryId, item.GetProperty("categoryId").GetGuid());
             Assert.Equal(catalogCategoryName, item.GetProperty("categoryName").GetString());
+            Assert.Equal("کیلوگرم", item.GetProperty("unitName").GetString());
+            Assert.Equal(3, item.GetProperty("quantityScale").GetInt32());
             Assert.Null(item.GetProperty("imageUrl").GetString());
             Assert.False(item.TryGetProperty("price", out _));
             Assert.False(item.TryGetProperty("kind", out _));
@@ -375,6 +377,8 @@ public sealed class SellerOfferDraftApiTests
         Kind = kind,
         State = state,
         Description = "توضیح Catalog آزمون " + id.ToString("N")[..8],
+        UnitName = kind == CatalogProductKinds.Good ? "کیلوگرم" : null,
+        QuantityScale = kind == CatalogProductKinds.Good ? (short)3 : null,
         CreatedAtUtc = now
     };
 

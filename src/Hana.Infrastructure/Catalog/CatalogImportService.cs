@@ -86,6 +86,7 @@ public static partial class CatalogImportService
                     (item.Description.Length > 2000 ||
                      ContainsControls(item.Description))) ||
                 item.Kind is not (CatalogProductKinds.Good or CatalogProductKinds.Service) ||
+                !ValidUnit(item.Kind, item.UnitName, item.QuantityScale) ||
                 !ValidState(item.State) ||
                 !productIds.Add(item.Id))
                 throw new InvalidDataException(
@@ -132,7 +133,8 @@ public static partial class CatalogImportService
                 .Select(x => new
                 {
                     x.Id, x.CategoryId, x.Name, x.Kind,
-                    x.Description, x.State, x.CreatedAtUtc
+                    x.Description, x.State, x.CreatedAtUtc,
+                    x.UnitName, x.QuantityScale
                 }).ToArray()
         });
 
@@ -198,6 +200,7 @@ public static partial class CatalogImportService
         {
             var name = item.Name!.Trim();
             var description = item.Description?.Trim();
+            var unitName = NormalizeUnit(item.UnitName);
             if (!productsById.TryGetValue(item.Id, out var existing))
             {
                 newProducts++;
@@ -207,12 +210,17 @@ public static partial class CatalogImportService
                         Id = item.Id, CategoryId = item.CategoryId,
                         Name = name, Description = description,
                         Kind = item.Kind!, State = item.State!,
+                        UnitName = unitName,
+                        QuantityScale = item.QuantityScale,
                         CreatedAtUtc = now
                     });
             }
             else if (existing.CategoryId != item.CategoryId ||
                      existing.Name != name ||
                      existing.Description != description ||
+                     (unitName is not null && existing.UnitName != unitName) ||
+                     (item.QuantityScale is not null &&
+                        existing.QuantityScale != item.QuantityScale) ||
                      existing.State != item.State)
             {
                 changedProducts++;
@@ -221,6 +229,11 @@ public static partial class CatalogImportService
                     existing.CategoryId = item.CategoryId;
                     existing.Name = name;
                     existing.Description = description;
+                    if (unitName is not null)
+                    {
+                        existing.UnitName = unitName;
+                        existing.QuantityScale = item.QuantityScale;
+                    }
                     existing.State = item.State!;
                 }
             }
@@ -257,6 +270,15 @@ public static partial class CatalogImportService
         value.Any(char.IsControl);
     private static bool ValidState(string? state) =>
         state is PublicationStates.Draft or PublicationStates.Published;
+    private static bool ValidUnit(string? kind, string? unitName, short? scale)
+    {
+        if (unitName is null && scale is null) return true;
+        return kind == CatalogProductKinds.Good &&
+            !string.IsNullOrWhiteSpace(unitName) && unitName.Length <= 40 &&
+            !ContainsControls(unitName) && scale is >= 0 and <= 6;
+    }
+    private static string? NormalizeUnit(string? unitName) =>
+        string.IsNullOrWhiteSpace(unitName) ? null : unitName.Trim();
 }
 
 public sealed record CatalogImportDocument(
@@ -268,7 +290,8 @@ public sealed record CatalogCategoryInput(
 
 public sealed record CatalogProductInput(
     Guid Id, Guid CategoryId, string? Name,
-    string? Kind, string? Description, string? State);
+    string? Kind, string? Description, string? State,
+    string? UnitName, short? QuantityScale);
 
 public sealed record CatalogImportResult(
     int NewCategories, int ChangedCategories,

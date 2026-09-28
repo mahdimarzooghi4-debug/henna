@@ -50,6 +50,9 @@ public sealed class HanaCatalogDbContextModelSnapshot : ModelSnapshot
                     "kind IN ('GOOD', 'SERVICE')");
                 table.HasCheckConstraint("ck_catalog_products_name",
                     "length(btrim(name)) > 0");
+                table.HasCheckConstraint("ck_catalog_products_unit_quantity",
+                    "(unit_name IS NULL AND quantity_scale IS NULL) OR " +
+                    "(kind = 'GOOD' AND unit_name IS NOT NULL AND length(btrim(unit_name)) BETWEEN 1 AND 40 AND quantity_scale IS NOT NULL AND quantity_scale BETWEEN 0 AND 6)");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
@@ -67,6 +70,9 @@ public sealed class HanaCatalogDbContextModelSnapshot : ModelSnapshot
                 .IsRequired();
             entity.Property(x => x.PrimaryMediaAssetId)
                 .HasColumnName("primary_media_asset_id");
+            entity.Property(x => x.UnitName).HasColumnName("unit_name")
+                .HasMaxLength(40);
+            entity.Property(x => x.QuantityScale).HasColumnName("quantity_scale");
             entity.HasOne(x => x.Category).WithMany()
                 .HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_catalog_products_categories");

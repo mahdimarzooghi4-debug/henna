@@ -14,6 +14,10 @@ public sealed class ProductRecord
     public string State { get; set; } = PublicationStates.Draft;
     public DateTimeOffset CreatedAtUtc { get; set; }
     public Guid? PrimaryMediaAssetId { get; set; }
+    /// <summary>Canonical catalog unit shown to every seller (for goods only).</summary>
+    public string? UnitName { get; set; }
+    /// <summary>Maximum fractional digits allowed for seller quantities.</summary>
+    public short? QuantityScale { get; set; }
 }
 
 public static class PublicationStates

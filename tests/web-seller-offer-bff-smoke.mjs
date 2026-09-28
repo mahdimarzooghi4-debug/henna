@@ -40,6 +40,7 @@ try {
         res.end(JSON.stringify({
           items:[{id:productId,categoryId,name:"کالای آزمون",
             categoryName:"دسته آزمون",description:null,
+            unitName:"کیلوگرم",quantityScale:3,
             imageUrl:"/api/v1/catalog/media/"+mediaId}],
           categories:[{id:categoryId,name:"دسته آزمون",slug:"test-category"}],
           page:2,pageSize:10,total:21
@@ -102,6 +103,7 @@ try {
   assert.deepEqual(candidatePage,{
     items:[{id:productId,categoryId,name:"کالای آزمون",
       categoryName:"دسته آزمون",description:null,
+      unitName:"کیلوگرم",quantityScale:3,
       imageUrl:"/api/v1/catalog/media/"+mediaId}],
     categories:[{id:categoryId,name:"دسته آزمون",slug:"test-category"}],
     page:2,pageSize:10,total:21

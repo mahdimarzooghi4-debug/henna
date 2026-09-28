@@ -11,6 +11,8 @@ type CatalogGood = {
   name: string;
   categoryName: string;
   description: string | null;
+  unitName: string;
+  quantityScale: number;
   imageUrl: string | null;
 };
 type CatalogPage = {
@@ -63,9 +65,13 @@ function parsePage(value: unknown, requestedPage: number, requestedSize: number)
   const items: CatalogGood[] = [];
   for (const item of value.items) {
     if (!isRecord(item) ||
-      !exactKeys(item, ["id", "categoryId", "name", "categoryName", "description", "imageUrl"]) ||
+      !exactKeys(item, ["id", "categoryId", "name", "categoryName", "description", "unitName", "quantityScale", "imageUrl"]) ||
       !validId(item.id) || !validId(item.categoryId) ||
       !boundedText(item.name, 200) || !boundedText(item.categoryName, 120) ||
+      !boundedText(item.unitName, 40) ||
+      typeof item.quantityScale !== "number" ||
+      !Number.isInteger(item.quantityScale) ||
+      item.quantityScale < 0 || item.quantityScale > 6 ||
       (item.description !== null &&
         (typeof item.description !== "string" || item.description.length > 2000 ||
           /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(item.description))) ||
@@ -76,6 +82,8 @@ function parsePage(value: unknown, requestedPage: number, requestedSize: number)
       id: item.id, categoryId: item.categoryId, name: item.name,
       categoryName: item.categoryName,
       description: typeof item.description === "string" ? item.description : null,
+      unitName: item.unitName,
+      quantityScale: item.quantityScale,
       imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : null,
     });
   }
