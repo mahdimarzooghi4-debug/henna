@@ -396,7 +396,7 @@ public sealed class SellerOfferDraftApiTests
         Assert.Empty(secondList.GetProperty("items").EnumerateArray());
 
         var stored = await seller.OfferDrafts.AsNoTracking().ToListAsync();
-        var only = Assert.Single(stored);
+        var only = Assert.Single(stored.Where(x => x.Id == offerId));
         Assert.Equal(ownerId, only.SellerAccountId);
         Assert.Equal(goodId, only.CatalogProductId);
         Assert.Equal(SellerOfferDraftStates.Published, only.Status);
@@ -415,6 +415,33 @@ public sealed class SellerOfferDraftApiTests
         Assert.False(publicProduct.TryGetProperty("sellerAccountId", out _));
         Assert.False(publicProduct.TryGetProperty("price", out _));
         Assert.False(publicProduct.TryGetProperty("stock", out _));
+
+        seller.OfferDrafts.AddRange(
+            new SellerOfferDraftRecord
+            {
+                Id = Guid.NewGuid(), SellerAccountId = secondSellerId,
+                CatalogProductId = goodId, Status = SellerOfferDraftStates.Paused,
+                Revision = 3, IdempotencyKey = Guid.NewGuid(),
+                PriceRials = 1_100_000, SellableQuantity = 1,
+                CreatedAtUtc = now, UpdatedAtUtc = now
+            },
+            new SellerOfferDraftRecord
+            {
+                Id = Guid.NewGuid(), SellerAccountId = serviceOnlySellerId,
+                CatalogProductId = goodId, Status = SellerOfferDraftStates.Published,
+                Revision = 3, IdempotencyKey = Guid.NewGuid(),
+                PriceRials = 1_300_000, SellableQuantity = 1,
+                CreatedAtUtc = now, UpdatedAtUtc = now
+            },
+            new SellerOfferDraftRecord
+            {
+                Id = Guid.NewGuid(), SellerAccountId = unactivatedId,
+                CatalogProductId = goodId, Status = SellerOfferDraftStates.Published,
+                Revision = 3, IdempotencyKey = Guid.NewGuid(),
+                PriceRials = 1_400_000, SellableQuantity = 1,
+                CreatedAtUtc = now, UpdatedAtUtc = now
+            });
+        await seller.SaveChangesAsync();
 
         using (var publicOffersResponse = await anonymous.GetAsync(
             "/api/v1/catalog/products/" + goodId + "/offers?page=1&pageSize=10"))
