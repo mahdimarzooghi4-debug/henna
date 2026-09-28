@@ -1,0 +1,18 @@
+/* Public published seller offers on the buyer product detail. */
+.buyer-offers { margin: 22px 0 0; padding: 20px 18px; border: 1px solid var(--hana-border, #d7b895); border-radius: 16px; background: var(--hana-surface, #fff); }
+.buyer-offers h2 { margin: 0 0 16px; color: var(--hana-teal); font-size: 20px; line-height: 1.7; }
+.buyer-offers-status { margin: 0; padding: 14px 16px; border-radius: 12px; background: #f7f3ed; color: var(--hana-muted); }
+.buyer-offers-status button, .buyer-offers-pagination button { min-height: 40px; border: 1px solid var(--hana-teal); border-radius: 9px; padding: 8px 14px; background: #fff; color: var(--hana-teal); font: inherit; font-weight: 700; cursor: pointer; }
+.buyer-offers-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.buyer-offer { display: grid; gap: 8px; padding: 14px 16px; border-radius: 12px; background: #f7f3ed; color: var(--hana-muted); }
+.buyer-offer strong { color: var(--hana-charcoal); }
+.buyer-offer span { overflow-wrap: anywhere; }
+.buyer-offers-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; color: var(--hana-teal); }
+.buyer-offers-pagination button:disabled { opacity: .45; cursor: default; }
+.buyer-offers-count { margin: 12px 0 0; color: var(--hana-muted); font-size: 13px; }
+@media (max-width: 700px) {
+  .buyer-offers { padding: 16px 14px; }
+  .buyer-offers h2 { font-size: 17px; }
+  .buyer-offer { padding: 12px; font-size: 14px; }
+  .buyer-offers-pagination { gap: 8px; font-size: 13px; }
+}
