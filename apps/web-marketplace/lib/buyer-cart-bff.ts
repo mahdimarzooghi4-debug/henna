@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCookieName } from "./server-auth";
+import { parseCartOfferComparison } from "./buyer-cart";
 export type BuyerCartItem = { productId: string; quantity: number; unitName: string; quantityScale: number };
 export type BuyerCart = { revision: number; items: BuyerCartItem[] };
 type Obj = Record<string, unknown>;
@@ -38,4 +39,24 @@ export async function forwardBuyerCart(request: NextRequest, method: "GET" | "PU
     const cart = parseCart(JSON.parse(text) as unknown);
     return cart ? NextResponse.json(cart, { headers: noStore }) : cartError(503, "پاسخ سبد قابل تأیید نیست.");
   } catch { return cartError(503, "تغییر سبد تأیید نشد."); }
+}
+
+export async function forwardBuyerCartOffers(request: NextRequest) {
+  const token = request.cookies.get(sessionCookieName)?.value;
+  if (!token || !accessTokenPattern.test(token)) return cartError(401, "برای مقایسهٔ پیشنهادها ابتدا وارد شوید.");
+  const target = hanaAuthApiUrl("/api/v1/buyer/cart/offers");
+  if (!target) return cartError(503, "مقایسهٔ پیشنهادها فعلاً در دسترس نیست.");
+  try {
+    const upstream = await fetch(target, {
+      method: "GET",
+      headers: { Authorization: "Bearer " + token, Accept: "application/json" },
+      cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10000),
+    });
+    if (upstream.status === 401) return cartError(401, "نشست معتبر نیست؛ دوباره وارد شوید.");
+    if (upstream.status !== 200 || !upstream.headers.get("content-type")?.includes("application/json") || Number(upstream.headers.get("content-length") ?? "0") > 512_000) return cartError(503, "وضعیت پیشنهادها نامشخص است؛ دوباره تلاش کنید.");
+    const text = await upstream.text();
+    if (text.length > 512_000) return cartError(503, "پاسخ مقایسه بیش از حد بزرگ است.");
+    const comparison = parseCartOfferComparison(JSON.parse(text) as unknown);
+    return comparison ? NextResponse.json(comparison, { headers: noStore }) : cartError(503, "پاسخ مقایسه قابل تأیید نیست.");
+  } catch { return cartError(503, "وضعیت پیشنهادها نامشخص است؛ دوباره تلاش کنید."); }
 }

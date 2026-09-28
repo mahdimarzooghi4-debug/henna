@@ -21,6 +21,7 @@ const good = {
 const offers = {
   items: [{
     id: "70000000-0000-4000-8000-000000000001",
+    sellerPublicId: "70000000-0000-4000-8000-000000000002",
     sellerName: "فروشگاه تأییدشدهٔ CI", priceRials: 1250000,
     sellableQuantity: 2.5, unitName: "کیلوگرم", quantityScale: 1,
     updatedAtUtc: "2026-09-28T12:30:00Z",

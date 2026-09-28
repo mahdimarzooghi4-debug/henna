@@ -12,6 +12,7 @@ export const BUYER_PAGE_SIZE = 20;
 export const BUYER_OFFERS_PAGE_SIZE = 20;
 export type BuyerOffer = {
   id: string;
+  sellerPublicId: string;
   sellerName: string;
   priceRials: number;
   sellableQuantity: number;
@@ -141,12 +142,12 @@ export function parseBuyerOfferPage(
     !Array.isArray(x.items) || x.items.length > requestedSize ||
     x.items.length > x.total) return null;
   const items: BuyerOffer[] = [];
-  const allowed = ["id", "sellerName", "priceRials", "sellableQuantity",
+  const allowed = ["id", "sellerPublicId", "sellerName", "priceRials", "sellableQuantity",
     "unitName", "quantityScale", "updatedAtUtc"].sort().join("|");
   for (const candidate of x.items) {
     const offer = object(candidate);
     if (!offer || Object.keys(offer).sort().join("|") !== allowed ||
-      !id(offer.id) || !words(offer.sellerName, 160) ||
+      !id(offer.id) || !id(offer.sellerPublicId) || !words(offer.sellerName, 160) ||
       !integer(offer.priceRials, 1, Number.MAX_SAFE_INTEGER) ||
       typeof offer.sellableQuantity !== "number" ||
       !Number.isFinite(offer.sellableQuantity) ||
@@ -159,7 +160,7 @@ export function parseBuyerOfferPage(
     if (Math.abs(offer.sellableQuantity * quantityFactor -
       Math.round(offer.sellableQuantity * quantityFactor)) > 1e-7) return null;
     items.push({
-      id: offer.id, sellerName: offer.sellerName,
+      id: offer.id, sellerPublicId: offer.sellerPublicId, sellerName: offer.sellerName,
       priceRials: offer.priceRials,
       sellableQuantity: offer.sellableQuantity,
       unitName: offer.unitName, quantityScale: offer.quantityScale,

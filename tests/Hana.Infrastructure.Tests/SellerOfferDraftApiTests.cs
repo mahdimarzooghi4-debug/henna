@@ -4,18 +4,39 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Hana.Infrastructure.Buyer;
 using Hana.Infrastructure.Catalog;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Hana.Infrastructure.Tests;
 
 [Collection("CatalogDatabase")]
 public sealed class SellerOfferDraftApiTests
 {
+    [Fact]
+    public void SellerMigrationSnapshotMatchesCurrentModel()
+    {
+        var options = new DbContextOptionsBuilder<HanaSellerDbContext>()
+            .UseNpgsql("Host=localhost;Database=seller_snapshot_check", pg =>
+                pg.MigrationsHistoryTable("__EFMigrationsHistory", "seller"))
+            .Options;
+        using var db = new HanaSellerDbContext(options);
+        var snapshot = db.GetService<IMigrationsAssembly>().ModelSnapshot;
+        Assert.NotNull(snapshot);
+        var current = db.GetService<IDesignTimeModel>().Model;
+        var finalized = db.GetService<IModelRuntimeInitializer>()
+            .Initialize(snapshot.Model, designTime: true);
+        Assert.Empty(db.GetService<IMigrationsModelDiffer>().GetDifferences(
+            finalized.GetRelationalModel(), current.GetRelationalModel()));
+    }
+
     [Fact]
     public async Task DraftCreationRequiresActiveSellerAndIsolatesIdempotentCatalogReferences()
     {
@@ -39,13 +60,19 @@ public sealed class SellerOfferDraftApiTests
                     pg.MigrationsHistoryTable(
                         "__EFMigrationsHistory", "catalog"))
                 .Options;
+        var buyerOptions = new DbContextOptionsBuilder<HanaBuyerDbContext>()
+            .UseNpgsql(connection, pg => pg.MigrationsHistoryTable(
+                "__EFMigrationsHistory", "buyer"))
+            .Options;
 
         await using var identity = new HanaIdentityDbContext(identityOptions);
         await using var seller = new HanaSellerDbContext(sellerOptions);
         await using var catalog = new HanaCatalogDbContext(catalogOptions);
+        await using var buyer = new HanaBuyerDbContext(buyerOptions);
         Assert.Empty(await identity.Database.GetPendingMigrationsAsync());
         Assert.Empty(await seller.Database.GetPendingMigrationsAsync());
         Assert.Empty(await catalog.Database.GetPendingMigrationsAsync());
+        Assert.Empty(await buyer.Database.GetPendingMigrationsAsync());
 
         var now = DateTimeOffset.UtcNow;
         var ownerId = Guid.NewGuid();
@@ -120,11 +147,14 @@ public sealed class SellerOfferDraftApiTests
                 CreatedAtUtc = now
             });
         var goodId = Guid.NewGuid();
+        var secondGoodId = Guid.NewGuid();
         var serviceId = Guid.NewGuid();
         var unpublishedId = Guid.NewGuid();
         var hiddenCategoryGoodId = Guid.NewGuid();
         catalog.Products.AddRange(
             Product(goodId, catalogCategoryId,
+                CatalogProductKinds.Good, PublicationStates.Published, now),
+            Product(secondGoodId, catalogCategoryId,
                 CatalogProductKinds.Good, PublicationStates.Published, now),
             Product(serviceId, catalogCategoryId,
                 CatalogProductKinds.Service, PublicationStates.Published, now),
@@ -195,9 +225,10 @@ public sealed class SellerOfferDraftApiTests
             var goodsRoot = goodsJson.RootElement;
             Assert.Equal(1, goodsRoot.GetProperty("page").GetInt32());
             Assert.Equal(20, goodsRoot.GetProperty("pageSize").GetInt32());
-            Assert.Equal(1, goodsRoot.GetProperty("total").GetInt32());
+            Assert.Equal(2, goodsRoot.GetProperty("total").GetInt32());
             var items = goodsRoot.GetProperty("items");
-            var item = Assert.Single(items.EnumerateArray());
+            var item = items.EnumerateArray()
+                .Single(x => x.GetProperty("id").GetGuid() == goodId);
             Assert.Equal(goodId, item.GetProperty("id").GetGuid());
             Assert.Equal(catalogCategoryId, item.GetProperty("categoryId").GetGuid());
             Assert.Equal(catalogCategoryName, item.GetProperty("categoryName").GetString());
@@ -219,7 +250,7 @@ public sealed class SellerOfferDraftApiTests
             Assert.Equal(HttpStatusCode.OK, filteredResponse.StatusCode);
             using var filteredJson = JsonDocument.Parse(
                 await filteredResponse.Content.ReadAsStringAsync());
-            Assert.Equal(1, filteredJson.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(2, filteredJson.RootElement.GetProperty("total").GetInt32());
         }
 
         Assert.Equal(HttpStatusCode.BadRequest,
@@ -419,6 +450,15 @@ public sealed class SellerOfferDraftApiTests
         seller.OfferDrafts.AddRange(
             new SellerOfferDraftRecord
             {
+                Id = Guid.NewGuid(), SellerAccountId = ownerId,
+                CatalogProductId = secondGoodId,
+                Status = SellerOfferDraftStates.Published,
+                Revision = 3, IdempotencyKey = Guid.NewGuid(),
+                PriceRials = 950_000, SellableQuantity = 3,
+                CreatedAtUtc = now, UpdatedAtUtc = now
+            },
+            new SellerOfferDraftRecord
+            {
                 Id = Guid.NewGuid(), SellerAccountId = secondSellerId,
                 CatalogProductId = goodId, Status = SellerOfferDraftStates.Paused,
                 Revision = 3, IdempotencyKey = Guid.NewGuid(),
@@ -443,6 +483,7 @@ public sealed class SellerOfferDraftApiTests
             });
         await seller.SaveChangesAsync();
 
+        Guid publicSellerId;
         using (var publicOffersResponse = await anonymous.GetAsync(
             "/api/v1/catalog/products/" + goodId + "/offers?page=1&pageSize=10"))
         {
@@ -456,6 +497,8 @@ public sealed class SellerOfferDraftApiTests
             var publicOffer = Assert.Single(
                 publicOffersRoot.GetProperty("items").EnumerateArray());
             Assert.Equal(offerId, publicOffer.GetProperty("id").GetGuid());
+            publicSellerId = publicOffer.GetProperty("sellerPublicId").GetGuid();
+            Assert.NotEqual(ownerId, publicSellerId);
             Assert.Equal("فروشگاه آزمون",
                 publicOffer.GetProperty("sellerName").GetString());
             Assert.Equal(1_250_000,
@@ -469,6 +512,56 @@ public sealed class SellerOfferDraftApiTests
             Assert.False(publicOffer.TryGetProperty("sellerAccountId", out _));
             Assert.False(publicOffer.TryGetProperty("status", out _));
         }
+
+        var publicSellerIdForCart = await seller.RegistrationDrafts.AsNoTracking()
+            .Where(x => x.AccountId == ownerId)
+            .Select(x => x.PublicSellerId).SingleAsync();
+        Assert.Equal(publicSellerId, publicSellerIdForCart);
+        Assert.NotEqual(Guid.Empty, publicSellerIdForCart);
+        Assert.NotEqual(ownerId, publicSellerIdForCart);
+        buyer.ReferenceCarts.Add(new BuyerReferenceCartRecord
+        {
+            AccountId = ownerId,
+            Revision = 2,
+            ItemsJson = JsonSerializer.Serialize(new[]
+            {
+                new { productId = goodId, quantity = 2m, unitName = "کیلوگرم", quantityScale = 3 },
+                new { productId = secondGoodId, quantity = 4m, unitName = "کیلوگرم", quantityScale = 3 }
+            }, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            UpdatedAtUtc = now
+        });
+        await buyer.SaveChangesAsync();
+
+        using (var comparisonResponse = await owner.GetAsync(
+            "/api/v1/buyer/cart/offers"))
+        {
+            Assert.Equal(HttpStatusCode.OK, comparisonResponse.StatusCode);
+            Assert.Equal("no-store",
+                comparisonResponse.Headers.CacheControl?.ToString());
+            using var comparisonJson = JsonDocument.Parse(
+                await comparisonResponse.Content.ReadAsStringAsync());
+            var comparison = comparisonJson.RootElement;
+            Assert.Equal(2, comparison.GetProperty("cartRevision").GetInt32());
+            Assert.Equal(2, comparison.GetProperty("items").GetArrayLength());
+            var sellerGroup = Assert.Single(
+                comparison.GetProperty("sellers").EnumerateArray());
+            Assert.Equal(publicSellerIdForCart,
+                sellerGroup.GetProperty("sellerPublicId").GetGuid());
+            Assert.Equal(2, sellerGroup.GetProperty("offers").GetArrayLength());
+            var full = sellerGroup.GetProperty("offers").EnumerateArray()
+                .Single(x => x.GetProperty("productId").GetGuid() == goodId);
+            var partial = sellerGroup.GetProperty("offers").EnumerateArray()
+                .Single(x => x.GetProperty("productId").GetGuid() == secondGoodId);
+            Assert.True(full.GetProperty("coversRequestedQuantity").GetBoolean());
+            Assert.False(partial.GetProperty("coversRequestedQuantity").GetBoolean());
+            Assert.False(comparison.GetRawText().Contains(
+                ownerId.ToString(), StringComparison.OrdinalIgnoreCase));
+        }
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.GetAsync("/api/v1/buyer/cart/offers")).StatusCode);
+        var otherComparison = await second.GetFromJsonAsync<JsonElement>(
+            "/api/v1/buyer/cart/offers");
+        Assert.Empty(otherComparison.GetProperty("sellers").EnumerateArray());
 
         Assert.Equal(HttpStatusCode.NotFound,
             (await anonymous.GetAsync("/api/v1/catalog/products/" +
@@ -486,9 +579,11 @@ public sealed class SellerOfferDraftApiTests
         using var unpublishedListResponse = await owner.GetAsync(endpoint);
         using var unpublishedListJson = JsonDocument.Parse(
             await unpublishedListResponse.Content.ReadAsStringAsync());
-        var retainedDraft = Assert.Single(
-            unpublishedListJson.RootElement.GetProperty("items")
-                .EnumerateArray());
+        var unpublishedDrafts = unpublishedListJson.RootElement
+            .GetProperty("items");
+        Assert.Equal(2, unpublishedDrafts.GetArrayLength());
+        var retainedDraft = unpublishedDrafts.EnumerateArray()
+            .Single(x => x.GetProperty("id").GetGuid() == offerId);
         Assert.Equal(offerId, retainedDraft.GetProperty("id").GetGuid());
         Assert.Equal(JsonValueKind.Null,
             retainedDraft.GetProperty("catalogProduct").ValueKind);
@@ -508,8 +603,10 @@ public sealed class SellerOfferDraftApiTests
             x.AccountId == unactivatedId).ExecuteDeleteAsync();
         await seller.BusinessCategories
             .Where(x => x.Id == businessCategory).ExecuteDeleteAsync();
+        await buyer.ReferenceCarts.Where(x => x.AccountId == ownerId)
+            .ExecuteDeleteAsync();
         await catalog.Products.Where(x =>
-            x.Id == goodId || x.Id == serviceId ||
+            x.Id == goodId || x.Id == secondGoodId || x.Id == serviceId ||
             x.Id == unpublishedId || x.Id == hiddenCategoryGoodId)
             .ExecuteDeleteAsync();
         await catalog.Categories
