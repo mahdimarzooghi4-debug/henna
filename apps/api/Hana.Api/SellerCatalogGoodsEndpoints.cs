@@ -47,6 +47,7 @@ internal static class SellerCatalogGoodsEndpoints
                     .Where(product =>
                         product.Kind == CatalogProductKinds.Good &&
                         product.State == PublicationStates.Published &&
+                        product.UnitName != null && product.QuantityScale != null &&
                         product.Category.State == PublicationStates.Published);
 
                 // The filter choices must themselves be categories that contain
@@ -93,7 +94,8 @@ internal static class SellerCatalogGoodsEndpoints
                         product.Name,
                         product.Category.Name,
                         product.Description,
-                        product.PrimaryMediaAssetId))
+                        product.PrimaryMediaAssetId,
+                        product.UnitName!, product.QuantityScale!.Value))
                     .ToListAsync(cancellationToken);
 
                 var items = rows.Select(product =>
@@ -103,6 +105,8 @@ internal static class SellerCatalogGoodsEndpoints
                         product.Name,
                         product.CategoryName,
                         product.Description,
+                        product.UnitName,
+                        product.QuantityScale,
                         product.PrimaryMediaAssetId is { } mediaId
                             ? $"/api/v1/catalog/media/{mediaId:D}"
                             : null))
@@ -138,6 +142,8 @@ internal sealed record SellerCatalogGoodRow(
     string Name,
     string CategoryName,
     string? Description,
+    string UnitName,
+    short QuantityScale,
     Guid? PrimaryMediaAssetId);
 
 internal sealed record SellerCatalogGoodResponse(
@@ -146,4 +152,6 @@ internal sealed record SellerCatalogGoodResponse(
     string Name,
     string CategoryName,
     string? Description,
+    string UnitName,
+    short QuantityScale,
     string? ImageUrl);

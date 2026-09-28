@@ -147,6 +147,7 @@ internal static class SellerOfferDraftEndpoints
                     .AnyAsync(x =>
                         x.Id == request.CatalogProductId &&
                         x.Kind == CatalogProductKinds.Good &&
+                        x.UnitName != null && x.QuantityScale != null &&
                         x.State == PublicationStates.Published &&
                         x.Category.State == PublicationStates.Published,
                         cancellationToken);

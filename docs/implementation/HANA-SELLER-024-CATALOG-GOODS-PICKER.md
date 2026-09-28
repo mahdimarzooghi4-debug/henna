@@ -10,7 +10,7 @@ Only current Catalog records with `kind=GOOD`, `state=PUBLISHED`, and a `PUBLISH
 
 `GET /api/v1/seller/catalog/goods?page=1&pageSize=20&categoryId=<uuid>&search=<text>`
 
-The response contains a bounded page, total count, and eligible categories. Ordering is stable by product name and ID. Page size is 1–50, page is 1–10000, and search is limited to 80 characters with SQL LIKE wildcards escaped. The candidate DTO contains ID, category ID/name, product name, optional description, and the route to the current approved primary media. It includes no kind (all rows are GOODS), price, unit, quantity, inventory, seller identity, delivery, or publication controls.
+The response contains a bounded page, total count, and eligible categories. Ordering is stable by product name and ID. Page size is 1–50, page is 1–10000, and search is limited to 80 characters with SQL LIKE wildcards escaped. The candidate DTO contains ID, category ID/name, product name, optional description, Catalog's canonical unit and quantity precision, and the route to the current approved primary media. Goods without unit metadata are not eligible. It includes no kind (all rows are GOODS), price, sellable quantity, inventory, seller identity, delivery, or publication controls.
 
 Every request re-resolves the Identity session, current SELLER role, approved application, and activation state through the Seller 020 authorization gate. Missing session is 401; ineligible account is 403. Responses use `Cache-Control: no-store`; dependency failures return 503.
 
