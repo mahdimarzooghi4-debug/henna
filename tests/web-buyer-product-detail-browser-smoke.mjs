@@ -16,6 +16,7 @@ const published = {
 };
 const good = {
   ...published, id: OTHER, name: "کالای قابل خرید آیندهٔ CI", kind: "GOOD",
+  unitName: "کیلوگرم", quantityScale: 1,
 };
 const offers = {
   items: [{
@@ -32,6 +33,8 @@ const json = (body, status = 200) => ({
 let mode = "published";
 let offerMode = "published";
 let calls = [];
+let cartRequests = [];
+let cart = { revision: 0, items: [] };
 let web, browser, logs = "";
 async function startWeb() {
   web = spawn("npm", ["run", "start", "--workspace",
@@ -55,6 +58,8 @@ async function main() {
   const context = await browser.newContext({
     locale: "fa-IR", viewport: { width: 1440, height: 900 },
   });
+  await context.addCookies([{ name: "hana_session", value: "hn1_" + "A".repeat(43),
+    domain: "127.0.0.1", path: "/", httpOnly: true, sameSite: "Lax" }]);
   await context.route("**/api/catalog/**", async route => {
     const req = route.request();
     const url = new URL(req.url());
@@ -88,6 +93,30 @@ async function main() {
       ...published, sellerPhone: "SECRET", price: 1200, stock: 7,
     }));
   });
+  const fakeCart = async route => {
+    const req = route.request();
+    const url = new URL(req.url());
+    cartRequests.push({ method: req.method(), pathname: url.pathname });
+    if (req.method() === "GET")
+      return route.fulfill(json(cart));
+    if (req.method() === "PUT") {
+      const body = req.postDataJSON();
+      assert.equal(body.revision, cart.revision);
+      cart = { revision: cart.revision + 1, items: [{
+        productId: OTHER, quantity: body.quantity,
+        unitName: "کیلوگرم", quantityScale: 1,
+      }] };
+      return route.fulfill(json(cart));
+    }
+    if (req.method() === "DELETE") {
+      assert.equal(url.searchParams.get("revision"), String(cart.revision));
+      cart = { revision: cart.revision + 1, items: [] };
+      return route.fulfill(json(cart));
+    }
+    return route.fulfill(json({ message: "unexpected method" }, 405));
+  };
+  await context.route("**/api/buyer/cart", fakeCart);
+  await context.route("**/api/buyer/cart/items/*", fakeCart);
   const page = await context.newPage();
   page.setDefaultTimeout(10000);
   const errors = [];
@@ -110,9 +139,26 @@ async function main() {
   await page.getByText("فروشگاه تأییدشدهٔ CI", { exact: true }).waitFor();
   await page.getByText(/۱٬۲۵۰٬۰۰۰ ریال/).waitFor();
   await page.getByText(/۲٫۵ کیلوگرم/).waitFor();
-  assert.equal(await page.getByRole("button", { name: /سبد|خرید/ }).count(), 0);
-  assert.equal(await page.getByText("شرح منتشرشدهٔ CI").count(), 1);
+  await page.getByRole("button", { name: "ذخیره در سبد مرجع" }).waitFor();
+  await page.getByLabel("مقدار به کیلوگرم").fill("2.5");
+  await page.getByRole("button", { name: "ذخیره در سبد مرجع" }).click();
+  try {
+    await page.getByText("مقدار در سبد مرجع ذخیره شد.").waitFor();
+  } catch (error) {
+    const statuses = await page.getByRole("status").allTextContents();
+    throw new Error(`reference cart save not confirmed; status=${JSON.stringify(statuses)} requests=${JSON.stringify(cartRequests)}: ${error}`);
+  }
+  assert.deepEqual(cart, { revision: 1, items: [{ productId: OTHER,
+    quantity: 2.5, unitName: "کیلوگرم", quantityScale: 1 }] });
+  await page.getByRole("link", { name: "مشاهدهٔ سبد مرجع" }).click();
+  await page.waitForURL(base + "/buyer/cart");
+  await page.getByRole("heading", { name: good.name }).waitFor();
+  await page.getByText("2.5 کیلوگرم · مقدار درخواستی").waitFor();
+  await page.getByRole("button", { name: "حذف از سبد" }).click();
+  await page.getByRole("heading", { name: "سبد مرجع خالی است" }).waitFor();
+  assert.deepEqual(cart, { revision: 2, items: [] });
 
+  await page.goto(base + "/products/" + OTHER);
   offerMode = "503";
   await page.reload();
   await page.getByText(/دریافت پیشنهادها تأیید نشد/).waitFor();

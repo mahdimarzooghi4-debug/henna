@@ -3,6 +3,7 @@ export type BuyerCategory = { id: string; name: string; slug: string };
 export type BuyerProduct = {
   id: string; categoryId: string; name: string;
   kind: "GOOD" | "SERVICE"; description: string | null;
+  unitName?: string | null; quantityScale?: number | null;
 };
 export type BuyerPage = {
   items: BuyerProduct[]; page: number; pageSize: number; total: number;
@@ -110,10 +111,16 @@ export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage |
     if (!p || !id(p.id) || !id(p.categoryId) || !words(p.name, 200) ||
       (p.kind !== "GOOD" && p.kind !== "SERVICE") ||
       (p.description !== null && (typeof p.description !== "string" ||
-        p.description.length > 2000))) return null;
+        p.description.length > 2000)) ||
+      (Object.hasOwn(p, "unitName") && !(p.unitName === null || words(p.unitName, 40))) ||
+      (Object.hasOwn(p, "quantityScale") && !(p.quantityScale === null || integer(p.quantityScale, 0, 6))) ||
+      (Object.hasOwn(p, "unitName") !== Object.hasOwn(p, "quantityScale")) ||
+      (p.kind === "SERVICE" && p.unitName != null)) return null;
     items.push({
       id: p.id, categoryId: p.categoryId, name: p.name,
       kind: p.kind, description: p.description,
+      ...(Object.hasOwn(p, "unitName") ? { unitName: typeof p.unitName === "string" ? p.unitName : null } : {}),
+      ...(Object.hasOwn(p, "quantityScale") ? { quantityScale: typeof p.quantityScale === "number" ? p.quantityScale : null } : {}),
     });
   }
   return {
@@ -177,12 +184,18 @@ export function parseBuyerProduct(
     !id(x.categoryId) || !words(x.name, 200) ||
     (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
     (x.description !== null && x.description !== undefined &&
-      (typeof x.description !== "string" || x.description.length > 2000)))
+      (typeof x.description !== "string" || x.description.length > 2000)) ||
+    (Object.hasOwn(x, "unitName") && !(x.unitName === null || words(x.unitName, 40))) ||
+    (Object.hasOwn(x, "quantityScale") && !(x.quantityScale === null || integer(x.quantityScale, 0, 6))) ||
+    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")) ||
+    (x.kind === "SERVICE" && x.unitName != null))
     return null;
   return {
     id: x.id, categoryId: x.categoryId, name: x.name,
     kind: x.kind, description: typeof x.description === "string"
       ? x.description : null,
+    ...(Object.hasOwn(x, "unitName") ? { unitName: typeof x.unitName === "string" ? x.unitName : null } : {}),
+    ...(Object.hasOwn(x, "quantityScale") ? { quantityScale: typeof x.quantityScale === "number" ? x.quantityScale : null } : {}),
   };
 }
 

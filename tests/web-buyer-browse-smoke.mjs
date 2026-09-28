@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, parseBuyerCategories,
-  parseBuyerPage, reconcilePublishedBuyerCategory, validBuyerSearch,
+  parseBuyerPage, parseBuyerProduct, reconcilePublishedBuyerCategory, validBuyerSearch,
 } from "../apps/web-marketplace/lib/buyer-catalog.ts";
 
 const CATEGORY = "2fd59aad-5834-4717-9462-c5e520dd7a31";
@@ -21,6 +21,14 @@ test("empty published response is not a network or schema failure", () => {
   }, 1), { items: [], page: 1, pageSize: 20, total: 0 });
   assert.equal(parseBuyerCategories({}), null);
   assert.equal(parseBuyerPage({}, 1), null);
+});
+
+test("legacy service rows without new unit metadata remain valid", () => {
+  const service = { ...product, kind: "SERVICE" };
+  assert.deepEqual(parseBuyerProduct(service, PRODUCT), service);
+  assert.deepEqual(parseBuyerPage({ ...listing, items: [service] }, 1), {
+    ...listing, items: [service],
+  });
 });
 
 test("only allowlisted public catalog identity and description enter the UI", () => {
