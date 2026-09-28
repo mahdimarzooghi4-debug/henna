@@ -9,6 +9,109 @@ internal static class OrganizationFundingInstructionReviewEndpoints
 {
     internal static void MapOrganizationFundingInstructionReviews(this WebApplication app, bool hasDatabase)
     {
+        app.MapGet("/api/v1/admin/organization-funding-instructions", async (
+            HttpContext context, IServiceProvider services, int? page, int? pageSize,
+            string? state, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var auth = await Admin(context, services, hasDatabase, cancellationToken);
+            if (auth.Error is not null) return auth.Error;
+
+            var allowedQuery = new HashSet<string>(StringComparer.Ordinal) { "page", "pageSize", "state" };
+            if (context.Request.Query.Keys.Any(key => !allowedQuery.Contains(key)) ||
+                context.Request.Query.Any(pair => pair.Value.Count != 1))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["query"] = ["پارامترهای درخواست معتبر نیست."]
+                });
+
+            var selectedPage = page ?? 1;
+            var selectedPageSize = pageSize ?? 20;
+            var selectedState = state?.Trim().ToUpperInvariant() ?? "PENDING_VERIFICATION";
+            if (selectedPage is < 1 or > 10_000 || selectedPageSize is < 1 or > 50 ||
+                selectedState is not ("ALL" or "PENDING_VERIFICATION" or "VERIFIED" or "REJECTED"))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["query"] = ["فیلتر یا صفحه‌بندی معتبر نیست."]
+                });
+
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var query = from instruction in db.FundingInstructions.AsNoTracking()
+                    join program in db.Programs.AsNoTracking() on instruction.ProgramId equals program.Id
+                    join organization in db.Organizations.AsNoTracking() on program.OrganizationId equals organization.Id
+                    select new { Instruction = instruction, ProgramName = program.Name, OrganizationName = organization.Name };
+                if (selectedState != "ALL")
+                    query = query.Where(x => x.Instruction.State == selectedState);
+                var total = await query.CountAsync(cancellationToken);
+                var items = await query
+                    .OrderByDescending(x => x.Instruction.SubmittedAtUtc)
+                    .ThenBy(x => x.Instruction.Id)
+                    .Skip((selectedPage - 1) * selectedPageSize)
+                    .Take(selectedPageSize)
+                    .Select(x => new
+                    {
+                        instructionId = x.Instruction.Id,
+                        organizationName = x.OrganizationName,
+                        programName = x.ProgramName,
+                        allocationMode = x.Instruction.AllocationMode,
+                        sourceInstructionReference = x.Instruction.SourceInstructionReference,
+                        state = x.Instruction.State,
+                        revision = x.Instruction.Revision,
+                        submittedAtUtc = x.Instruction.SubmittedAtUtc,
+                        reviewReason = x.Instruction.ReviewReason,
+                        reviewedAtUtc = x.Instruction.ReviewedAtUtc
+                    }).ToListAsync(cancellationToken);
+                return Results.Ok(new { items, page = selectedPage, pageSize = selectedPageSize, total });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Admin").WithName("ListOrganizationFundingInstructions");
+
+        app.MapGet("/api/v1/admin/organization-funding-instructions/{instructionId:guid}", async (
+            Guid instructionId, HttpContext context, IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var auth = await Admin(context, services, hasDatabase, cancellationToken);
+            if (auth.Error is not null) return auth.Error;
+            if (instructionId == Guid.Empty) return Results.NotFound();
+            if (context.Request.Query.Count != 0)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["query"] = ["پارامتر اضافی معتبر نیست."]
+                });
+
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var item = await (from instruction in db.FundingInstructions.AsNoTracking()
+                    join program in db.Programs.AsNoTracking() on instruction.ProgramId equals program.Id
+                    join organization in db.Organizations.AsNoTracking() on program.OrganizationId equals organization.Id
+                    where instruction.Id == instructionId
+                    select new
+                    {
+                        instructionId = instruction.Id,
+                        programId = instruction.ProgramId,
+                        programRevision = instruction.ProgramRevision,
+                        organizationName = organization.Name,
+                        programName = program.Name,
+                        allocationMode = instruction.AllocationMode,
+                        sourceInstructionReference = instruction.SourceInstructionReference,
+                        state = instruction.State,
+                        revision = instruction.Revision,
+                        submittedAtUtc = instruction.SubmittedAtUtc,
+                        reviewReason = instruction.ReviewReason,
+                        reviewedAtUtc = instruction.ReviewedAtUtc
+                    }).SingleOrDefaultAsync(cancellationToken);
+                if (item is null) return Results.NotFound();
+                return Results.Ok(item);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Admin").WithName("GetOrganizationFundingInstruction");
+
         app.MapPost("/api/v1/admin/organization-funding-instructions/{instructionId:guid}/review", async (
             Guid instructionId, FundingInstructionReviewInput input, HttpContext context,
             IServiceProvider services, CancellationToken cancellationToken) =>

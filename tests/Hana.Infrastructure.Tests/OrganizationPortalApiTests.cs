@@ -253,6 +253,31 @@ public sealed class OrganizationPortalApiTests
         Assert.Equal(OrganizationAllocationModes.OrganizationDefined, organizationInstructionBody.RootElement.GetProperty("allocationMode").GetString());
         Assert.False(organizationInstructionBody.RootElement.TryGetProperty("amount", out _));
         var organizationInstructionId = organizationInstructionBody.RootElement.GetProperty("instructionId").GetGuid();
+        const string adminFundingInstructionsUrl = "/api/v1/admin/organization-funding-instructions";
+        Assert.Equal(HttpStatusCode.Forbidden, (await member.GetAsync(adminFundingInstructionsUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await member.GetAsync($"{adminFundingInstructionsUrl}/{organizationInstructionId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync($"{adminFundingInstructionsUrl}?state=UNKNOWN")).StatusCode);
+        var fundingQueue = await admin.GetAsync($"{adminFundingInstructionsUrl}?page=1&pageSize=10&state=PENDING_VERIFICATION");
+        Assert.Equal(HttpStatusCode.OK, fundingQueue.StatusCode);
+        Assert.Equal("no-store", fundingQueue.Headers.GetValues("Cache-Control").Single());
+        using var fundingQueueBody = JsonDocument.Parse(await fundingQueue.Content.ReadAsStringAsync());
+        Assert.Equal(2, fundingQueueBody.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal(2, fundingQueueBody.RootElement.GetProperty("items").GetArrayLength());
+        var queuedInstruction = Assert.Single(fundingQueueBody.RootElement.GetProperty("items").EnumerateArray(), item =>
+            item.GetProperty("instructionId").GetGuid() == organizationInstructionId);
+        Assert.Equal("سازمان آزمایش", queuedInstruction.GetProperty("organizationName").GetString());
+        Assert.Equal("طرح تخصیص سازمان", queuedInstruction.GetProperty("programName").GetString());
+        Assert.False(queuedInstruction.TryGetProperty("amount", out _));
+        Assert.False(queuedInstruction.TryGetProperty("balance", out _));
+        var fundingDetail = await admin.GetAsync($"{adminFundingInstructionsUrl}/{organizationInstructionId}");
+        Assert.Equal(HttpStatusCode.OK, fundingDetail.StatusCode);
+        Assert.Equal("no-store", fundingDetail.Headers.GetValues("Cache-Control").Single());
+        using var fundingDetailBody = JsonDocument.Parse(await fundingDetail.Content.ReadAsStringAsync());
+        Assert.Equal(organizationInstructionId, fundingDetailBody.RootElement.GetProperty("instructionId").GetGuid());
+        Assert.Equal("ORG-INSTRUCTION-1405-02", fundingDetailBody.RootElement.GetProperty("sourceInstructionReference").GetString());
+        Assert.False(fundingDetailBody.RootElement.TryGetProperty("amount", out _));
+        Assert.False(fundingDetailBody.RootElement.TryGetProperty("balance", out _));
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync($"{adminFundingInstructionsUrl}/{organizationInstructionId}?debug=true")).StatusCode);
         var reviewUrl = $"/api/v1/admin/organization-funding-instructions/{organizationInstructionId}/review";
         var reviewReadUrl = $"/api/v1/admin/organization-funding-instructions/{organizationInstructionId}/events";
         Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsJsonAsync(reviewUrl,
@@ -305,6 +330,15 @@ public sealed class OrganizationPortalApiTests
         Assert.Equal(HttpStatusCode.OK, reviewHistory.StatusCode);
         using var historyBody = JsonDocument.Parse(await reviewHistory.Content.ReadAsStringAsync());
         Assert.Equal(3, historyBody.RootElement.GetProperty("events").GetArrayLength());
+        var verifiedQueue = await admin.GetAsync($"{adminFundingInstructionsUrl}?state=VERIFIED");
+        Assert.Equal(HttpStatusCode.OK, verifiedQueue.StatusCode);
+        using var verifiedQueueBody = JsonDocument.Parse(await verifiedQueue.Content.ReadAsStringAsync());
+        Assert.Contains(verifiedQueueBody.RootElement.GetProperty("items").EnumerateArray(), item =>
+            item.GetProperty("instructionId").GetGuid() == organizationInstructionId &&
+            item.GetProperty("state").GetString() == "VERIFIED");
+        var finalFundingDetail = await admin.GetAsync($"{adminFundingInstructionsUrl}/{organizationInstructionId}");
+        using var finalFundingDetailBody = JsonDocument.Parse(await finalFundingDetail.Content.ReadAsStringAsync());
+        Assert.Equal("VERIFIED", finalFundingDetailBody.RootElement.GetProperty("state").GetString());
         var finalInstruction = await organizations.FundingInstructions.SingleAsync(x => x.Id == organizationInstructionId);
         Assert.Equal("VERIFIED", finalInstruction.State);
         Assert.Equal(4, finalInstruction.Revision);
