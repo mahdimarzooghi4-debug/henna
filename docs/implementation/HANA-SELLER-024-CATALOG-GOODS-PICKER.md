@@ -18,7 +18,7 @@ Every request re-resolves the Identity session, current SELLER role, approved ap
 
 `GET /api/seller/catalog/goods` uses the HttpOnly session cookie in the browser and forwards the bearer only server-to-server. It accepts only page, pageSize, categoryId, and search; validates upstream shape and field allowlists; rejects redirects; bounds payloads; and returns `no-store`.
 
-The existing Offer draft creation route remains the only write path and retains its Idempotency-Key contract. Selecting a real Catalog ID cannot make a draft visible to buyers or set commercial fields.
+Offer draft creation retains its Idempotency-Key contract. Separate revision-checked routes now update price/quantity and explicitly publish; selection alone still cannot set commercial fields or make a draft visible to buyers.
 
 ## Verification
 

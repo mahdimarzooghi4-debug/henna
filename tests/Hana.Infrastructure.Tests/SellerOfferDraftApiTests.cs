@@ -236,6 +236,96 @@ public sealed class SellerOfferDraftApiTests
         Assert.False(root.TryGetProperty("quantity", out _));
         Assert.False(root.TryGetProperty("publicationStatus", out _));
 
+        var offerRoute = endpoint + "/" + offerId;
+        using (var denied = MutationRequest(HttpMethod.Put, offerRoute,
+            Guid.NewGuid(), new
+            {
+                expectedRevision = 1, priceRials = 1_250_000,
+                sellableQuantity = 2.125m
+            }))
+            Assert.Equal(HttpStatusCode.Forbidden,
+                (await unactivated.SendAsync(denied)).StatusCode);
+        using (var crossSeller = MutationRequest(HttpMethod.Put, offerRoute,
+            Guid.NewGuid(), new
+            {
+                expectedRevision = 1, priceRials = 1_250_000,
+                sellableQuantity = 2.125m
+            }))
+            Assert.Equal(HttpStatusCode.NotFound,
+                (await second.SendAsync(crossSeller)).StatusCode);
+
+        var updateKey = Guid.NewGuid();
+        using (var invalidPrecision = MutationRequest(HttpMethod.Put,
+            offerRoute, Guid.NewGuid(), new
+            {
+                expectedRevision = 1, priceRials = 1_250_000,
+                sellableQuantity = 2.1234m
+            }))
+            Assert.Equal(HttpStatusCode.Conflict,
+                (await owner.SendAsync(invalidPrecision)).StatusCode);
+
+        using var update = MutationRequest(HttpMethod.Put, offerRoute,
+            updateKey, new
+            {
+                expectedRevision = 1, priceRials = 1_250_000,
+                sellableQuantity = 2.125m
+            });
+        using var updated = await owner.SendAsync(update);
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        using (var updatedJson = JsonDocument.Parse(
+            await updated.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("DRAFT", updatedJson.RootElement
+                .GetProperty("status").GetString());
+            Assert.Equal(2, updatedJson.RootElement
+                .GetProperty("revision").GetInt32());
+            Assert.Equal(1_250_000, updatedJson.RootElement
+                .GetProperty("priceRials").GetInt64());
+            Assert.Equal(2.125m, updatedJson.RootElement
+                .GetProperty("sellableQuantity").GetDecimal());
+        }
+        using var updateRetry = MutationRequest(HttpMethod.Put, offerRoute,
+            updateKey, new
+            {
+                expectedRevision = 1, priceRials = 1_250_000,
+                sellableQuantity = 2.125m
+            });
+        Assert.Equal(HttpStatusCode.OK,
+            (await owner.SendAsync(updateRetry)).StatusCode);
+        Assert.Equal(1, await seller.OfferMutations.AsNoTracking()
+            .CountAsync(x => x.OfferId == offerId));
+
+        using var staleUpdate = MutationRequest(HttpMethod.Put, offerRoute,
+            Guid.NewGuid(), new
+            {
+                expectedRevision = 1, priceRials = 1_300_000,
+                sellableQuantity = 2.125m
+            });
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await owner.SendAsync(staleUpdate)).StatusCode);
+
+        var publishKey = Guid.NewGuid();
+        using var publish = MutationRequest(HttpMethod.Post,
+            offerRoute + "/publish", publishKey,
+            new { expectedRevision = 2 });
+        using var published = await owner.SendAsync(publish);
+        Assert.Equal(HttpStatusCode.OK, published.StatusCode);
+        using (var publishedJson = JsonDocument.Parse(
+            await published.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("PUBLISHED", publishedJson.RootElement
+                .GetProperty("status").GetString());
+            Assert.Equal(3, publishedJson.RootElement
+                .GetProperty("revision").GetInt32());
+        }
+        using var publishRetry = MutationRequest(HttpMethod.Post,
+            offerRoute + "/publish", publishKey,
+            new { expectedRevision = 2 });
+        Assert.Equal(HttpStatusCode.OK,
+            (await owner.SendAsync(publishRetry)).StatusCode);
+        Assert.Equal(2, await seller.OfferMutations.AsNoTracking()
+            .CountAsync(x => x.OfferId == offerId));
+
         using var retry = DraftRequest(endpoint, key, goodId);
         using var retried = await owner.SendAsync(retry);
         Assert.Equal(HttpStatusCode.OK, retried.StatusCode);
@@ -257,6 +347,9 @@ public sealed class SellerOfferDraftApiTests
         Assert.Single(ownerItems.EnumerateArray());
         var ownerItem = ownerItems[0];
         Assert.Equal(offerId, ownerItem.GetProperty("id").GetGuid());
+        Assert.Equal("PUBLISHED", ownerItem.GetProperty("status").GetString());
+        Assert.Equal(1_250_000, ownerItem.GetProperty("priceRials").GetInt64());
+        Assert.Equal(2.125m, ownerItem.GetProperty("sellableQuantity").GetDecimal());
         var catalogProjection = ownerItem.GetProperty("catalogProduct");
         Assert.Equal(goodId, catalogProjection.GetProperty("id").GetGuid());
         Assert.Equal("کالای آزمون " + goodId.ToString("N")[..8],
@@ -277,7 +370,10 @@ public sealed class SellerOfferDraftApiTests
         var only = Assert.Single(stored);
         Assert.Equal(ownerId, only.SellerAccountId);
         Assert.Equal(goodId, only.CatalogProductId);
-        Assert.Equal(SellerOfferDraftStates.Draft, only.Status);
+        Assert.Equal(SellerOfferDraftStates.Published, only.Status);
+        Assert.Equal(3, only.Revision);
+        Assert.Equal(1_250_000L, only.PriceRials);
+        Assert.Equal((decimal?)2.125m, only.SellableQuantity);
         Assert.Equal(key, only.IdempotencyKey);
 
         // Seller drafts do not become purchase offers in public Catalog.
@@ -308,6 +404,8 @@ public sealed class SellerOfferDraftApiTests
             retainedDraft.GetProperty("catalogProduct").ValueKind);
 
         // This suite shares the CI PostgreSQL database with Catalog read tests.
+        await seller.OfferMutations.Where(x =>
+            x.OfferId == offerId).ExecuteDeleteAsync();
         await seller.OfferDrafts.Where(x =>
             x.SellerAccountId == ownerId ||
             x.SellerAccountId == secondSellerId ||
@@ -362,6 +460,17 @@ public sealed class SellerOfferDraftApiTests
         var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
         {
             Content = payload
+        };
+        request.Headers.Add("Idempotency-Key", key.ToString());
+        return request;
+    }
+
+    private static HttpRequestMessage MutationRequest(
+        HttpMethod method, string endpoint, Guid key, object body)
+    {
+        var request = new HttpRequestMessage(method, endpoint)
+        {
+            Content = JsonContent.Create(body)
         };
         request.Headers.Add("Idempotency-Key", key.ToString());
         return request;

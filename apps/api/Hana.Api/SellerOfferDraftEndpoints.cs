@@ -42,6 +42,7 @@ internal static class SellerOfferDraftEndpoints
                     .ThenByDescending(x => x.Id)
                     .Select(x => new SellerOfferDraftListRow(
                         x.Id, x.CatalogProductId, x.Status, x.Revision,
+                        x.PriceRials, x.SellableQuantity,
                         x.CreatedAtUtc, x.UpdatedAtUtc))
                     .ToListAsync(cancellationToken);
 
@@ -75,7 +76,8 @@ internal static class SellerOfferDraftEndpoints
 
                     return new SellerOfferDraftListItemResponse(
                         draft.Id, draft.CatalogProductId, draft.Status,
-                        draft.Revision, draft.CreatedAtUtc, draft.UpdatedAtUtc,
+                        draft.Revision, draft.PriceRials, draft.SellableQuantity,
+                        draft.CreatedAtUtc, draft.UpdatedAtUtc,
                         product);
                 }).ToList();
                 return Results.Ok(new { items });
@@ -256,7 +258,8 @@ internal static class SellerOfferDraftEndpoints
     private static SellerOfferDraftResponse ToResponse(
         SellerOfferDraftRecord value) =>
         new(value.Id, value.CatalogProductId, value.Status,
-            value.Revision, value.CreatedAtUtc, value.UpdatedAtUtc);
+            value.Revision, value.PriceRials, value.SellableQuantity,
+            value.CreatedAtUtc, value.UpdatedAtUtc);
 
     internal sealed record SellerGate(Guid? AccountId, int? RejectionStatus);
 }
@@ -265,10 +268,12 @@ internal sealed record CreateSellerOfferDraftRequest(Guid CatalogProductId);
 
 internal sealed record SellerOfferDraftResponse(
     Guid Id, Guid CatalogProductId, string Status, int Revision,
+    long? PriceRials, decimal? SellableQuantity,
     DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
 
 internal sealed record SellerOfferDraftListItemResponse(
     Guid Id, Guid CatalogProductId, string Status, int Revision,
+    long? PriceRials, decimal? SellableQuantity,
     DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc,
     SellerCatalogProductResponse? CatalogProduct);
 
@@ -282,4 +287,5 @@ internal sealed record SellerCatalogProductData(
 
 internal sealed record SellerOfferDraftListRow(
     Guid Id, Guid CatalogProductId, string Status, int Revision,
+    long? PriceRials, decimal? SellableQuantity,
     DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);

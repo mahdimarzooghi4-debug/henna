@@ -19,6 +19,8 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
         Set<SellerActivationRecord>();
     public DbSet<SellerOfferDraftRecord> OfferDrafts =>
         Set<SellerOfferDraftRecord>();
+    public DbSet<SellerOfferMutationRecord> OfferMutations =>
+        Set<SellerOfferMutationRecord>();
     public DbSet<SellerBusinessCategoryRecord> BusinessCategories =>
         Set<SellerBusinessCategoryRecord>();
     public DbSet<SellerBusinessCategoryImportReceipt> BusinessCategoryImportReceipts =>
@@ -332,9 +334,14 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
             entity.ToTable("offer_drafts", table =>
             {
                 table.HasCheckConstraint("ck_offer_drafts_status",
-                    "status = 'DRAFT'");
+                    "status IN ('DRAFT', 'PUBLISHED', 'PAUSED')");
                 table.HasCheckConstraint("ck_offer_drafts_revision",
                     "revision >= 1");
+                table.HasCheckConstraint("ck_offer_drafts_commercial_values",
+                    "(price_rials IS NULL AND sellable_quantity IS NULL) OR " +
+                    "(price_rials IS NOT NULL AND price_rials > 0 AND sellable_quantity IS NOT NULL AND sellable_quantity >= 0)");
+                table.HasCheckConstraint("ck_offer_drafts_published_values",
+                    "status <> 'PUBLISHED' OR (price_rials IS NOT NULL AND price_rials > 0 AND sellable_quantity IS NOT NULL AND sellable_quantity > 0)");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id")
@@ -353,6 +360,9 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasColumnName("created_at_utc").IsRequired();
             entity.Property(x => x.UpdatedAtUtc)
                 .HasColumnName("updated_at_utc").IsRequired();
+            entity.Property(x => x.PriceRials).HasColumnName("price_rials");
+            entity.Property(x => x.SellableQuantity)
+                .HasColumnName("sellable_quantity").HasPrecision(18, 6);
             entity.HasIndex(x => new { x.SellerAccountId, x.IdempotencyKey })
                 .IsUnique()
                 .HasDatabaseName("ux_offer_drafts_seller_idempotency");
@@ -364,6 +374,50 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasForeignKey(x => x.SellerAccountId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_offer_drafts_registration_drafts_seller");
+        });
+
+        modelBuilder.Entity<SellerOfferMutationRecord>(entity =>
+        {
+            entity.ToTable("offer_mutations", table =>
+            {
+                table.HasCheckConstraint("ck_offer_mutations_revision",
+                    "expected_revision >= 1 AND resulting_revision = expected_revision + 1");
+                table.HasCheckConstraint("ck_offer_mutations_action",
+                    "action IN ('UPDATED', 'PUBLISHED')");
+                table.HasCheckConstraint("ck_offer_mutations_status",
+                    "resulting_status IN ('DRAFT', 'PUBLISHED')");
+                table.HasCheckConstraint("ck_offer_mutations_digest",
+                    "request_sha256 ~ '^[a-f0-9]{64}$'");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.OfferId).HasColumnName("offer_id").IsRequired();
+            entity.Property(x => x.SellerAccountId)
+                .HasColumnName("seller_account_id").IsRequired();
+            entity.Property(x => x.ExpectedRevision)
+                .HasColumnName("expected_revision").IsRequired();
+            entity.Property(x => x.ResultingRevision)
+                .HasColumnName("resulting_revision").IsRequired();
+            entity.Property(x => x.Action).HasColumnName("action")
+                .HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ResultingStatus).HasColumnName("resulting_status")
+                .HasMaxLength(16).IsRequired();
+            entity.Property(x => x.IdempotencyKey)
+                .HasColumnName("idempotency_key").IsRequired();
+            entity.Property(x => x.RequestSha256).HasColumnName("request_sha256")
+                .HasMaxLength(64).IsRequired();
+            entity.Property(x => x.PriceRials).HasColumnName("price_rials");
+            entity.Property(x => x.SellableQuantity)
+                .HasColumnName("sellable_quantity").HasPrecision(18, 6);
+            entity.Property(x => x.CreatedAtUtc)
+                .HasColumnName("created_at_utc").IsRequired();
+            entity.HasOne<SellerOfferDraftRecord>().WithMany()
+                .HasForeignKey(x => x.OfferId).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_offer_mutations_offer_drafts");
+            entity.HasIndex(x => new { x.SellerAccountId, x.IdempotencyKey })
+                .IsUnique().HasDatabaseName("ux_offer_mutations_seller_key");
+            entity.HasIndex(x => new { x.OfferId, x.CreatedAtUtc, x.Id })
+                .HasDatabaseName("ix_offer_mutations_offer_created");
         });
     }
 }
