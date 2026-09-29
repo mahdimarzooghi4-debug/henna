@@ -194,6 +194,7 @@ public sealed class CreditFundingInstructionResolverV1Tests
         EconomicHardship = EconomicHardshipLevel.EssentialNeedsGenerallyMet,
         CareAndSupport = CareSupportLevel.EffectiveAdultOrPracticalSupportAvailable,
         Education = EducationAttainment.BachelorOrHigher,
+        HousingTenure = HousingTenureType.Owner,
         HouseholdSize = 1,
         AgeComposition = new HouseholdAgeComposition(0, 0, 0, 1, 0, 0)
     };

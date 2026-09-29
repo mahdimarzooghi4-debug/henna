@@ -9,11 +9,12 @@ namespace Hana.Domain.Credit;
 public static class NeedsBasedAllocationV1
 {
     public const decimal HealthWeight = 0.30m;
-    public const decimal EconomicHardshipWeight = 0.25m;
-    public const decimal AgeAndDependencyWeight = 0.18m;
-    public const decimal HouseholdSizeWeight = 0.12m;
+    public const decimal EconomicHardshipWeight = 0.20m;
+    public const decimal AgeAndDependencyWeight = 0.15m;
+    public const decimal HouseholdSizeWeight = 0.10m;
     public const decimal CareAndSupportWeight = 0.10m;
     public const decimal EducationWeight = 0.05m;
+    public const decimal HousingTenureWeight = 0.10m;
 
     public const decimal MinimumGeographicFactor = 0.8m;
     public const decimal MaximumGeographicFactor = 1.2m;
@@ -30,7 +31,8 @@ public static class NeedsBasedAllocationV1
             AgeAndDependencyWeight * scores.AgeAndDependency +
             HouseholdSizeWeight * scores.HouseholdSize +
             CareAndSupportWeight * scores.CareAndSupport +
-            EducationWeight * scores.Education;
+            EducationWeight * scores.Education +
+            HousingTenureWeight * scores.HousingTenure;
 
         return 1m + 0.5m * weightedScore / 3m;
     }

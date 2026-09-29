@@ -6,6 +6,7 @@ public sealed record HouseholdNeedAssessmentInput
     public EconomicHardshipLevel? EconomicHardship { get; init; }
     public CareSupportLevel? CareAndSupport { get; init; }
     public EducationAttainment? Education { get; init; }
+    public HousingTenureType? HousingTenure { get; init; }
     public int? HouseholdSize { get; init; }
     public HouseholdAgeComposition? AgeComposition { get; init; }
 }
@@ -42,6 +43,12 @@ public enum EducationAttainment
     NoLiteracyOrFormalEducation
 }
 
+public enum HousingTenureType
+{
+    Owner,
+    Tenant
+}
+
 public sealed record HouseholdAgeComposition
 {
     public int UnderTwo { get; }
@@ -74,7 +81,7 @@ public sealed record HouseholdAgeComposition
 
 public static class HouseholdNeedScoringV1
 {
-    public const string Version = "1.0";
+    public const string Version = "1.1";
 
     public static HouseholdNeedScores Map(HouseholdNeedAssessmentInput input)
     {
@@ -84,6 +91,7 @@ public static class HouseholdNeedScoringV1
         if (input.EconomicHardship is null) missing.Add(nameof(input.EconomicHardship));
         if (input.CareAndSupport is null) missing.Add(nameof(input.CareAndSupport));
         if (input.Education is null) missing.Add(nameof(input.Education));
+        if (input.HousingTenure is null) missing.Add(nameof(input.HousingTenure));
         if (input.HouseholdSize is null) missing.Add(nameof(input.HouseholdSize));
         if (input.AgeComposition is null) missing.Add(nameof(input.AgeComposition));
         if (missing.Count > 0)
@@ -105,7 +113,8 @@ public static class HouseholdNeedScoringV1
                 ages.AgeSixToSeventeen * 0.5m + ages.SeniorsNeedingPracticalSupport.Value * 0.75m),
             Size(size),
             Care(input.CareAndSupport!.Value),
-            Education(input.Education!.Value));
+            Education(input.Education!.Value),
+            Housing(input.HousingTenure!.Value));
     }
 
     private static int Health(HealthBurdenLevel value) => value switch
@@ -147,6 +156,13 @@ public static class HouseholdNeedScoringV1
         EducationAttainment.DiplomaOrAssociate => 1,
         EducationAttainment.BelowDiplomaWithFormalEducation => 2,
         EducationAttainment.NoLiteracyOrFormalEducation => 3,
+        _ => throw new ArgumentOutOfRangeException(nameof(value))
+    };
+
+    private static int Housing(HousingTenureType value) => value switch
+    {
+        HousingTenureType.Owner => 0,
+        HousingTenureType.Tenant => 2,
         _ => throw new ArgumentOutOfRangeException(nameof(value))
     };
 }

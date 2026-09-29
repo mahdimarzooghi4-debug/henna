@@ -20,7 +20,7 @@ public sealed record NeedsBasedHouseholdQuoteV1(
 /// </summary>
 public static class NeedsBasedHouseholdQuoteCalculatorV1
 {
-    public const string FormulaVersion = "HANA-NEEDS-BASED-ALLOCATION-v1";
+    public const string FormulaVersion = "HANA-NEEDS-BASED-ALLOCATION-v1.1";
 
     public static NeedsBasedHouseholdQuoteV1 ForCity(
         RialAmount baseAmount,
