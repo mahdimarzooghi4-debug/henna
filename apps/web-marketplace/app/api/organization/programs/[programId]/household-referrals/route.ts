@@ -3,7 +3,7 @@ import { accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCooki
 
 type JsonObject = Record<string, unknown>;
 type Member = { memberNumber: number; genderCategory: string; lifeStage: string; educationLevel: string; healthNeed: string };
-type Referral = { referralId: string; programId: string; externalReference: string; provinceId: string; cityId: string | null; settlementType: string; revision: number; submittedAtUtc: string; members: Member[] };
+type Referral = { referralId: string; programId: string; externalReference: string; provinceId: string; cityId: string | null; settlementType: string; housingTenure: string | null; revision: number; submittedAtUtc: string; members: Member[] };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const validId = (value: unknown): value is string => typeof value === "string" && uuid.test(value) && value !== "00000000-0000-0000-0000-000000000000";
 const isRecord = (value: unknown): value is JsonObject => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -20,7 +20,7 @@ function parseReferral(value: unknown, programId: string): Referral | null {
   if (!isRecord(value) || !validId(value.referralId) || value.programId !== programId ||
     !validReference(value.externalReference) || !validId(value.provinceId) ||
     !(value.cityId === null || validId(value.cityId)) ||
-    !(value.settlementType === "URBAN" || value.settlementType === "RURAL") || !Number.isSafeInteger(value.revision) || value.revision !== 1 ||
+    !(value.settlementType === "URBAN" || value.settlementType === "RURAL") || !(value.housingTenure === null || value.housingTenure === "OWNER" || value.housingTenure === "TENANT") || !Number.isSafeInteger(value.revision) || value.revision !== 1 ||
     !validTimestamp(value.submittedAtUtc) || !Array.isArray(value.members) || value.members.length < 1 || value.members.length > 20) return null;
   const members = value.members.map((member, index) => {
     if (!isRecord(member) || member.memberNumber !== index + 1 ||
@@ -31,7 +31,7 @@ function parseReferral(value: unknown, programId: string): Referral | null {
     return { memberNumber: index + 1, genderCategory: member.genderCategory, lifeStage: member.lifeStage, educationLevel: member.educationLevel, healthNeed: member.healthNeed };
   });
   if (members.some(x => x === null)) return null;
-  return { referralId: value.referralId, programId, externalReference: value.externalReference, provinceId: value.provinceId, cityId: value.cityId as string | null, settlementType: value.settlementType, revision: 1, submittedAtUtc: value.submittedAtUtc, members: members as Member[] };
+  return { referralId: value.referralId, programId, externalReference: value.externalReference, provinceId: value.provinceId, cityId: value.cityId as string | null, settlementType: value.settlementType, housingTenure: value.housingTenure as string | null, revision: 1, submittedAtUtc: value.submittedAtUtc, members: members as Member[] };
 }
 async function readJson(response: Response): Promise<unknown> {
   if (!response.headers.get("content-type")?.includes("application/json") || Number(response.headers.get("content-length") ?? "0") > 512_000) throw new Error("invalid response");
@@ -75,15 +75,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return error("درخواست نامعتبر است.", 400);
   const key = request.headers.get("idempotency-key")?.trim() ?? "";
   if (!uuid.test(key) || key === "00000000-0000-0000-0000-000000000000") return error("کلید یکتای درخواست معتبر نیست.", 400);
-  let body: { programRevision: number; externalReference: string; provinceId: string; cityId: string | null; settlementType: string; members: Omit<Member, "memberNumber">[] };
+  let body: { programRevision: number; externalReference: string; provinceId: string; cityId: string | null; settlementType: string; housingTenure: string; members: Omit<Member, "memberNumber">[] };
   try {
     const raw = await request.text();
     if (raw.length > 64_000) return error("درخواست معتبر نیست.", 400);
     const value: unknown = JSON.parse(raw);
-    if (!isRecord(value) || Object.keys(value).length !== 6 || !Number.isSafeInteger(value.programRevision) || (value.programRevision as number) < 1 ||
+    if (!isRecord(value) || Object.keys(value).length !== 7 || !Number.isSafeInteger(value.programRevision) || (value.programRevision as number) < 1 ||
       !validReference(value.externalReference) || !validId(value.provinceId) ||
       !(value.cityId === null || validId(value.cityId)) ||
-      !(value.settlementType === "URBAN" || value.settlementType === "RURAL") || (value.settlementType === "URBAN" && value.cityId === null) ||
+      !(value.settlementType === "URBAN" || value.settlementType === "RURAL") || !(value.housingTenure === "OWNER" || value.housingTenure === "TENANT") || (value.settlementType === "URBAN" && value.cityId === null) ||
       !Array.isArray(value.members) || value.members.length < 1 || value.members.length > 20) return error("مشخصات ارجاع خانوار معتبر نیست.", 400);
     const members = value.members.map((member: unknown) => {
       if (!isRecord(member) || Object.keys(member).length !== 4 || typeof member.genderCategory !== "string" || !enums.genderCategory.has(member.genderCategory) ||
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return { genderCategory: member.genderCategory, lifeStage: member.lifeStage, educationLevel: member.educationLevel, healthNeed: member.healthNeed };
     });
     if (members.some(item => item === null)) return error("دسته‌بندی اعضای خانوار معتبر نیست.", 400);
-    body = { programRevision: value.programRevision as number, externalReference: value.externalReference, provinceId: value.provinceId, cityId: value.cityId as string | null, settlementType: value.settlementType, members: members as Omit<Member, "memberNumber">[] };
+    body = { programRevision: value.programRevision as number, externalReference: value.externalReference, provinceId: value.provinceId, cityId: value.cityId as string | null, settlementType: value.settlementType, housingTenure: value.housingTenure, members: members as Omit<Member, "memberNumber">[] };
   } catch { return error("درخواست معتبر نیست.", 400); }
   try {
     const upstream = await fetch(ctx.target, { method: "POST", headers: { Authorization: `Bearer ${ctx.token}`, Accept: "application/json", "Content-Type": "application/json", "Idempotency-Key": key }, body: JSON.stringify(body), cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000) });
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (upstream.status === 409) return error("نسخه طرح تغییر کرده یا شناسه ارجاع تکراری است.", 409);
     if (upstream.status !== 200 && upstream.status !== 201) return error("ثبت ارجاع تأیید نشد.", 503);
     const referral = parseReferral(await readJson(upstream), programId);
-    if (!referral || referral.externalReference !== body.externalReference || referral.provinceId !== body.provinceId || referral.cityId !== body.cityId || referral.settlementType !== body.settlementType ||
+    if (!referral || referral.externalReference !== body.externalReference || referral.provinceId !== body.provinceId || referral.cityId !== body.cityId || referral.settlementType !== body.settlementType || referral.housingTenure !== body.housingTenure ||
       referral.members.length !== body.members.length || referral.members.some((member, index) => member.genderCategory !== body.members[index].genderCategory || member.lifeStage !== body.members[index].lifeStage || member.educationLevel !== body.members[index].educationLevel || member.healthNeed !== body.members[index].healthNeed)) return error("ثبت ارجاع تأیید نشد.", 503);
     return NextResponse.json(referral, { status: upstream.status, headers: noStore });
   } catch { return error("ثبت ارجاع تأیید نشد.", 503); }

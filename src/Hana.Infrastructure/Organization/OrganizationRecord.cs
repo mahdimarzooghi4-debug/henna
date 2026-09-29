@@ -80,6 +80,7 @@ public sealed class OrganizationHouseholdReferralRecord
     public Guid ProvinceId { get; set; }
     public Guid? CityId { get; set; }
     public string SettlementType { get; set; } = null!;
+    public string? HousingTenure { get; set; }
     public int Revision { get; set; } = 1;
     public DateTimeOffset SubmittedAtUtc { get; set; }
     public Guid SubmittedByAccountId { get; set; }
@@ -102,6 +103,12 @@ public static class OrganizationSettlementTypes
 {
     public const string Urban = "URBAN";
     public const string Rural = "RURAL";
+}
+
+public static class OrganizationHousingTenureTypes
+{
+    public const string Owner = "OWNER";
+    public const string Tenant = "TENANT";
 }
 
 public static class OrganizationHouseholdCategories

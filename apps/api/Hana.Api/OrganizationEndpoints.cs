@@ -324,6 +324,7 @@ internal static class OrganizationEndpoints
             var reference = input.ExternalReference?.Trim();
             if (programId == Guid.Empty || input.ProgramRevision < 1 || string.IsNullOrWhiteSpace(reference) || reference.Length > 120 || reference.Any(char.IsControl) ||
                 input.ProvinceId == Guid.Empty || input.CityId == Guid.Empty || input.SettlementType is not (OrganizationSettlementTypes.Urban or OrganizationSettlementTypes.Rural) ||
+                input.HousingTenure is not (OrganizationHousingTenureTypes.Owner or OrganizationHousingTenureTypes.Tenant) ||
                 input.SettlementType == OrganizationSettlementTypes.Urban && input.CityId is null ||
                 input.Members is null || input.Members.Count is < 1 or > 20 || input.Members.Any(m => m is null ||
                     !Allowed(m.GenderCategory, OrganizationHouseholdCategories.Female, OrganizationHouseholdCategories.Male, OrganizationHouseholdCategories.NotReported) ||
@@ -352,12 +353,12 @@ internal static class OrganizationEndpoints
                 if (prior is not null)
                 {
                     var priorMembers = await db.HouseholdMembers.AsNoTracking().Where(x => x.HouseholdReferralId == prior.Id).OrderBy(x => x.MemberNumber).ToListAsync(cancellationToken);
-                    if (prior.SubmittedByAccountId != account.AccountId || prior.ProgramId != programId || prior.OrganizationId != program.OrganizationId || prior.ExternalReference != reference || prior.ProvinceId != input.ProvinceId || prior.CityId != input.CityId || prior.SettlementType != input.SettlementType || !SameMembers(priorMembers, input.Members)) return Results.Conflict();
+                    if (prior.SubmittedByAccountId != account.AccountId || prior.ProgramId != programId || prior.OrganizationId != program.OrganizationId || prior.ExternalReference != reference || prior.ProvinceId != input.ProvinceId || prior.CityId != input.CityId || prior.SettlementType != input.SettlementType || prior.HousingTenure != input.HousingTenure || !SameMembers(priorMembers, input.Members)) return Results.Conflict();
                     return Results.Ok(HouseholdReferralProjection(prior, priorMembers));
                 }
                 if (await db.HouseholdReferrals.AnyAsync(x => x.OrganizationId == program.OrganizationId && x.ProgramId == programId && x.ExternalReference == reference, cancellationToken)) return Results.Conflict();
                 var now = services.GetRequiredService<IClock>().UtcNow.ToUniversalTime();
-                var record = new OrganizationHouseholdReferralRecord { Id = Guid.NewGuid(), OrganizationId = program.OrganizationId, ProgramId = programId, ExternalReference = reference, ProvinceId = input.ProvinceId, CityId = input.CityId, SettlementType = input.SettlementType, Revision = 1, SubmittedAtUtc = now, SubmittedByAccountId = account.AccountId!.Value, CreationKey = key };
+                var record = new OrganizationHouseholdReferralRecord { Id = Guid.NewGuid(), OrganizationId = program.OrganizationId, ProgramId = programId, ExternalReference = reference, ProvinceId = input.ProvinceId, CityId = input.CityId, SettlementType = input.SettlementType, HousingTenure = input.HousingTenure, Revision = 1, SubmittedAtUtc = now, SubmittedByAccountId = account.AccountId!.Value, CreationKey = key };
                 var memberRecords = input.Members.Select((m, index) => new OrganizationHouseholdMemberRecord { Id = Guid.NewGuid(), HouseholdReferralId = record.Id, MemberNumber = index + 1, GenderCategory = m.GenderCategory, LifeStage = m.LifeStage, EducationLevel = m.EducationLevel, HealthNeed = m.HealthNeed }).ToList();
                 await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
                 db.HouseholdReferrals.Add(record);
@@ -404,7 +405,7 @@ internal static class OrganizationEndpoints
     private static object HouseholdReferralProjection(OrganizationHouseholdReferralRecord referral, IReadOnlyCollection<OrganizationHouseholdMemberRecord> members) => new
     {
         referralId = referral.Id, programId = referral.ProgramId, externalReference = referral.ExternalReference,
-        provinceId = referral.ProvinceId, cityId = referral.CityId, settlementType = referral.SettlementType,
+        provinceId = referral.ProvinceId, cityId = referral.CityId, settlementType = referral.SettlementType, housingTenure = referral.HousingTenure,
         revision = referral.Revision, submittedAtUtc = referral.SubmittedAtUtc,
         members = members.OrderBy(x => x.MemberNumber).Select(x => new { x.MemberNumber, x.GenderCategory, x.LifeStage, x.EducationLevel, x.HealthNeed })
     };
@@ -441,5 +442,5 @@ internal sealed record ProvisionOrganizationInput(string? Name, Guid InitialAcco
 internal sealed record GrantOrganizationMembershipInput(Guid AccountId, string Role);
 internal sealed record OrganizationProgramInput(Guid OrganizationId, string? Name, string AllocationMode, string? Description);
 internal sealed record OrganizationFundingInstructionInput(int ProgramRevision, string? SourceInstructionReference);
-internal sealed record OrganizationHouseholdReferralInput(int ProgramRevision, string? ExternalReference, Guid ProvinceId, Guid? CityId, string SettlementType, IReadOnlyList<OrganizationHouseholdMemberInput> Members);
+internal sealed record OrganizationHouseholdReferralInput(int ProgramRevision, string? ExternalReference, Guid ProvinceId, Guid? CityId, string SettlementType, string? HousingTenure, IReadOnlyList<OrganizationHouseholdMemberInput> Members);
 internal sealed record OrganizationHouseholdMemberInput(string GenderCategory, string LifeStage, string EducationLevel, string HealthNeed);

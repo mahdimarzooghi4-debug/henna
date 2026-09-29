@@ -121,6 +121,7 @@ public sealed class HanaOrganizationDbContext(
             {
                 table.HasCheckConstraint("ck_organization_household_referrals_reference", "char_length(btrim(external_reference)) BETWEEN 1 AND 120");
                 table.HasCheckConstraint("ck_organization_household_referrals_settlement", "settlement_type IN ('URBAN','RURAL')");
+                table.HasCheckConstraint("ck_organization_household_referrals_housing_tenure", "housing_tenure IS NULL OR housing_tenure IN ('OWNER','TENANT')");
                 table.HasCheckConstraint("ck_organization_household_referrals_revision", "revision = 1");
             });
             entity.HasKey(x => x.Id);
@@ -131,6 +132,7 @@ public sealed class HanaOrganizationDbContext(
             entity.Property(x => x.ProvinceId).HasColumnName("province_id").IsRequired();
             entity.Property(x => x.CityId).HasColumnName("city_id");
             entity.Property(x => x.SettlementType).HasColumnName("settlement_type").HasMaxLength(8).IsRequired();
+            entity.Property(x => x.HousingTenure).HasColumnName("housing_tenure").HasMaxLength(8);
             entity.Property(x => x.Revision).HasColumnName("revision").IsRequired();
             entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc").IsRequired();
             entity.Property(x => x.SubmittedByAccountId).HasColumnName("submitted_by_account_id").IsRequired();

@@ -139,7 +139,7 @@ public sealed class OrganizationPortalApiTests
         var referralUrl = $"{programsUrl}/{organizationProgramId}/household-referrals";
         var referralBody = new
         {
-            programRevision = 1, externalReference = "CASE-1405-001", provinceId, cityId, settlementType = OrganizationSettlementTypes.Urban,
+            programRevision = 1, externalReference = "CASE-1405-001", provinceId, cityId, settlementType = OrganizationSettlementTypes.Urban, housingTenure = OrganizationHousingTenureTypes.Tenant,
             members = new[]
             {
                 new { genderCategory = OrganizationHouseholdCategories.Female, lifeStage = OrganizationHouseholdCategories.OlderAdult, educationLevel = OrganizationHouseholdCategories.EducationNotReported, healthNeed = OrganizationHouseholdCategories.ChronicNeed },
@@ -153,8 +153,10 @@ public sealed class OrganizationPortalApiTests
         unrelated.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
         Assert.Equal(HttpStatusCode.Forbidden, (await unrelated.PostAsJsonAsync(referralUrl, referralBody)).StatusCode);
         unrelated.DefaultRequestHeaders.Remove("Idempotency-Key");
-        Assert.Equal(HttpStatusCode.Conflict, (await member.PostAsJsonAsync(referralUrl, new { programRevision = 2, externalReference = "OLD-REV", referralBody.provinceId, referralBody.cityId, referralBody.settlementType, referralBody.members })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await member.PostAsJsonAsync(referralUrl, new { referralBody.programRevision, externalReference = "BAD-CITY", referralBody.provinceId, cityId = Guid.NewGuid(), referralBody.settlementType, referralBody.members })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await member.PostAsJsonAsync(referralUrl, new { programRevision = 2, externalReference = "OLD-REV", referralBody.provinceId, referralBody.cityId, referralBody.settlementType, referralBody.housingTenure, referralBody.members })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await member.PostAsJsonAsync(referralUrl, new { referralBody.programRevision, externalReference = "BAD-CITY", referralBody.provinceId, cityId = Guid.NewGuid(), referralBody.settlementType, referralBody.housingTenure, referralBody.members })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await member.PostAsJsonAsync(referralUrl, new { referralBody.programRevision, externalReference = "MISSING-TENURE", referralBody.provinceId, referralBody.cityId, referralBody.settlementType, referralBody.members })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await member.PostAsJsonAsync(referralUrl, new { referralBody.programRevision, externalReference = "BAD-TENURE", referralBody.provinceId, referralBody.cityId, referralBody.settlementType, housingTenure = "UNKNOWN", referralBody.members })).StatusCode);
         var referral = await member.PostAsJsonAsync(referralUrl, referralBody);
         Assert.Equal(HttpStatusCode.Created, referral.StatusCode);
         Assert.Equal("no-store", referral.Headers.GetValues("Cache-Control").Single());
@@ -165,11 +167,14 @@ public sealed class OrganizationPortalApiTests
         var referralId = referralJson.RootElement.GetProperty("referralId").GetGuid();
         Assert.Equal(referralId, referralRetryJson.RootElement.GetProperty("referralId").GetGuid());
         Assert.Equal(2, referralJson.RootElement.GetProperty("members").GetArrayLength());
+        Assert.Equal(OrganizationHousingTenureTypes.Tenant, referralJson.RootElement.GetProperty("housingTenure").GetString());
         Assert.False(referralJson.RootElement.TryGetProperty("eligible", out _));
         Assert.False(referralJson.RootElement.TryGetProperty("amount", out _));
         Assert.False(referralJson.RootElement.TryGetProperty("allocation", out _));
-        var mismatchedRetry = await member.PostAsJsonAsync(referralUrl, new { referralBody.programRevision, externalReference = "CASE-1405-002", referralBody.provinceId, referralBody.cityId, referralBody.settlementType, referralBody.members });
+        var mismatchedRetry = await member.PostAsJsonAsync(referralUrl, new { referralBody.programRevision, externalReference = "CASE-1405-002", referralBody.provinceId, referralBody.cityId, referralBody.settlementType, referralBody.housingTenure, referralBody.members });
         Assert.Equal(HttpStatusCode.Conflict, mismatchedRetry.StatusCode);
+        var changedTenureRetry = await member.PostAsJsonAsync(referralUrl, new { referralBody.programRevision, referralBody.externalReference, referralBody.provinceId, referralBody.cityId, referralBody.settlementType, housingTenure = OrganizationHousingTenureTypes.Owner, referralBody.members });
+        Assert.Equal(HttpStatusCode.Conflict, changedTenureRetry.StatusCode);
         member.DefaultRequestHeaders.Remove("Idempotency-Key");
         member.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
         Assert.Equal(HttpStatusCode.Conflict, (await member.PostAsJsonAsync(referralUrl, referralBody)).StatusCode);
@@ -181,6 +186,7 @@ public sealed class OrganizationPortalApiTests
         var storedReferral = await organizations.HouseholdReferrals.SingleAsync(x => x.Id == referralId);
         var storedMembers = await organizations.HouseholdMembers.Where(x => x.HouseholdReferralId == referralId).OrderBy(x => x.MemberNumber).ToListAsync();
         Assert.Equal("CASE-1405-001", storedReferral.ExternalReference);
+        Assert.Equal(OrganizationHousingTenureTypes.Tenant, storedReferral.HousingTenure);
         Assert.Equal(2, storedMembers.Count);
         Assert.Contains(storedMembers, x => x.HealthNeed == OrganizationHouseholdCategories.ChronicNeed);
         Assert.False(await identity.RoleAssignments.AnyAsync(x => x.AccountId == memberId));
