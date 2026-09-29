@@ -5,18 +5,31 @@ namespace Hana.Domain.Tests;
 
 public sealed class NeedsBasedAllocationV1Tests
 {
-    private static readonly HouseholdNeedScores NoScoredNeeds = new(0, 0, 0, 0, 0, 0);
+    private static readonly HouseholdNeedScores NoScoredNeeds = new(0, 0, 0, 0, 0, 0, 0);
 
     [Fact]
     public void HouseholdFactorUsesApprovedWeightsAndZeroToThreeScale()
     {
         Assert.Equal(1m, NeedsBasedAllocationV1.CalculateHouseholdFactor(NoScoredNeeds));
         Assert.Equal(1.5m, NeedsBasedAllocationV1.CalculateHouseholdFactor(
-            new HouseholdNeedScores(3, 3, 3, 3, 3, 3)));
+            new HouseholdNeedScores(3, 3, 3, 3, 3, 3, 3)));
         Assert.Equal(1.15m, NeedsBasedAllocationV1.CalculateHouseholdFactor(
-            new HouseholdNeedScores(3, 0, 0, 0, 0, 0)));
+            new HouseholdNeedScores(3, 0, 0, 0, 0, 0, 0)));
         Assert.Equal(1.025m, NeedsBasedAllocationV1.CalculateHouseholdFactor(
-            new HouseholdNeedScores(0, 0, 0, 0, 0, 3)));
+            new HouseholdNeedScores(0, 0, 0, 0, 0, 3, 0)));
+    }
+
+    [Fact]
+    public void HouseholdWeightsSumToOneHundredPercent()
+    {
+        Assert.Equal(1m,
+            NeedsBasedAllocationV1.HealthWeight +
+            NeedsBasedAllocationV1.EconomicHardshipWeight +
+            NeedsBasedAllocationV1.AgeAndDependencyWeight +
+            NeedsBasedAllocationV1.HouseholdSizeWeight +
+            NeedsBasedAllocationV1.CareAndSupportWeight +
+            NeedsBasedAllocationV1.EducationWeight +
+            NeedsBasedAllocationV1.HousingTenureWeight);
     }
 
     [Theory]
@@ -25,7 +38,20 @@ public sealed class NeedsBasedAllocationV1Tests
     public void HouseholdScoresOutsideZeroToThreeAreRejected(int invalidScore)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new HouseholdNeedScores(invalidScore, 0, 0, 0, 0, 0));
+            new HouseholdNeedScores(invalidScore, 0, 0, 0, 0, 0, 0));
+    }
+
+    [Fact]
+    public void TenantScoreAddsHousingWeightWithoutExceedingHouseholdFactorMaximum()
+    {
+        var owner = NeedsBasedAllocationV1.CalculateHouseholdFactor(NoScoredNeeds);
+        var tenant = NeedsBasedAllocationV1.CalculateHouseholdFactor(
+            new HouseholdNeedScores(0, 0, 0, 0, 0, 0, 2));
+
+        Assert.Equal(1m, owner);
+        Assert.Equal(1m + 0.5m * NeedsBasedAllocationV1.HousingTenureWeight * 2m / 3m, tenant);
+        Assert.Equal(1.5m, NeedsBasedAllocationV1.CalculateHouseholdFactor(
+            new HouseholdNeedScores(3, 3, 3, 3, 3, 3, 3)));
     }
 
     [Fact]
@@ -63,7 +89,7 @@ public sealed class NeedsBasedAllocationV1Tests
             baseAmount,
             baseAmount,
             geographicFactor: 1.2m,
-            scores: new HouseholdNeedScores(3, 3, 3, 3, 3, 3));
+            scores: new HouseholdNeedScores(3, 3, 3, 3, 3, 3, 3));
 
         Assert.Equal(180_000_000, result.CalculatedAmount.Value);
         Assert.Equal(100_000_000, result.PayableAmount.Value);
