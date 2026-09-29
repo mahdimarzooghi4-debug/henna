@@ -325,12 +325,17 @@ internal static class OrganizationEndpoints
             if (programId == Guid.Empty || input.ProgramRevision < 1 || string.IsNullOrWhiteSpace(reference) || reference.Length > 120 || reference.Any(char.IsControl) ||
                 input.ProvinceId == Guid.Empty || input.CityId == Guid.Empty || input.SettlementType is not (OrganizationSettlementTypes.Urban or OrganizationSettlementTypes.Rural) ||
                 input.HousingTenure is not (OrganizationHousingTenureTypes.Owner or OrganizationHousingTenureTypes.Tenant) ||
+                input.HealthBurdenLevel is not (OrganizationAllocationAssessmentTypes.HealthNone or OrganizationAllocationAssessmentTypes.HealthOneManageable or OrganizationAllocationAssessmentTypes.HealthHighBurden or OrganizationAllocationAssessmentTypes.HealthSevere) ||
+                input.EconomicHardshipLevel is not (OrganizationAllocationAssessmentTypes.HardshipNeedsMet or OrganizationAllocationAssessmentTypes.HardshipOccasionalShortfall or OrganizationAllocationAssessmentTypes.HardshipRecurrentShortfall or OrganizationAllocationAssessmentTypes.HardshipMultipleUnmet) ||
+                input.CareSupportLevel is not (OrganizationAllocationAssessmentTypes.CareSupportAvailable or OrganizationAllocationAssessmentTypes.OneAdultNoDependents or OrganizationAllocationAssessmentTypes.LoneCaregiverOneDependent or OrganizationAllocationAssessmentTypes.NoPracticalSupport) ||
+                input.EducationAttainment is not (OrganizationAllocationAssessmentTypes.EducationBachelorOrHigher or OrganizationAllocationAssessmentTypes.EducationDiplomaOrAssociate or OrganizationAllocationAssessmentTypes.EducationBelowDiploma or OrganizationAllocationAssessmentTypes.EducationNoFormalOrLiteracy) ||
                 input.SettlementType == OrganizationSettlementTypes.Urban && input.CityId is null ||
                 input.Members is null || input.Members.Count is < 1 or > 20 || input.Members.Any(m => m is null ||
                     !Allowed(m.GenderCategory, OrganizationHouseholdCategories.Female, OrganizationHouseholdCategories.Male, OrganizationHouseholdCategories.NotReported) ||
                     !Allowed(m.LifeStage, OrganizationHouseholdCategories.Infant, OrganizationHouseholdCategories.Preschool, OrganizationHouseholdCategories.SchoolAge, OrganizationHouseholdCategories.Adult, OrganizationHouseholdCategories.OlderAdult) ||
                     !Allowed(m.EducationLevel, OrganizationHouseholdCategories.NoFormalEducation, OrganizationHouseholdCategories.Primary, OrganizationHouseholdCategories.Secondary, OrganizationHouseholdCategories.Diploma, OrganizationHouseholdCategories.HigherEducation, OrganizationHouseholdCategories.EducationNotReported) ||
-                    !Allowed(m.HealthNeed, OrganizationHouseholdCategories.NoKnownChronicNeed, OrganizationHouseholdCategories.ChronicNeed, OrganizationHouseholdCategories.HealthNotReported)))
+                    !Allowed(m.HealthNeed, OrganizationHouseholdCategories.NoKnownChronicNeed, OrganizationHouseholdCategories.ChronicNeed, OrganizationHouseholdCategories.HealthNotReported) ||
+                    m.NeedsPracticalSupport is null || m.LifeStage != OrganizationHouseholdCategories.OlderAdult && m.NeedsPracticalSupport.Value))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["referral"] = ["ارجاع خانوار یا دسته‌بندی اعضا معتبر نیست."] });
             if (!Guid.TryParse(context.Request.Headers["Idempotency-Key"], out var key) || key == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["idempotencyKey"] = ["کلید یکتای درخواست معتبر نیست."] });
@@ -353,13 +358,13 @@ internal static class OrganizationEndpoints
                 if (prior is not null)
                 {
                     var priorMembers = await db.HouseholdMembers.AsNoTracking().Where(x => x.HouseholdReferralId == prior.Id).OrderBy(x => x.MemberNumber).ToListAsync(cancellationToken);
-                    if (prior.SubmittedByAccountId != account.AccountId || prior.ProgramId != programId || prior.OrganizationId != program.OrganizationId || prior.ExternalReference != reference || prior.ProvinceId != input.ProvinceId || prior.CityId != input.CityId || prior.SettlementType != input.SettlementType || prior.HousingTenure != input.HousingTenure || !SameMembers(priorMembers, input.Members)) return Results.Conflict();
+                    if (prior.SubmittedByAccountId != account.AccountId || prior.ProgramId != programId || prior.OrganizationId != program.OrganizationId || prior.ExternalReference != reference || prior.ProvinceId != input.ProvinceId || prior.CityId != input.CityId || prior.SettlementType != input.SettlementType || prior.HousingTenure != input.HousingTenure || prior.HealthBurdenLevel != input.HealthBurdenLevel || prior.EconomicHardshipLevel != input.EconomicHardshipLevel || prior.CareSupportLevel != input.CareSupportLevel || prior.EducationAttainment != input.EducationAttainment || !SameMembers(priorMembers, input.Members)) return Results.Conflict();
                     return Results.Ok(HouseholdReferralProjection(prior, priorMembers));
                 }
                 if (await db.HouseholdReferrals.AnyAsync(x => x.OrganizationId == program.OrganizationId && x.ProgramId == programId && x.ExternalReference == reference, cancellationToken)) return Results.Conflict();
                 var now = services.GetRequiredService<IClock>().UtcNow.ToUniversalTime();
-                var record = new OrganizationHouseholdReferralRecord { Id = Guid.NewGuid(), OrganizationId = program.OrganizationId, ProgramId = programId, ExternalReference = reference, ProvinceId = input.ProvinceId, CityId = input.CityId, SettlementType = input.SettlementType, HousingTenure = input.HousingTenure, Revision = 1, SubmittedAtUtc = now, SubmittedByAccountId = account.AccountId!.Value, CreationKey = key };
-                var memberRecords = input.Members.Select((m, index) => new OrganizationHouseholdMemberRecord { Id = Guid.NewGuid(), HouseholdReferralId = record.Id, MemberNumber = index + 1, GenderCategory = m.GenderCategory, LifeStage = m.LifeStage, EducationLevel = m.EducationLevel, HealthNeed = m.HealthNeed }).ToList();
+                var record = new OrganizationHouseholdReferralRecord { Id = Guid.NewGuid(), OrganizationId = program.OrganizationId, ProgramId = programId, ExternalReference = reference, ProvinceId = input.ProvinceId, CityId = input.CityId, SettlementType = input.SettlementType, HousingTenure = input.HousingTenure, HealthBurdenLevel = input.HealthBurdenLevel, EconomicHardshipLevel = input.EconomicHardshipLevel, CareSupportLevel = input.CareSupportLevel, EducationAttainment = input.EducationAttainment, Revision = 1, SubmittedAtUtc = now, SubmittedByAccountId = account.AccountId!.Value, CreationKey = key };
+                var memberRecords = input.Members.Select((m, index) => new OrganizationHouseholdMemberRecord { Id = Guid.NewGuid(), HouseholdReferralId = record.Id, MemberNumber = index + 1, GenderCategory = m.GenderCategory, LifeStage = m.LifeStage, EducationLevel = m.EducationLevel, HealthNeed = m.HealthNeed, NeedsPracticalSupport = m.NeedsPracticalSupport }).ToList();
                 await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
                 db.HouseholdReferrals.Add(record);
                 db.HouseholdMembers.AddRange(memberRecords);
@@ -406,15 +411,17 @@ internal static class OrganizationEndpoints
     {
         referralId = referral.Id, programId = referral.ProgramId, externalReference = referral.ExternalReference,
         provinceId = referral.ProvinceId, cityId = referral.CityId, settlementType = referral.SettlementType, housingTenure = referral.HousingTenure,
+        healthBurdenLevel = referral.HealthBurdenLevel, economicHardshipLevel = referral.EconomicHardshipLevel,
+        careSupportLevel = referral.CareSupportLevel, educationAttainment = referral.EducationAttainment,
         revision = referral.Revision, submittedAtUtc = referral.SubmittedAtUtc,
-        members = members.OrderBy(x => x.MemberNumber).Select(x => new { x.MemberNumber, x.GenderCategory, x.LifeStage, x.EducationLevel, x.HealthNeed })
+        members = members.OrderBy(x => x.MemberNumber).Select(x => new { x.MemberNumber, x.GenderCategory, x.LifeStage, x.EducationLevel, x.HealthNeed, x.NeedsPracticalSupport })
     };
 
     private static bool Allowed(string value, params string[] allowed) => allowed.Contains(value, StringComparer.Ordinal);
 
     private static bool SameMembers(IReadOnlyList<OrganizationHouseholdMemberRecord> stored, IReadOnlyList<OrganizationHouseholdMemberInput> requested) =>
         stored.Count == requested.Count && stored.Select((item, index) => item.MemberNumber == index + 1 && item.GenderCategory == requested[index].GenderCategory &&
-            item.LifeStage == requested[index].LifeStage && item.EducationLevel == requested[index].EducationLevel && item.HealthNeed == requested[index].HealthNeed).All(x => x);
+            item.LifeStage == requested[index].LifeStage && item.EducationLevel == requested[index].EducationLevel && item.HealthNeed == requested[index].HealthNeed && item.NeedsPracticalSupport == requested[index].NeedsPracticalSupport).All(x => x);
 
     private static async Task<(Guid? AccountId, IResult? Error)> Admin(HttpContext context, IServiceProvider services, bool hasDatabase, CancellationToken cancellationToken)
     {
@@ -442,5 +449,5 @@ internal sealed record ProvisionOrganizationInput(string? Name, Guid InitialAcco
 internal sealed record GrantOrganizationMembershipInput(Guid AccountId, string Role);
 internal sealed record OrganizationProgramInput(Guid OrganizationId, string? Name, string AllocationMode, string? Description);
 internal sealed record OrganizationFundingInstructionInput(int ProgramRevision, string? SourceInstructionReference);
-internal sealed record OrganizationHouseholdReferralInput(int ProgramRevision, string? ExternalReference, Guid ProvinceId, Guid? CityId, string SettlementType, string? HousingTenure, IReadOnlyList<OrganizationHouseholdMemberInput> Members);
-internal sealed record OrganizationHouseholdMemberInput(string GenderCategory, string LifeStage, string EducationLevel, string HealthNeed);
+internal sealed record OrganizationHouseholdReferralInput(int ProgramRevision, string? ExternalReference, Guid ProvinceId, Guid? CityId, string SettlementType, string? HousingTenure, string? HealthBurdenLevel, string? EconomicHardshipLevel, string? CareSupportLevel, string? EducationAttainment, IReadOnlyList<OrganizationHouseholdMemberInput> Members);
+internal sealed record OrganizationHouseholdMemberInput(string GenderCategory, string LifeStage, string EducationLevel, string HealthNeed, bool? NeedsPracticalSupport);
