@@ -18,7 +18,7 @@ async function main() {
   assert.ok(ready, "Next did not start: " + logs);
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ locale: "fa-IR", viewport: { width: 1280, height: 900 } });
-  const referral = () => ({ referralId: "123e4567-e89b-42d3-a456-426614174006", programId, externalReference: posted?.externalReference ?? "", provinceId, cityId, settlementType: "URBAN", revision: 1, submittedAtUtc: "2026-09-27T12:30:00Z", members: (posted?.members ?? []).map((x, i) => ({ memberNumber: i + 1, ...x })) });
+  const referral = () => ({ referralId: "123e4567-e89b-42d3-a456-426614174006", programId, externalReference: posted?.externalReference ?? "", provinceId, cityId, settlementType: "URBAN", housingTenure: posted?.housingTenure ?? null, healthBurdenLevel: posted?.healthBurdenLevel ?? null, economicHardshipLevel: posted?.economicHardshipLevel ?? null, careSupportLevel: posted?.careSupportLevel ?? null, educationAttainment: posted?.educationAttainment ?? null, revision: 1, submittedAtUtc: "2026-09-27T12:30:00Z", members: (posted?.members ?? []).map((x, i) => ({ memberNumber: i + 1, ...x })) });
   await context.route("**/api/organization/programs", route => route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ programs: [program] }) }));
   await context.route("**/api/organization/profiles", route => route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ profiles: [{ organizationId: orgId, organizationName: "سازمان آزمون", memberRole: "ORG_REPRESENTATIVE", membershipId: "123e4567-e89b-42d3-a456-426614174001" }] }) }));
   await context.route("**/api/geography/provinces", route => route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ items: [{ id: provinceId, name: "استان نمونه", slug: "sample" }] }) }));
@@ -35,9 +35,19 @@ async function main() {
   await page.getByLabel("شناسه پرونده در سازمان").fill("CASE-1405-001");
   await page.getByLabel("استان").selectOption(provinceId);
   await page.getByLabel("شهر", { exact: true }).selectOption(cityId);
+  await page.getByLabel("وضعیت سکونت").selectOption("TENANT");
+  await page.getByLabel("بار درمانی خانوار").selectOption("ONE_MANAGEABLE_ONGOING_CASE");
+  await page.getByLabel("سختی اقتصادی").selectOption("OCCASIONAL_SHORTFALL_IN_ONE_ESSENTIAL_NEED");
+  await page.getByLabel("حمایت و مراقبت").selectOption("EFFECTIVE_ADULT_OR_PRACTICAL_SUPPORT_AVAILABLE");
+  await page.getByLabel("سطح تحصیلات خانوار").selectOption("DIPLOMA_OR_ASSOCIATE");
   await page.getByRole("button", { name: "ثبت ارجاع خانوار" }).click();
   await page.getByText("CASE-1405-001", { exact: true }).waitFor();
   assert.equal(posted.externalReference, "CASE-1405-001");
+  assert.equal(posted.housingTenure, "TENANT");
+  assert.equal(posted.healthBurdenLevel, "ONE_MANAGEABLE_ONGOING_CASE");
+  assert.equal(posted.economicHardshipLevel, "OCCASIONAL_SHORTFALL_IN_ONE_ESSENTIAL_NEED");
+  assert.equal(posted.careSupportLevel, "EFFECTIVE_ADULT_OR_PRACTICAL_SUPPORT_AVAILABLE");
+  assert.equal(posted.educationAttainment, "DIPLOMA_OR_ASSOCIATE");
   assert.equal(posted.members.length, 1);
   assert.equal(posted.members[0].lifeStage, "ADULT");
   assert.equal(await page.getByText("در این صفحه بررسی استحقاق یا تخصیص انجام نمی‌شود.").count(), 1);

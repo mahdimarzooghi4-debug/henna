@@ -101,6 +101,11 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             {
                 table.HasCheckConstraint("ck_organization_household_referrals_reference", "char_length(btrim(external_reference)) BETWEEN 1 AND 120");
                 table.HasCheckConstraint("ck_organization_household_referrals_settlement", "settlement_type IN ('URBAN','RURAL')");
+                table.HasCheckConstraint("ck_organization_household_referrals_housing_tenure", "housing_tenure IS NULL OR housing_tenure IN ('OWNER','TENANT')");
+                table.HasCheckConstraint("ck_organization_household_referrals_health_burden", "health_burden_level IS NULL OR health_burden_level IN ('NO_ONGOING_TREATMENT','ONE_MANAGEABLE_ONGOING_CASE','HIGH_COST_OR_LIMITING_OR_MULTIPLE_MANAGEABLE_CASES','SEVERE_ONGOING_CARE_OR_MULTIPLE_HIGH_BURDEN_CASES')");
+                table.HasCheckConstraint("ck_organization_household_referrals_economic_hardship", "economic_hardship_level IS NULL OR economic_hardship_level IN ('ESSENTIAL_NEEDS_GENERALLY_MET','OCCASIONAL_SHORTFALL_IN_ONE_ESSENTIAL_NEED','RECURRENT_SHORTFALL_OR_ESSENTIAL_DEBT','MULTIPLE_ESSENTIAL_NEEDS_UNMET_OR_SEVERE_INSTABILITY')");
+                table.HasCheckConstraint("ck_organization_household_referrals_care_support", "care_support_level IS NULL OR care_support_level IN ('EFFECTIVE_ADULT_OR_PRACTICAL_SUPPORT_AVAILABLE','ONE_RESPONSIBLE_ADULT_WITHOUT_DEPENDENTS','LONE_CAREGIVER_WITH_ONE_DEPENDENT_OR_LIMITED_SUPPORT','NO_PRACTICAL_SUPPORT_WITH_MULTIPLE_DEPENDENTS_OR_HIGH_CARE_BURDEN')");
+                table.HasCheckConstraint("ck_organization_household_referrals_education_attainment", "education_attainment IS NULL OR education_attainment IN ('BACHELOR_OR_HIGHER','DIPLOMA_OR_ASSOCIATE','BELOW_DIPLOMA_WITH_FORMAL_EDUCATION','NO_LITERACY_OR_FORMAL_EDUCATION')");
                 table.HasCheckConstraint("ck_organization_household_referrals_revision", "revision = 1");
             });
             entity.HasKey(x => x.Id);
@@ -111,6 +116,11 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             entity.Property(x => x.ProvinceId).HasColumnName("province_id").IsRequired();
             entity.Property(x => x.CityId).HasColumnName("city_id");
             entity.Property(x => x.SettlementType).HasColumnName("settlement_type").HasMaxLength(8).IsRequired();
+            entity.Property(x => x.HousingTenure).HasColumnName("housing_tenure").HasMaxLength(8);
+            entity.Property(x => x.HealthBurdenLevel).HasColumnName("health_burden_level").HasMaxLength(64);
+            entity.Property(x => x.EconomicHardshipLevel).HasColumnName("economic_hardship_level").HasMaxLength(64);
+            entity.Property(x => x.CareSupportLevel).HasColumnName("care_support_level").HasMaxLength(80);
+            entity.Property(x => x.EducationAttainment).HasColumnName("education_attainment").HasMaxLength(40);
             entity.Property(x => x.Revision).HasColumnName("revision").IsRequired();
             entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc").IsRequired();
             entity.Property(x => x.SubmittedByAccountId).HasColumnName("submitted_by_account_id").IsRequired();
@@ -129,6 +139,7 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 table.HasCheckConstraint("ck_organization_household_members_life_stage", "life_stage IN ('INFANT','PRESCHOOL','SCHOOL_AGE','ADULT','OLDER_ADULT')");
                 table.HasCheckConstraint("ck_organization_household_members_education", "education_level IN ('NO_FORMAL_EDUCATION','PRIMARY','SECONDARY','DIPLOMA','HIGHER_EDUCATION','NOT_REPORTED')");
                 table.HasCheckConstraint("ck_organization_household_members_health", "health_need IN ('NO_KNOWN_CHRONIC_NEED','CHRONIC_NEED','NOT_REPORTED')");
+                table.HasCheckConstraint("ck_organization_household_members_practical_support", "needs_practical_support IS NULL OR life_stage = 'OLDER_ADULT' OR needs_practical_support = FALSE");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
@@ -138,6 +149,7 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             entity.Property(x => x.LifeStage).HasColumnName("life_stage").HasMaxLength(16).IsRequired();
             entity.Property(x => x.EducationLevel).HasColumnName("education_level").HasMaxLength(24).IsRequired();
             entity.Property(x => x.HealthNeed).HasColumnName("health_need").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.NeedsPracticalSupport).HasColumnName("needs_practical_support");
             entity.HasOne<OrganizationHouseholdReferralRecord>().WithMany().HasForeignKey(x => x.HouseholdReferralId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_organization_household_members_referrals");
             entity.HasIndex(x => new { x.HouseholdReferralId, x.MemberNumber }).IsUnique().HasDatabaseName("ux_organization_household_members_number");
         });

@@ -80,6 +80,11 @@ public sealed class OrganizationHouseholdReferralRecord
     public Guid ProvinceId { get; set; }
     public Guid? CityId { get; set; }
     public string SettlementType { get; set; } = null!;
+    public string? HousingTenure { get; set; }
+    public string? HealthBurdenLevel { get; set; }
+    public string? EconomicHardshipLevel { get; set; }
+    public string? CareSupportLevel { get; set; }
+    public string? EducationAttainment { get; set; }
     public int Revision { get; set; } = 1;
     public DateTimeOffset SubmittedAtUtc { get; set; }
     public Guid SubmittedByAccountId { get; set; }
@@ -96,12 +101,42 @@ public sealed class OrganizationHouseholdMemberRecord
     public string LifeStage { get; set; } = null!;
     public string EducationLevel { get; set; } = null!;
     public string HealthNeed { get; set; } = null!;
+    public bool? NeedsPracticalSupport { get; set; }
 }
 
 public static class OrganizationSettlementTypes
 {
     public const string Urban = "URBAN";
     public const string Rural = "RURAL";
+}
+
+public static class OrganizationHousingTenureTypes
+{
+    public const string Owner = "OWNER";
+    public const string Tenant = "TENANT";
+}
+
+public static class OrganizationAllocationAssessmentTypes
+{
+    public const string HealthNone = "NO_ONGOING_TREATMENT";
+    public const string HealthOneManageable = "ONE_MANAGEABLE_ONGOING_CASE";
+    public const string HealthHighBurden = "HIGH_COST_OR_LIMITING_OR_MULTIPLE_MANAGEABLE_CASES";
+    public const string HealthSevere = "SEVERE_ONGOING_CARE_OR_MULTIPLE_HIGH_BURDEN_CASES";
+
+    public const string HardshipNeedsMet = "ESSENTIAL_NEEDS_GENERALLY_MET";
+    public const string HardshipOccasionalShortfall = "OCCASIONAL_SHORTFALL_IN_ONE_ESSENTIAL_NEED";
+    public const string HardshipRecurrentShortfall = "RECURRENT_SHORTFALL_OR_ESSENTIAL_DEBT";
+    public const string HardshipMultipleUnmet = "MULTIPLE_ESSENTIAL_NEEDS_UNMET_OR_SEVERE_INSTABILITY";
+
+    public const string CareSupportAvailable = "EFFECTIVE_ADULT_OR_PRACTICAL_SUPPORT_AVAILABLE";
+    public const string OneAdultNoDependents = "ONE_RESPONSIBLE_ADULT_WITHOUT_DEPENDENTS";
+    public const string LoneCaregiverOneDependent = "LONE_CAREGIVER_WITH_ONE_DEPENDENT_OR_LIMITED_SUPPORT";
+    public const string NoPracticalSupport = "NO_PRACTICAL_SUPPORT_WITH_MULTIPLE_DEPENDENTS_OR_HIGH_CARE_BURDEN";
+
+    public const string EducationBachelorOrHigher = "BACHELOR_OR_HIGHER";
+    public const string EducationDiplomaOrAssociate = "DIPLOMA_OR_ASSOCIATE";
+    public const string EducationBelowDiploma = "BELOW_DIPLOMA_WITH_FORMAL_EDUCATION";
+    public const string EducationNoFormalOrLiteracy = "NO_LITERACY_OR_FORMAL_EDUCATION";
 }
 
 public static class OrganizationHouseholdCategories
