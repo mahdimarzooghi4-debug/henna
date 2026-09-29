@@ -104,6 +104,30 @@ public sealed class OrganizationHouseholdMemberRecord
     public bool? NeedsPracticalSupport { get; set; }
 }
 
+/// <summary>
+/// Immutable calculation-only batch. A preview is not an award, reservation,
+/// wallet credit, or ledger posting.
+/// </summary>
+public sealed class OrganizationAllocationPreviewRecord
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid ProgramId { get; set; }
+    public int ProgramRevision { get; set; }
+    public Guid FundingInstructionId { get; set; }
+    public string AllocationMode { get; set; } = null!;
+    public string FundingSource { get; set; } = null!;
+    public string FundingSourceReference { get; set; } = null!;
+    public string InstructionReference { get; set; } = null!;
+    public string FundingInstructionState { get; set; } = null!;
+    public string State { get; set; } = "PREVIEW_ONLY";
+    public string PayloadSha256 { get; set; } = null!;
+    public string SnapshotJson { get; set; } = null!;
+    public DateTimeOffset CreatedAtUtc { get; set; }
+    public Guid CreatedByAccountId { get; set; }
+    public Guid CreationKey { get; set; }
+}
+
 public static class OrganizationSettlementTypes
 {
     public const string Urban = "URBAN";

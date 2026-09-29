@@ -133,8 +133,8 @@ public sealed class OrganizationPortalApiTests
         var provinceId = Guid.NewGuid();
         var cityId = Guid.NewGuid();
         var geographySuffix = Guid.NewGuid().ToString("N");
-        geography.Provinces.Add(new ProvinceRecord { Id = provinceId, Name = "استان آزمون", Slug = "test-province-" + geographySuffix, State = GeographyStates.Selectable });
-        geography.Cities.Add(new CityRecord { Id = cityId, ProvinceId = provinceId, Name = "شهر آزمون", Slug = "test-city-" + geographySuffix, State = GeographyStates.Selectable });
+        geography.Provinces.Add(new ProvinceRecord { Id = provinceId, Name = "گیلان", Slug = "test-province-" + geographySuffix, State = GeographyStates.Selectable });
+        geography.Cities.Add(new CityRecord { Id = cityId, ProvinceId = provinceId, Name = "رشت", Slug = "test-city-" + geographySuffix, State = GeographyStates.Selectable });
         await geography.SaveChangesAsync();
         var referralUrl = $"{programsUrl}/{organizationProgramId}/household-referrals";
         var referralBody = new
@@ -277,6 +277,108 @@ public sealed class OrganizationPortalApiTests
         Assert.Equal(2, storedInstructions.Count);
         Assert.Contains(storedInstructions, item => item.ProgramId == hennaProgramId && item.AllocationMode == OrganizationAllocationModes.HennaNeedsBased && item.State == "PENDING_VERIFICATION");
         Assert.Contains(storedInstructions, item => item.ProgramId == organizationProgramId && item.AllocationMode == OrganizationAllocationModes.OrganizationDefined && item.State == "PENDING_VERIFICATION");
+
+        var previewPath = $"/api/v1/admin/organization/programs/{organizationProgramId}/allocation-previews";
+        var organizationReferralPreview = new
+        {
+            programRevision = 1,
+            baseAmountRials = (long?)null,
+            ceilingRials = (long?)null,
+            households = new[] { new { referralId, referralRevision = 1, beneficiaryAmountRials = (long?)100_000_000 } }
+        };
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsJsonAsync(previewPath, organizationReferralPreview)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsJsonAsync(previewPath, organizationReferralPreview)).StatusCode);
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var staleHigherRevisionPreview = await admin.PostAsJsonAsync(previewPath, new
+        {
+            programRevision = 2, organizationReferralPreview.baseAmountRials,
+            organizationReferralPreview.ceilingRials, organizationReferralPreview.households
+        });
+        Assert.Equal(HttpStatusCode.Conflict, staleHigherRevisionPreview.StatusCode);
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        var previewKey = Guid.NewGuid();
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", previewKey.ToString());
+        var organizationPreviewResponse = await admin.PostAsJsonAsync(previewPath, organizationReferralPreview);
+        Assert.Equal(HttpStatusCode.Created, organizationPreviewResponse.StatusCode);
+        Assert.Equal("no-store", organizationPreviewResponse.Headers.GetValues("Cache-Control").Single());
+        using var organizationPreviewJson = JsonDocument.Parse(await organizationPreviewResponse.Content.ReadAsStringAsync());
+        var organizationPreviewId = organizationPreviewJson.RootElement.GetProperty("allocationPreviewId").GetGuid();
+        Assert.Equal("PREVIEW_ONLY", organizationPreviewJson.RootElement.GetProperty("state").GetString());
+        Assert.Equal("PENDING_VERIFICATION", organizationPreviewJson.RootElement.GetProperty("fundingInstructionState").GetString());
+        Assert.Equal(100_000_000, organizationPreviewJson.RootElement.GetProperty("calculations")[0].GetProperty("snapshot").GetProperty("payableAmount").GetProperty("value").GetInt64());
+        Assert.Equal(JsonValueKind.Null, organizationPreviewJson.RootElement.GetProperty("calculations")[0].GetProperty("snapshot").GetProperty("formulaVersion").ValueKind);
+        var organizationPreviewReplay = await admin.PostAsJsonAsync(previewPath, organizationReferralPreview);
+        Assert.Equal(HttpStatusCode.OK, organizationPreviewReplay.StatusCode);
+        using var organizationPreviewReplayJson = JsonDocument.Parse(await organizationPreviewReplay.Content.ReadAsStringAsync());
+        Assert.Equal(organizationPreviewId, organizationPreviewReplayJson.RootElement.GetProperty("allocationPreviewId").GetGuid());
+        var changedPreview = new
+        {
+            organizationReferralPreview.programRevision,
+            organizationReferralPreview.baseAmountRials,
+            organizationReferralPreview.ceilingRials,
+            households = new[] { new { referralId, referralRevision = 1, beneficiaryAmountRials = (long?)90_000_000 } }
+        };
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PostAsJsonAsync(previewPath, changedPreview)).StatusCode);
+        var readPreview = await admin.GetAsync($"{previewPath}/{organizationPreviewId}");
+        Assert.Equal(HttpStatusCode.OK, readPreview.StatusCode);
+        using var readPreviewJson = JsonDocument.Parse(await readPreview.Content.ReadAsStringAsync());
+        Assert.Equal(organizationPreviewId, readPreviewJson.RootElement.GetProperty("allocationPreviewId").GetGuid());
+
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        var concurrentPreviewKey = Guid.NewGuid();
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", concurrentPreviewKey.ToString());
+        var concurrentPreviewResponses = await Task.WhenAll(
+            admin.PostAsJsonAsync(previewPath, organizationReferralPreview),
+            admin.PostAsJsonAsync(previewPath, organizationReferralPreview));
+        Assert.All(concurrentPreviewResponses, response => Assert.Contains(response.StatusCode, new[] { HttpStatusCode.Created, HttpStatusCode.OK }));
+        using var concurrentPreviewFirst = JsonDocument.Parse(await concurrentPreviewResponses[0].Content.ReadAsStringAsync());
+        using var concurrentPreviewSecond = JsonDocument.Parse(await concurrentPreviewResponses[1].Content.ReadAsStringAsync());
+        Assert.Equal(
+            concurrentPreviewFirst.RootElement.GetProperty("allocationPreviewId").GetGuid(),
+            concurrentPreviewSecond.RootElement.GetProperty("allocationPreviewId").GetGuid());
+        Assert.Equal(1, await organizations.AllocationPreviews.CountAsync(x => x.CreationKey == concurrentPreviewKey));
+
+        var needsReferralKey = Guid.NewGuid();
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        member.DefaultRequestHeaders.Add("Idempotency-Key", needsReferralKey.ToString());
+        var needsReferralRequest = new
+        {
+            programRevision = 1, externalReference = "CASE-1405-NEEDS-001", provinceId, cityId,
+            settlementType = OrganizationSettlementTypes.Urban, housingTenure = OrganizationHousingTenureTypes.Tenant,
+            healthBurdenLevel = OrganizationAllocationAssessmentTypes.HealthOneManageable,
+            economicHardshipLevel = OrganizationAllocationAssessmentTypes.HardshipOccasionalShortfall,
+            careSupportLevel = OrganizationAllocationAssessmentTypes.CareSupportAvailable,
+            educationAttainment = OrganizationAllocationAssessmentTypes.EducationDiplomaOrAssociate,
+            members = referralBody.members
+        };
+        var needsReferralResponse = await member.PostAsJsonAsync($"{programsUrl}/{hennaProgramId}/household-referrals", needsReferralRequest);
+        Assert.Equal(HttpStatusCode.Created, needsReferralResponse.StatusCode);
+        using var needsReferralJson = JsonDocument.Parse(await needsReferralResponse.Content.ReadAsStringAsync());
+        var needsReferralId = needsReferralJson.RootElement.GetProperty("referralId").GetGuid();
+        var needsPreviewPath = $"/api/v1/admin/organization/programs/{hennaProgramId}/allocation-previews";
+        var needsPreviewRequest = new
+        {
+            programRevision = 1, baseAmountRials = (long?)100_000_000, ceilingRials = (long?)80_000_000,
+            households = new[] { new { referralId = needsReferralId, referralRevision = 1, beneficiaryAmountRials = (long?)null } }
+        };
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var needsPreviewResponse = await admin.PostAsJsonAsync(needsPreviewPath, needsPreviewRequest);
+        Assert.Equal(HttpStatusCode.Created, needsPreviewResponse.StatusCode);
+        using var needsPreviewJson = JsonDocument.Parse(await needsPreviewResponse.Content.ReadAsStringAsync());
+        var needsSnapshot = needsPreviewJson.RootElement.GetProperty("calculations")[0].GetProperty("snapshot");
+        Assert.Equal("HANA-NEEDS-BASED-ALLOCATION-v1.1", needsSnapshot.GetProperty("formulaVersion").GetString());
+        Assert.Equal("HANA-GEO-MPI-1400-v1", needsSnapshot.GetProperty("geographyDatasetVersion").GetString());
+        Assert.Equal(0.5m, needsSnapshot.GetProperty("householdScores").GetProperty("householdSize").GetDecimal());
+        Assert.Equal(1.25m, needsSnapshot.GetProperty("householdScores").GetProperty("ageAndDependency").GetDecimal());
+        Assert.Equal(80_000_000, needsSnapshot.GetProperty("payableAmount").GetProperty("value").GetInt64());
+        var persistedPreview = await organizations.AllocationPreviews.SingleAsync(x => x.Id == needsPreviewJson.RootElement.GetProperty("allocationPreviewId").GetGuid());
+        Assert.Equal("PREVIEW_ONLY", persistedPreview.State);
+        Assert.Equal("PENDING_VERIFICATION", persistedPreview.FundingInstructionState);
+        Assert.Contains("HANA-NEEDS-BASED-ALLOCATION-v1.1", persistedPreview.SnapshotJson);
+        Assert.False(await identity.RoleAssignments.AnyAsync(x => x.AccountId == memberId && x.Role == "SELLER"));
 
         admin.DefaultRequestHeaders.Remove("Idempotency-Key");
         var revokeKey = Guid.NewGuid();

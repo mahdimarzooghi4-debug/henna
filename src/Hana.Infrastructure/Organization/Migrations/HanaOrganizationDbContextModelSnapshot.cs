@@ -153,5 +153,41 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             entity.HasOne<OrganizationHouseholdReferralRecord>().WithMany().HasForeignKey(x => x.HouseholdReferralId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_organization_household_members_referrals");
             entity.HasIndex(x => new { x.HouseholdReferralId, x.MemberNumber }).IsUnique().HasDatabaseName("ux_organization_household_members_number");
         });
+        modelBuilder.Entity<OrganizationAllocationPreviewRecord>(entity =>
+        {
+            entity.ToTable("allocation_previews", "organization", table =>
+            {
+                table.HasCheckConstraint("ck_organization_allocation_previews_revision", "program_revision = 1");
+                table.HasCheckConstraint("ck_organization_allocation_previews_mode", "allocation_mode IN ('HENNA_NEEDS_BASED','ORGANIZATION_DEFINED')");
+                table.HasCheckConstraint("ck_organization_allocation_previews_source", "funding_source = 'ORGANIZATION'");
+                table.HasCheckConstraint("ck_organization_allocation_previews_instruction_state", "funding_instruction_state = 'PENDING_VERIFICATION'");
+                table.HasCheckConstraint("ck_organization_allocation_previews_state", "state = 'PREVIEW_ONLY'");
+                table.HasCheckConstraint("ck_organization_allocation_previews_hash", "payload_sha256 ~ '^[a-f0-9]{64}$'");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.OrganizationId).HasColumnName("organization_id").IsRequired();
+            entity.Property(x => x.ProgramId).HasColumnName("program_id").IsRequired();
+            entity.Property(x => x.ProgramRevision).HasColumnName("program_revision").IsRequired();
+            entity.Property(x => x.FundingInstructionId).HasColumnName("funding_instruction_id").IsRequired();
+            entity.Property(x => x.AllocationMode).HasColumnName("allocation_mode").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.FundingSource).HasColumnName("funding_source").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.FundingSourceReference).HasColumnName("funding_source_reference").HasMaxLength(160).IsRequired();
+            entity.Property(x => x.InstructionReference).HasColumnName("instruction_reference").HasMaxLength(160).IsRequired();
+            entity.Property(x => x.FundingInstructionState).HasColumnName("funding_instruction_state").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.State).HasColumnName("state").HasMaxLength(24).IsRequired();
+            entity.Property(x => x.PayloadSha256).HasColumnName("payload_sha256").HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SnapshotJson).HasColumnName("snapshot_json").HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
+            entity.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id").IsRequired();
+            entity.Property(x => x.CreationKey).HasColumnName("creation_key").IsRequired();
+            entity.HasOne<OrganizationRecord>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_organization_allocation_previews_organizations");
+            entity.HasOne<OrganizationProgramRecord>().WithMany().HasForeignKey(x => x.ProgramId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_organization_allocation_previews_programs");
+            entity.HasOne<OrganizationFundingInstructionRecord>().WithMany().HasForeignKey(x => x.FundingInstructionId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_organization_allocation_previews_funding_instructions");
+            entity.HasIndex(x => x.OrganizationId).HasDatabaseName("ix_allocation_previews_organization_id");
+            entity.HasIndex(x => x.FundingInstructionId).HasDatabaseName("ix_allocation_previews_funding_instruction_id");
+            entity.HasIndex(x => x.CreationKey).IsUnique().HasDatabaseName("ux_organization_allocation_previews_creation_key");
+            entity.HasIndex(x => new { x.ProgramId, x.CreatedAtUtc, x.Id }).HasDatabaseName("ix_organization_allocation_previews_program_created");
+        });
     }
 }

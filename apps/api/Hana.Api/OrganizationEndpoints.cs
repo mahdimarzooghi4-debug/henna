@@ -1,4 +1,9 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Hana.Application.Time;
+using Hana.Domain.Credit;
+using Hana.Domain.Money;
 using Hana.Infrastructure.Geography;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Organization;
@@ -375,6 +380,182 @@ internal static class OrganizationEndpoints
             catch (DbUpdateException) when (!cancellationToken.IsCancellationRequested) { return Results.Conflict(); }
             catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
         }).WithTags("Organization").WithName("CreateOrganizationHouseholdReferral");
+
+        app.MapPost("/api/v1/admin/organization/programs/{programId:guid}/allocation-previews", async (
+            Guid programId, OrganizationAllocationPreviewInput input, HttpContext context,
+            IServiceProvider services, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var auth = await Admin(context, services, hasDatabase, cancellationToken);
+            if (auth.Error is not null) return auth.Error;
+            if (programId == Guid.Empty || input.ProgramRevision < 1 || input.Households is null ||
+                input.Households.Count is < 1 or > 500 || input.Households.Any(x => x is null || x.ReferralId == Guid.Empty || x.ReferralRevision != 1) ||
+                input.Households.Select(x => x.ReferralId).Distinct().Count() != input.Households.Count ||
+                !Guid.TryParse(context.Request.Headers["Idempotency-Key"], out var key) || key == Guid.Empty)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["allocationPreview"] = ["درخواست پیش‌نمایش تخصیص معتبر نیست."] });
+
+            string? payloadHash = null;
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var program = await db.Programs.AsNoTracking().SingleOrDefaultAsync(x => x.Id == programId, cancellationToken);
+                if (program is null) return Results.NotFound();
+                var fundingInstruction = await db.FundingInstructions.AsNoTracking().SingleOrDefaultAsync(x => x.ProgramId == programId, cancellationToken);
+                if (fundingInstruction is null || fundingInstruction.State != "PENDING_VERIFICATION" ||
+                    fundingInstruction.ProgramRevision != program.Revision || program.State != "DRAFT" ||
+                    fundingInstruction.AllocationMode != program.AllocationMode || input.ProgramRevision != program.Revision)
+                    return Results.Conflict(new { message = "دستور تأمین مالی قابل بررسی نیست؛ preview فقط روی دستور ثبت‌شده و در انتظار راستی‌آزمایی انجام می‌شود." });
+
+                var isNeedsBased = program.AllocationMode == OrganizationAllocationModes.HennaNeedsBased;
+                var isOrganizationDefined = program.AllocationMode == OrganizationAllocationModes.OrganizationDefined;
+                var needsBasedAmountsInvalid = input.BaseAmountRials.GetValueOrDefault() <= 0 ||
+                    input.CeilingRials.GetValueOrDefault() <= 0 ||
+                    input.CeilingRials.GetValueOrDefault() > input.BaseAmountRials.GetValueOrDefault();
+                if ((!isNeedsBased && !isOrganizationDefined) ||
+                    isNeedsBased && (input.BaseAmountRials is null || input.CeilingRials is null || needsBasedAmountsInvalid || input.Households.Any(x => x.BeneficiaryAmountRials is not null)) ||
+                    isOrganizationDefined && (input.BaseAmountRials is not null || input.CeilingRials is not null || input.Households.Any(x => x.BeneficiaryAmountRials is null or <= 0)))
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["amounts"] = ["مبالغ باید صریح باشند و با روش تخصیص طرح سازگار باشند."] });
+
+                var mode = isNeedsBased ? CreditAllocationModeV1.NeedsBased : CreditAllocationModeV1.OrganizationDefined;
+                var orderedInput = input.Households.OrderBy(x => x.ReferralId).ToArray();
+                var hashPayload = JsonSerializer.Serialize(new
+                {
+                    input.ProgramRevision,
+                    program.AllocationMode,
+                    fundingInstruction.Id,
+                    fundingInstruction.SourceInstructionReference,
+                    input.BaseAmountRials,
+                    input.CeilingRials,
+                    Households = orderedInput.Select(x => new { x.ReferralId, x.ReferralRevision, x.BeneficiaryAmountRials })
+                });
+                payloadHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(hashPayload))).ToLowerInvariant();
+                var prior = await db.AllocationPreviews.AsNoTracking().SingleOrDefaultAsync(x => x.CreationKey == key, cancellationToken);
+                if (prior is not null)
+                    return prior.CreatedByAccountId == auth.AccountId && prior.ProgramId == programId && prior.PayloadSha256 == payloadHash
+                        ? Results.Json(JsonSerializer.Deserialize<JsonElement>(prior.SnapshotJson), statusCode: StatusCodes.Status200OK)
+                        : Results.Conflict();
+
+                var referralIds = orderedInput.Select(x => x.ReferralId).ToArray();
+                var referrals = await db.HouseholdReferrals.AsNoTracking().Where(x => x.ProgramId == programId && referralIds.Contains(x.Id)).ToListAsync(cancellationToken);
+                if (referrals.Count != orderedInput.Length) return Results.ValidationProblem(new Dictionary<string, string[]> { ["households"] = ["همه پرونده‌ها باید متعلق به همین طرح باشند."] });
+                var referralById = referrals.ToDictionary(x => x.Id);
+                var referralMembers = await db.HouseholdMembers.AsNoTracking().Where(x => referralIds.Contains(x.HouseholdReferralId))
+                    .OrderBy(x => x.MemberNumber).ToListAsync(cancellationToken);
+                var membersByReferral = referralMembers.GroupBy(x => x.HouseholdReferralId).ToDictionary(x => x.Key, x => (IReadOnlyCollection<OrganizationHouseholdMemberRecord>)x.ToArray());
+                var geography = services.GetRequiredService<HanaGeographyDbContext>();
+                var now = services.GetRequiredService<IClock>().UtcNow.ToUniversalTime();
+                var instruction = new CreditFundingInstructionV1(CreditFundingSourceV1.Organization, mode,
+                    fundingInstruction.SourceInstructionReference, fundingInstruction.SourceInstructionReference);
+                var calculations = new List<object>(orderedInput.Length);
+
+                foreach (var requested in orderedInput)
+                {
+                    var referral = referralById[requested.ReferralId];
+                    if (referral.Revision != requested.ReferralRevision || !membersByReferral.TryGetValue(referral.Id, out var householdMembers))
+                        return Results.Conflict(new { referralId = requested.ReferralId, currentRevision = referral.Revision });
+                    var assessment = OrganizationHouseholdAssessmentMapper.Map(referral, householdMembers);
+                    var province = await geography.Provinces.AsNoTracking().SingleOrDefaultAsync(x => x.Id == referral.ProvinceId && x.State == GeographyStates.Selectable, cancellationToken);
+                    if (province is null) return Results.Conflict(new { referralId = referral.Id, message = "استان دیگر قابل انتخاب نیست." });
+
+                    CreditProgramAllocationV1 allocation;
+                    if (isNeedsBased)
+                    {
+                        if (referral.SettlementType == OrganizationSettlementTypes.Urban)
+                        {
+                            if (referral.CityId is null) return Results.Conflict(new { referralId = referral.Id, message = "شهر برای پرونده شهری ثبت نشده است." });
+                            var city = await geography.Cities.AsNoTracking().Where(x => x.Id == referral.CityId && x.ProvinceId == referral.ProvinceId && x.State == GeographyStates.Selectable && x.Province.State == GeographyStates.Selectable)
+                                .Select(x => new { x.Name, ProvinceName = x.Province.Name }).SingleOrDefaultAsync(cancellationToken);
+                            if (city is null) return Results.Conflict(new { referralId = referral.Id, message = "شهر دیگر قابل انتخاب نیست یا به استان پرونده تعلق ندارد." });
+                            allocation = CreditFundingInstructionResolverV1.CalculateNeedsBasedForCity(instruction,
+                                new RialAmount(input.BaseAmountRials!.Value), new RialAmount(input.CeilingRials!.Value),
+                                city.ProvinceName, city.Name, assessment);
+                        }
+                        else if (referral.SettlementType == OrganizationSettlementTypes.Rural && referral.CityId is null)
+                        {
+                            allocation = CreditFundingInstructionResolverV1.CalculateNeedsBasedForNonCity(instruction,
+                                new RialAmount(input.BaseAmountRials!.Value), new RialAmount(input.CeilingRials!.Value),
+                                province.Name, assessment);
+                        }
+                        else return Results.Conflict(new { referralId = referral.Id, message = "نوع سکونت و مکان پرونده با هم سازگار نیستند." });
+                    }
+                    else
+                    {
+                        allocation = CreditFundingInstructionResolverV1.CalculateOrganizationDefined(instruction,
+                            new RialAmount(requested.BeneficiaryAmountRials!.Value));
+                    }
+
+                    var snapshot = CreditAllocationAuditSnapshotV1.Capture(Guid.NewGuid(), now, allocation);
+                    calculations.Add(new { referralId = referral.Id, externalReference = referral.ExternalReference, referralRevision = referral.Revision, snapshot });
+                }
+
+                var previewId = Guid.NewGuid();
+                var snapshotJson = JsonSerializer.Serialize(new
+                {
+                    allocationPreviewId = previewId,
+                    programId,
+                    programRevision = program.Revision,
+                    fundingInstructionId = fundingInstruction.Id,
+                    fundingInstructionState = fundingInstruction.State,
+                    state = "PREVIEW_ONLY",
+                    allocationMode = program.AllocationMode,
+                    createdAtUtc = now,
+                    createdByAccountId = auth.AccountId,
+                    householdCount = calculations.Count,
+                    calculations
+                }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                var record = new OrganizationAllocationPreviewRecord
+                {
+                    Id = previewId, OrganizationId = program.OrganizationId, ProgramId = programId,
+                    ProgramRevision = program.Revision, FundingInstructionId = fundingInstruction.Id,
+                    AllocationMode = program.AllocationMode, FundingSource = "ORGANIZATION",
+                    FundingSourceReference = fundingInstruction.SourceInstructionReference,
+                    InstructionReference = fundingInstruction.SourceInstructionReference,
+                    FundingInstructionState = fundingInstruction.State, State = "PREVIEW_ONLY",
+                    PayloadSha256 = payloadHash, SnapshotJson = snapshotJson, CreatedAtUtc = now,
+                    CreatedByAccountId = auth.AccountId!.Value, CreationKey = key
+                };
+                db.AllocationPreviews.Add(record);
+                await db.SaveChangesAsync(cancellationToken);
+                return Results.Json(JsonSerializer.Deserialize<JsonElement>(snapshotJson), statusCode: StatusCodes.Status201Created);
+            }
+            catch (InvalidOperationException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.Conflict(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.Conflict(new { message = "استان این پرونده در نسخهٔ جاری دادهٔ جغرافیایی محاسبه وجود ندارد." });
+            }
+            catch (DbUpdateException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // A concurrent replay may win the unique creation-key insert.
+                // Return that immutable result only when the request is identical.
+                var replay = await services.GetRequiredService<HanaOrganizationDbContext>().AllocationPreviews
+                    .AsNoTracking().SingleOrDefaultAsync(x => x.CreationKey == key, cancellationToken);
+                return replay is not null && replay.CreatedByAccountId == auth.AccountId &&
+                    replay.ProgramId == programId && replay.PayloadSha256 == payloadHash
+                    ? Results.Json(JsonSerializer.Deserialize<JsonElement>(replay.SnapshotJson), statusCode: StatusCodes.Status200OK)
+                    : Results.Conflict();
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Admin").WithName("CreateOrganizationAllocationPreview");
+
+        app.MapGet("/api/v1/admin/organization/programs/{programId:guid}/allocation-previews/{previewId:guid}", async (
+            Guid programId, Guid previewId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment()) return Results.StatusCode(503);
+            var auth = await Admin(context, services, hasDatabase, cancellationToken);
+            if (auth.Error is not null) return auth.Error;
+            try
+            {
+                var db = services.GetRequiredService<HanaOrganizationDbContext>();
+                var preview = await db.AllocationPreviews.AsNoTracking().SingleOrDefaultAsync(x => x.Id == previewId && x.ProgramId == programId, cancellationToken);
+                return preview is null ? Results.NotFound() : Results.Json(JsonSerializer.Deserialize<JsonElement>(preview.SnapshotJson));
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) { return Results.StatusCode(503); }
+        }).WithTags("Admin").WithName("GetOrganizationAllocationPreview");
     }
 
     private static async Task<(Guid? AccountId, IResult? Error)> OrganizationAccount(HttpContext context, IServiceProvider services, bool hasDatabase, CancellationToken cancellationToken)
@@ -451,3 +632,5 @@ internal sealed record OrganizationProgramInput(Guid OrganizationId, string? Nam
 internal sealed record OrganizationFundingInstructionInput(int ProgramRevision, string? SourceInstructionReference);
 internal sealed record OrganizationHouseholdReferralInput(int ProgramRevision, string? ExternalReference, Guid ProvinceId, Guid? CityId, string SettlementType, string? HousingTenure, string? HealthBurdenLevel, string? EconomicHardshipLevel, string? CareSupportLevel, string? EducationAttainment, IReadOnlyList<OrganizationHouseholdMemberInput> Members);
 internal sealed record OrganizationHouseholdMemberInput(string GenderCategory, string LifeStage, string EducationLevel, string HealthNeed, bool? NeedsPracticalSupport);
+internal sealed record OrganizationAllocationPreviewInput(int ProgramRevision, long? BaseAmountRials, long? CeilingRials, IReadOnlyList<OrganizationAllocationPreviewHouseholdInput> Households);
+internal sealed record OrganizationAllocationPreviewHouseholdInput(Guid ReferralId, int ReferralRevision, long? BeneficiaryAmountRials);

@@ -39,7 +39,7 @@ async function main() {
   await page.getByLabel("بار درمانی خانوار").selectOption("ONE_MANAGEABLE_ONGOING_CASE");
   await page.getByLabel("سختی اقتصادی").selectOption("OCCASIONAL_SHORTFALL_IN_ONE_ESSENTIAL_NEED");
   await page.getByLabel("حمایت و مراقبت").selectOption("EFFECTIVE_ADULT_OR_PRACTICAL_SUPPORT_AVAILABLE");
-  await page.getByLabel("سطح تحصیلات خانوار").selectOption("DIPLOMA_OR_ASSOCIATE");
+  await page.getByLabel("تحصیلات فرد مرجع خانوار").selectOption("DIPLOMA_OR_ASSOCIATE");
   await page.getByRole("button", { name: "ثبت ارجاع خانوار" }).click();
   await page.getByText("CASE-1405-001", { exact: true }).waitFor();
   assert.equal(posted.externalReference, "CASE-1405-001");
