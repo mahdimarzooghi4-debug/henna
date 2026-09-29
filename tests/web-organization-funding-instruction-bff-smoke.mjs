@@ -52,9 +52,9 @@ try {
       assert.equal(req.headers["idempotency-key"], "123e4567-e89b-42d3-a456-426614174007");
       let raw = ""; for await (const part of req) raw += part.toString();
       const submitted = JSON.parse(raw);
-      assert.deepEqual(Object.keys(submitted).sort(), ["cityId", "externalReference", "housingTenure", "members", "programRevision", "provinceId", "settlementType"].sort());
+      assert.deepEqual(Object.keys(submitted).sort(), ["careSupportLevel", "cityId", "economicHardshipLevel", "educationAttainment", "externalReference", "healthBurdenLevel", "housingTenure", "members", "programRevision", "provinceId", "settlementType"].sort());
       assert.equal(submitted.externalReference, "CASE-ORG-001"); assert.equal(submitted.members.length, 1);
-      referral = { referralId: "123e4567-e89b-42d3-a456-426614174008", programId, externalReference: submitted.externalReference, provinceId, cityId, settlementType: "URBAN", housingTenure: submitted.housingTenure, revision: 1, submittedAtUtc: at, members: [{ memberNumber: 1, ...submitted.members[0] }] };
+      referral = { referralId: "123e4567-e89b-42d3-a456-426614174008", programId, externalReference: submitted.externalReference, provinceId, cityId, settlementType: "URBAN", housingTenure: submitted.housingTenure, healthBurdenLevel: submitted.healthBurdenLevel, economicHardshipLevel: submitted.economicHardshipLevel, careSupportLevel: submitted.careSupportLevel, educationAttainment: submitted.educationAttainment, revision: 1, submittedAtUtc: at, members: [{ memberNumber: 1, ...submitted.members[0] }] };
       res.writeHead(201); res.end(JSON.stringify(referral)); return;
     }
     res.writeHead(404); res.end("{}");
@@ -89,7 +89,7 @@ try {
   const badBody = await fetch(path, { method: "POST", headers: { Cookie: cookie, Origin: base, "Content-Type": "application/json", "Idempotency-Key": idempotencyKey }, body: JSON.stringify({ programRevision: 1, sourceInstructionReference: "نامه رسمی ۱۴۰۵", amount: 100 }) });
   assert.equal(badBody.status, 400); assert.equal(calls, callsAfterCreate, "unexpected fields must fail before upstream");
   const referralPath = `${base}/api/organization/programs/${programId}/household-referrals`;
-  const referralInput = { programRevision: 1, externalReference: "CASE-ORG-001", provinceId, cityId, settlementType: "URBAN", housingTenure: "TENANT", members: [{ genderCategory: "FEMALE", lifeStage: "ADULT", educationLevel: "NOT_REPORTED", healthNeed: "NOT_REPORTED" }] };
+  const referralInput = { programRevision: 1, externalReference: "CASE-ORG-001", provinceId, cityId, settlementType: "URBAN", housingTenure: "TENANT", healthBurdenLevel: "NO_ONGOING_TREATMENT", economicHardshipLevel: "ESSENTIAL_NEEDS_GENERALLY_MET", careSupportLevel: "EFFECTIVE_ADULT_OR_PRACTICAL_SUPPORT_AVAILABLE", educationAttainment: "BACHELOR_OR_HIGHER", members: [{ genderCategory: "FEMALE", lifeStage: "ADULT", educationLevel: "NOT_REPORTED", healthNeed: "NOT_REPORTED", needsPracticalSupport: false }] };
   const beforeReferral = calls;
   const crossOriginReferral = await fetch(referralPath, { method: "POST", headers: { Cookie: cookie, Origin: "https://attacker.test", "Content-Type": "application/json", "Idempotency-Key": "123e4567-e89b-42d3-a456-426614174007" }, body: JSON.stringify(referralInput) });
   assert.equal(crossOriginReferral.status, 403); assert.equal(calls, beforeReferral);
