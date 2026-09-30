@@ -16,7 +16,7 @@ const heroSlides = [
     secondary: "مشاهده پیشنهادها",
     primary: "شروع خرید روزانه",
     secondaryHref: "#offers",
-    primaryHref: "#offers",
+    primaryHref: "/products",
   },
   {
     announcement: "🌱 با خرید از حنا، اقتصاد کسب‌وکارهای کوچک و سنتی محله خود را تقویت کنید",
@@ -29,8 +29,8 @@ const heroSlides = [
     captionDetail: "حنا سفارش شما را مستقیماً به خواربارفروشی‌های کوچک متصل کرده و از حذف کاسبان محلی جلوگیری می‌کند.",
     secondary: "طرح‌های مسئولیت اجتماعی",
     primary: "خرید از کسب‌وکارهای محلی",
-    secondaryHref: "#impact",
-    primaryHref: "#offers",
+    secondaryHref: "/programs",
+    primaryHref: "/products",
   },
   {
     announcement: "💳 سهم یارانه خود را در لحظه محاسبه کنید؛ خریدی بی‌دغدغه با پشتیبانی از کالابرگ الکترونیکی",
@@ -43,20 +43,22 @@ const heroSlides = [
     captionDetail: "سیستم هوشمند حنا اقلام اساسی سبدتان را تفکیک کرده و مبلغ پرداختی با کارت حمایتی را مشخص می‌کند.",
     secondary: "استعلام اعتبار یارانه",
     primary: "خرید با کالابرگ",
-    secondaryHref: "#offers",
-    primaryHref: "#offers",
+    secondaryHref: "/auth",
+    primaryHref: "/products",
   },
 ];
 
 const categories = [
-  ["نان و شیرینی", "figma/category-bread.png"],
-  ["کنسرو و آماده", "figma/category-canned.png"],
-  ["بهداشتی و سلامت", "figma/category-health.png"],
-  ["میوه و صیفی", "figma/category-produce.png"],
-  ["روغن و خواربار", "figma/category-grocery.png"],
-  ["نوشیدنی‌ها", "figma/category-drinks.png"],
-  ["لبنیات محلی", "figma/category-dairy.png"],
+  { label: "نان و شیرینی", image: "figma/category-bread.png", search: "نان" },
+  { label: "کنسرو و آماده", image: "figma/category-canned.png", search: "کنسرو" },
+  { label: "بهداشتی و سلامت", image: "figma/category-health.png", search: "بهداشتی" },
+  { label: "میوه و صیفی", image: "figma/category-produce.png", search: "میوه" },
+  { label: "روغن و خواربار", image: "figma/category-grocery.png", search: "خواربار" },
+  { label: "نوشیدنی‌ها", image: "figma/category-drinks.png", search: "نوشیدنی" },
+  { label: "لبنیات محلی", image: "figma/category-dairy.png", search: "لبنیات" },
 ];
+
+const catalogSearchHref = (search: string) => `/products?search=${encodeURIComponent(search)}`;
 
 const products = [
   { title: "پنیر سفید ایرانی ممتاز", subtitle: "۴۰۰ گرم - لبنیات هراز", image: "figma/product-cheese.png", price: "۵۴,۰۰۰", old: "۶۵,۰۰۰", tag: "ویژه کالابرگ" },
@@ -93,7 +95,7 @@ export default function HennaHomepage() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.actions}>
-            <a className={styles.cart} href="/products"><img src="/landing/shopping-cart.svg" alt="" /> سبد خرید <span className={styles.cartCount}>۰</span></a>
+            <a className={styles.cart} href="/products"><img src="/landing/shopping-cart.svg" alt="" /> مشاهده کالاها</a>
             <a className={styles.login} href="/auth">ورود یا ثبت‌نام <img src="/landing/user.svg" alt="" /></a>
             <span className={styles.divider} />
             <a className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها</a>
@@ -101,11 +103,11 @@ export default function HennaHomepage() {
           <a href="/" className={styles.brand} aria-label="حنا، صفحه اصلی"><img className={styles.logoImage} src="/hana-logo.png" alt="حنا" /></a>
           <form className={styles.search} action="/products">
             <input name="search" placeholder="جست‌وجوی نان، لبنیات، برنج و اقلام روزانه..." aria-label="جستجو" />
-            <button aria-label="جستجو"><img src="/landing/search.svg" alt="" /></button>
+            <button type="submit" aria-label="جستجو"><img src="/landing/search.svg" alt="" /></button>
           </form>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی">
-          <a href="#categories" aria-current="page">همه‌ دسته‌ها</a><a href="#categories">میوه و سبزیجات</a><a href="#categories">نوشیدنی‌ها</a><a href="#categories">خواربار و نان</a><a href="#categories">لبنیات و تخم مرغ</a><a href="#offers">طرح‌های ویژه حنا</a><a href="#offers">کالابرگ الکترونیکی</a><a href="#offers">تخفیف‌های طلایی</a>
+          <a href="/products" aria-current="page">همه‌ دسته‌ها</a><a href={catalogSearchHref("میوه")}>میوه و سبزیجات</a><a href={catalogSearchHref("نوشیدنی")}>نوشیدنی‌ها</a><a href={catalogSearchHref("خواربار")}>خواربار و نان</a><a href={catalogSearchHref("لبنیات")}>لبنیات و تخم مرغ</a><a href="/programs">طرح‌های ویژه حنا</a><a href="/programs">کالابرگ الکترونیکی</a><a href="/#offers">تخفیف‌های طلایی</a>
         </nav>
       </header>
 
@@ -133,14 +135,14 @@ export default function HennaHomepage() {
         </div>
 
         <div className={`${styles.container} ${styles.promoGrid}`}>
-          <a href="#offers" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-percent.png" alt="" /><strong>تخفیف‌دارهای روزانه</strong></span><p>محبوب‌ترین کالاهای سبد خرید روزانه شما با قیمت‌های استثنایی و فرصت‌های خرید تکرارنشدنی</p><span className={styles.promoMore}>لیست تخفیف‌ها ←</span></a>
-          <a href="#offers" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-credit-card.png" alt="" /><strong>کالابرگ الکترونیک</strong></span><p>امکان پرداخت سهم یارانه‌ای با استفاده از کارت‌های معتبر حمایتی برای اقلام اساسی مصوب</p><span className={styles.promoMore}>استفاده از کالابرگ ←</span></a>
-          <a href="#benefits" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-gift.png" alt="" /><strong>طرح‌های ویژه حنا</strong></span><p>بسته‌ها و فرصت‌های خرید اشتراکی خانواده و محله با مشارکت مستقیم فروشگاه‌های منتخب</p><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></a>
+          <a href="/#offers" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-percent.png" alt="" /><strong>تخفیف‌دارهای روزانه</strong></span><p>محبوب‌ترین کالاهای سبد خرید روزانه شما با قیمت‌های استثنایی و فرصت‌های خرید تکرارنشدنی</p><span className={styles.promoMore}>لیست تخفیف‌ها ←</span></a>
+          <a href="/programs" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-credit-card.png" alt="" /><strong>کالابرگ الکترونیک</strong></span><p>امکان پرداخت سهم یارانه‌ای با استفاده از کارت‌های معتبر حمایتی برای اقلام اساسی مصوب</p><span className={styles.promoMore}>آشنایی با کالابرگ ←</span></a>
+          <a href="/programs" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-gift.png" alt="" /><strong>طرح‌های ویژه حنا</strong></span><p>بسته‌ها و فرصت‌های خرید اشتراکی خانواده و محله با مشارکت مستقیم فروشگاه‌های منتخب</p><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></a>
         </div>
 
         <section className={`${styles.container} ${styles.categories}`} id="categories">
           <div className={styles.sectionHeading}><h2>دسته‌بندی‌های محبوب</h2><a href="/products">مشاهده همه دسته‌ها</a></div>
-          <div className={styles.categoryGrid}>{categories.map(([label, image]) => <a className={styles.category} href="/products" key={label}><span><img src={`/landing/${image}`} alt="" /></span><strong>{label}</strong></a>)}</div>
+          <div className={styles.categoryGrid}>{categories.map(({ label, image, search }) => <a className={styles.category} href={catalogSearchHref(search)} key={label}><span><img src={`/landing/${image}`} alt="" /></span><strong>{label}</strong></a>)}</div>
         </section>
 
         <section className={`${styles.container} ${styles.offers}`} id="offers">
@@ -191,9 +193,9 @@ export default function HennaHomepage() {
         </div>
         <div className={`${styles.container} ${styles.footerBottom}`}>
           <div className={styles.footerSocial}>
-            <a href="#impact" aria-label="اینستاگرام حنا"><img src="/landing/instagram.svg" alt="" /></a>
-            <a href="#impact" aria-label="توییتر حنا"><img src="/landing/twitter.svg" alt="" /></a>
-            <a href="#impact" aria-label="لینکدین حنا"><img src="/landing/linkedin.svg" alt="" /></a>
+            <span aria-hidden="true"><img src="/landing/instagram.svg" alt="" /></span>
+            <span aria-hidden="true"><img src="/landing/twitter.svg" alt="" /></span>
+            <span aria-hidden="true"><img src="/landing/linkedin.svg" alt="" /></span>
           </div>
           <p className={styles.footerCopyright}>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است.<br />کلیه حقوق برای حنا محفوظ است.</p>
         </div>
