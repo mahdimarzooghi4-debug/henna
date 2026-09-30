@@ -39,6 +39,15 @@ export type SellerPreflight =
     businessDescription: string | null;
     businessPhone: string | null;
     offeringType: "GOOD" | "SERVICE" | "BOTH" | null;
+    activityProvinceId: string | null;
+    activityProvinceName: string | null;
+    activityCityId: string | null;
+    activityCityName: string | null;
+    activityAddress: string | null;
+    activityHours: string | null;
+    sellerDelivery: boolean | null;
+    pickup: boolean | null;
+    serviceArea: string | null;
     completedStep: number;
   }
   | {
@@ -58,6 +67,15 @@ export type SellerPreflight =
     businessDescription: string | null;
     businessPhone: string | null;
     offeringType: "GOOD" | "SERVICE" | "BOTH" | null;
+    activityProvinceId: string | null;
+    activityProvinceName: string | null;
+    activityCityId: string | null;
+    activityCityName: string | null;
+    activityAddress: string | null;
+    activityHours: string | null;
+    sellerDelivery: boolean | null;
+    pickup: boolean | null;
+    serviceArea: string | null;
     completedStep: 6;
     submittedAtUtc: string;
   };
@@ -180,6 +198,52 @@ export async function loadSellerDraft(
       return { status: "unavailable" };
     }
 
+    const activityProvinceId = "activityProvinceId" in draft
+      ? draft.activityProvinceId : null;
+    const activityProvinceName = "activityProvinceName" in draft
+      ? draft.activityProvinceName : null;
+    const activityCityId = "activityCityId" in draft
+      ? draft.activityCityId : null;
+    const activityCityName = "activityCityName" in draft
+      ? draft.activityCityName : null;
+    const activityAddress = "activityAddress" in draft
+      ? draft.activityAddress : null;
+    const activityHours = "activityHours" in draft
+      ? draft.activityHours : null;
+    const sellerDelivery = "sellerDelivery" in draft
+      ? draft.sellerDelivery : null;
+    const pickup = "pickup" in draft ? draft.pickup : null;
+    const serviceArea = "serviceArea" in draft
+      ? draft.serviceArea : null;
+
+    if (completedStep < 5) {
+      if (activityProvinceId !== null || activityProvinceName !== null ||
+        activityCityId !== null || activityCityName !== null ||
+        activityAddress !== null || activityHours !== null ||
+        sellerDelivery !== null || pickup !== null || serviceArea !== null)
+        return { status: "unavailable" };
+    } else if (
+      typeof activityProvinceId !== "string" ||
+      !uuidPattern.test(activityProvinceId) ||
+      typeof activityProvinceName !== "string" ||
+      !activityProvinceName.trim() || activityProvinceName.length > 120 ||
+      typeof activityCityId !== "string" ||
+      !uuidPattern.test(activityCityId) ||
+      typeof activityCityName !== "string" ||
+      !activityCityName.trim() || activityCityName.length > 120 ||
+      typeof activityAddress !== "string" ||
+      !activityAddress.trim() || activityAddress.length > 500 ||
+      typeof activityHours !== "string" ||
+      !activityHours.trim() || activityHours.length > 180 ||
+      typeof sellerDelivery !== "boolean" ||
+      typeof pickup !== "boolean" ||
+      (!sellerDelivery && !pickup) ||
+      typeof serviceArea !== "string" ||
+      !serviceArea.trim() || serviceArea.length > 240
+    ) {
+      return { status: "unavailable" };
+    }
+
     if (draft.status === "SUBMITTED") {
       if (!("submittedAtUtc" in draft) ||
         typeof draft.submittedAtUtc !== "string" ||
@@ -202,6 +266,15 @@ export async function loadSellerDraft(
         businessDescription: businessDescription as string | null,
         businessPhone: businessPhone as string | null,
         offeringType: offeringType as "GOOD" | "SERVICE" | "BOTH" | null,
+        activityProvinceId: activityProvinceId as string | null,
+        activityProvinceName: activityProvinceName as string | null,
+        activityCityId: activityCityId as string | null,
+        activityCityName: activityCityName as string | null,
+        activityAddress: activityAddress as string | null,
+        activityHours: activityHours as string | null,
+        sellerDelivery: sellerDelivery as boolean | null,
+        pickup: pickup as boolean | null,
+        serviceArea: serviceArea as string | null,
         completedStep: 6,
         submittedAtUtc: draft.submittedAtUtc,
       };
@@ -223,6 +296,15 @@ export async function loadSellerDraft(
       businessDescription: businessDescription as string | null,
       businessPhone: businessPhone as string | null,
       offeringType: offeringType as "GOOD" | "SERVICE" | "BOTH" | null,
+      activityProvinceId: activityProvinceId as string | null,
+      activityProvinceName: activityProvinceName as string | null,
+      activityCityId: activityCityId as string | null,
+      activityCityName: activityCityName as string | null,
+      activityAddress: activityAddress as string | null,
+      activityHours: activityHours as string | null,
+      sellerDelivery: sellerDelivery as boolean | null,
+      pickup: pickup as boolean | null,
+      serviceArea: serviceArea as string | null,
       completedStep,
     };
   } catch {
