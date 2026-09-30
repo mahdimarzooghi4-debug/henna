@@ -233,6 +233,66 @@ a { color: inherit; }
 }
 
 
+.seller-applicant-type {
+  margin-top: 24px;
+  padding: 28px;
+  border: 1px solid #eae6e1;
+  border-radius: 18px;
+  background: var(--hana-surface);
+}
+.seller-applicant-type__intro { text-align: right; }
+.seller-applicant-type__intro h3 {
+  margin: 2px 0 4px;
+  color: #1c3f3a;
+  font-size: 22px;
+}
+.seller-applicant-type__intro p { margin: 0; color: var(--hana-muted); }
+.seller-applicant-type__step {
+  color: var(--hana-terracotta) !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+.seller-applicant-type__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.seller-applicant-type__option {
+  min-height: 150px;
+  padding: 24px;
+  border: 1px solid #eae6e1;
+  border-radius: 16px;
+  background: white;
+  color: var(--hana-charcoal);
+  text-align: right;
+  cursor: pointer;
+}
+.seller-applicant-type__option strong {
+  display: block;
+  margin-bottom: 10px;
+  color: #1c3f3a;
+  font-size: 18px;
+}
+.seller-applicant-type__option span {
+  display: block;
+  color: var(--hana-muted);
+  line-height: 1.8;
+}
+.seller-applicant-type__option--selected {
+  border: 2px solid var(--hana-terracotta);
+  background: #fff1ed;
+}
+.seller-applicant-type__option:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+.seller-applicant-type__saved {
+  margin: 18px 0 0;
+  color: var(--hana-teal);
+  font-weight: 700;
+}
+
 /* Inline recovery for a real 409 on the Figma-approved seller step one.
    No separate or unapproved registration screen is introduced. */
 .seller-conflict {
@@ -359,6 +419,9 @@ a { color: inherit; }
   .registration-steps { margin-top: 26px; padding: 16px; gap: 12px; font-size: 12px; }
   .seller-card { margin-top: 26px; padding: 20px 18px 24px; }
   .seller-conflict { padding: 16px 12px; }
+  .seller-applicant-type { padding: 18px; }
+  .seller-applicant-type__options { grid-template-columns: 1fr; gap: 12px; }
+  .seller-applicant-type__option { min-height: 0; padding: 16px; }
   .seller-conflict__versions { grid-template-columns: 1fr; }
   .seller-conflict__actions { display: grid; }
   .seller-conflict__actions button { width: 100%; }

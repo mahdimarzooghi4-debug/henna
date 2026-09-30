@@ -178,6 +178,54 @@ public sealed class SellerRegistrationApiTests
         Assert.Equal(3, one.Revision);
         Assert.Equal(1, two.Revision);
 
+        // Figma step 2: applicant type is account-scoped, revisioned and
+        // cannot be skipped by calling submit directly.
+        const string applicantUrl = url + "/applicant-type";
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await first.PutAsJsonAsync(applicantUrl,
+                new { applicantType = "OTHER", revision = 3 })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anon.PutAsJsonAsync(applicantUrl,
+                new { applicantType = "NATURAL", revision = 3 })).StatusCode);
+
+        var applicantSaved = await first.PutAsJsonAsync(applicantUrl,
+            new { applicantType = "NATURAL", revision = 3 });
+        Assert.Equal(HttpStatusCode.OK, applicantSaved.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await applicantSaved.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("NATURAL",
+                body.RootElement.GetProperty("applicantType").GetString());
+            Assert.Equal(2,
+                body.RootElement.GetProperty("completedStep").GetInt32());
+            Assert.Equal(4,
+                body.RootElement.GetProperty("revision").GetInt32());
+        }
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await first.PutAsJsonAsync(applicantUrl,
+                new { applicantType = "LEGAL", revision = 3 })).StatusCode);
+
+        var incompleteKey = Guid.NewGuid();
+        using (var incompleteRequest = new HttpRequestMessage(
+            HttpMethod.Post, url + "/submit")
+        {
+            Content = JsonContent.Create(new { revision = 4 })
+        })
+        {
+            incompleteRequest.Headers.Add(
+                "Idempotency-Key", incompleteKey.ToString());
+            Assert.Equal(HttpStatusCode.Conflict,
+                (await first.SendAsync(incompleteRequest)).StatusCode);
+        }
+
+        // Later Seller slices own steps 3..6. Seed only the progress marker
+        // in disposable CI DB so this test can continue covering Seller 005
+        // submit idempotency without inventing production identity data.
+        await seller.RegistrationDrafts
+            .Where(x => x.AccountId == firstId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.CompletedStep, 6));
+
         // The Figma "review and submit" step is a single atomic transition.
         // It grants no seller permission; it only freezes this registration
         // version for a later reviewer workflow.
@@ -197,23 +245,23 @@ public sealed class SellerRegistrationApiTests
             (await first.PostAsJsonAsync(url + "/submit",
                 new { revision = 3 })).StatusCode);
         Assert.Equal(HttpStatusCode.OK,
-            (await Submit(submissionKey, revision: 3)).StatusCode);
+            (await Submit(submissionKey, revision: 4)).StatusCode);
         // Lost-response retry with the same key and expected revision
         // converges on the same submitted row.
         Assert.Equal(HttpStatusCode.OK,
-            (await Submit(submissionKey, revision: 3)).StatusCode);
+            (await Submit(submissionKey, revision: 4)).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict,
-            (await Submit(Guid.NewGuid(), revision: 3)).StatusCode);
+            (await Submit(Guid.NewGuid(), revision: 4)).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict,
             (await first.PutAsJsonAsync(url,
-                Fields(firstPhone, "ویرایش پس از ثبت", revision: 4))).StatusCode);
+                Fields(firstPhone, "ویرایش پس از ثبت", revision: 5))).StatusCode);
 
         var submitted = await seller.RegistrationDrafts.AsNoTracking()
             .SingleAsync(x => x.AccountId == firstId);
         Assert.Equal("SUBMITTED", submitted.Status);
-        Assert.Equal(4, submitted.Revision);
+        Assert.Equal(5, submitted.Revision);
         Assert.Equal(submissionKey, submitted.SubmissionKey);
-        Assert.Equal(3, submitted.SubmissionExpectedRevision);
+        Assert.Equal(4, submitted.SubmissionExpectedRevision);
         Assert.NotNull(submitted.SubmittedAtUtc);
 
         var submittedRead = await first.GetAsync(url);
@@ -223,7 +271,7 @@ public sealed class SellerRegistrationApiTests
         {
             Assert.Equal("SUBMITTED",
                 body.RootElement.GetProperty("status").GetString());
-            Assert.Equal(4, body.RootElement.GetProperty("revision").GetInt32());
+            Assert.Equal(5, body.RootElement.GetProperty("revision").GetInt32());
             Assert.True(body.RootElement.TryGetProperty("submittedAtUtc", out _));
             Assert.False(body.RootElement.TryGetProperty("submissionKey", out _));
         }

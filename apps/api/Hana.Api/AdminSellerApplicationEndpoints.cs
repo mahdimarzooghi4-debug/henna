@@ -54,6 +54,7 @@ internal static class AdminSellerApplicationEndpoints
                         applicationId = x.AccountId,
                         x.StoreName,
                         x.OwnerName,
+                        x.ApplicantType,
                         x.Status,
                         x.Revision,
                         x.SubmittedAtUtc
@@ -105,6 +106,7 @@ internal static class AdminSellerApplicationEndpoints
                     applicationId = application.AccountId,
                     application.StoreName,
                     application.OwnerName,
+                    application.ApplicantType,
                     phoneMasked = MaskPhone(application.Phone),
                     application.City,
                     application.Address,

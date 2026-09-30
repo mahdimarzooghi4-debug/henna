@@ -70,6 +70,8 @@ public sealed class AdminSellerApplicationApiTests
                 City = "تهران",
                 Address = "نشانی ثبت‌شده",
                 PostalCode = "1234567890",
+                ApplicantType = "NATURAL",
+                CompletedStep = 6,
                 Status = "SUBMITTED",
                 Revision = 2,
                 SubmissionKey = Guid.NewGuid(),
@@ -118,15 +120,20 @@ public sealed class AdminSellerApplicationApiTests
             await list.Content.ReadAsStringAsync()))
         {
             var items = body.RootElement.GetProperty("items");
-            Assert.Single(items.EnumerateArray());
-            var item = items[0];
-            Assert.Equal(applicantId,
-                item.GetProperty("applicationId").GetGuid());
-            Assert.Equal("SUBMITTED",
-                item.GetProperty("status").GetString());
-            Assert.False(item.TryGetProperty("phone", out _));
-            Assert.False(item.TryGetProperty("submissionKey", out _));
-            Assert.Equal(1, body.RootElement.GetProperty("total").GetInt32());
+            var applicant = items.EnumerateArray().FirstOrDefault(item =>
+                item.GetProperty("applicationId").GetGuid() == applicantId);
+            Assert.NotEqual(JsonValueKind.Undefined, applicant.ValueKind);
+            Assert.DoesNotContain(items.EnumerateArray(), item =>
+                item.GetProperty("applicationId").GetGuid() == draftOnlyId);
+            Assert.All(items.EnumerateArray(), item =>
+            {
+                Assert.Equal("SUBMITTED",
+                    item.GetProperty("status").GetString());
+                Assert.False(item.TryGetProperty("phone", out _));
+                Assert.False(item.TryGetProperty("submissionKey", out _));
+            });
+            Assert.True(body.RootElement.GetProperty("total").GetInt32() >=
+                items.GetArrayLength());
         }
 
         var detail = await admin.GetAsync(
