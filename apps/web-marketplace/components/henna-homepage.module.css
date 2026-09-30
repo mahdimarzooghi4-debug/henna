@@ -175,3 +175,7 @@
 /* Center the desktop category menu and each category icon with its label. */
 @media(min-width:901px){.nav{justify-content:center}}
 .category{align-items:center;text-align:center}
+/* Match Figma's RTL header menu: start at the right and highlight the active item. */
+.nav{justify-content:flex-start;gap:24px;color:var(--green)}
+.nav a{font-weight:600}
+.nav a[aria-current="page"]{color:var(--terracotta);font-weight:800}

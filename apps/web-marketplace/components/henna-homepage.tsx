@@ -105,7 +105,7 @@ export default function HennaHomepage() {
           </form>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی">
-          <a href="#categories">همه‌ دسته‌ها</a><a href="#categories">میوه و سبزیجات</a><a href="#categories">نوشیدنی‌ها</a><a href="#categories">خواربار و نان</a><a href="#categories">لبنیات و تخم مرغ</a><a href="#offers">طرح‌های ویژه حنا</a><a href="#offers">کالابرگ الکترونیکی</a><a href="#offers">تخفیف‌های طلایی</a>
+          <a href="#categories" aria-current="page">همه‌ دسته‌ها</a><a href="#categories">میوه و سبزیجات</a><a href="#categories">نوشیدنی‌ها</a><a href="#categories">خواربار و نان</a><a href="#categories">لبنیات و تخم مرغ</a><a href="#offers">طرح‌های ویژه حنا</a><a href="#offers">کالابرگ الکترونیکی</a><a href="#offers">تخفیف‌های طلایی</a>
         </nav>
       </header>
 
