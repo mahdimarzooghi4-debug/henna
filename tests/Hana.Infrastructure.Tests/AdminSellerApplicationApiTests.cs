@@ -163,14 +163,16 @@ public sealed class AdminSellerApplicationApiTests
             var applicantItem = items.EnumerateArray().FirstOrDefault(item =>
                 item.GetProperty("applicationId").GetGuid() == applicantId);
             Assert.NotEqual(JsonValueKind.Undefined, applicantItem.ValueKind);
+            Assert.Equal("SUBMITTED",
+                applicantItem.GetProperty("status").GetString());
+            Assert.Equal("UNDER_REVIEW",
+                applicantItem.GetProperty("reviewStatus").GetString());
             Assert.DoesNotContain(items.EnumerateArray(), item =>
                 item.GetProperty("applicationId").GetGuid() == draftOnlyId);
             Assert.All(items.EnumerateArray(), item =>
             {
                 Assert.Equal("SUBMITTED",
                     item.GetProperty("status").GetString());
-                Assert.Equal("UNDER_REVIEW",
-                    item.GetProperty("reviewStatus").GetString());
                 Assert.False(item.TryGetProperty("phone", out _));
                 Assert.False(item.TryGetProperty("submissionKey", out _));
             });
