@@ -43,7 +43,7 @@ a { color: inherit; }
   justify-content: space-between;
   align-items: center;
 }
-.site-header__brand { display: inline-flex; align-items: center; width: 220px; height: 72px; }
+.site-header__brand { display: inline-flex; align-items: center; width: 147px; height: 58px; }
 .site-header__brand img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .site-header__back { color: var(--hana-teal); font-size: 15px; font-weight: 700; text-decoration: none; }
 .site-header__back:hover { text-decoration: underline; }

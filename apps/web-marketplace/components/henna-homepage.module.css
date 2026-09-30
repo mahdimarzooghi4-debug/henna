@@ -40,8 +40,8 @@
 
 /* Header and carousel behavior from Figma page 181:2. */
 .brand{width:147px}
-.brand .logoImage{display:block;width:100%;height:auto;object-fit:contain}
-.footerBrand .logoImage{display:block;width:147px;height:auto;object-fit:contain}
+.brand .logoImage{display:block;width:147px;height:58px;max-width:100%;object-fit:contain}
+.footerBrand .logoImage{display:block;width:147px;height:58px;max-width:100%;object-fit:contain}
 .actions{flex-direction:row-reverse}
 .heroVisual{isolation:isolate}
 .heroVisual>img{animation:hero-fade-in .45s ease both}
@@ -51,7 +51,7 @@
 .heroDot,.heroDotActive{width:7px;height:7px;padding:0;border:0;border-radius:8px;background:#faf8f5aa;cursor:pointer}
 .heroDotActive{width:18px;background:#fff}
 @keyframes hero-fade-in{from{opacity:.5}to{opacity:1}}
-@media(max-width:640px){.brand{width:102px}.brand .logoImage{height:auto}.footerBrand .logoImage{width:120px}.heroControls{left:12px;bottom:12px}.heroControls>button{width:25px;height:25px;font-size:18px}}
+@media(max-width:640px){.brand{width:102px}.brand .logoImage{width:102px;height:40px}.footerBrand .logoImage{width:120px;height:47px}.heroControls{left:12px;bottom:12px}.heroControls>button{width:25px;height:25px;font-size:18px}}
 @media(prefers-reduced-motion:reduce){.heroVisual>img{animation:none}}
 
 /* Footer layout and copy aligned with Figma frame 190:252. */
