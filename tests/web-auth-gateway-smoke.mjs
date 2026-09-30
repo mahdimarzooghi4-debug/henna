@@ -360,6 +360,7 @@ async function main() {
           revision: sellerDraft.revision + 1,
           submittedAtUtc: "2026-09-25T12:30:00Z",
           accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
+          trackingCode: "HNA-A1B2C3D4E5F60718",
         };
         response.writeHead(200);
         response.end(JSON.stringify({
@@ -367,7 +368,33 @@ async function main() {
           revision: sellerDraft.revision,
           submittedAtUtc: sellerDraft.submittedAtUtc,
           accuracyConfirmedAtUtc: sellerDraft.accuracyConfirmedAtUtc,
+          trackingCode: sellerDraft.trackingCode,
         }));
+      } else if (url === "/api/v1/seller/registration/status" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "GET") {
+        if (sellerDraft?.status !== "SUBMITTED") {
+          response.writeHead(409);
+          response.end(JSON.stringify({ status: "DRAFT" }));
+        } else {
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            trackingCode: sellerDraft.trackingCode,
+            overallStatus: "UNDER_REVIEW",
+            applicantType: sellerDraft.applicantType,
+            identityStatus: sellerDraft.identityStatus,
+            submittedAtUtc: sellerDraft.submittedAtUtc,
+            accuracyConfirmedAtUtc: sellerDraft.accuracyConfirmedAtUtc,
+            sellerPanelEnabled: false,
+            steps: [
+              { key: "IDENTITY", status: "COMPLETED" },
+              { key: "BUSINESS", status: "COMPLETED" },
+              { key: "ACTIVITY", status: "COMPLETED" },
+              { key: "ADDITIONAL", status: "COMPLETED" },
+              { key: "REVIEW", status: "UNDER_REVIEW" },
+            ],
+          }));
+        }
       } else if (url === "/api/v1/auth/session" &&
         request.headers.authorization === `Bearer ${token}` &&
         request.method === "GET" && !revoked) {
@@ -902,6 +929,7 @@ async function main() {
     status: "SUBMITTED", revision: 8,
     submittedAtUtc: "2026-09-25T12:30:00Z",
     accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
+    trackingCode: "HNA-A1B2C3D4E5F60718",
   });
   assert.equal(submitted.headers.get("cache-control"), "no-store");
 
@@ -909,7 +937,31 @@ async function main() {
     headers: { Cookie: sessionCookie },
   });
   assert.equal(sellerSubmitted.status, 200);
-  assert.equal((await sellerSubmitted.json()).status, "SUBMITTED");
+  const sellerSubmittedBody = await sellerSubmitted.json();
+  assert.equal(sellerSubmittedBody.status, "SUBMITTED");
+  assert.equal(sellerSubmittedBody.trackingCode, "HNA-A1B2C3D4E5F60718");
+
+  const sellerStatus = await fetch(sellerUrl + "/status", {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(sellerStatus.status, 200);
+  assert.equal(sellerStatus.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await sellerStatus.json(), {
+    trackingCode: "HNA-A1B2C3D4E5F60718",
+    overallStatus: "UNDER_REVIEW",
+    applicantType: "NATURAL",
+    identityStatus: "VERIFIED",
+    submittedAtUtc: "2026-09-25T12:30:00Z",
+    accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
+    sellerPanelEnabled: false,
+    steps: [
+      { key: "IDENTITY", status: "COMPLETED" },
+      { key: "BUSINESS", status: "COMPLETED" },
+      { key: "ACTIVITY", status: "COMPLETED" },
+      { key: "ADDITIONAL", status: "COMPLETED" },
+      { key: "REVIEW", status: "UNDER_REVIEW" },
+    ],
+  });
 
   const categoryResponse = await fetch(base + "/api/catalog/categories", {
     headers: { Cookie: sessionCookie },

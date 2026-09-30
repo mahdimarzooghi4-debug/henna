@@ -1050,3 +1050,112 @@ a { color: inherit; }
   .seller-review__card dl { grid-template-columns: 1fr; }
   .seller-review__actions { flex-direction: column; }
 }
+
+/* Seller registration step 8 — submitted + application status. */
+.seller-submitted {
+  margin-top: 24px;
+  padding: 28px;
+  border: 1px solid #eae6e1;
+  border-radius: 18px;
+  background: var(--hana-surface);
+}
+.seller-submitted__tracking {
+  display: inline-flex;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #faf8f5;
+  color: #1c3f3a;
+  font-weight: 800;
+}
+.seller-submitted__actions {
+  display: flex;
+  gap: 12px;
+  margin: 18px 0;
+}
+.seller-status-card {
+  max-width: 960px;
+  margin: 24px auto 56px;
+  padding: 28px;
+  border: 1px solid #eae6e1;
+  border-radius: 20px;
+  background: var(--hana-surface);
+}
+.seller-status-card__hero {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border-radius: 16px;
+  background: #faf8f5;
+}
+.seller-status-card__hero h2 { margin: 0; color: #1c3f3a; }
+.seller-status-card__hero p { margin: 4px 0 0; color: var(--hana-muted); }
+.seller-status-card__badge,
+.seller-status-card__state {
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff3df;
+  color: #835d1c;
+  font-size: 12px;
+  font-weight: 800;
+}
+.seller-status-card__state--done {
+  background: #eef6f1;
+  color: #1d5a4d;
+}
+.seller-status-card__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.seller-status-card__summary > div,
+.seller-status-card__step {
+  padding: 14px;
+  border: 1px solid #eae6e1;
+  border-radius: 12px;
+  background: #fff;
+}
+.seller-status-card__summary dt { color: var(--hana-muted); font-size: 12px; }
+.seller-status-card__summary dd {
+  margin: 5px 0 0;
+  color: #1c3f3a;
+  font-weight: 700;
+}
+.seller-status-card__timeline {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+.seller-status-card__timeline h3 { margin: 0 0 4px; color: #1c3f3a; }
+.seller-status-card__step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.seller-status-card__panel-lock {
+  margin: 22px 0;
+  padding: 18px;
+  border: 1px dashed #d7d0c9;
+  border-radius: 14px;
+  background: #faf8f5;
+}
+.seller-status-card__panel-lock p,
+.seller-status-card__note { color: var(--hana-muted); }
+.seller-status-card__panel-lock button {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+}
+@media (max-width: 720px) {
+  .seller-submitted,
+  .seller-status-card { padding: 18px; }
+  .seller-submitted__actions { flex-direction: column; }
+  .seller-status-card__summary { grid-template-columns: 1fr; }
+  .seller-status-card__step {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
