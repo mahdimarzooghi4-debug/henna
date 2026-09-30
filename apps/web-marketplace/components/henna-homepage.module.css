@@ -185,3 +185,4 @@
 @media(max-width:640px){.nav{padding-inline:16px}}
 /* Right-align the impact section heading on the same edge as its copy. */
 .impactInner h2{align-self:flex-start;text-align:right}
+.impactInner .eyebrow{align-self:flex-start;text-align:right}
