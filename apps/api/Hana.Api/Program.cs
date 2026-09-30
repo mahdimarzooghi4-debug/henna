@@ -81,7 +81,10 @@ if (hasIdentityDb)
 }
 
 if (hasIdentityDb)
+{
     builder.Services.AddScoped<AuthSessionService>();
+    builder.Services.AddScoped<RoleAuthorizationService>();
+}
 
 if (hasIdentityDb && otpKeyConfigured)
 {
@@ -338,6 +341,7 @@ app.MapDelete("/api/v1/auth/session", async (
     .Produces(StatusCodes.Status503ServiceUnavailable);
 
 app.MapSellerRegistration(hasIdentityDb);
+app.MapAdminSellerApplications(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 
