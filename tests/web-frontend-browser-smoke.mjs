@@ -615,8 +615,18 @@ async function main() {
   await finalSubmit.click();
   const submitResponse = await submitResponsePromise;
   assert.equal(submitResponse.status(), 200);
-  assert.equal((await submitResponse.json()).status, "SUBMITTED");
-  await otherTab.getByRole("heading", { name: "درخواست ثبت شد" }).waitFor();
+  const submitPayload = await submitResponse.json();
+  assert.equal(submitPayload.status, "SUBMITTED");
+  const submittedHeading = otherTab.getByRole("heading", {
+    name: "درخواست ثبت شد",
+  });
+  await otherTab.waitForTimeout(300);
+  if (!(await submittedHeading.isVisible())) {
+    const pageText = await otherTab.locator("body").innerText();
+    throw new Error("submit payload " + JSON.stringify(submitPayload) +
+      "; page text: " + pageText.slice(-1200));
+  }
+  await submittedHeading.waitFor();
   assert.equal(draft.status, "SUBMITTED");
   assert.equal(draft.revision, 9);
   assert.equal(draft.accuracyConfirmedAtUtc, "2026-09-25T12:30:00Z");
