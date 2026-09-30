@@ -19,6 +19,7 @@ const at = "2026-09-26T10:00:00+00:00";
 const dir = mkdtempSync(join(tmpdir(), "hana-admin-apps-bff-"));
 const cert = join(dir, "cert.pem"), privateKey = join(dir, "key.pem");
 let server, next, output = "", upstreamCalls = 0;
+const reviewKeys = [];
 
 const summary = {
   applicationId, storeName: "فروشگاه آزمون", ownerName: "متقاضی آزمون",
@@ -85,6 +86,27 @@ try {
           : detail));
         return;
       }
+      if (req.method === "POST" &&
+        url.pathname === `/api/v1/admin/seller-applications/${applicationId}/review`) {
+        assert.match(req.headers["idempotency-key"] ?? "",
+          /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+        reviewKeys.push(req.headers["idempotency-key"]);
+        let raw = "";
+        for await (const part of req) raw += part.toString();
+        assert.deepEqual(JSON.parse(raw), {
+          revision: 3, decision: "NEEDS_INFORMATION",
+          reason: "اطلاعات تکمیلی لازم است.",
+        });
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          applicationId, status: "SUBMITTED", revision: 4,
+          trackingCode: summary.trackingCode,
+          reviewStatus: "NEEDS_INFORMATION",
+          reviewReason: "اطلاعات تکمیلی لازم است.", reviewedAtUtc: at,
+          sellerActivated: false,
+        }));
+        return;
+      }
       res.writeHead(404); res.end("{}");
     });
   await new Promise(resolve => server.listen(5202, "127.0.0.1", resolve));
@@ -129,6 +151,29 @@ try {
   assert.equal(Object.hasOwn(body, "activatedAtUtc"), false);
   assert.equal(Object.hasOwn(body.reviewHistory[0], "decisionKey"), false);
   assert.equal(JSON.stringify(body).includes(token), false);
+
+  const reviewPath = base + "/api/admin/seller-applications/" +
+    applicationId + "/review";
+  const submitReview = () => fetch(reviewPath, { method: "POST",
+    headers: { Cookie: cookie, Origin: base, "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ revision: 3, decision: "NEEDS_INFORMATION",
+      reason: "اطلاعات تکمیلی لازم است." }) });
+  const reviewed = await submitReview();
+  assert.equal(reviewed.status, 200);
+  assert.equal(reviewed.headers.get("cache-control"), "no-store");
+  const reviewResult = await reviewed.json();
+  assert.equal(reviewResult.reviewStatus, "NEEDS_INFORMATION");
+  assert.equal(reviewed.headers.get("cache-control"), "no-store");
+  assert.equal(Object.hasOwn(reviewResult, "sellerActivated"), false);
+  assert.equal(Object.hasOwn(reviewResult, "idempotencyKey"), false);
+  assert.equal(JSON.stringify(reviewResult).includes(reviewKeys[0]), false,
+    "the server-only idempotency key must not be returned to the browser");
+  assert.deepEqual(await (await submitReview()).json(), reviewResult,
+    "same-key retry must preserve the confirmed response");
+  assert.equal(reviewKeys.length, 2);
+  assert.equal(reviewKeys[0], reviewKeys[1],
+    "the BFF must derive one stable server-only key for an identical retry");
   const malformed = await fetch(
     base + "/api/admin/seller-applications/" + malformedId,
     { headers: { Cookie: cookie } });
@@ -150,6 +195,17 @@ try {
   assert.equal((await fetch(base + "/api/admin/seller-applications")).status, 401);
   assert.equal((await fetch(base + "/api/admin/seller-applications",
     { headers: { Cookie: `__Host-hana_session=${nonAdminToken}` } })).status, 403);
+  const invalidReview = await fetch(reviewPath, { method: "POST",
+    headers: { Cookie: cookie, Origin: "https://malicious.test",
+      "Content-Type": "application/json" },
+    body: JSON.stringify({ revision: 3, decision: "NEEDS_INFORMATION",
+      reason: "اطلاعات تکمیلی لازم است." }) });
+  assert.equal(invalidReview.status, 403);
+  const missingReason = await fetch(reviewPath, { method: "POST",
+    headers: { Cookie: cookie, Origin: base, "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ revision: 3, decision: "NEEDS_INFORMATION" }) });
+  assert.equal(missingReason.status, 400);
   assert.equal(upstreamCalls, beforeRejected + 1,
     "invalid and anonymous requests must not reach upstream");
   console.log("Admin Seller Applications BFF CI: HttpOnly cookie isolation, Admin authorization, DTO allowlists, masked identifiers and no-store verified");
