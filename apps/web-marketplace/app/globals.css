@@ -364,6 +364,113 @@ a { color: inherit; }
   color: var(--hana-muted);
 }
 
+.seller-business {
+  margin-top: 24px;
+  padding: 28px;
+  border: 1px solid #eae6e1;
+  border-radius: 18px;
+  background: var(--hana-surface);
+}
+.seller-business__intro h3 {
+  margin: 2px 0 4px;
+  color: #1c3f3a;
+  font-size: 22px;
+}
+.seller-business__intro > p:last-child {
+  margin: 0;
+  color: var(--hana-muted);
+}
+.seller-business__body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+  margin-top: 22px;
+}
+.seller-business__body > .form-status,
+.seller-business__body > .seller-unsaved-note,
+.seller-business__body > .primary-button,
+.seller-business__offering {
+  grid-column: 1 / -1;
+}
+.seller-business__textarea {
+  min-height: 104px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.8;
+}
+.seller-business__offering {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.seller-business__offering legend {
+  margin-bottom: 8px;
+  color: var(--hana-muted);
+  font-size: 13px;
+}
+.seller-business__offering-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.seller-business__offering-option {
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid #eae6e1;
+  border-radius: 10px;
+  background: #faf8f5;
+  color: var(--hana-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.seller-business__offering-option--selected {
+  border: 2px solid var(--hana-terracotta);
+  background: #fff1ed;
+  color: #1c3f3a;
+}
+.seller-business__offering-option:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+.seller-business__completed {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid #eae6e1;
+  border-radius: 14px;
+  background: #faf8f5;
+}
+.seller-business__completed > strong {
+  color: #1c3f3a;
+  font-size: 17px;
+}
+.seller-business__completed dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.seller-business__completed dl > div {
+  padding: 12px 14px;
+  border: 1px solid #eae6e1;
+  border-radius: 10px;
+  background: white;
+}
+.seller-business__completed dt {
+  color: var(--hana-muted);
+  font-size: 12px;
+}
+.seller-business__completed dd {
+  margin: 4px 0 0;
+  color: #1c3f3a;
+  font-weight: 700;
+}
+.seller-business__completed p {
+  margin: 8px 0 0;
+  color: var(--hana-muted);
+  line-height: 1.8;
+}
+
 /* Inline recovery for a real 409 on the Figma-approved seller step one.
    No separate or unapproved registration screen is introduced. */
 .seller-conflict {
@@ -498,6 +605,14 @@ a { color: inherit; }
   .seller-identity__legal-grid { grid-template-columns: 1fr; }
   .seller-identity__legal-note,
   .seller-identity__legal-grid .primary-button { grid-column: auto; }
+  .seller-business { padding: 18px; }
+  .seller-business__body,
+  .seller-business__offering-options,
+  .seller-business__completed dl { grid-template-columns: 1fr; }
+  .seller-business__body > .form-status,
+  .seller-business__body > .seller-unsaved-note,
+  .seller-business__body > .primary-button,
+  .seller-business__offering { grid-column: auto; }
   .seller-conflict__versions { grid-template-columns: 1fr; }
   .seller-conflict__actions { display: grid; }
   .seller-conflict__actions button { width: 100%; }
