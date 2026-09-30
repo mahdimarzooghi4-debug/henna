@@ -26,6 +26,12 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
                     "applicant_type IS NULL OR applicant_type IN ('NATURAL', 'LEGAL')");
                 table.HasCheckConstraint("ck_registration_applicant_type_step",
                     "(completed_step < 2 AND applicant_type IS NULL) OR (completed_step >= 2 AND applicant_type IS NOT NULL)");
+                table.HasCheckConstraint("ck_registration_identity_status",
+                    "identity_status IS NULL OR identity_status IN ('VERIFIED', 'RECORDED')");
+                table.HasCheckConstraint("ck_registration_identity_shape",
+                    "(completed_step < 3 AND identity_status IS NULL AND natural_national_code IS NULL AND legal_national_id IS NULL AND legal_name IS NULL AND legal_representative_name IS NULL AND legal_representative_phone IS NULL) OR " +
+                    "(completed_step >= 3 AND applicant_type = 'NATURAL' AND identity_status = 'VERIFIED' AND natural_national_code IS NOT NULL AND legal_national_id IS NULL AND legal_name IS NULL AND legal_representative_name IS NULL AND legal_representative_phone IS NULL) OR " +
+                    "(completed_step >= 3 AND applicant_type = 'LEGAL' AND identity_status = 'RECORDED' AND natural_national_code IS NULL AND legal_national_id IS NOT NULL AND legal_name IS NOT NULL AND legal_representative_name IS NOT NULL AND legal_representative_phone IS NOT NULL)");
                 table.HasCheckConstraint("ck_registration_submitted_completed",
                     "status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)");
                 table.HasCheckConstraint("ck_registration_submission_metadata",
@@ -47,6 +53,18 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
             entity.Property(x => x.PostalCode).HasColumnName("postal_code")
                 .HasMaxLength(10).IsRequired();
             entity.Property(x => x.ApplicantType).HasColumnName("applicant_type")
+                .HasMaxLength(16);
+            entity.Property(x => x.NaturalNationalCode).HasColumnName("natural_national_code")
+                .HasMaxLength(10);
+            entity.Property(x => x.LegalNationalId).HasColumnName("legal_national_id")
+                .HasMaxLength(11);
+            entity.Property(x => x.LegalName).HasColumnName("legal_name")
+                .HasMaxLength(180);
+            entity.Property(x => x.LegalRepresentativeName)
+                .HasColumnName("legal_representative_name").HasMaxLength(120);
+            entity.Property(x => x.LegalRepresentativePhone)
+                .HasColumnName("legal_representative_phone").HasMaxLength(11);
+            entity.Property(x => x.IdentityStatus).HasColumnName("identity_status")
                 .HasMaxLength(16);
             entity.Property(x => x.CompletedStep).HasColumnName("completed_step")
                 .HasDefaultValue(1).IsRequired();
