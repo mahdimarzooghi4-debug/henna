@@ -15,7 +15,7 @@ export function InformationHeader() {
     <Link href="/" className="info-header__brand" aria-label="صفحه اصلی حنا"><Image src="/hana-logo.png" alt="حنا" width={147} height={58} priority/></Link>
     <nav className="info-header__nav" aria-label="ناوبری اصلی">{navigation.map(([label,href],index)=><Link className={index===0?"is-current":""} key={label} href={href}>{label}</Link>)}</nav>
     <form className="info-header__search" action="/products"><input name="search" aria-label="جست‌وجو" placeholder="جست‌وجوی کالاها، خدمات و نیازهای روزمره..."/><button aria-label="جست‌وجو" type="submit">⌕</button></form>
-    <div className="info-header__actions"><Link className="info-header__cart" href="/products"><span>۰</span> سبد خرید</Link><Link className="info-header__account" href="/auth">حساب کاربری</Link></div>
+    <div className="info-header__actions"><Link className="info-header__cart" href="/basket"><span>۰</span> سبد خرید</Link><Link className="info-header__account" href="/account">حساب کاربری</Link></div>
   </div></header>;
 }
 
