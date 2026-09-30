@@ -56,6 +56,20 @@ export function RegistrationForm() {
   const [legalRepresentativePhone, setLegalRepresentativePhone] = useState("");
   const [identityFeedback, setIdentityFeedback] =
     useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [businessCategories, setBusinessCategories] =
+    useState<Array<{ id: string; name: string }>>([]);
+  const [businessCategoriesState, setBusinessCategoriesState] =
+    useState<"idle" | "loading" | "ready" | "unconfigured" | "error">("idle");
+  const [businessCategoryId, setBusinessCategoryId] = useState("");
+  const [businessCategoryName, setBusinessCategoryName] =
+    useState<string | null>(null);
+  const [businessName, setBusinessName] = useState("");
+  const [businessDescription, setBusinessDescription] = useState("");
+  const [businessPhone, setBusinessPhone] = useState("");
+  const [offeringType, setOfferingType] =
+    useState<"GOOD" | "SERVICE" | "BOTH" | null>(null);
+  const [businessFeedback, setBusinessFeedback] =
+    useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [submitKey, setSubmitKey] = useState<string | null>(null);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
@@ -101,6 +115,13 @@ export function RegistrationForm() {
       setLegalRepresentativeName(result.legalRepresentativeName ?? "");
       setLegalRepresentativePhone(result.legalRepresentativePhone ?? "");
       setIdentityFeedback(null);
+      setBusinessCategoryId(result.businessCategoryId ?? "");
+      setBusinessCategoryName(result.businessCategoryName);
+      setBusinessName(result.businessName ?? "");
+      setBusinessDescription(result.businessDescription ?? "");
+      setBusinessPhone(result.businessPhone ?? "");
+      setOfferingType(result.offeringType);
+      setBusinessFeedback(null);
       if (result.status === "submitted") {
         setSubmittedAtUtc(result.submittedAtUtc);
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
@@ -117,6 +138,53 @@ export function RegistrationForm() {
   }, []);
 
   useEffect(() => {
+    if (access !== "signedIn" || completedStep !== 3 || submittedAtUtc)
+      return;
+    const controller = new AbortController();
+    setBusinessCategoriesState("loading");
+    void fetch("/api/seller/registration/business-categories", {
+      cache: "no-store",
+      signal: controller.signal,
+    }).then(async (response) => {
+      if (controller.signal.aborted) return;
+      if (response.status === 401) {
+        setAccess("signedOut");
+        return;
+      }
+      if (!response.ok) {
+        setBusinessCategoriesState("error");
+        return;
+      }
+      const payload: unknown = await response.json();
+      if (!payload || typeof payload !== "object" ||
+        !("configured" in payload) ||
+        typeof payload.configured !== "boolean" ||
+        !("items" in payload) || !Array.isArray(payload.items)) {
+        setBusinessCategoriesState("error");
+        return;
+      }
+      const items = payload.items.filter((item): item is {
+        id: string; name: string;
+      } => Boolean(item && typeof item === "object" &&
+        "id" in item && typeof item.id === "string" &&
+        "name" in item && typeof item.name === "string"));
+      if (items.length !== payload.items.length) {
+        setBusinessCategoriesState("error");
+        return;
+      }
+      setBusinessCategories(items);
+      setBusinessCategoriesState(payload.configured
+        ? "ready"
+        : "unconfigured");
+    }).catch(() => {
+      if (!controller.signal.aborted)
+        setBusinessCategoriesState("error");
+    });
+    return () => controller.abort();
+  }, [access, completedStep, submittedAtUtc]);
+
+
+  useEffect(() => {
     if (conflict?.status === "ready") conflictHeading.current?.focus();
   }, [conflict?.status]);
 
@@ -129,8 +197,16 @@ export function RegistrationForm() {
           legalName.trim().length > 0 ||
           legalRepresentativeName.trim() !== fields.ownerName ||
           normalizeDigits(legalRepresentativePhone.trim()) !== fields.phone));
+  const hasUnsavedBusinessChanges = completedStep === 3 &&
+    (businessCategoryId.length > 0 ||
+      businessName.trim().length > 0 ||
+      businessDescription.trim().length > 0 ||
+      businessPhone.trim().length > 0 ||
+      offeringType !== null);
   const hasAnyUnsavedChanges =
-    hasUnsavedChanges || hasUnsavedIdentityChanges;
+    hasUnsavedChanges ||
+    hasUnsavedIdentityChanges ||
+    hasUnsavedBusinessChanges;
 
   useEffect(() => {
     if (!hasAnyUnsavedChanges) return;
@@ -563,6 +639,96 @@ export function RegistrationForm() {
     }
   }
 
+  async function saveBusinessInformation() {
+    if (busy || access !== "signedIn" || completedStep !== 3 ||
+      revision < 1 || businessCategoriesState !== "ready") return;
+
+    const normalizedPhone = normalizeDigits(businessPhone.trim());
+    const nextName = businessName.trim();
+    const nextDescription = businessDescription.trim();
+    const selectedCategory = businessCategories.find(
+      (item) => item.id === businessCategoryId,
+    );
+    setBusinessPhone(normalizedPhone);
+    setBusinessName(nextName);
+    setBusinessDescription(nextDescription);
+
+    if (!selectedCategory ||
+      !nextName || nextName.length > 180 ||
+      !nextDescription || nextDescription.length > 500 ||
+      !/^0\d{10}$/.test(normalizedPhone) ||
+      (offeringType !== "GOOD" &&
+        offeringType !== "SERVICE" &&
+        offeringType !== "BOTH")) {
+      setBusinessFeedback({
+        kind: "error",
+        text: "اطلاعات کسب‌وکار کامل یا معتبر نیست.",
+      });
+      return;
+    }
+
+    setBusy(true);
+    setBusinessFeedback(null);
+    try {
+      const response = await fetch(
+        "/api/seller/registration/business-information",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            categoryId: selectedCategory.id,
+            businessName: nextName,
+            description: nextDescription,
+            businessPhone: normalizedPhone,
+            offeringType,
+            revision,
+          }),
+          cache: "no-store",
+        },
+      );
+
+      if (response.ok) {
+        const result: unknown = await response.json();
+        if (result && typeof result === "object" &&
+          "status" in result && result.status === "DRAFT" &&
+          "revision" in result && result.revision === revision + 1 &&
+          "completedStep" in result && result.completedStep === 4 &&
+          "category" in result && result.category &&
+          typeof result.category === "object" &&
+          "id" in result.category &&
+          result.category.id === selectedCategory.id &&
+          "name" in result.category &&
+          typeof result.category.name === "string") {
+          setRevision(result.revision as number);
+          setCompletedStep(4);
+          setBusinessCategoryName(result.category.name);
+          setBusinessFeedback({
+            kind: "info",
+            text: "اطلاعات کسب‌وکار ذخیره شد. مرحله بعد محدوده فعالیت است.",
+          });
+          return;
+        }
+      }
+
+      if (response.status === 401) setAccess("signedOut");
+      setBusinessFeedback({
+        kind: "error",
+        text: response.status === 409
+          ? "نسخه یا مرحله ثبت‌نام تغییر کرده است. اطلاعات واردشده حفظ شده؛ پیش از تلاش دوباره آخرین وضعیت را بررسی کنید."
+          : response.status === 400
+            ? "اطلاعات یا دسته‌بندی کسب‌وکار معتبر نیست."
+            : "ذخیره اطلاعات کسب‌وکار تأیید نشد؛ دوباره تلاش کنید.",
+      });
+    } catch {
+      setBusinessFeedback({
+        kind: "error",
+        text: "ذخیره اطلاعات کسب‌وکار تأیید نشد؛ دوباره تلاش کنید.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitForReview() {
     if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
       revision < 1 || hasUnsavedChanges) return;
@@ -854,6 +1020,180 @@ export function RegistrationForm() {
                 : "form-status"}
                 role={identityFeedback.kind === "error" ? "alert" : "status"}>
                 {identityFeedback.text}
+              </p>
+            )}
+          </section>
+        )}
+        {completedStep >= 3 && !submittedAtUtc && (
+          <section className="seller-business"
+            aria-labelledby="seller-business-heading">
+            <div className="seller-business__intro">
+              <p className="seller-applicant-type__step">مرحله ۴ از ۸</p>
+              <h3 id="seller-business-heading">اطلاعات کسب‌وکار</h3>
+              <p>
+                دسته‌بندی از taxonomy مستقل و بازبینی‌شدهٔ ثبت‌نام فروشنده
+                خوانده می‌شود و به‌صورت خودکار از دسته‌بندی کالاها حدس زده نمی‌شود.
+              </p>
+            </div>
+
+            {completedStep === 3 && (
+              <div className="seller-business__body">
+                <label className="field" htmlFor="seller-business-category">
+                  <span className="field__label">دسته‌بندی کسب‌وکار</span>
+                  <select id="seller-business-category"
+                    className="field__input"
+                    value={businessCategoryId}
+                    disabled={busy || access !== "signedIn" ||
+                      businessCategoriesState !== "ready"}
+                    onChange={(event) => {
+                      setBusinessCategoryId(event.target.value);
+                      setBusinessFeedback(null);
+                    }}>
+                    <option value="">
+                      {businessCategoriesState === "loading"
+                        ? "در حال دریافت دسته‌بندی‌ها…"
+                        : "انتخاب دسته‌بندی"}
+                    </option>
+                    {businessCategories.map((category) => (
+                      <option value={category.id} key={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {businessCategoriesState === "unconfigured" && (
+                  <p className="form-status form-status--error" role="alert">
+                    taxonomy دسته‌بندی کسب‌وکار هنوز تنظیم نشده است؛
+                    هیچ گزینه نمونه‌ای ساخته نشده و این مرحله قابل ثبت نیست.
+                  </p>
+                )}
+                {businessCategoriesState === "error" && (
+                  <p className="form-status form-status--error" role="alert">
+                    دسته‌بندی‌های کسب‌وکار قابل دریافت نیستند؛
+                    برای جلوگیری از ثبت روی داده نامعتبر، ذخیره غیرفعال است.
+                  </p>
+                )}
+
+                <FormField id="seller-business-name"
+                  label="نام فروشگاه / کسب‌وکار / عنوان ارائه‌دهنده"
+                  placeholder="کسب‌وکار نمونه"
+                  maxLength={180}
+                  value={businessName}
+                  required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setBusinessName(event.target.value);
+                    setBusinessFeedback(null);
+                  }} />
+
+                <label className="field" htmlFor="seller-business-description">
+                  <span className="field__label">توضیح کوتاه فعالیت</span>
+                  <textarea id="seller-business-description"
+                    className="field__input seller-business__textarea"
+                    maxLength={500}
+                    rows={4}
+                    value={businessDescription}
+                    required
+                    disabled={busy || access !== "signedIn"}
+                    placeholder="توضیح دهید چه کالا یا خدماتی ارائه می‌دهید..."
+                    onChange={(event) => {
+                      setBusinessDescription(event.target.value);
+                      setBusinessFeedback(null);
+                    }} />
+                </label>
+
+                <FormField id="seller-business-phone"
+                  label="شماره تماس کسب‌وکار"
+                  placeholder="مثال: ۰۲۱۱۲۳۴۵۶۷۸"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
+                  className="field__input--phone"
+                  value={businessPhone}
+                  required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setBusinessPhone(event.target.value);
+                    setBusinessFeedback(null);
+                  }} />
+
+                <fieldset className="seller-business__offering">
+                  <legend>نوع ارائه / محصول اصلی</legend>
+                  <div className="seller-business__offering-options">
+                    {([
+                      ["GOOD", "کالا"],
+                      ["SERVICE", "خدمت"],
+                      ["BOTH", "کالا و خدمت"],
+                    ] as const).map(([value, label]) => (
+                      <button type="button"
+                        key={value}
+                        className={offeringType === value
+                          ? "seller-business__offering-option seller-business__offering-option--selected"
+                          : "seller-business__offering-option"}
+                        aria-pressed={offeringType === value}
+                        disabled={busy || access !== "signedIn"}
+                        onClick={() => {
+                          setOfferingType(value);
+                          setBusinessFeedback(null);
+                        }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <button type="button" className="primary-button"
+                  disabled={busy || access !== "signedIn" ||
+                    businessCategoriesState !== "ready"}
+                  onClick={() => void saveBusinessInformation()}>
+                  {busy ? "در حال ذخیره…" : "ذخیره و ادامه"}
+                </button>
+
+                {hasUnsavedBusinessChanges && (
+                  <p className="seller-unsaved-note" role="status">
+                    اطلاعات مرحله کسب‌وکار هنوز روی سرور ثبت نشده است.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {completedStep >= 4 && (
+              <div className="seller-business__completed" role="status">
+                <strong>اطلاعات کسب‌وکار ذخیره شد.</strong>
+                <dl>
+                  <div>
+                    <dt>دسته‌بندی</dt>
+                    <dd>{businessCategoryName ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>نام کسب‌وکار</dt>
+                    <dd>{businessName}</dd>
+                  </div>
+                  <div>
+                    <dt>تلفن کسب‌وکار</dt>
+                    <dd dir="ltr">{businessPhone}</dd>
+                  </div>
+                  <div>
+                    <dt>نوع ارائه</dt>
+                    <dd>{offeringType === "GOOD"
+                      ? "کالا"
+                      : offeringType === "SERVICE"
+                        ? "خدمت"
+                        : "کالا و خدمت"}</dd>
+                  </div>
+                </dl>
+                <p>{businessDescription}</p>
+                <p>مرحله بعد «محدوده فعالیت» است.</p>
+              </div>
+            )}
+
+            {businessFeedback && (
+              <p className={businessFeedback.kind === "error"
+                ? "form-status form-status--error"
+                : "form-status"}
+                role={businessFeedback.kind === "error" ? "alert" : "status"}>
+                {businessFeedback.text}
               </p>
             )}
           </section>
