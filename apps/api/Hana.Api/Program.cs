@@ -371,6 +371,7 @@ app.MapCatalogRead(hasIdentityDb);
 app.MapCatalogMedia(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 app.MapOrganization(hasIdentityDb);
+app.MapOrganizationFundingInstructionReviews(hasIdentityDb);
 
 // Operator-only provisioning for the reviewed seller business taxonomy.
 // No HTTP mutation route, default seed or inferred catalog mapping is installed.

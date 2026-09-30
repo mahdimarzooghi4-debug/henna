@@ -703,6 +703,33 @@ a { color: inherit; }
 .admin-detail-list--status .admin-detail-field { align-items: center; }
 .admin-no-documents { margin: 0; padding: 14px; border-radius: 9px; background: #faf8f5; color: #706963; font-size: 13px; }
 
+.admin-funding-table { min-width: 980px; }
+.admin-funding-table .admin-table__row {
+  grid-template-columns: minmax(130px, 1.1fr) minmax(130px, 1fr) minmax(145px, 1.1fr) minmax(150px, 1.1fr) 130px 125px 110px;
+}
+.admin-funding-table .admin-table__row > span { line-height: 1.7; }
+.admin-funding-warning {
+  padding: 14px 18px;
+  border: 1px solid #f0d5cf;
+  border-radius: 11px;
+  background: #fff3f0;
+  color: #8f4435;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.admin-funding-detail-card { display: grid; gap: 4px; }
+.admin-funding-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; }
+.admin-funding-fields .admin-detail-field { border-bottom: 1px solid #f0ede9; padding: 8px 0; }
+.admin-funding-fields .admin-detail-field:last-child { border-bottom: 0; }
+.admin-funding-history { display: grid; gap: 8px; }
+.admin-funding-history__list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.admin-funding-history__list li { padding: 14px 16px; border: 1px solid #eae6e1; border-radius: 10px; background: #fff; }
+.admin-funding-history__list li > div { display: flex; justify-content: space-between; gap: 16px; }
+.admin-funding-history__list strong { color: #1c3f3a; font-size: 13px; }
+.admin-funding-history__list time { flex: 0 0 auto; color: #706963; font-size: 11px; }
+.admin-funding-history__list p { margin: 6px 0 0; color: #706963; font-size: 12px; overflow-wrap: anywhere; }
+.admin-funding-history__list b { color: #2d2d2d; font-weight: 600; }
+
 @media (max-width: 1100px) {
   .admin-sidebar { width: 240px; min-width: 240px; }
   .admin-content { padding: 30px 24px; }
@@ -723,6 +750,8 @@ a { color: inherit; }
   .admin-pagination { align-items: flex-start; flex-direction: column; }
   .admin-detail-heading { align-items: flex-start; flex-direction: column; }
   .admin-detail-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "status" "business" "identity" "documents"; }
+  .admin-funding-fields { grid-template-columns: minmax(0, 1fr); }
+  .admin-funding-history__list li > div { align-items: flex-start; flex-direction: column; gap: 2px; }
 }
 
 .seller-activity {
@@ -1758,6 +1787,30 @@ a { color: inherit; }
 .organization-empty p { margin: 8px 0 20px; color: #777; font-size: 13px; }
 .organization-finance-boundary { padding: 16px 18px; border: 1px solid #d7b895; border-radius: 8px; background: #fffaf4; color: #514638; font-size: 13px; }
 .organization-finance-boundary p { margin: 6px 0 0; line-height: 1.8; }
+.organization-detail-content { display: grid; gap: 18px; padding: 24px 32px; }
+.organization-detail-notice { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border: 1px solid #0f5b5a; border-radius: 8px; background: #eaf2f1; color: #0f5b5a; font-size: 13px; }
+.organization-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.organization-detail-card { align-self: start; padding: 20px; border: 1px solid #e8e1d8; border-radius: 10px; background: #fff; }
+.organization-detail-card h2 { margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid #eee8e0; font-size: 16px; }
+.organization-detail-card dl { display: grid; gap: 11px; margin: 0; font-size: 13px; }
+.organization-detail-card dl div { display: flex; justify-content: space-between; gap: 18px; }
+.organization-detail-card dt { color: #756d65; }
+.organization-detail-card dd { margin: 0; text-align: left; font-weight: 600; overflow-wrap: anywhere; }
+.organization-instruction-form { max-width: 760px; }
+.organization-instruction-form > p { margin: -6px 0 18px; color: #756d65; font-size: 13px; }
+.organization-instruction-form form { display: grid; gap: 14px; }
+.organization-instruction-form .organization-primary-button { justify-self: start; }
+.organization-referral-form { display: grid; gap: 14px; margin: 20px 0; }
+.organization-referral-form label { display: grid; gap: 7px; color: #514638; font-size: 13px; }
+.organization-referral-form input, .organization-referral-form select { width: 100%; min-height: 42px; border: 1px solid #d8d0c7; border-radius: 6px; padding: 8px 10px; background: #fff; color: #302920; font: inherit; }
+.organization-form-hint { margin: -4px 0 0; color: #756d65; font-size: 12px; }
+.organization-form-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.organization-referral-form h3, .organization-referral-list h3 { margin: 10px 0 0; font-size: 15px; }
+.organization-member-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 14px; border: 1px solid #e8e1d8; border-radius: 8px; }
+.organization-member-card legend { padding: 0 6px; color: #0f5b5a; font-weight: 600; }
+.organization-referral-list { display: grid; gap: 10px; margin-top: 24px; }
+.organization-referral-item { display: grid; gap: 5px; padding: 14px; border: 1px solid #e8e1d8; border-radius: 8px; font-size: 13px; }
+.organization-referral-item span { color: #756d65; }
 .organization-program-form-area { padding: 24px 32px; }
 .organization-form-card { max-width: 980px; margin: 0 auto; padding: 24px; border: 1px solid #e8e1d8; border-radius: 10px; background: #fff; }
 .organization-back-link { display: inline-block; margin-bottom: 18px; color: #0b6665; font-size: 13px; text-decoration: none; }
@@ -1777,3 +1830,5 @@ a { color: inherit; }
 .organization-form-message { margin: 0; color: #a53c29; font-size: 13px; }
 @media (max-width: 800px) { .organization-sidebar { width: 190px; flex-basis: 190px; } .organization-programs-content, .organization-program-form-area { padding: 18px 16px; } .organization-topbar { padding: 12px 16px; } }
 @media (max-width: 620px) { .organization-shell { display: block; } .organization-sidebar { width: 100%; padding: 10px 12px; border-left: 0; border-bottom: 1px solid #e8e1d8; } .organization-brand { padding-bottom: 8px; } .organization-sidebar nav { display: flex; overflow-x: auto; gap: 5px; } .organization-sidebar nav a, .organization-sidebar nav span { flex: 0 0 auto; border: 1px solid #eee8e0; } .organization-section-head { align-items: flex-start; flex-direction: column; padding: 16px; } .organization-form-card { padding: 18px; } }
+@media (max-width: 720px) { .organization-detail-content { padding: 18px 16px; } .organization-detail-grid { grid-template-columns: 1fr; } .organization-detail-card dl div { align-items: flex-start; flex-direction: column; gap: 2px; } .organization-detail-card dd { text-align: right; } }
+@media (max-width: 720px) { .organization-form-row, .organization-member-card { grid-template-columns: 1fr; } }
