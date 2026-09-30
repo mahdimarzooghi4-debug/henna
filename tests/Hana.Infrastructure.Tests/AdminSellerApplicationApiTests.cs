@@ -60,6 +60,15 @@ public sealed class AdminSellerApplicationApiTests
         });
         await identity.SaveChangesAsync();
 
+        var businessCategoryId = Guid.NewGuid();
+        seller.BusinessCategories.Add(new SellerBusinessCategoryRecord
+        {
+            Id = businessCategoryId,
+            Name = "دسته‌بندی درخواست ثبت‌شده",
+            IsActive = true,
+            UpdatedAtUtc = now
+        });
+
         seller.RegistrationDrafts.AddRange(
             new SellerRegistrationDraft
             {
@@ -73,6 +82,11 @@ public sealed class AdminSellerApplicationApiTests
                 ApplicantType = "NATURAL",
                 NaturalNationalCode = "0084575948",
                 IdentityStatus = "VERIFIED",
+                BusinessCategoryId = businessCategoryId,
+                BusinessName = "کسب‌وکار ثبت‌شده",
+                BusinessDescription = "توضیح کسب‌وکار ثبت‌شده",
+                BusinessPhone = "02112345678",
+                OfferingType = "GOOD",
                 CompletedStep = 6,
                 Status = "SUBMITTED",
                 Revision = 2,
