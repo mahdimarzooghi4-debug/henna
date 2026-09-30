@@ -236,3 +236,5 @@
   .footerBrand .logoImage{width:120px;height:47px;object-fit:cover;object-position:center}
   .footerBrand p{width:auto;max-width:100%;height:auto;line-height:1.5}
 }
+.page button.addButton{border:0;font:inherit;cursor:pointer}
+.productInfo h3 a:hover{color:var(--terracotta)}
