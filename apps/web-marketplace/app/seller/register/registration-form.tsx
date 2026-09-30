@@ -104,6 +104,7 @@ export function RegistrationForm() {
     useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [submitKey, setSubmitKey] = useState<string | null>(null);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
   const conflictHeading = useRef<HTMLHeadingElement>(null);
   const preflightAbort = useRef<AbortController | null>(null);
@@ -1059,7 +1060,8 @@ export function RegistrationForm() {
 
   async function submitForReview() {
     if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
-      revision < 1 || hasUnsavedChanges) return;
+      completedStep !== 6 || revision < 1 || hasUnsavedChanges ||
+      !reviewConfirmed) return;
     const key = submitKey ?? crypto.randomUUID();
     setSubmitKey(key);
     setBusy(true);
@@ -1068,7 +1070,11 @@ export function RegistrationForm() {
       const response = await fetch("/api/seller/registration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ revision, idempotencyKey: key }),
+        body: JSON.stringify({
+          revision,
+          idempotencyKey: key,
+          confirmed: true,
+        }),
         cache: "no-store",
       });
       if (response.ok) {
@@ -1077,9 +1083,12 @@ export function RegistrationForm() {
           "status" in result && result.status === "SUBMITTED" &&
           "revision" in result && typeof result.revision === "number" &&
           "submittedAtUtc" in result &&
-          typeof result.submittedAtUtc === "string") {
+          typeof result.submittedAtUtc === "string" &&
+          "accuracyConfirmedAtUtc" in result &&
+          typeof result.accuracyConfirmedAtUtc === "string") {
           setRevision(result.revision);
           setSubmittedAtUtc(result.submittedAtUtc);
+          setReviewConfirmed(true);
           setSaved(true);
           setMessage("درخواست فروشندگی برای بررسی ثبت شد. ثبت درخواست به معنی تأیید یا فعال‌شدن فروشگاه نیست.");
           return;
@@ -1890,18 +1899,127 @@ export function RegistrationForm() {
           </section>
         )}
         {completedStep >= 6 && revision > 0 && !submittedAtUtc && (
-          <section className="seller-review" aria-labelledby="seller-review-heading">
-            <h3 id="seller-review-heading">بازبینی و ثبت</h3>
-            <p>
-              اطلاعات مرحله ۶ کامل است. بازبینی نهایی و تأیید صریح صحت
-              اطلاعات در مرحله ۷ انجام می‌شود؛ ثبت نهایی از این صفحه
-              مستقیماً فعال نیست.
-            </p>
-            <button type="button" className="auth-card__secondary"
-              disabled
-              onClick={() => void submitForReview()}>
-              ادامه در مرحله ۷
-            </button>
+          <section className="seller-review seller-review--final"
+            aria-labelledby="seller-review-heading">
+            <div className="seller-review__intro">
+              <p className="seller-applicant-type__step">مرحله ۷ از ۸</p>
+              <span className="seller-review__ready">آماده ثبت نهایی</span>
+              <h3 id="seller-review-heading">بازبینی اطلاعات وارد شده</h3>
+              <p>
+                لطفاً صحت تمامی اطلاعات وارد شده را بررسی و پس از تأیید،
+                درخواست خود را ثبت کنید.
+              </p>
+            </div>
+
+            <div className="seller-review__sections">
+              <article className="seller-review__card">
+                <h4>نوع متقاضی</h4>
+                <dl>
+                  <div><dt>نوع حساب</dt><dd>
+                    {applicantType === "LEGAL" ? "شخص حقوقی" : "شخص حقیقی"}
+                  </dd></div>
+                </dl>
+              </article>
+
+              <article className="seller-review__card">
+                <h4>اطلاعات هویتی</h4>
+                <dl>
+                  <div><dt>نام و نام خانوادگی</dt><dd>
+                    {applicantType === "LEGAL"
+                      ? legalRepresentativeName
+                      : fields.ownerName}
+                  </dd></div>
+                  <div><dt>{applicantType === "LEGAL"
+                    ? "شناسه ملی"
+                    : "کد ملی"}</dt><dd dir="ltr">
+                    {applicantType === "LEGAL"
+                      ? legalNationalId
+                      : nationalCodeMasked}
+                  </dd></div>
+                  <div><dt>شماره موبایل</dt><dd dir="ltr">
+                    {fields.phone.length === 11
+                      ? fields.phone.slice(0, 4) + "*******"
+                      : "—"}
+                  </dd></div>
+                  <div><dt>احراز هویت</dt><dd>
+                    {identityStatus === "VERIFIED"
+                      ? "تأیید شده"
+                      : "اطلاعات ثبت شده"}
+                  </dd></div>
+                </dl>
+              </article>
+
+              <article className="seller-review__card">
+                <h4>اطلاعات کسب‌وکار</h4>
+                <dl>
+                  <div><dt>نام کسب‌وکار</dt><dd>{businessName}</dd></div>
+                  <div><dt>دسته‌بندی</dt><dd>{businessCategoryName ?? "—"}</dd></div>
+                  <div><dt>نوع ارائه اصلی</dt><dd>
+                    {offeringType === "GOOD"
+                      ? "کالا"
+                      : offeringType === "SERVICE"
+                        ? "خدمت"
+                        : "کالا و خدمت"}
+                  </dd></div>
+                  <div><dt>تلفن کسب‌وکار</dt><dd dir="ltr">
+                    {businessPhone.length === 11
+                      ? businessPhone.slice(0, 3) + "********"
+                      : "—"}
+                  </dd></div>
+                </dl>
+              </article>
+
+              <article className="seller-review__card">
+                <h4>محدوده فعالیت</h4>
+                <dl>
+                  <div><dt>استان و شهر</dt><dd>
+                    {activityProvinceName ?? "—"} / {activityCityName ?? "—"}
+                  </dd></div>
+                  <div><dt>محدوده پوشش</dt><dd>{serviceArea}</dd></div>
+                </dl>
+              </article>
+
+              <article className="seller-review__card">
+                <h4>اطلاعات تکمیلی</h4>
+                <dl>
+                  <div><dt>مسئول ثبت‌نام</dt><dd>
+                    {registrationContactName}
+                  </dd></div>
+                  <div><dt>ساعات پاسخگویی</dt><dd>{responseHours}</dd></div>
+                  <div><dt>وضعیت فروشندگی</dt><dd>آماده ثبت نهایی</dd></div>
+                </dl>
+              </article>
+            </div>
+
+            <label className="seller-review__confirmation">
+              <input type="checkbox"
+                checked={reviewConfirmed}
+                disabled={busy || access !== "signedIn"}
+                onChange={(event) => {
+                  setReviewConfirmed(event.target.checked);
+                  setMessage("");
+                }} />
+              <span>صحت اطلاعات واردشده را تأیید می‌کنم.</span>
+            </label>
+
+            <div className="seller-review__actions">
+              <button type="button" className="primary-button"
+                disabled={busy || access !== "signedIn" ||
+                  conflict !== null || hasAnyUnsavedChanges ||
+                  !reviewConfirmed}
+                onClick={() => void submitForReview()}>
+                {busy ? "در حال ثبت…" : "ثبت نهایی درخواست"}
+              </button>
+              <button type="button" className="auth-card__secondary"
+                disabled={busy}
+                onClick={() => {
+                  setReviewConfirmed(false);
+                  document.getElementById("seller-additional-heading")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}>
+                بازگشت و ویرایش
+              </button>
+            </div>
           </section>
         )}
         {submittedAtUtc && (
