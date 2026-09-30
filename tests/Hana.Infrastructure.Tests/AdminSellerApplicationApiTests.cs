@@ -106,6 +106,7 @@ public sealed class AdminSellerApplicationApiTests
                 SubmissionKey = Guid.NewGuid(),
                 SubmissionExpectedRevision = 1,
                 SubmittedAtUtc = now.AddMinutes(-5),
+                AccuracyConfirmedAtUtc = now.AddMinutes(-5),
                 UpdatedAtUtc = now.AddMinutes(-5)
             },
             new SellerRegistrationDraft

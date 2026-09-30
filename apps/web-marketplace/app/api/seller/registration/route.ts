@@ -399,6 +399,7 @@ export async function POST(request: NextRequest) {
 
   let revision: number | null = null;
   let idempotencyKey: string | null = null;
+  let confirmed = false;
   try {
     const raw = await request.text();
     const body: unknown = raw.length <= 1024 ? JSON.parse(raw) : null;
@@ -406,9 +407,11 @@ export async function POST(request: NextRequest) {
       return error("درخواست ثبت معتبر نیست.", 400);
     const value = body as Record<string, unknown>;
     if (Object.keys(value).some((key) =>
-      key !== "revision" && key !== "idempotencyKey"))
+      key !== "revision" && key !== "idempotencyKey" &&
+      key !== "confirmed"))
       return error("درخواست ثبت معتبر نیست.", 400);
     if (validRevision(value.revision, false)) revision = value.revision;
+    confirmed = value.confirmed === true;
     if (typeof value.idempotencyKey === "string" &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
         .test(value.idempotencyKey))
@@ -416,8 +419,8 @@ export async function POST(request: NextRequest) {
   } catch {
     return error("درخواست ثبت معتبر نیست.", 400);
   }
-  if (revision === null || !idempotencyKey)
-    return error("نسخه یا کلید ثبت معتبر نیست.", 400);
+  if (revision === null || !idempotencyKey || !confirmed)
+    return error("نسخه، کلید ثبت یا تأیید صحت اطلاعات معتبر نیست.", 400);
 
   try {
     const upstream = await fetch(target, {
@@ -427,7 +430,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         "Idempotency-Key": idempotencyKey,
       },
-      body: JSON.stringify({ revision }),
+      body: JSON.stringify({ revision, confirmed }),
       cache: "no-store", signal: AbortSignal.timeout(8000),
     });
     if (upstream.status === 401)
@@ -446,13 +449,17 @@ export async function POST(request: NextRequest) {
       !("revision" in payload) || !validRevision(payload.revision, false) ||
       !("submittedAtUtc" in payload) ||
       typeof payload.submittedAtUtc !== "string" ||
-      Number.isNaN(Date.parse(payload.submittedAtUtc)))
+      Number.isNaN(Date.parse(payload.submittedAtUtc)) ||
+      !("accuracyConfirmedAtUtc" in payload) ||
+      typeof payload.accuracyConfirmedAtUtc !== "string" ||
+      Number.isNaN(Date.parse(payload.accuracyConfirmedAtUtc)))
       return error(unavailable, 503);
 
     return NextResponse.json({
       status: "SUBMITTED",
       revision: payload.revision,
       submittedAtUtc: payload.submittedAtUtc,
+      accuracyConfirmedAtUtc: payload.accuracyConfirmedAtUtc,
     }, { headers: noStore });
   } catch {
     return error(unavailable, 503);

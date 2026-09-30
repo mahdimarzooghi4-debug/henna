@@ -209,7 +209,7 @@ public sealed class SellerRegistrationApiTests
         using (var incompleteRequest = new HttpRequestMessage(
             HttpMethod.Post, url + "/submit")
         {
-            Content = JsonContent.Create(new { revision = 4 })
+            Content = JsonContent.Create(new { revision = 4, confirmed = true })
         })
         {
             incompleteRequest.Headers.Add(
@@ -254,12 +254,13 @@ public sealed class SellerRegistrationApiTests
         // It grants no seller permission; it only freezes this registration
         // version for a later reviewer workflow.
         var submissionKey = Guid.NewGuid();
-        async Task<HttpResponseMessage> Submit(Guid key, int revision)
+        async Task<HttpResponseMessage> Submit(
+            Guid key, int revision, bool confirmed = true)
         {
             using var request = new HttpRequestMessage(
                 HttpMethod.Post, url + "/submit")
             {
-                Content = JsonContent.Create(new { revision })
+                Content = JsonContent.Create(new { revision, confirmed })
             };
             request.Headers.Add("Idempotency-Key", key.ToString());
             return await first.SendAsync(request);
@@ -267,7 +268,10 @@ public sealed class SellerRegistrationApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest,
             (await first.PostAsJsonAsync(url + "/submit",
-                new { revision = 3 })).StatusCode);
+                new { revision = 3, confirmed = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await Submit(Guid.NewGuid(), revision: 4, confirmed: false))
+                .StatusCode);
         Assert.Equal(HttpStatusCode.OK,
             (await Submit(submissionKey, revision: 4)).StatusCode);
         // Lost-response retry with the same key and expected revision
@@ -287,6 +291,9 @@ public sealed class SellerRegistrationApiTests
         Assert.Equal(submissionKey, submitted.SubmissionKey);
         Assert.Equal(4, submitted.SubmissionExpectedRevision);
         Assert.NotNull(submitted.SubmittedAtUtc);
+        Assert.NotNull(submitted.AccuracyConfirmedAtUtc);
+        Assert.Equal(submitted.SubmittedAtUtc,
+            submitted.AccuracyConfirmedAtUtc);
 
         var submittedRead = await first.GetAsync(url);
         Assert.Equal(HttpStatusCode.OK, submittedRead.StatusCode);
@@ -297,6 +304,8 @@ public sealed class SellerRegistrationApiTests
                 body.RootElement.GetProperty("status").GetString());
             Assert.Equal(5, body.RootElement.GetProperty("revision").GetInt32());
             Assert.True(body.RootElement.TryGetProperty("submittedAtUtc", out _));
+            Assert.True(body.RootElement.TryGetProperty(
+                "accuracyConfirmedAtUtc", out _));
             Assert.False(body.RootElement.TryGetProperty("submissionKey", out _));
         }
 

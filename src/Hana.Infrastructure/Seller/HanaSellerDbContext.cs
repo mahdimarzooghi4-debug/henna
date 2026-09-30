@@ -97,7 +97,8 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 table.HasCheckConstraint("ck_registration_submitted_completed",
                     "status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)");
                 table.HasCheckConstraint("ck_registration_submission_metadata",
-                    "(status = 'DRAFT' AND submission_key IS NULL AND submission_expected_revision IS NULL AND submitted_at_utc IS NULL) OR (status = 'SUBMITTED' AND submission_key IS NOT NULL AND submission_expected_revision >= 1 AND submitted_at_utc IS NOT NULL)");
+                    "(status = 'DRAFT' AND submission_key IS NULL AND submission_expected_revision IS NULL AND submitted_at_utc IS NULL AND accuracy_confirmed_at_utc IS NULL) OR " +
+                    "(status = 'SUBMITTED' AND submission_key IS NOT NULL AND submission_expected_revision >= 1 AND submitted_at_utc IS NOT NULL AND accuracy_confirmed_at_utc IS NOT NULL)");
             });
             entity.HasKey(x => x.AccountId);
             entity.Property(x => x.AccountId).HasColumnName("account_id")
@@ -169,6 +170,8 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
             entity.Property(x => x.SubmissionExpectedRevision)
                 .HasColumnName("submission_expected_revision");
             entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc");
+            entity.Property(x => x.AccuracyConfirmedAtUtc)
+                .HasColumnName("accuracy_confirmed_at_utc");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
                 .IsRequired();
             entity.HasIndex(x => x.BusinessCategoryId)
