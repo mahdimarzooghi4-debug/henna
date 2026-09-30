@@ -42,6 +42,9 @@ export function RegistrationForm() {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [applicantType, setApplicantType] =
+    useState<"NATURAL" | "LEGAL" | null>(null);
+  const [completedStep, setCompletedStep] = useState(1);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [submitKey, setSubmitKey] = useState<string | null>(null);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
@@ -78,6 +81,8 @@ export function RegistrationForm() {
       setBaseline(result.fields);
       setSaved(true);
       setRevision(result.revision);
+      setApplicantType(result.applicantType);
+      setCompletedStep(result.completedStep);
       if (result.status === "submitted") {
         setSubmittedAtUtc(result.submittedAtUtc);
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
@@ -308,6 +313,55 @@ export function RegistrationForm() {
     }
   }
 
+  async function saveApplicantType(type: "NATURAL" | "LEGAL") {
+    if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
+      revision < 1 || hasUnsavedChanges) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(
+        "/api/seller/registration/applicant-type",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ applicantType: type, revision }),
+          cache: "no-store",
+        },
+      );
+      if (response.ok) {
+        const result: unknown = await response.json();
+        if (result && typeof result === "object" &&
+          "status" in result && result.status === "DRAFT" &&
+          "revision" in result && typeof result.revision === "number" &&
+          result.revision === revision + 1 &&
+          "applicantType" in result && result.applicantType === type &&
+          "completedStep" in result && result.completedStep === 2) {
+          setApplicantType(type);
+          setCompletedStep(2);
+          setRevision(result.revision);
+          setSaved(true);
+          setMessage(type === "NATURAL"
+            ? "نوع متقاضی «شخص حقیقی» ذخیره شد. مرحله بعد احراز هویت شخص حقیقی است."
+            : "نوع متقاضی «شخص حقوقی» ذخیره شد. مرحله بعد احراز هویت شخصیت حقوقی است.");
+          return;
+        }
+      }
+      if (response.status === 401) setAccess("signedOut");
+      if (response.status === 409) {
+        checkInitialDraft();
+        setMessage("پیش‌نویس در جای دیگری تغییر کرده است؛ آخرین نسخه دوباره دریافت می‌شود.");
+        return;
+      }
+      setMessage(response.status === 401
+        ? "نشست شما پایان یافته است؛ نوع متقاضی ذخیره نشد."
+        : "ذخیره نوع متقاضی تأیید نشد؛ لطفاً دوباره تلاش کنید.");
+    } catch {
+      setMessage("ذخیره نوع متقاضی تأیید نشد؛ لطفاً دوباره تلاش کنید.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitForReview() {
     if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
       revision < 1 || hasUnsavedChanges) return;
@@ -411,7 +465,7 @@ export function RegistrationForm() {
             disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("postalCode", e.target.value)} />
         </div>
         <aside className="account-note">
-          <p>این برش، مرحله «بازبینی و ثبت» فیگما را برای همین اطلاعات ذخیره‌شده فعال می‌کند. ثبت درخواست به معنی تأیید فروشندگی یا فعال‌شدن فروشگاه نیست.</p>
+          <p>ثبت‌نام طبق مسیر ۸ مرحله‌ای فیگما ادامه پیدا می‌کند. پس از اطلاعات اولیه، نوع متقاضی انتخاب می‌شود و ثبت نهایی تا تکمیل مراحل ۱ تا ۶ در سرور مجاز نیست.</p>
         </aside>
         {!submittedAtUtc && (
           <button className="primary-button" type="submit"
@@ -422,6 +476,50 @@ export function RegistrationForm() {
           </button>
         )}
         {revision > 0 && !submittedAtUtc && (
+          <section className="seller-applicant-type"
+            aria-labelledby="seller-applicant-type-heading">
+            <div className="seller-applicant-type__intro">
+              <p className="seller-applicant-type__step">مرحله ۲ از ۸</p>
+              <h3 id="seller-applicant-type-heading">نوع متقاضی</h3>
+              <p>انتخاب نوع متقاضی، اطلاعات پایه موردنیاز برای ادامه ثبت‌نام را مشخص می‌کند.</p>
+            </div>
+            <div className="seller-applicant-type__options">
+              <button type="button"
+                className={applicantType === "NATURAL"
+                  ? "seller-applicant-type__option seller-applicant-type__option--selected"
+                  : "seller-applicant-type__option"}
+                aria-pressed={applicantType === "NATURAL"}
+                disabled={busy || access !== "signedIn" || conflict !== null ||
+                  hasUnsavedChanges}
+                onClick={() => void saveApplicantType("NATURAL")}>
+                <strong>شخص حقیقی</strong>
+                <span>ثبت‌نام به نام یک فرد با کدملی شخصی؛ مناسب کسب‌وکارهای خانگی، ارائه‌دهندگان محلی، آزادکاران و تولیدکنندگان انفرادی.</span>
+              </button>
+              <button type="button"
+                className={applicantType === "LEGAL"
+                  ? "seller-applicant-type__option seller-applicant-type__option--selected"
+                  : "seller-applicant-type__option"}
+                aria-pressed={applicantType === "LEGAL"}
+                disabled={busy || access !== "signedIn" || conflict !== null ||
+                  hasUnsavedChanges}
+                onClick={() => void saveApplicantType("LEGAL")}>
+                <strong>شخص حقوقی</strong>
+                <span>ثبت‌نام به نام یک شخصیت حقوقی یا سازمان.</span>
+              </button>
+            </div>
+            {hasUnsavedChanges && (
+              <p className="seller-conflict__hint">ابتدا تغییرات اطلاعات اولیه را ذخیره کنید؛ نوع متقاضی روی نسخه ذخیره‌شده ثبت می‌شود.</p>
+            )}
+            {completedStep >= 2 && applicantType && (
+              <p className="seller-applicant-type__saved" role="status">
+                انتخاب ذخیره‌شده: {applicantType === "NATURAL"
+                  ? "شخص حقیقی"
+                  : "شخص حقوقی"} — مرحله بعد «احراز هویت» است.
+              </p>
+            )}
+          </section>
+        )}
+        {completedStep >= 6 && revision > 0 && !submittedAtUtc && (
           <section className="seller-review" aria-labelledby="seller-review-heading">
             <h3 id="seller-review-heading">بازبینی و ثبت</h3>
             <p>درخواست فقط از آخرین نسخهٔ ذخیره‌شده ثبت می‌شود. پس از ثبت، این نسخه دیگر قابل ویرایش نیست.</p>
