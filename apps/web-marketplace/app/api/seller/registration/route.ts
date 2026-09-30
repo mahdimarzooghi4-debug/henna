@@ -198,6 +198,53 @@ export async function GET(request: NextRequest) {
       return error(unavailable, 503);
     }
 
+    const registrationContactName =
+      "registrationContactName" in payload
+        ? payload.registrationContactName : null;
+    const registrationContactRole =
+      "registrationContactRole" in payload
+        ? payload.registrationContactRole : null;
+    const backupPhone = "backupPhone" in payload
+      ? payload.backupPhone : null;
+    const websiteOrSocial = "websiteOrSocial" in payload
+      ? payload.websiteOrSocial : null;
+    const businessEmail = "businessEmail" in payload
+      ? payload.businessEmail : null;
+    const responseHours = "responseHours" in payload
+      ? payload.responseHours : null;
+    const documentsRequired = "documentsRequired" in payload
+      ? payload.documentsRequired : false;
+
+    const optionalText = (
+      value: unknown, max: number,
+    ) => value === null ||
+      (typeof value === "string" &&
+        value.trim().length > 0 && value.length <= max &&
+        !/[\u0000-\u001f\u007f]/.test(value));
+
+    if (completedStep < 6) {
+      if (registrationContactName !== null ||
+        registrationContactRole !== null ||
+        backupPhone !== null || websiteOrSocial !== null ||
+        businessEmail !== null || responseHours !== null)
+        return error(unavailable, 503);
+    } else if (
+      typeof registrationContactName !== "string" ||
+      !registrationContactName.trim() ||
+      registrationContactName.length > 120 ||
+      !optionalText(registrationContactRole, 120) ||
+      !optionalText(websiteOrSocial, 300) ||
+      !optionalText(businessEmail, 254) ||
+      (backupPhone !== null &&
+        (typeof backupPhone !== "string" ||
+          !/^09\d{9}$/.test(backupPhone))) ||
+      typeof responseHours !== "string" ||
+      !responseHours.trim() || responseHours.length > 180 ||
+      documentsRequired !== false
+    ) {
+      return error(unavailable, 503);
+    }
+
     const submittedAtUtc = "submittedAtUtc" in payload
       ? payload.submittedAtUtc : null;
     if (payload.status === "SUBMITTED" &&
@@ -234,6 +281,13 @@ export async function GET(request: NextRequest) {
           sellerDelivery,
           pickup,
           serviceArea,
+          registrationContactName,
+          registrationContactRole,
+          backupPhone,
+          websiteOrSocial,
+          businessEmail,
+          responseHours,
+          documentsRequired,
           completedStep,
         }
         : {
@@ -262,6 +316,13 @@ export async function GET(request: NextRequest) {
           sellerDelivery,
           pickup,
           serviceArea,
+          registrationContactName,
+          registrationContactRole,
+          backupPhone,
+          websiteOrSocial,
+          businessEmail,
+          responseHours,
+          documentsRequired,
           completedStep,
         },
       { headers: noStore });

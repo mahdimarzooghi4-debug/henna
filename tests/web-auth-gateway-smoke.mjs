@@ -300,6 +300,51 @@ async function main() {
             serviceArea: sellerDraft.serviceArea,
           }));
         }
+      } else if (url === "/api/v1/seller/registration/additional-information" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "PUT") {
+        const data = JSON.parse(body);
+        assert.deepEqual(Object.keys(data).sort(), [
+          "backupPhone", "businessEmail", "contactName", "contactRole",
+          "responseHours", "revision", "websiteOrSocial",
+        ].sort());
+        if (sellerDraft?.revision !== data.revision ||
+          sellerDraft?.completedStep !== 5) {
+          response.writeHead(409);
+          response.end(JSON.stringify({ message: "stale additional step" }));
+        } else {
+          assert.equal(data.contactName, "مسئول تکمیلی CI");
+          assert.equal(data.contactRole, "مدیر فروش");
+          assert.equal(data.backupPhone, "09123456780");
+          assert.equal(data.websiteOrSocial, "instagram.com/hana-ci");
+          assert.equal(data.businessEmail, "info@example.com");
+          assert.equal(data.responseHours, "شنبه تا پنجشنبه، ۸ تا ۲۲");
+          sellerDraft = {
+            ...sellerDraft,
+            registrationContactName: data.contactName,
+            registrationContactRole: data.contactRole,
+            backupPhone: data.backupPhone,
+            websiteOrSocial: data.websiteOrSocial,
+            businessEmail: data.businessEmail,
+            responseHours: data.responseHours,
+            documentsRequired: false,
+            completedStep: 6,
+            revision: data.revision + 1,
+          };
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            status: "DRAFT",
+            revision: sellerDraft.revision,
+            completedStep: 6,
+            contactName: sellerDraft.registrationContactName,
+            contactRole: sellerDraft.registrationContactRole,
+            backupPhone: sellerDraft.backupPhone,
+            websiteOrSocial: sellerDraft.websiteOrSocial,
+            businessEmail: sellerDraft.businessEmail,
+            responseHours: sellerDraft.responseHours,
+            documentsRequired: false,
+          }));
+        }
       } else if (url === "/api/v1/seller/registration/submit" &&
         request.headers.authorization === `Bearer ${token}` && !revoked &&
         request.method === "POST") {
@@ -486,6 +531,13 @@ async function main() {
     sellerDelivery: null,
     pickup: null,
     serviceArea: null,
+    registrationContactName: null,
+    registrationContactRole: null,
+    backupPhone: null,
+    websiteOrSocial: null,
+    businessEmail: null,
+    responseHours: null,
+    documentsRequired: false,
     completedStep: 1,
   });
   const sellerStale = await fetch(sellerUrl, {
@@ -752,9 +804,66 @@ async function main() {
   assert.equal((await activitySaved.json()).completedStep, 5);
   assert.equal(sellerDraft.revision, 6);
 
-  // Step 6 is exercised by its own slice. Advance only the in-memory fixture
-  // so the older final-submit gateway remains covered.
-  sellerDraft = { ...sellerDraft, completedStep: 6 };
+  const additionalCsrf = await fetch(
+    sellerUrl + "/additional-information", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: "https://other.test",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contactName: "مسئول تکمیلی CI",
+        contactRole: "مدیر فروش",
+        backupPhone: "09123456780",
+        websiteOrSocial: "instagram.com/hana-ci",
+        businessEmail: "info@example.com",
+        responseHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
+        revision: 6,
+      }),
+    });
+  assert.equal(additionalCsrf.status, 403);
+
+  const additionalUnknown = await fetch(
+    sellerUrl + "/additional-information", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contactName: "مسئول تکمیلی CI",
+        contactRole: "مدیر فروش",
+        backupPhone: "09123456780",
+        websiteOrSocial: "instagram.com/hana-ci",
+        businessEmail: "info@example.com",
+        responseHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
+        revision: 6,
+        documentsRequired: true,
+      }),
+    });
+  assert.equal(additionalUnknown.status, 400);
+
+  const additionalSaved = await fetch(
+    sellerUrl + "/additional-information", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contactName: "مسئول تکمیلی CI",
+        contactRole: "مدیر فروش",
+        backupPhone: "۰۹۱۲۳۴۵۶۷۸۰",
+        websiteOrSocial: "instagram.com/hana-ci",
+        businessEmail: "info@example.com",
+        responseHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
+        revision: 6,
+      }),
+    });
+  assert.equal(additionalSaved.status, 200);
+  assert.equal((await additionalSaved.json()).completedStep, 6);
+  assert.equal(sellerDraft.revision, 7);
+  assert.equal(sellerDraft.documentsRequired, false);
 
   const submissionKey = "0f3b8bc9-61bd-4ca4-8964-7fce65f4e91b";
   const submitCsrf = await fetch(sellerUrl, {
@@ -763,7 +872,7 @@ async function main() {
       Cookie: sessionCookie, Origin: "https://other.test",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 6, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 7, idempotencyKey: submissionKey }),
   });
   assert.equal(submitCsrf.status, 403);
   const submitUnknown = await fetch(sellerUrl, {
@@ -773,7 +882,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      revision: 6, idempotencyKey: submissionKey, status: "ACTIVE",
+      revision: 7, idempotencyKey: submissionKey, status: "ACTIVE",
     }),
   });
   assert.equal(submitUnknown.status, 400);
@@ -783,11 +892,11 @@ async function main() {
       Cookie: sessionCookie, Origin: base,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 6, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 7, idempotencyKey: submissionKey }),
   });
   assert.equal(submitted.status, 200);
   assert.deepEqual(await submitted.json(), {
-    status: "SUBMITTED", revision: 7,
+    status: "SUBMITTED", revision: 8,
     submittedAtUtc: "2026-09-25T12:30:00Z",
   });
   assert.equal(submitted.headers.get("cache-control"), "no-store");

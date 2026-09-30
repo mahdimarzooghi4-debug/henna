@@ -246,6 +246,8 @@ public sealed class SellerRegistrationApiTests
                 .SetProperty(x => x.SellerDelivery, true)
                 .SetProperty(x => x.Pickup, true)
                 .SetProperty(x => x.ServiceArea, "کل شهر")
+                .SetProperty(x => x.RegistrationContactName, "مسئول ثبت CI")
+                .SetProperty(x => x.ResponseHours, "۸ تا ۲۲")
                 .SetProperty(x => x.CompletedStep, 6));
 
         // The Figma "review and submit" step is a single atomic transition.
