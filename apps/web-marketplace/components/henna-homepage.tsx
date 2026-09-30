@@ -162,7 +162,43 @@ export default function HennaHomepage() {
 
       <section className={styles.finalCta}><div className={styles.ctaOverlay}><h2>حنا؛ بازارگاه گرم و عادلانه محله شما</h2><p>همین حالا اولین سبد خرید را پر کنید و مقایسه هوشمندانه قیمت‌ها را در محله‌تان تجربه کنید.</p><div><a href="/products" className={styles.primaryButton}>شروع پر کردن سبد خرید</a><a href="/seller/register" className={styles.ctaSecondary}>ثبت‌نام فروشگاه‌ها</a></div></div></section>
 
-      <footer className={styles.footer}><div className={`${styles.container} ${styles.footerGrid}`}><div className={styles.footerBrand}><img className={styles.logoImage} src="/hana-logo.png" alt="حنا" /><p>حنا بازارگاهی برای خرید هوشمندانه، حمایت اجتماعی و رونق فروشگاه‌های محلی است.</p></div><div><h3>طرح‌های حنا</h3><a href="#offers">تخفیف‌های روزانه</a><a href="#offers">کالابرگ الکترونیک</a><a href="#benefits">طرح‌های حمایتی</a></div><div><h3>همکاری با ما</h3><a href="/seller/register">ثبت‌نام فروشگاه</a><a href="#impact">درباره حنا</a><a href="#impact">تماس با ما</a></div><div><h3>دسترسی سریع</h3><a href="/products">خرید کالا</a><a href="/auth">ورود یا ثبت‌نام</a><a href="#how-it-works">راهنمای خرید</a></div></div><div className={`${styles.container} ${styles.footerBottom}`}><span>© حنا، بازارگاه خرید روزانه و حمایت اجتماعی</span><div><a href="#impact"><img src="/landing/instagram.svg" alt="اینستاگرام" /></a><a href="#impact"><img src="/landing/twitter.svg" alt="توییتر" /></a><a href="#impact"><img src="/landing/linkedin.svg" alt="لینکدین" /></a></div></div></footer>
+      <footer className={styles.footer}>
+        <div className={`${styles.container} ${styles.footerGrid}`}>
+          <div className={`${styles.footerColumn} ${styles.footerSupport}`}>
+            <h3>طرح‌های حمایتی</h3>
+            <a href="#benefits">ثبت‌نام کالابرگ</a>
+            <a href="#benefits">اعتبارات سازمانی</a>
+            <a href="#benefits">کارت‌های معیشتی</a>
+            <a href="#benefits">گزارش شفافیت مالی</a>
+          </div>
+          <div className={`${styles.footerColumn} ${styles.footerCooperation}`}>
+            <h3>همکاری با حنا</h3>
+            <a href="/seller/register">ثبت فروشگاه جدید</a>
+            <a href="/seller">پنل فروشندگان</a>
+            <a href="/seller/register">شرایط همکاری پیک‌ها</a>
+            <a href="/careers">فرصت‌های شغلی</a>
+          </div>
+          <div className={`${styles.footerColumn} ${styles.footerQuickLinks}`}>
+            <h3>دسترسی سریع</h3>
+            <a href="/faq">سوالات متداول</a>
+            <a href="/terms">قوانین و مقررات</a>
+            <a href="#impact">درباره حنا</a>
+            <a href="/support">تماس با پشتیبانی</a>
+          </div>
+          <div className={styles.footerBrand}>
+            <img className={styles.logoImage} src="/hana-logo.png" alt="حنا" />
+            <p>حنا اولین بازارگاه هوشمند اجتماعی برای خریدهای روزمره در ایران است که اولویت خود را بر توسعه عادلانه و حمایت اجتماعی قرار داده است.</p>
+          </div>
+        </div>
+        <div className={`${styles.container} ${styles.footerBottom}`}>
+          <div className={styles.footerSocial}>
+            <a href="#impact" aria-label="اینستاگرام حنا"><img src="/landing/instagram.svg" alt="" /></a>
+            <a href="#impact" aria-label="توییتر حنا"><img src="/landing/twitter.svg" alt="" /></a>
+            <a href="#impact" aria-label="لینکدین حنا"><img src="/landing/linkedin.svg" alt="" /></a>
+          </div>
+          <p className={styles.footerCopyright}>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است.<br />کلیه حقوق برای حنا محفوظ است.</p>
+        </div>
+      </footer>
     </main>
   );
 }
