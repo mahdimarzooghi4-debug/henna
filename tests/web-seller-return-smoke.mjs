@@ -88,6 +88,13 @@ test("200 restores all fields and the EXACT persisted revision together", async 
       legalName: null,
       legalRepresentativeName: null,
       legalRepresentativePhone: null,
+      businessCategoryId: null,
+      businessCategoryName: null,
+      businessName: null,
+      businessDescription: null,
+      businessPhone: null,
+      offeringType: null,
+      completedStep: 1,
     });
   assert.deepEqual(emptySellerFields, {
     storeName: "", ownerName: "", phone: "",
@@ -149,6 +156,13 @@ test("in-flight hydration does not release a draft revision early", async () => 
       legalName: null,
       legalRepresentativeName: null,
       legalRepresentativePhone: null,
+      businessCategoryId: null,
+      businessCategoryName: null,
+      businessName: null,
+      businessDescription: null,
+      businessPhone: null,
+      offeringType: null,
+      completedStep: 1,
     });
   assert.equal(completed, true);
 });
