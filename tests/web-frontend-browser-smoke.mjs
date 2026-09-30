@@ -98,6 +98,31 @@ async function fakeApi(route) {
       completedStep: 2,
     }));
   }
+  if (path === "/api/seller/registration/identity/natural" &&
+    req.method() === "POST") {
+    assert.ok(signedIn, "anonymous form must never verify seller identity");
+    const body = req.postDataJSON();
+    assert.deepEqual(body, {
+      nationalCode: "0084575948",
+      revision: draft?.revision,
+    });
+    assert.equal(draft?.applicantType, "NATURAL");
+    assert.equal(draft?.completedStep, 2);
+    draft = {
+      ...draft,
+      identityStatus: "VERIFIED",
+      nationalCodeMasked: "******5948",
+      completedStep: 3,
+      revision: draft.revision + 1,
+    };
+    return route.fulfill(json({
+      status: "DRAFT",
+      revision: draft.revision,
+      identityStatus: "VERIFIED",
+      nationalCodeMasked: "******5948",
+      completedStep: 3,
+    }));
+  }
   if (path === "/api/seller/registration" && req.method() === "POST") {
     assert.ok(signedIn, "anonymous form must never submit seller registration");
     const body = req.postDataJSON();
@@ -327,10 +352,36 @@ async function main() {
     name: "ثبت درخواست برای بررسی",
   }).count(), 0);
 
+  await otherTab.getByRole("heading", {
+    name: "احراز هویت شخص حقیقی",
+  }).waitFor();
+  await otherTab.locator("#seller-national-code").fill("۰۰۱۲۳۴۵۶۷۸");
+  await otherTab.getByRole("button", { name: "استعلام و ادامه" }).click();
+  await otherTab.getByText("فرمت کد ملی صحیح نیست.").waitFor();
+  assert.equal(draft.revision, 4);
+  assert.equal(draft.completedStep, 2);
+
+  await otherTab.locator("#seller-national-code").fill("۰۰۸۴۵۷۵۹۴۸");
+  await otherTab.getByRole("button", { name: "استعلام و ادامه" }).click();
+  await otherTab.getByText("اطلاعات هویتی تأیید شد.", {
+    exact: true,
+  }).waitFor();
+  assert.equal(draft.identityStatus, "VERIFIED");
+  assert.equal(draft.completedStep, 3);
+  assert.equal(draft.revision, 5);
+  assert.equal(await otherTab.locator("#store-name").isDisabled(), true);
+  assert.equal(await otherTab.getByRole("button", {
+    name: "ثبت درخواست برای بررسی",
+  }).count(), 0);
+
+  await otherTab.reload();
+  await otherTab.getByText("******5948").waitFor();
+  await otherTab.getByText("مرحله بعد «اطلاعات کسب‌وکار» است.").waitFor();
+
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller draft → geography → two-tab merge → applicant type step → submit gated OK");
+  console.log("Chromium CI frontend: OTP → seller draft → applicant type → verified identity step → submit gated OK");
 }
 
 try {
