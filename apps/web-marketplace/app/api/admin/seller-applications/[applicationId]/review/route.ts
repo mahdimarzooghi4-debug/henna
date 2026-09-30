@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import {
   accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCookieName,
 } from "../../../../../../lib/server-auth";
@@ -19,6 +20,23 @@ async function readJson(response: Response): Promise<unknown> {
   return JSON.parse(body) as unknown;
 }
 
+function serverIdempotencyKey(
+  token: string,
+  applicationId: string,
+  revision: number,
+  decision: string,
+  reason: string | null,
+) {
+  const digest = createHash("sha256").update([
+    "hana-admin-review-v1", token, applicationId, String(revision),
+    decision, reason ?? "",
+  ].join("\0")).digest();
+  digest[6] = (digest[6] & 0x0f) | 0x50;
+  digest[8] = (digest[8] & 0x3f) | 0x80;
+  const hex = digest.subarray(0, 16).toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ applicationId: string }> },
@@ -34,12 +52,6 @@ export async function POST(
   if (!request.headers.get("content-type")?.toLowerCase()
     .startsWith("application/json"))
     return error("درخواست معتبر نیست.", 400);
-  const idempotencyKey = request.headers.get("idempotency-key")?.trim() ?? "";
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    .test(idempotencyKey) ||
-    idempotencyKey === "00000000-0000-0000-0000-000000000000")
-    return error("کلید یکتای درخواست معتبر نیست.", 400);
-
   let body: unknown;
   try {
     const raw = await request.text();
@@ -69,6 +81,10 @@ export async function POST(
     ((decision === "NEEDS_INFORMATION" || decision === "REJECTED") &&
       typeof reason !== "string"))
     return error("نتیجه، نسخه یا دلیل بررسی معتبر نیست.", 400);
+
+  const idempotencyKey = serverIdempotencyKey(
+    token, applicationId, input.revision as number, decision,
+    typeof reason === "string" ? reason : null);
 
   const target = hanaAuthApiUrl(
     `/api/v1/admin/seller-applications/${applicationId}/review`);

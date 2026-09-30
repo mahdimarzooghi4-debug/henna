@@ -41,11 +41,13 @@ jobs:
         run: dotnet test Hana.slnx --configuration Release --no-build --filter FullyQualifiedName~CatalogModelSnapshotTests
       - name: Verify Geography migration snapshot matches model
         run: dotnet test Hana.slnx --configuration Release --no-build --filter FullyQualifiedName~GeographyModelSnapshotTests
-      - name: Apply Identity, Seller, Catalog and Geography migrations
+      - name: Verify Organization migration snapshot matches model
+        run: dotnet test Hana.slnx --configuration Release --no-build --filter FullyQualifiedName~OrganizationModelSnapshotTests
+      - name: Apply Identity, Seller, Catalog, Geography and Organization migrations
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
       - name: Confirm repeated migration is harmless
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
-      - name: Test Identity, Seller, Catalog and Geography with real PostgreSQL
+      - name: Test Identity, Seller, Catalog, Geography and Organization with real PostgreSQL
         run: dotnet test Hana.slnx --configuration Release --no-build
       - name: Verify catalog operator preview and apply CLI
         shell: bash
@@ -321,12 +323,22 @@ jobs:
             if curl --fail --silent http://127.0.0.1:3000/auth -o /tmp/hana-auth.html; then
               curl --fail --silent http://127.0.0.1:3000/seller/register -o /tmp/hana-seller.html
               curl --fail --silent http://127.0.0.1:3000/hana-logo.png -o /tmp/hana-logo.png
+              curl --fail --silent http://127.0.0.1:3000/admin/seller-applications -o /tmp/hana-admin-applications.html
+              curl --fail --silent http://127.0.0.1:3000/admin/seller-applications/123e4567-e89b-42d3-a456-426614174000 -o /tmp/hana-admin-application.html
+              curl --fail --silent http://127.0.0.1:3000/admin/organization-funding-instructions -o /tmp/hana-admin-funding-instructions.html
+              curl --fail --silent http://127.0.0.1:3000/admin/organization-funding-instructions/123e4567-e89b-42d3-a456-426614174000 -o /tmp/hana-admin-funding-instruction.html
+              curl --fail --silent http://127.0.0.1:3000/admin-assets/list-imgLogo.png -o /tmp/hana-admin-logo.png
               grep -q 'ورود به حنا' /tmp/hana-auth.html
               grep -q 'ثبت‌نام فروشگاه در حنا' /tmp/hana-seller.html
+              grep -q 'درخواست‌های ثبت‌نام فروشنده' /tmp/hana-admin-applications.html
+              grep -q 'جزئیات درخواست ثبت‌نام فروشنده' /tmp/hana-admin-application.html
+              grep -q 'بررسی دستور منبع سازمان' /tmp/hana-admin-funding-instructions.html
+              grep -q 'بررسی دستور منبع سازمان' /tmp/hana-admin-funding-instruction.html
               # No input is editable until the authenticated draft GET and
               # revision have both been loaded by the client.
               grep -q 'disabled=""' /tmp/hana-seller.html
               test -s /tmp/hana-logo.png
+              test -s /tmp/hana-admin-logo.png
               # Route mutations need an exact same-origin Origin header.
               auth_proxy_status=$(curl --silent --output /tmp/hana-auth-proxy.json --write-out "%{http_code}" -H "Content-Type: application/json" -H "Origin: http://127.0.0.1:3000" -d '{"phone":"09123456789"}' http://127.0.0.1:3000/api/auth/otp/request)
               echo "CI WEB auth_proxy_status=$auth_proxy_status"
@@ -359,6 +371,12 @@ jobs:
               test "$seller_offers_csrf" = "403"
               seller_offers_anonymous_post=$(curl --silent --output /tmp/hana-seller-offers-post.json --write-out "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: http://127.0.0.1:3000" -H "Idempotency-Key: 123e4567-e89b-42d3-a456-426614174001" -d '{"catalogProductId":"123e4567-e89b-42d3-a456-426614174000"}' http://127.0.0.1:3000/api/seller/offers)
               test "$seller_offers_anonymous_post" = "401"
+              admin_funding_anonymous=$(curl --silent --output /tmp/hana-admin-funding-anonymous.json --write-out "%{http_code}" http://127.0.0.1:3000/api/admin/organization-funding-instructions)
+              test "$admin_funding_anonymous" = "401"
+              admin_funding_invalid=$(curl --silent --output /tmp/hana-admin-funding-invalid.json --write-out "%{http_code}" 'http://127.0.0.1:3000/api/admin/organization-funding-instructions?state=UNKNOWN')
+              test "$admin_funding_invalid" = "400"
+              admin_funding_csrf=$(curl --silent --output /tmp/hana-admin-funding-csrf.json --write-out "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: https://malicious.test" -d '{"revision":1,"decision":"VERIFIED"}' http://127.0.0.1:3000/api/admin/organization-funding-instructions/123e4567-e89b-42d3-a456-426614174000/review)
+              test "$admin_funding_csrf" = "403"
               # Without the required HTTPS upstream configuration, public
               # catalog gateway must fail closed, not show an empty catalog.
               for route in categories products products/123e4567-e89b-42d3-a456-426614174000; do
@@ -400,6 +418,8 @@ jobs:
         run: node tests/web-seller-offer-bff-smoke.mjs
       - name: Test Admin seller application read BFF over isolated CI HTTPS
         run: node tests/web-admin-seller-applications-bff-smoke.mjs
+      - name: Test Admin funding instruction review BFF over isolated CI HTTPS
+        run: node tests/web-admin-funding-instructions-bff-smoke.mjs
       - name: Test buyer browse public catalog parsing and query policy
         run: node --experimental-strip-types --test tests/web-buyer-browse-smoke.mjs
       - name: Test web public product detail DTO and ID policy
@@ -426,6 +446,20 @@ jobs:
         run: node tests/web-buyer-product-detail-browser-smoke.mjs
       - name: Browser test saved browse URLs and history across buyer detail
         run: node tests/web-buyer-navigation-browser-smoke.mjs
+      - name: Browser test Admin seller application review UI
+        run: node tests/web-admin-seller-applications-browser-smoke.mjs
+      - name: Browser test Admin organization funding instruction review
+        run: node tests/web-admin-funding-instructions-browser-smoke.mjs
+      - name: Browser test Organization Portal profile
+        run: node tests/web-organization-profile-browser-smoke.mjs
+      - name: Browser test Organization program allocation modes
+        run: node tests/web-organization-programs-browser-smoke.mjs
+      - name: Browser test Organization funding instruction intake
+        run: node tests/web-organization-funding-instruction-browser-smoke.mjs
+      - name: Test Organization funding instruction BFF over isolated CI HTTPS
+        run: node tests/web-organization-funding-instruction-bff-smoke.mjs
+      - name: Browser test Organization household referrals
+        run: node tests/web-organization-household-referrals-browser-smoke.mjs
 
   mobile:
     runs-on: ubuntu-latest
