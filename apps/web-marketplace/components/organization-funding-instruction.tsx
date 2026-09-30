@@ -6,9 +6,10 @@ import { useEffect, useRef, useState } from "react";
 
 type AllocationMode = "HENNA_NEEDS_BASED" | "ORGANIZATION_DEFINED";
 type Program = { programId: string; organizationId: string; organizationName: string; name: string; allocationMode: AllocationMode; description: string; state: "DRAFT"; revision: number; createdAtUtc: string };
-type Instruction = { instructionId: string; programId: string; programRevision: number; allocationMode: AllocationMode; sourceInstructionReference: string; state: "PENDING_VERIFICATION"; revision: number; submittedAtUtc: string };
+type Instruction = { instructionId: string; programId: string; programRevision: number; allocationMode: AllocationMode; sourceInstructionReference: string; state: "PENDING_VERIFICATION" | "VERIFIED" | "REJECTED"; revision: number; submittedAtUtc: string; reviewReason: string | null; reviewedAtUtc: string | null };
 type LoadState = { loading: boolean; program?: Program; instruction?: Instruction; canSubmit: boolean; message?: string };
 const modeLabels: Record<AllocationMode, string> = { HENNA_NEEDS_BASED: "الگوی تخصیص حنا", ORGANIZATION_DEFINED: "انتخاب توسط سازمان" };
+const instructionLabels: Record<Instruction["state"], string> = { PENDING_VERIFICATION: "در انتظار بررسی", VERIFIED: "مرجع بررسی شد", REJECTED: "نیازمند اصلاح مرجع" };
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 
 export function OrganizationFundingInstruction({ programId }: { programId: string }) {
@@ -35,7 +36,7 @@ export function OrganizationFundingInstruction({ programId }: { programId: strin
         const body: unknown = await response.json().catch(() => null);
         if (controller.signal.aborted) return;
         if (response.status === 404) { setState({ loading: false, program, canSubmit }); return; }
-        if (!response.ok || !isRecord(body) || body.programId !== programId || body.state !== "PENDING_VERIFICATION") throw new Error(isRecord(body) && typeof body.message === "string" ? body.message : "وضعیت دستور منبع در دسترس نیست.");
+        if (!response.ok || !isRecord(body) || body.programId !== programId || !["PENDING_VERIFICATION", "VERIFIED", "REJECTED"].includes(String(body.state))) throw new Error(isRecord(body) && typeof body.message === "string" ? body.message : "وضعیت دستور منبع در دسترس نیست.");
         setReference(typeof body.sourceInstructionReference === "string" ? body.sourceInstructionReference : "");
         setState({ loading: false, program, instruction: body as Instruction, canSubmit });
       } catch (error) {
@@ -52,16 +53,19 @@ export function OrganizationFundingInstruction({ programId }: { programId: strin
     const program = state.program;
     const cleanReference = reference.trim();
     if (!program || !state.canSubmit || !cleanReference || cleanReference.length > 160) { setMessage("شماره یا مرجع دستور منبع را بررسی کنید."); return; }
-    const payload = JSON.stringify({ programRevision: program.revision, sourceInstructionReference: cleanReference });
+    const resubmitting = state.instruction?.state === "REJECTED";
+    const payload = JSON.stringify(resubmitting
+      ? { revision: state.instruction!.revision, sourceInstructionReference: cleanReference }
+      : { programRevision: program.revision, sourceInstructionReference: cleanReference });
     if (!idempotency.current || idempotency.current.payload !== payload) idempotency.current = { payload, key: crypto.randomUUID() };
     setBusy(true);
     try {
       const response = await fetch(`/api/organization/programs/${programId}/funding-instruction`, {
-        method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": idempotency.current.key }, body: payload, cache: "no-store",
+        method: resubmitting ? "PUT" : "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": idempotency.current.key }, body: payload, cache: "no-store",
       });
       const body: unknown = await response.json().catch(() => null);
-      if (!response.ok || !isRecord(body) || body.programId !== programId || body.state !== "PENDING_VERIFICATION") {
-        setMessage(isRecord(body) && typeof body.message === "string" ? body.message : "ثبت دستور منبع تأیید نشد."); return;
+      if (!response.ok || !isRecord(body) || body.programId !== programId || !["PENDING_VERIFICATION", "VERIFIED", "REJECTED"].includes(String(body.state))) {
+        setMessage(isRecord(body) && typeof body.message === "string" ? body.message : resubmitting ? "ارسال مجدد دستور منبع تأیید نشد." : "ثبت دستور منبع تأیید نشد."); return;
       }
       setReference(typeof body.sourceInstructionReference === "string" ? body.sourceInstructionReference : cleanReference);
       setState(current => ({ ...current, instruction: body as Instruction }));
@@ -82,11 +86,11 @@ export function OrganizationFundingInstruction({ programId }: { programId: strin
         {state.loading ? <p role="status">در حال دریافت اطلاعات طرح…</p> : state.message ? <div className="organization-notice" role="alert">{state.message}</div> : state.program ? <>
           <div className="organization-detail-notice"><strong>مرجع دستور تأمین مالی را ثبت یا پیگیری کنید.</strong><span>ثبت مرجع، وصول وجه یا تأیید اختیار منبع را اثبات نمی‌کند.</span></div>
           <div className="organization-detail-grid">
-            <section className="organization-detail-card"><h2>اطلاعات پایه تخصیص</h2><dl><div><dt>طرح مرتبط</dt><dd>{state.program.name}</dd></div><div><dt>روش تخصیص ثبت‌شده</dt><dd>{modeLabels[state.program.allocationMode]}</dd></div><div><dt>مرجع دستور منبع</dt><dd>{state.instruction?.sourceInstructionReference ?? "ثبت نشده"}</dd></div><div><dt>وضعیت دستور</dt><dd>{state.instruction ? "در انتظار بررسی" : "ثبت نشده"}</dd></div></dl></section>
-            <section className="organization-detail-card"><h2>وضعیت بررسی</h2><dl><div><dt>نتیجه بررسی منبع</dt><dd>{state.instruction ? "در انتظار بررسی" : "ثبت دستور لازم است"}</dd></div><div><dt>تخصیص نهایی</dt><dd>هنوز انجام نشده است</dd></div><div><dt>وضعیت مالی</dt><dd>در این مرحله ثبت نمی‌شود</dd></div></dl></section>
+            <section className="organization-detail-card"><h2>اطلاعات پایه تخصیص</h2><dl><div><dt>طرح مرتبط</dt><dd>{state.program.name}</dd></div><div><dt>روش تخصیص ثبت‌شده</dt><dd>{modeLabels[state.program.allocationMode]}</dd></div><div><dt>مرجع دستور منبع</dt><dd>{state.instruction?.sourceInstructionReference ?? "ثبت نشده"}</dd></div><div><dt>وضعیت دستور</dt><dd>{state.instruction ? instructionLabels[state.instruction.state] : "ثبت نشده"}</dd></div></dl></section>
+            <section className="organization-detail-card"><h2>وضعیت بررسی</h2><dl><div><dt>نتیجه بررسی منبع</dt><dd>{state.instruction ? instructionLabels[state.instruction.state] : "ثبت دستور لازم است"}</dd></div>{state.instruction?.reviewReason && <div><dt>دلیل اعلام‌شده</dt><dd>{state.instruction.reviewReason}</dd></div>}<div><dt>تخصیص نهایی</dt><dd>هنوز انجام نشده است</dd></div><div><dt>وضعیت مالی</dt><dd>در این مرحله ثبت نمی‌شود</dd></div></dl></section>
           </div>
-          {state.instruction ? <p className="organization-finance-boundary"><strong>مرجع ثبت شد؛ بررسی منبع هنوز انجام نشده است.</strong> در این برش فقط مرجع دستور سازمان و روش ثبت‌شده نگهداری می‌شود. مبلغ، موجودی، مشمول یا نتیجه تخصیص مالی نمایش داده نمی‌شود.</p> : <section className="organization-detail-card organization-instruction-form"><h2>ثبت مرجع دستور تأمین مالی</h2><p>شماره نامه یا شناسه دستور رسمی صادرشده از سازمان را وارد کنید. فعلاً مبلغ و اطلاعات مشمولان در این فرم ثبت نمی‌شود.</p>
-            {state.canSubmit ? <form onSubmit={submit}><label className="organization-field">شماره یا مرجع دستور منبع<input value={reference} onChange={event => setReference(event.target.value)} maxLength={160} required autoComplete="off" placeholder="مرجع ثبت‌شده در سازمان" /></label>{message && <p role="alert" className="organization-form-message">{message}</p>}<button className="organization-primary-button" type="submit" disabled={busy}>{busy ? "در حال ثبت…" : "ثبت برای بررسی"}</button></form> : <p className="organization-notice">نقش این حساب اجازه ثبت دستور منبع ندارد؛ با مسئول دارای دسترسی هماهنگ شوید.</p>}
+          {state.instruction && state.instruction.state !== "REJECTED" ? <p className="organization-finance-boundary"><strong>{state.instruction.state === "VERIFIED" ? "مرجع دستور بررسی شد." : "مرجع ثبت شد؛ در انتظار بررسی است."}</strong> وضعیت بررسی به معنی تأیید موجودی یا تخصیص مالی نیست. مبلغ، موجودی، مشمول یا نتیجه تخصیص نمایش داده نمی‌شود.</p> : <section className="organization-detail-card organization-instruction-form"><h2>{state.instruction ? "اصلاح مرجع دستور تأمین مالی" : "ثبت مرجع دستور تأمین مالی"}</h2><p>{state.instruction ? "مرجع اصلاح‌شده را وارد کنید تا دوباره برای بررسی فرستاده شود." : "شماره نامه یا شناسه دستور رسمی صادرشده از سازمان را وارد کنید. فعلاً مبلغ و اطلاعات مشمولان در این فرم ثبت نمی‌شود."}</p>
+            {state.canSubmit ? <form onSubmit={submit}><label className="organization-field">شماره یا مرجع دستور منبع<input value={reference} onChange={event => setReference(event.target.value)} maxLength={160} required autoComplete="off" placeholder="مرجع ثبت‌شده در سازمان" /></label>{message && <p role="alert" className="organization-form-message">{message}</p>}<button className="organization-primary-button" type="submit" disabled={busy}>{busy ? "در حال ثبت…" : state.instruction ? "ارسال مجدد برای بررسی" : "ثبت برای بررسی"}</button></form> : <p className="organization-notice">نقش این حساب اجازه ثبت دستور منبع ندارد؛ با مسئول دارای دسترسی هماهنگ شوید.</p>}
           </section>}
         </> : null}
       </section>

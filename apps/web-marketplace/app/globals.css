@@ -703,6 +703,33 @@ a { color: inherit; }
 .admin-detail-list--status .admin-detail-field { align-items: center; }
 .admin-no-documents { margin: 0; padding: 14px; border-radius: 9px; background: #faf8f5; color: #706963; font-size: 13px; }
 
+.admin-funding-table { min-width: 980px; }
+.admin-funding-table .admin-table__row {
+  grid-template-columns: minmax(130px, 1.1fr) minmax(130px, 1fr) minmax(145px, 1.1fr) minmax(150px, 1.1fr) 130px 125px 110px;
+}
+.admin-funding-table .admin-table__row > span { line-height: 1.7; }
+.admin-funding-warning {
+  padding: 14px 18px;
+  border: 1px solid #f0d5cf;
+  border-radius: 11px;
+  background: #fff3f0;
+  color: #8f4435;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.admin-funding-detail-card { display: grid; gap: 4px; }
+.admin-funding-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; }
+.admin-funding-fields .admin-detail-field { border-bottom: 1px solid #f0ede9; padding: 8px 0; }
+.admin-funding-fields .admin-detail-field:last-child { border-bottom: 0; }
+.admin-funding-history { display: grid; gap: 8px; }
+.admin-funding-history__list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.admin-funding-history__list li { padding: 14px 16px; border: 1px solid #eae6e1; border-radius: 10px; background: #fff; }
+.admin-funding-history__list li > div { display: flex; justify-content: space-between; gap: 16px; }
+.admin-funding-history__list strong { color: #1c3f3a; font-size: 13px; }
+.admin-funding-history__list time { flex: 0 0 auto; color: #706963; font-size: 11px; }
+.admin-funding-history__list p { margin: 6px 0 0; color: #706963; font-size: 12px; overflow-wrap: anywhere; }
+.admin-funding-history__list b { color: #2d2d2d; font-weight: 600; }
+
 @media (max-width: 1100px) {
   .admin-sidebar { width: 240px; min-width: 240px; }
   .admin-content { padding: 30px 24px; }
@@ -723,6 +750,8 @@ a { color: inherit; }
   .admin-pagination { align-items: flex-start; flex-direction: column; }
   .admin-detail-heading { align-items: flex-start; flex-direction: column; }
   .admin-detail-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "status" "business" "identity" "documents"; }
+  .admin-funding-fields { grid-template-columns: minmax(0, 1fr); }
+  .admin-funding-history__list li > div { align-items: flex-start; flex-direction: column; gap: 2px; }
 }
 
 .seller-activity {

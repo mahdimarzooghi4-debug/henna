@@ -40,7 +40,7 @@ public sealed class OrganizationAllocationPreviews : Migration
                 table.CheckConstraint("ck_organization_allocation_previews_revision", "program_revision = 1");
                 table.CheckConstraint("ck_organization_allocation_previews_mode", "allocation_mode IN ('HENNA_NEEDS_BASED','ORGANIZATION_DEFINED')");
                 table.CheckConstraint("ck_organization_allocation_previews_source", "funding_source = 'ORGANIZATION'");
-                table.CheckConstraint("ck_organization_allocation_previews_instruction_state", "funding_instruction_state = 'PENDING_VERIFICATION'");
+                table.CheckConstraint("ck_organization_allocation_previews_instruction_state", "funding_instruction_state IN ('PENDING_VERIFICATION','VERIFIED')");
                 table.CheckConstraint("ck_organization_allocation_previews_state", "state = 'PREVIEW_ONLY'");
                 table.CheckConstraint("ck_organization_allocation_previews_hash", "payload_sha256 ~ '^[a-f0-9]{64}$'");
                 table.ForeignKey("fk_organization_allocation_previews_organizations", x => x.organization_id,

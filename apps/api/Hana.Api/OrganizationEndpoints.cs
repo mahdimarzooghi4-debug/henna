@@ -402,10 +402,10 @@ internal static class OrganizationEndpoints
                 var program = await db.Programs.AsNoTracking().SingleOrDefaultAsync(x => x.Id == programId, cancellationToken);
                 if (program is null) return Results.NotFound();
                 var fundingInstruction = await db.FundingInstructions.AsNoTracking().SingleOrDefaultAsync(x => x.ProgramId == programId, cancellationToken);
-                if (fundingInstruction is null || fundingInstruction.State != "PENDING_VERIFICATION" ||
+                if (fundingInstruction is null || fundingInstruction.State != "VERIFIED" ||
                     fundingInstruction.ProgramRevision != program.Revision || program.State != "DRAFT" ||
                     fundingInstruction.AllocationMode != program.AllocationMode || input.ProgramRevision != program.Revision)
-                    return Results.Conflict(new { message = "دستور تأمین مالی قابل بررسی نیست؛ preview فقط روی دستور ثبت‌شده و در انتظار راستی‌آزمایی انجام می‌شود." });
+                    return Results.Conflict(new { message = "دستور تأمین مالی قابل بررسی نیست؛ preview فقط روی دستور ثبت‌شده و تأییدشده انجام می‌شود." });
 
                 var isNeedsBased = program.AllocationMode == OrganizationAllocationModes.HennaNeedsBased;
                 var isOrganizationDefined = program.AllocationMode == OrganizationAllocationModes.OrganizationDefined;
@@ -585,7 +585,8 @@ internal static class OrganizationEndpoints
         instructionId = instruction.Id, programId = instruction.ProgramId,
         programRevision = instruction.ProgramRevision, allocationMode = instruction.AllocationMode,
         sourceInstructionReference = instruction.SourceInstructionReference, state = instruction.State,
-        revision = instruction.Revision, submittedAtUtc = instruction.SubmittedAtUtc
+        revision = instruction.Revision, submittedAtUtc = instruction.SubmittedAtUtc,
+        reviewReason = instruction.ReviewReason, reviewedAtUtc = instruction.ReviewedAtUtc
     };
 
     private static object HouseholdReferralProjection(OrganizationHouseholdReferralRecord referral, IReadOnlyCollection<OrganizationHouseholdMemberRecord> members) => new
