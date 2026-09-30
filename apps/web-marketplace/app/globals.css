@@ -1159,3 +1159,22 @@ a { color: inherit; }
     flex-direction: column;
   }
 }
+
+.seller-status-card__review-note {
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #e2d9cd;
+  border-radius: 14px;
+  background: #fffaf3;
+}
+.seller-status-card__review-note strong {
+  color: #1c3f3a;
+}
+.seller-status-card__review-note p {
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+.seller-status-card__review-note time {
+  color: var(--hana-muted);
+  font-size: 12px;
+}
