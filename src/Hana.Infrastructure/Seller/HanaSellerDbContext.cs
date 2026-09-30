@@ -11,10 +11,58 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
 {
     public DbSet<SellerRegistrationDraft> RegistrationDrafts =>
         Set<SellerRegistrationDraft>();
+    public DbSet<SellerBusinessCategoryRecord> BusinessCategories =>
+        Set<SellerBusinessCategoryRecord>();
+    public DbSet<SellerBusinessCategoryImportReceipt> BusinessCategoryImportReceipts =>
+        Set<SellerBusinessCategoryImportReceipt>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("seller");
+        modelBuilder.Entity<SellerBusinessCategoryRecord>(entity =>
+        {
+            entity.ToTable("business_categories", table =>
+            {
+                table.HasCheckConstraint("ck_business_categories_name",
+                    "char_length(btrim(name)) BETWEEN 1 AND 120");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.Name).HasColumnName("name")
+                .HasMaxLength(120).IsRequired();
+            entity.Property(x => x.IsActive).HasColumnName("is_active")
+                .IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
+                .IsRequired();
+            entity.HasIndex(x => new { x.IsActive, x.Name })
+                .HasDatabaseName("ix_business_categories_active_name");
+            entity.HasIndex(x => x.Name)
+                .IsUnique()
+                .HasDatabaseName("ux_business_categories_name");
+        });
+
+        modelBuilder.Entity<SellerBusinessCategoryImportReceipt>(entity =>
+        {
+            entity.ToTable("business_category_import_receipts", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_business_category_import_receipts_counts",
+                    "new_categories >= 0 AND changed_categories >= 0");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.ContentSha256).HasColumnName("content_sha256")
+                .HasMaxLength(64).IsRequired();
+            entity.Property(x => x.AppliedAtUtc).HasColumnName("applied_at_utc")
+                .IsRequired();
+            entity.Property(x => x.NewCategories).HasColumnName("new_categories")
+                .IsRequired();
+            entity.Property(x => x.ChangedCategories).HasColumnName("changed_categories")
+                .IsRequired();
+        });
+
         modelBuilder.Entity<SellerRegistrationDraft>(entity =>
         {
             entity.ToTable("registration_drafts", table =>
@@ -35,6 +83,11 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                     "(completed_step < 3 AND identity_status IS NULL AND natural_national_code IS NULL AND legal_national_id IS NULL AND legal_name IS NULL AND legal_representative_name IS NULL AND legal_representative_phone IS NULL) OR " +
                     "(completed_step >= 3 AND applicant_type = 'NATURAL' AND identity_status = 'VERIFIED' AND natural_national_code IS NOT NULL AND legal_national_id IS NULL AND legal_name IS NULL AND legal_representative_name IS NULL AND legal_representative_phone IS NULL) OR " +
                     "(completed_step >= 3 AND applicant_type = 'LEGAL' AND identity_status = 'RECORDED' AND natural_national_code IS NULL AND legal_national_id IS NOT NULL AND legal_name IS NOT NULL AND legal_representative_name IS NOT NULL AND legal_representative_phone IS NOT NULL)");
+                table.HasCheckConstraint("ck_registration_offering_type",
+                    "offering_type IS NULL OR offering_type IN ('GOOD', 'SERVICE', 'BOTH')");
+                table.HasCheckConstraint("ck_registration_business_shape",
+                    "(completed_step < 4 AND business_category_id IS NULL AND business_name IS NULL AND business_description IS NULL AND business_phone IS NULL AND offering_type IS NULL) OR " +
+                    "(completed_step >= 4 AND business_category_id IS NOT NULL AND business_name IS NOT NULL AND business_description IS NOT NULL AND business_phone IS NOT NULL AND offering_type IS NOT NULL AND char_length(btrim(business_name)) BETWEEN 1 AND 180 AND char_length(btrim(business_description)) BETWEEN 1 AND 500 AND business_phone ~ '^0[0-9]{10}$' AND offering_type IN ('GOOD', 'SERVICE', 'BOTH'))");
                 table.HasCheckConstraint("ck_registration_submitted_completed",
                     "status <> 'SUBMITTED' OR completed_step = 6 OR (completed_step = 1 AND applicant_type IS NULL)");
                 table.HasCheckConstraint("ck_registration_submission_metadata",
@@ -69,6 +122,15 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasColumnName("legal_representative_phone").HasMaxLength(11);
             entity.Property(x => x.IdentityStatus).HasColumnName("identity_status")
                 .HasMaxLength(16);
+            entity.Property(x => x.BusinessCategoryId).HasColumnName("business_category_id");
+            entity.Property(x => x.BusinessName).HasColumnName("business_name")
+                .HasMaxLength(180);
+            entity.Property(x => x.BusinessDescription).HasColumnName("business_description")
+                .HasMaxLength(500);
+            entity.Property(x => x.BusinessPhone).HasColumnName("business_phone")
+                .HasMaxLength(11);
+            entity.Property(x => x.OfferingType).HasColumnName("offering_type")
+                .HasMaxLength(16);
             entity.Property(x => x.CompletedStep).HasColumnName("completed_step")
                 .HasDefaultValue(1).IsRequired();
             entity.Property(x => x.Status).HasColumnName("status")
@@ -81,6 +143,12 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
             entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
                 .IsRequired();
+            entity.HasIndex(x => x.BusinessCategoryId)
+                .HasDatabaseName("ix_registration_drafts_business_category_id");
+            entity.HasOne<SellerBusinessCategoryRecord>().WithMany()
+                .HasForeignKey(x => x.BusinessCategoryId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_registration_drafts_business_categories_business_category_id");
         });
     }
 }
