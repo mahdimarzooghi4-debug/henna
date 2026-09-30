@@ -186,3 +186,32 @@
 /* Right-align the impact section heading on the same edge as its copy. */
 .impactInner h2{align-self:flex-start;text-align:right}
 .impactInner .eyebrow{align-self:flex-start;text-align:right}
+
+/* Match the Figma final CTA frame and its full-bleed patterned backdrop. */
+.finalCta{height:365px;min-height:365px;padding:0;position:relative;isolation:isolate;overflow:hidden;background:var(--green) url('/landing/figma/final-cta-pattern.svg') center/cover no-repeat}
+.finalCta::before{content:"";position:absolute;inset:0;z-index:0;background:rgba(28,63,58,.92)}
+.ctaOverlay{position:relative;z-index:1;width:100%;height:100%;min-height:0;padding:80px 20px;background:transparent;gap:24px}
+.ctaOverlay h2{font-size:32px;line-height:1.4;margin:0}
+.ctaOverlay p{width:min(640px,100%);font-size:16px;line-height:1.55;color:var(--beige);margin:0}
+.ctaOverlay>div{direction:rtl;gap:16px;padding-top:12px}
+.ctaOverlay .primaryButton,.ctaOverlay .ctaSecondary{min-height:50px;border-radius:12px;padding:14px 32px;font-size:16px}
+
+/* Footer content positions follow the 1440px Figma footer frame. */
+.footerGrid{align-items:start}
+.footerBrand{gap:16px}
+.footerBrand .logoImage{width:147px;height:58px;object-fit:contain}
+.footerBrand p{width:320px;max-width:320px;font-size:13px;line-height:20px}
+.footerBottom{height:64px}
+
+@media(max-width:640px){
+  .finalCta{height:auto;min-height:280px;padding:32px 16px}
+  .ctaOverlay{height:auto;min-height:0;padding:0 10px;gap:16px}
+  .ctaOverlay h2{font-size:21px}
+  .ctaOverlay p{font-size:12px}
+  .ctaOverlay>div{flex-wrap:wrap;justify-content:center;padding-top:4px;gap:8px}
+  .ctaOverlay .primaryButton,.ctaOverlay .ctaSecondary{min-height:40px;padding:8px 14px;font-size:12px}
+  .footerBrand{gap:12px}
+  .footerBrand .logoImage{width:120px;height:auto}
+  .footerBrand p{width:auto;max-width:100%;line-height:1.5}
+  .footerBottom{height:auto}
+}
