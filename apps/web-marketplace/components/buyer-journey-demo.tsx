@@ -113,6 +113,8 @@ export function BuyerJourneyDemo({ screen }: { screen: Screen }) {
       total: selectedStore.price,
     };
     window.localStorage.setItem(BUYER_DEMO_ORDER_KEY, JSON.stringify(saved));
+    writeBuyerDemoCart([]);
+    setItems([]);
     setOrder(saved);
     setError("");
     router.push("/order-success");
