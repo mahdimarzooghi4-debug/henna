@@ -609,7 +609,13 @@ async function main() {
     "final submit must require explicit confirmation");
   await otherTab.getByLabel("صحت اطلاعات واردشده را تأیید می‌کنم.").check();
   assert.equal(await finalSubmit.isDisabled(), false);
+  const submitResponsePromise = otherTab.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/seller/registration" &&
+    response.request().method() === "POST");
   await finalSubmit.click();
+  const submitResponse = await submitResponsePromise;
+  assert.equal(submitResponse.status(), 200);
+  assert.equal((await submitResponse.json()).status, "SUBMITTED");
   await otherTab.getByRole("heading", { name: "درخواست ثبت شد" }).waitFor();
   assert.equal(draft.status, "SUBMITTED");
   assert.equal(draft.revision, 9);
