@@ -98,7 +98,7 @@ export default function HennaHomepage() {
             <span className={styles.divider} />
             <a className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها</a>
           </div>
-          <a href="/" className={styles.brand} aria-label="حنا، صفحه اصلی"><img className={styles.logoImage} src="/landing/figma/hana-logo.png" alt="حنا" /></a>
+          <a href="/" className={styles.brand} aria-label="حنا، صفحه اصلی"><img className={styles.logoImage} src="/hana-logo.png" alt="حنا" /></a>
           <form className={styles.search} action="/products">
             <input name="q" placeholder="جست‌وجوی نان، لبنیات، برنج و اقلام روزانه..." aria-label="جستجو" />
             <button aria-label="جستجو"><img src="/landing/search.svg" alt="" /></button>
@@ -185,7 +185,7 @@ export default function HennaHomepage() {
             <a href="/support">تماس با پشتیبانی</a>
           </div>
           <div className={styles.footerBrand}>
-            <img className={styles.logoImage} src="/landing/figma/hana-logo.png" alt="حنا" />
+            <img className={styles.logoImage} src="/hana-logo.png" alt="حنا" />
             <p>حنا اولین بازارگاه هوشمند اجتماعی برای خریدهای روزمره در ایران است که اولویت خود را بر توسعه عادلانه و حمایت اجتماعی قرار داده است.</p>
           </div>
         </div>

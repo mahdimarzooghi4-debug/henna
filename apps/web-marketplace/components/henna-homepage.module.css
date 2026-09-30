@@ -219,18 +219,20 @@
 /* Use the original 147×58 Figma logo badge in both desktop brand positions. */
 @media(min-width:901px){
   .brand{width:147px}
-  .brand .logoImage{width:147px;height:58px;object-fit:contain}
+  .brand .logoImage{width:147px;height:58px;object-fit:cover;object-position:center}
   .footerBrand{width:320px;align-items:flex-end;gap:16px}
-  .footerBrand .logoImage{width:147px;height:58px;object-fit:contain}
+  .footerBrand .logoImage{width:147px;height:58px;object-fit:cover;object-position:center}
   .footerBrand p{width:320px;max-width:320px;height:60px;line-height:20px}
   .footerGrid{grid-template-columns:109px 116px 94px 320px;justify-content:space-between;gap:0;margin-bottom:48px;padding-bottom:0}
   .footerBottom{direction:ltr;display:flex;align-items:center;justify-content:space-between;height:64px;padding-top:24px}
+  .footerSupport{align-items:stretch}
+  .footerSupport h3,.footerSupport a{width:100%;text-align:right}
 }
 
 @media(max-width:640px){
   .brand{width:120px}
-  .brand .logoImage{width:120px;height:auto}
+  .brand .logoImage{width:120px;height:47px;object-fit:cover;object-position:center}
   .footerBrand{width:100%;align-items:flex-start;gap:12px}
-  .footerBrand .logoImage{width:120px;height:auto}
+  .footerBrand .logoImage{width:120px;height:47px;object-fit:cover;object-position:center}
   .footerBrand p{width:auto;max-width:100%;height:auto;line-height:1.5}
 }
