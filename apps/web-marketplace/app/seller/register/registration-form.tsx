@@ -42,6 +42,8 @@ export function RegistrationForm() {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
+  const [submitKey, setSubmitKey] = useState<string | null>(null);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
   const conflictHeading = useRef<HTMLHeadingElement>(null);
   const preflightAbort = useRef<AbortController | null>(null);
@@ -72,13 +74,16 @@ export function RegistrationForm() {
         setAccess("signedIn");
         return;
       }
-      // A complete draft and its actual revision arrive together before
-      // any field can become editable.
       setFields(result.fields);
       setBaseline(result.fields);
       setSaved(true);
       setRevision(result.revision);
-      setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
+      if (result.status === "submitted") {
+        setSubmittedAtUtc(result.submittedAtUtc);
+        setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
+      } else {
+        setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
+      }
       setAccess("signedIn");
     });
   }
@@ -134,7 +139,7 @@ export function RegistrationForm() {
   }, [hasUnsavedChanges]);
 
   function update(field: keyof SellerFields, value: string) {
-    if (access !== "signedIn" || busy || conflict) return;
+    if (access !== "signedIn" || busy || conflict || submittedAtUtc) return;
     setSaved(false);
     setFields((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => {
@@ -242,7 +247,7 @@ export function RegistrationForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || access !== "signedIn" || conflict) return;
+    if (busy || access !== "signedIn" || conflict || submittedAtUtc) return;
     const validation = validateSellerDraft(fields);
     const next = validation.values;
     setFields(next);
@@ -303,6 +308,47 @@ export function RegistrationForm() {
     }
   }
 
+  async function submitForReview() {
+    if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
+      revision < 1 || hasUnsavedChanges) return;
+    const key = submitKey ?? crypto.randomUUID();
+    setSubmitKey(key);
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/seller/registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ revision, idempotencyKey: key }),
+        cache: "no-store",
+      });
+      if (response.ok) {
+        const result: unknown = await response.json();
+        if (result && typeof result === "object" &&
+          "status" in result && result.status === "SUBMITTED" &&
+          "revision" in result && typeof result.revision === "number" &&
+          "submittedAtUtc" in result &&
+          typeof result.submittedAtUtc === "string") {
+          setRevision(result.revision);
+          setSubmittedAtUtc(result.submittedAtUtc);
+          setSaved(true);
+          setMessage("درخواست فروشندگی برای بررسی ثبت شد. ثبت درخواست به معنی تأیید یا فعال‌شدن فروشگاه نیست.");
+          return;
+        }
+      }
+      if (response.status === 401) setAccess("signedOut");
+      setMessage(response.status === 409
+        ? "نسخهٔ پیش‌نویس تغییر کرده یا درخواست قبلاً ثبت شده است. وضعیت را دوباره بررسی کنید."
+        : response.status === 401
+          ? "نشست شما پایان یافته است؛ درخواست ثبت نشد."
+          : "ثبت درخواست تأیید نشد؛ لطفاً دوباره تلاش کنید.");
+    } catch {
+      setMessage("ثبت درخواست تأیید نشد؛ لطفاً دوباره تلاش کنید.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const readyConflict = conflict?.status === "ready" ? conflict : null;
   const differences = readyConflict
     ? sellerFieldDifferences(fields, readyConflict.fields)
@@ -341,38 +387,67 @@ export function RegistrationForm() {
         <div className="seller-fields">
           <FormField id="store-name" label="نام فروشگاه" placeholder="مثلاً سوپرمارکت بهار"
             maxLength={120} value={fields.storeName} error={Boolean(fieldErrors.storeName)} errorMessage={fieldErrors.storeName} required
-            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("storeName", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("storeName", e.target.value)} />
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
             maxLength={120} autoComplete="name" value={fields.ownerName} error={Boolean(fieldErrors.ownerName)} errorMessage={fieldErrors.ownerName} required
-            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("ownerName", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("ownerName", e.target.value)} />
           <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
             className="field__input--phone" value={fields.phone} error={Boolean(fieldErrors.phone)} errorMessage={fieldErrors.phone} required
-            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("phone", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("phone", e.target.value)} />
           <FormField id="city" label="شهر / منطقه" placeholder="شهر و محدوده فعالیت"
             maxLength={120} value={fields.city} error={Boolean(fieldErrors.city)} errorMessage={fieldErrors.city} required
-            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("city", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("city", e.target.value)} />
           <SellerLocationReference
             enabled={access === "signedIn" && !busy && conflict === null}
             onChoose={(value) => update("city", value)} />
           <FormField id="store-address" label="آدرس فروشگاه" placeholder="نشانی کامل فروشگاه"
             maxLength={500} autoComplete="street-address" value={fields.address} error={Boolean(fieldErrors.address)} errorMessage={fieldErrors.address} required
-            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("address", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("address", e.target.value)} />
           <FormField id="postal-code" label="کدپستی" placeholder="کدپستی ۱۰ رقمی"
             inputMode="numeric" autoComplete="postal-code" maxLength={10}
             className="field__input--phone" value={fields.postalCode}
             error={Boolean(fieldErrors.postalCode)} errorMessage={fieldErrors.postalCode} required
-            disabled={busy || access !== "signedIn" || conflict !== null} onChange={(e) => update("postalCode", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("postalCode", e.target.value)} />
         </div>
         <aside className="account-note">
-          <p>پس از ثبت اطلاعات، احراز هویت و مدارک صنفی در مرحله بعد تکمیل می‌شود.</p>
+          <p>این برش، مرحله «بازبینی و ثبت» فیگما را برای همین اطلاعات ذخیره‌شده فعال می‌کند. ثبت درخواست به معنی تأیید فروشندگی یا فعال‌شدن فروشگاه نیست.</p>
         </aside>
-        <button className="primary-button" type="submit"
-          disabled={busy || access !== "signedIn" || conflict !== null}>
-          {busy ? "در حال ذخیره…" :
-            revision > 0 ? "ذخیره تغییرات پیش‌نویس" :
-              "ثبت اطلاعات و ادامه"}
-        </button>
+        {!submittedAtUtc && (
+          <button className="primary-button" type="submit"
+            disabled={busy || access !== "signedIn" || conflict !== null}>
+            {busy ? "در حال ذخیره…" :
+              revision > 0 ? "ذخیره تغییرات پیش‌نویس" :
+                "ثبت اطلاعات و ادامه"}
+          </button>
+        )}
+        {revision > 0 && !submittedAtUtc && (
+          <section className="seller-review" aria-labelledby="seller-review-heading">
+            <h3 id="seller-review-heading">بازبینی و ثبت</h3>
+            <p>درخواست فقط از آخرین نسخهٔ ذخیره‌شده ثبت می‌شود. پس از ثبت، این نسخه دیگر قابل ویرایش نیست.</p>
+            <button type="button" className="auth-card__secondary"
+              disabled={busy || access !== "signedIn" || conflict !== null ||
+                hasUnsavedChanges}
+              onClick={() => void submitForReview()}>
+              {busy ? "در حال ثبت…" : "ثبت درخواست برای بررسی"}
+            </button>
+            {hasUnsavedChanges && (
+              <p className="seller-conflict__hint">ابتدا تغییرات فعلی را ذخیره کنید؛ درخواست از متن ذخیره‌نشده ساخته نمی‌شود.</p>
+            )}
+          </section>
+        )}
+        {submittedAtUtc && (
+          <section className="seller-review" aria-labelledby="seller-status-heading">
+            <h3 id="seller-status-heading">وضعیت درخواست</h3>
+            <p role="status">درخواست شما ثبت شده و در انتظار بررسی است.</p>
+            <p>زمان ثبت: <time dateTime={submittedAtUtc}>
+              {new Intl.DateTimeFormat("fa-IR", {
+                dateStyle: "medium", timeStyle: "short",
+              }).format(new Date(submittedAtUtc))}
+            </time></p>
+            <p>این وضعیت هیچ مجوز فروشندگی، دسترسی پنل یا فعال‌سازی فروشگاه ایجاد نمی‌کند.</p>
+          </section>
+        )}
         {conflict && access === "signedIn" && (
           <section className="seller-conflict"
             aria-labelledby="seller-conflict-heading">

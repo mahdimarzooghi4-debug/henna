@@ -15,5 +15,8 @@ public sealed class SellerRegistrationDraft
     public string PostalCode { get; set; } = null!;
     public string Status { get; set; } = "DRAFT";
     public int Revision { get; set; } = 1;
+    public Guid? SubmissionKey { get; set; }
+    public int? SubmissionExpectedRevision { get; set; }
+    public DateTimeOffset? SubmittedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

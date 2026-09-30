@@ -22,7 +22,13 @@ export type SellerPreflight =
   | { status: "signedOut" }
   | { status: "unavailable" }
   | { status: "new"; revision: 0 }
-  | { status: "restored"; revision: number; fields: SellerFields };
+  | { status: "restored"; revision: number; fields: SellerFields }
+  | {
+    status: "submitted";
+    revision: number;
+    fields: SellerFields;
+    submittedAtUtc: string;
+  };
 
 export async function loadSellerDraft(
   fetchFn: typeof fetch = fetch,
@@ -38,7 +44,8 @@ export async function loadSellerDraft(
 
     const draft: unknown = await response.json();
     if (!draft || typeof draft !== "object" ||
-      !("status" in draft) || draft.status !== "DRAFT" ||
+      !("status" in draft) ||
+      (draft.status !== "DRAFT" && draft.status !== "SUBMITTED") ||
       !("revision" in draft) || typeof draft.revision !== "number" ||
       !Number.isSafeInteger(draft.revision) ||
       draft.revision < 1 || draft.revision >= 2147483647)
@@ -48,11 +55,21 @@ export async function loadSellerDraft(
     if (!sellerFieldKeys.every((key) => typeof values[key] === "string"))
       return { status: "unavailable" };
 
-    return {
-      status: "restored", revision: draft.revision,
-      fields: Object.fromEntries(sellerFieldKeys.map((key) =>
-        [key, values[key]])) as SellerFields,
-    };
+    const fields = Object.fromEntries(sellerFieldKeys.map((key) =>
+      [key, values[key]])) as SellerFields;
+    if (draft.status === "SUBMITTED") {
+      if (!("submittedAtUtc" in draft) ||
+        typeof draft.submittedAtUtc !== "string" ||
+        Number.isNaN(Date.parse(draft.submittedAtUtc)))
+        return { status: "unavailable" };
+      return {
+        status: "submitted",
+        revision: draft.revision,
+        fields,
+        submittedAtUtc: draft.submittedAtUtc,
+      };
+    }
+    return { status: "restored", revision: draft.revision, fields };
   } catch {
     return { status: "unavailable" };
   }
