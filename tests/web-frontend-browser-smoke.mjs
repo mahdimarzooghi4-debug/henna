@@ -259,12 +259,35 @@ async function fakeApi(route) {
       revision: draft.revision + 1,
       submittedAtUtc: "2026-09-25T12:30:00Z",
       accuracyConfirmedAtUtc: "2026-09-25T12:30:00Z",
+      trackingCode: "HNA-A1B2C3D4E5F60718",
     };
     return route.fulfill(json({
       status: "SUBMITTED",
       revision: draft.revision,
       submittedAtUtc: draft.submittedAtUtc,
       accuracyConfirmedAtUtc: draft.accuracyConfirmedAtUtc,
+      trackingCode: draft.trackingCode,
+    }));
+  }
+  if (path === "/api/seller/registration/status" &&
+    req.method() === "GET") {
+    assert.ok(signedIn);
+    assert.equal(draft?.status, "SUBMITTED");
+    return route.fulfill(json({
+      trackingCode: draft.trackingCode,
+      overallStatus: "UNDER_REVIEW",
+      applicantType: draft.applicantType,
+      identityStatus: draft.identityStatus,
+      submittedAtUtc: draft.submittedAtUtc,
+      accuracyConfirmedAtUtc: draft.accuracyConfirmedAtUtc,
+      sellerPanelEnabled: false,
+      steps: [
+        { key: "IDENTITY", status: "COMPLETED" },
+        { key: "BUSINESS", status: "COMPLETED" },
+        { key: "ACTIVITY", status: "COMPLETED" },
+        { key: "ADDITIONAL", status: "COMPLETED" },
+        { key: "REVIEW", status: "UNDER_REVIEW" },
+      ],
     }));
   }
   if (path === "/api/geography/provinces" && req.method() === "GET") {
@@ -609,36 +632,40 @@ async function main() {
     "final submit must require explicit confirmation");
   await otherTab.getByLabel("صحت اطلاعات واردشده را تأیید می‌کنم.").check();
   assert.equal(await finalSubmit.isDisabled(), false);
-  const submitResponsePromise = otherTab.waitForResponse((response) =>
-    new URL(response.url()).pathname === "/api/seller/registration" &&
-    response.request().method() === "POST");
   await finalSubmit.click();
-  const submitResponse = await submitResponsePromise;
-  assert.equal(submitResponse.status(), 200);
-  const submitPayload = await submitResponse.json();
-  assert.equal(submitPayload.status, "SUBMITTED");
-  const submittedHeading = otherTab.getByRole("heading", {
-    name: "درخواست ثبت شد",
-  });
-  await otherTab.waitForTimeout(300);
-  if (!(await submittedHeading.isVisible())) {
-    const pageText = await otherTab.locator("body").innerText();
-    throw new Error("submit payload " + JSON.stringify(submitPayload) +
-      "; page text: " + pageText.slice(-1200));
-  }
-  await submittedHeading.waitFor();
+  await otherTab.getByRole("heading", { name: "درخواست ثبت شد" }).waitFor();
   assert.equal(draft.status, "SUBMITTED");
   assert.equal(draft.revision, 9);
   assert.equal(draft.accuracyConfirmedAtUtc, "2026-09-25T12:30:00Z");
 
+  await otherTab.getByText("HNA-A1B2C3D4E5F60718", {
+    exact: false,
+  }).waitFor();
+  await otherTab.getByRole("link", {
+    name: "مشاهده وضعیت درخواست",
+  }).click();
+  await otherTab.waitForURL("**/seller/register/status");
+  await otherTab.getByRole("heading", {
+    name: "درخواست در حال بررسی است",
+  }).waitFor();
+  await otherTab.getByText("کد پیگیری: HNA-A1B2C3D4E5F60718", {
+    exact: true,
+  }).waitFor();
+  await otherTab.getByText("بررسی درخواست", { exact: true }).waitFor();
+  const panelButton = otherTab.getByRole("button", {
+    name: "ورود به پنل فروشنده",
+  });
+  assert.equal(await panelButton.isDisabled(), true);
+
   await otherTab.reload();
-  await otherTab.getByText("درخواست شما ثبت شده و در انتظار بررسی است.")
-    .waitFor();
+  await otherTab.getByText("کد پیگیری: HNA-A1B2C3D4E5F60718", {
+    exact: true,
+  }).waitFor();
 
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller draft → identity → business information → activity area → additional information → reviewed consent → submitted OK");
+  console.log("Chromium CI frontend: OTP → seller registration → reviewed consent → submitted → tracking status OK");
 }
 
 try {
