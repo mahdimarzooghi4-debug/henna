@@ -113,10 +113,42 @@ async function main() {
           response.writeHead(409);
           response.end(JSON.stringify({ message: "stale revision" }));
         } else {
-          sellerDraft = { ...data, revision: data.revision + 1, status: "DRAFT" };
+          sellerDraft = {
+            ...data,
+            revision: data.revision + 1,
+            status: "DRAFT",
+            applicantType: sellerDraft?.applicantType ?? null,
+            completedStep: sellerDraft?.completedStep ?? 1,
+          };
           response.writeHead(200);
           response.end(JSON.stringify({
             status: "DRAFT", revision: sellerDraft.revision,
+          }));
+        }
+      } else if (url === "/api/v1/seller/registration/applicant-type" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "PUT") {
+        const data = JSON.parse(body);
+        assert.deepEqual(Object.keys(data).sort(),
+          ["applicantType", "revision"].sort());
+        if (sellerDraft?.revision !== data.revision) {
+          response.writeHead(409);
+          response.end(JSON.stringify({ message: "stale revision" }));
+        } else {
+          assert.ok(data.applicantType === "NATURAL" ||
+            data.applicantType === "LEGAL");
+          sellerDraft = {
+            ...sellerDraft,
+            applicantType: data.applicantType,
+            completedStep: 2,
+            revision: data.revision + 1,
+          };
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            status: "DRAFT",
+            revision: sellerDraft.revision,
+            applicantType: sellerDraft.applicantType,
+            completedStep: 2,
           }));
         }
       } else if (url === "/api/v1/seller/registration/submit" &&
@@ -283,6 +315,7 @@ async function main() {
   assert.equal(sellerRestored.status, 200);
   assert.deepEqual(await sellerRestored.json(), {
     ...draft, phone, postalCode: "1234567890", status: "DRAFT", revision: 1,
+    applicantType: null, completedStep: 1,
   });
   const sellerStale = await fetch(sellerUrl, {
     method: "PUT",
@@ -308,6 +341,45 @@ async function main() {
   assert.equal((await sellerAfter.json()).storeName, "نسخه دوم");
   assert.ok(!JSON.stringify(sellerDraft).includes(token));
 
+  const applicantCsrf = await fetch(
+    sellerUrl + "/applicant-type", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: "https://other.test",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ applicantType: "NATURAL", revision: 2 }),
+    });
+  assert.equal(applicantCsrf.status, 403);
+
+  const applicantUnknown = await fetch(
+    sellerUrl + "/applicant-type", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        applicantType: "NATURAL", revision: 2, role: "ADMIN",
+      }),
+    });
+  assert.equal(applicantUnknown.status, 400);
+
+  const applicantSaved = await fetch(
+    sellerUrl + "/applicant-type", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ applicantType: "NATURAL", revision: 2 }),
+    });
+  assert.equal(applicantSaved.status, 200);
+  assert.deepEqual(await applicantSaved.json(), {
+    status: "DRAFT", revision: 3,
+    applicantType: "NATURAL", completedStep: 2,
+  });
+
   const submissionKey = "0f3b8bc9-61bd-4ca4-8964-7fce65f4e91b";
   const submitCsrf = await fetch(sellerUrl, {
     method: "POST",
@@ -315,7 +387,7 @@ async function main() {
       Cookie: sessionCookie, Origin: "https://other.test",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 2, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 3, idempotencyKey: submissionKey }),
   });
   assert.equal(submitCsrf.status, 403);
   const submitUnknown = await fetch(sellerUrl, {
@@ -325,7 +397,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      revision: 2, idempotencyKey: submissionKey, status: "ACTIVE",
+      revision: 3, idempotencyKey: submissionKey, status: "ACTIVE",
     }),
   });
   assert.equal(submitUnknown.status, 400);
@@ -335,11 +407,11 @@ async function main() {
       Cookie: sessionCookie, Origin: base,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 2, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 3, idempotencyKey: submissionKey }),
   });
   assert.equal(submitted.status, 200);
   assert.deepEqual(await submitted.json(), {
-    status: "SUBMITTED", revision: 3,
+    status: "SUBMITTED", revision: 4,
     submittedAtUtc: "2026-09-25T12:30:00Z",
   });
   assert.equal(submitted.headers.get("cache-control"), "no-store");
