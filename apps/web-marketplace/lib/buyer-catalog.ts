@@ -174,9 +174,11 @@ export function buyerBrowseQuery(state: BuyerBrowseLocation): string {
   return params.toString();
 }
 
-export function buyerBrowseHref(state: BuyerBrowseLocation): string {
+export function buyerBrowseHref(
+  state: BuyerBrowseLocation, pathname = "/",
+): string {
   const query = buyerBrowseQuery(state);
-  return "/" + (query ? "?" + query : "");
+  return pathname + (query ? "?" + query : "");
 }
 
 export function buyerDetailHref(
