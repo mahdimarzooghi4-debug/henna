@@ -36,7 +36,16 @@ internal static class SellerRegistrationEndpoints
                 var draft = await db.RegistrationDrafts.AsNoTracking()
                     .SingleOrDefaultAsync(x => x.AccountId == accountId,
                         cancellationToken);
-                return draft is null ? Results.NotFound() : Results.Ok(new
+                if (draft is null) return Results.NotFound();
+
+                var businessCategoryName = draft.BusinessCategoryId is { } categoryId
+                    ? await db.BusinessCategories.AsNoTracking()
+                        .Where(x => x.Id == categoryId)
+                        .Select(x => x.Name)
+                        .SingleOrDefaultAsync(cancellationToken)
+                    : null;
+
+                return Results.Ok(new
                 {
                     draft.StoreName,
                     draft.OwnerName,
@@ -51,6 +60,12 @@ internal static class SellerRegistrationEndpoints
                     draft.LegalName,
                     draft.LegalRepresentativeName,
                     draft.LegalRepresentativePhone,
+                    draft.BusinessCategoryId,
+                    businessCategoryName,
+                    draft.BusinessName,
+                    draft.BusinessDescription,
+                    draft.BusinessPhone,
+                    draft.OfferingType,
                     draft.CompletedStep,
                     draft.Status,
                     draft.Revision,
