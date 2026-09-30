@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   parseBuyerProduct, validBuyerProductId, type BuyerProduct,
 } from "../lib/buyer-catalog";
+import { addBuyerDemoCartItem } from "../lib/buyer-demo-cart";
 
 type Detail =
   | { status: "loading"; id: string }
@@ -127,8 +128,19 @@ export function BuyerProductDetail({ id, backHref }: {
             <p className="buyer-detail-category">
               شناسهٔ دسته‌بندی: <bdi dir="ltr">{current.product.categoryId}</bdi>
             </p>
-            {current.product.description !== null &&
+          {current.product.description !== null &&
               <p className="buyer-detail-description">{current.product.description}</p>}
+            <button type="button" className="buyer-detail-button buyer-detail-button--primary"
+              onClick={() => addBuyerDemoCartItem({
+                id: current.product.id, name: current.product.name,
+                detail: current.product.description ?? "",
+                kind: current.product.kind, unitPrice: null, image: null,
+              })}>
+              افزودن به سبد خرید (پیش‌نمایش)
+            </button>
+            <Link href="/basket" className="buyer-detail-button buyer-detail-button--back">
+              مشاهده سبد خرید
+            </Link>
           </article>
           <p className="buyer-detail-disclosure">
             قیمت، موجودی، تصویر، فروشنده، شهر و دکمهٔ خرید هنوز در قرارداد عمومی وجود ندارند.
