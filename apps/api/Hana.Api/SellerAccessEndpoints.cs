@@ -54,7 +54,12 @@ internal static class SellerAccessEndpoints
                     .Select(x => new
                     {
                         x.TrackingCode,
-                        x.ActivatedAtUtc
+                        x.ActivatedAtUtc,
+                        x.StoreName,
+                        x.BusinessName,
+                        x.OfferingType,
+                        x.ActivityProvinceId,
+                        x.ActivityCityId
                     })
                     .SingleOrDefaultAsync(cancellationToken);
 
@@ -65,8 +70,24 @@ internal static class SellerAccessEndpoints
                 return Results.Ok(new
                 {
                     sellerAccess = true,
+                    sellerPanelEnabled = true,
                     activation.TrackingCode,
-                    activation.ActivatedAtUtc
+                    activation.ActivatedAtUtc,
+                    activation.StoreName,
+                    activation.BusinessName,
+                    activation.OfferingType,
+                    activation.ActivityProvinceId,
+                    activation.ActivityCityId,
+                    capabilities = new
+                    {
+                        dashboard = true,
+                        orders = false,
+                        listings = false,
+                        inventory = false,
+                        pricing = false,
+                        settlements = false,
+                        reports = false
+                    }
                 });
             }
             catch (Exception) when (

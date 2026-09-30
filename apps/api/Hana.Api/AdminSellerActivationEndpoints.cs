@@ -227,7 +227,7 @@ internal static class AdminSellerActivationEndpoints
             application.ActivatedAtUtc,
             sellerRoleGranted = application.ActivatedAtUtc is not null,
             sellerAccessEnabled = application.ActivatedAtUtc is not null,
-            sellerPanelEnabled = false
+            sellerPanelEnabled = application.ActivatedAtUtc is not null
         };
 }
 
