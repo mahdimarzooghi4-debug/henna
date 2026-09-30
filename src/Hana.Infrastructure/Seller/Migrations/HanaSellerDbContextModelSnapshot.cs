@@ -194,6 +194,51 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
                 .HasConstraintName("fk_registration_drafts_business_categories_business_category_id");
         });
 
+        modelBuilder.Entity<SellerApplicationAmendmentRecord>(entity =>
+        {
+            entity.ToTable("application_amendments", "seller", table =>
+            {
+                table.HasCheckConstraint("ck_application_amendments_status",
+                    "status IN ('OPEN','RESUBMITTED')");
+                table.HasCheckConstraint("ck_application_amendments_revision",
+                    "base_revision >= 1");
+                table.HasCheckConstraint("ck_application_amendments_text",
+                    "char_length(btrim(reviewer_reason)) BETWEEN 1 AND 500 AND char_length(btrim(response_text)) BETWEEN 1 AND 2000");
+                table.HasCheckConstraint("ck_application_amendments_resubmitted",
+                    "(status = 'OPEN' AND resubmitted_at_utc IS NULL) OR (status = 'RESUBMITTED' AND resubmitted_at_utc IS NOT NULL)");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.ApplicationAccountId)
+                .HasColumnName("application_account_id").IsRequired();
+            entity.Property(x => x.BaseRevision).HasColumnName("base_revision")
+                .IsRequired();
+            entity.Property(x => x.Status).HasColumnName("status")
+                .HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ReviewerReason).HasColumnName("reviewer_reason")
+                .HasMaxLength(500).IsRequired();
+            entity.Property(x => x.ResponseText).HasColumnName("response_text")
+                .HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.ReferenceUrl).HasColumnName("reference_url")
+                .HasMaxLength(500);
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
+                .IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
+                .IsRequired();
+            entity.Property(x => x.ResubmittedAtUtc)
+                .HasColumnName("resubmitted_at_utc");
+            entity.HasIndex(x => new { x.ApplicationAccountId, x.Status })
+                .HasDatabaseName("ix_application_amendments_application_status");
+            entity.HasIndex(x => x.ApplicationAccountId)
+                .IsUnique()
+                .HasFilter("status = 'OPEN'")
+                .HasDatabaseName("ux_application_amendments_open_application");
+            entity.HasOne<SellerRegistrationDraft>().WithMany()
+                .HasForeignKey(x => x.ApplicationAccountId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_application_amendments_registration_drafts");
+        });
+
         modelBuilder.Entity<SellerApplicationReviewRecord>(entity =>
         {
             entity.ToTable("application_reviews", "seller", table =>

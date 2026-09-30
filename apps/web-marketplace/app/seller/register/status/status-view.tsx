@@ -183,6 +183,20 @@ export function SellerApplicationStatusView() {
         </div>
       )}
 
+      {value.overallStatus === "NEEDS_INFORMATION" && (
+        <div className="seller-status-card__action-required">
+          <strong>اقدام شما لازم است</strong>
+          <p>
+            برای ادامه بررسی، پاسخ اصلاحی را ثبت و درخواست را دوباره
+            ارسال کنید.
+          </p>
+          <Link className="primary-button"
+            href="/seller/register/amendment">
+            تکمیل اطلاعات و ارسال مجدد
+          </Link>
+        </div>
+      )}
+
       <div className="seller-status-card__panel-lock">
         <strong>ورود به پنل فروشنده</strong>
         <p>
