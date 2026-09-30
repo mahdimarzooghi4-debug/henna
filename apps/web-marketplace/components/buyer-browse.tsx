@@ -149,8 +149,8 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     setPageRecovery("");
     // Correct this SAME history entry rather than creating a ghost "Back"
     // step that reinstates the removed category. Preserve public search.
-    const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    const href = buyerBrowseHref(next, window.location.pathname);
+    if ((window.location.pathname === "/" || window.location.pathname === "/products") &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, selected, search, page]);
@@ -177,8 +177,8 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
     );
     // Replace the SAME history entry; preserve category and Persian search.
-    const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    const href = buyerBrowseHref(next, window.location.pathname);
+    if ((window.location.pathname === "/" || window.location.pathname === "/products") &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, current, selected, search, page]);
@@ -190,7 +190,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     let lastRefreshAt = -Infinity;
     function revalidateOnReturn() {
       if (document.visibilityState !== "visible" ||
-        window.location.pathname !== "/") return;
+        window.location.pathname !== "/" && window.location.pathname !== "/products") return;
       // Safari can emit both visibilitychange and persisted pageshow on one
       // return. Treat them as one refresh rather than racing duplicate GETs.
       const now = performance.now();
