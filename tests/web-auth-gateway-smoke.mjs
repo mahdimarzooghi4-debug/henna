@@ -15,6 +15,7 @@ const cert = join(dir, "mock-local.crt");
 const key = join(dir, "mock-local.key");
 const challengeId = "6b2bc828-cf5d-4af7-a026-a653739d8509";
 const accountId = "fbf47579-71b4-4b85-996c-842ac497fb12";
+const businessCategoryId = "7f4b4df8-69c1-4c11-8eef-0d8e2ae6a851";
 const token = "hn1_" + Buffer.alloc(32, 7).toString("base64url");
 const phone = "09123456789";
 let revoked = false;
@@ -181,6 +182,66 @@ async function main() {
             identityStatus: "VERIFIED",
             nationalCodeMasked: "******5948",
             completedStep: 3,
+          }));
+        }
+      } else if (url === "/api/v1/seller/registration/business-categories" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "GET") {
+        assert.equal(request.headers.cookie, undefined,
+          "seller category BFF must not forward browser cookie upstream");
+        response.writeHead(200);
+        response.end(JSON.stringify({
+          configured: true,
+          items: [{
+            id: businessCategoryId,
+            name: "دسته‌بندی کسب‌وکار CI",
+            internalTaxonomyNote: "must not leak",
+          }],
+        }));
+      } else if (url === "/api/v1/seller/registration/business-information" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "PUT") {
+        const data = JSON.parse(body);
+        assert.deepEqual(Object.keys(data).sort(), [
+          "businessName", "businessPhone", "categoryId",
+          "description", "offeringType", "revision",
+        ].sort());
+        if (sellerDraft?.revision !== data.revision ||
+          sellerDraft?.completedStep !== 3) {
+          response.writeHead(409);
+          response.end(JSON.stringify({ message: "stale business step" }));
+        } else if (data.categoryId !== businessCategoryId) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ message: "invalid category" }));
+        } else {
+          assert.equal(data.businessName, "کسب‌وکار CI");
+          assert.equal(data.description, "ارائه کالا و خدمت در تست CI");
+          assert.equal(data.businessPhone, "02112345678");
+          assert.equal(data.offeringType, "BOTH");
+          sellerDraft = {
+            ...sellerDraft,
+            businessCategoryId,
+            businessCategoryName: "دسته‌بندی کسب‌وکار CI",
+            businessName: data.businessName,
+            businessDescription: data.description,
+            businessPhone: data.businessPhone,
+            offeringType: data.offeringType,
+            completedStep: 4,
+            revision: data.revision + 1,
+          };
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            status: "DRAFT",
+            revision: sellerDraft.revision,
+            completedStep: 4,
+            category: {
+              id: businessCategoryId,
+              name: "دسته‌بندی کسب‌وکار CI",
+            },
+            businessName: sellerDraft.businessName,
+            description: sellerDraft.businessDescription,
+            businessPhone: sellerDraft.businessPhone,
+            offeringType: sellerDraft.offeringType,
           }));
         }
       } else if (url === "/api/v1/seller/registration/submit" &&
@@ -354,6 +415,12 @@ async function main() {
     legalName: null,
     legalRepresentativeName: null,
     legalRepresentativePhone: null,
+    businessCategoryId: null,
+    businessCategoryName: null,
+    businessName: null,
+    businessDescription: null,
+    businessPhone: null,
+    offeringType: null,
     completedStep: 1,
   });
   const sellerStale = await fetch(sellerUrl, {
@@ -474,9 +541,91 @@ async function main() {
     completedStep: 3,
   });
 
-  // Steps 4-6 are exercised by their own slices. This gateway test advances
-  // only its in-memory upstream fixture so Seller 005's submit BFF remains
-  // covered without inventing shipping endpoints.
+  const businessCategories = await fetch(
+    sellerUrl + "/business-categories", {
+      headers: { Cookie: sessionCookie },
+    });
+  assert.equal(businessCategories.status, 200);
+  assert.deepEqual(await businessCategories.json(), {
+    configured: true,
+    items: [{
+      id: businessCategoryId,
+      name: "دسته‌بندی کسب‌وکار CI",
+    }],
+  });
+
+  const businessCsrf = await fetch(
+    sellerUrl + "/business-information", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: "https://other.test",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        categoryId: businessCategoryId,
+        businessName: "کسب‌وکار CI",
+        description: "ارائه کالا و خدمت در تست CI",
+        businessPhone: "02112345678",
+        offeringType: "BOTH",
+        revision: 4,
+      }),
+    });
+  assert.equal(businessCsrf.status, 403);
+
+  const businessUnknown = await fetch(
+    sellerUrl + "/business-information", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        categoryId: businessCategoryId,
+        businessName: "کسب‌وکار CI",
+        description: "ارائه کالا و خدمت در تست CI",
+        businessPhone: "02112345678",
+        offeringType: "BOTH",
+        revision: 4,
+        approved: true,
+      }),
+    });
+  assert.equal(businessUnknown.status, 400);
+
+  const businessSaved = await fetch(
+    sellerUrl + "/business-information", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        categoryId: businessCategoryId,
+        businessName: "کسب‌وکار CI",
+        description: "ارائه کالا و خدمت در تست CI",
+        businessPhone: "۰۲۱۱۲۳۴۵۶۷۸",
+        offeringType: "BOTH",
+        revision: 4,
+      }),
+    });
+  assert.equal(businessSaved.status, 200);
+  assert.deepEqual(await businessSaved.json(), {
+    status: "DRAFT",
+    revision: 5,
+    completedStep: 4,
+    category: {
+      id: businessCategoryId,
+      name: "دسته‌بندی کسب‌وکار CI",
+    },
+    businessName: "کسب‌وکار CI",
+    description: "ارائه کالا و خدمت در تست CI",
+    businessPhone: "02112345678",
+    offeringType: "BOTH",
+  });
+  assert.equal(sellerDraft.completedStep, 4);
+  assert.equal(sellerDraft.revision, 5);
+
+  // Steps 5-6 are exercised by their own slices. Advance only the CI fixture
+  // so the older final-submit gateway remains covered.
   sellerDraft = { ...sellerDraft, completedStep: 6 };
 
   const submissionKey = "0f3b8bc9-61bd-4ca4-8964-7fce65f4e91b";
@@ -486,7 +635,7 @@ async function main() {
       Cookie: sessionCookie, Origin: "https://other.test",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 4, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 5, idempotencyKey: submissionKey }),
   });
   assert.equal(submitCsrf.status, 403);
   const submitUnknown = await fetch(sellerUrl, {
@@ -496,7 +645,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      revision: 4, idempotencyKey: submissionKey, status: "ACTIVE",
+      revision: 5, idempotencyKey: submissionKey, status: "ACTIVE",
     }),
   });
   assert.equal(submitUnknown.status, 400);
@@ -506,11 +655,11 @@ async function main() {
       Cookie: sessionCookie, Origin: base,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 4, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 5, idempotencyKey: submissionKey }),
   });
   assert.equal(submitted.status, 200);
   assert.deepEqual(await submitted.json(), {
-    status: "SUBMITTED", revision: 5,
+    status: "SUBMITTED", revision: 6,
     submittedAtUtc: "2026-09-25T12:30:00Z",
   });
   assert.equal(submitted.headers.get("cache-control"), "no-store");
