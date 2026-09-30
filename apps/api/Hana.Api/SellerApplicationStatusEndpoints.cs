@@ -45,7 +45,8 @@ internal static class SellerApplicationStatusEndpoints
                         x.AccuracyConfirmedAtUtc,
                         x.ReviewStatus,
                         x.ReviewReason,
-                        x.ReviewedAtUtc
+                        x.ReviewedAtUtc,
+                        x.ActivatedAtUtc
                     })
                     .SingleOrDefaultAsync(cancellationToken);
 
@@ -65,6 +66,15 @@ internal static class SellerApplicationStatusEndpoints
                             "وضعیت پیگیری پس از ثبت نهایی درخواست در دسترس است."
                     });
 
+                var sellerAccessEnabled =
+                    draft.ActivatedAtUtc is not null &&
+                    await services
+                        .GetRequiredService<RoleAuthorizationService>()
+                        .HasRoleAsync(
+                            accountId.Value,
+                            HanaRoles.Seller,
+                            cancellationToken);
+
                 return Results.Ok(new
                 {
                     trackingCode = draft.TrackingCode,
@@ -75,6 +85,8 @@ internal static class SellerApplicationStatusEndpoints
                     accuracyConfirmedAtUtc = draft.AccuracyConfirmedAtUtc,
                     reviewReason = draft.ReviewReason,
                     reviewedAtUtc = draft.ReviewedAtUtc,
+                    activatedAtUtc = draft.ActivatedAtUtc,
+                    sellerAccessEnabled,
                     sellerPanelEnabled = false,
                     steps = new[]
                     {

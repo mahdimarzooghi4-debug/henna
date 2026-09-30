@@ -285,6 +285,8 @@ async function fakeApi(route) {
       accuracyConfirmedAtUtc: draft.accuracyConfirmedAtUtc,
       reviewReason: draft.reviewReason ?? null,
       reviewedAtUtc: draft.reviewedAtUtc ?? null,
+      activatedAtUtc: draft.activatedAtUtc ?? null,
+      sellerAccessEnabled: Boolean(draft.activatedAtUtc),
       sellerPanelEnabled: false,
       steps: [
         { key: "IDENTITY", status: "COMPLETED" },
