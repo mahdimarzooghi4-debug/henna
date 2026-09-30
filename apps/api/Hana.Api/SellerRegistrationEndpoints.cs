@@ -44,6 +44,8 @@ internal static class SellerRegistrationEndpoints
                     draft.City,
                     draft.Address,
                     draft.PostalCode,
+                    draft.ApplicantType,
+                    draft.CompletedStep,
                     draft.Status,
                     draft.Revision,
                     draft.SubmittedAtUtc
@@ -153,6 +155,75 @@ internal static class SellerRegistrationEndpoints
         .WithName("SaveMySellerRegistrationDraft")
         .ProducesValidationProblem();
 
+        routes.MapPut("/applicant-type", async (
+            SellerApplicantTypeInput input,
+            HttpContext context,
+            IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            var token = BearerToken(context);
+            if (token is null) return Results.Unauthorized();
+            if (input.Revision < 1 || input.Revision == int.MaxValue)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["revision"] = ["نسخهٔ پیش‌نویس معتبر نیست؛ صفحه را بازخوانی کنید."]
+                });
+
+            var applicantType = input.ApplicantType?.Trim().ToUpperInvariant();
+            if (applicantType is not ("NATURAL" or "LEGAL"))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["applicantType"] = ["نوع متقاضی باید شخص حقیقی یا شخص حقوقی باشد."]
+                });
+            if (!hasDatabase)
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            try
+            {
+                var accountId = await services.GetRequiredService<AuthSessionService>()
+                    .ResolveAccountAsync(token, cancellationToken);
+                if (accountId is null) return Results.Unauthorized();
+
+                var db = services.GetRequiredService<HanaSellerDbContext>();
+                var now = services.GetRequiredService<IClock>().UtcNow
+                    .ToUniversalTime();
+
+                var updated = await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    UPDATE seller.registration_drafts SET
+                      applicant_type = {applicantType},
+                      completed_step = GREATEST(completed_step, 2),
+                      revision = revision + 1,
+                      updated_at_utc = {now}
+                    WHERE account_id = {accountId.Value}
+                      AND status = 'DRAFT'
+                      AND revision = {input.Revision}
+                    """, cancellationToken);
+
+                return updated == 1
+                    ? Results.Ok(new
+                    {
+                        status = "DRAFT",
+                        revision = input.Revision + 1,
+                        applicantType,
+                        completedStep = 2
+                    })
+                    : Results.Conflict(new
+                    {
+                        message = "پیش‌نویس تغییر کرده یا دیگر قابل ویرایش نیست؛ نوع متقاضی ذخیره نشد."
+                    });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("SaveMySellerApplicantType")
+        .ProducesValidationProblem();
+
         routes.MapPost("/submit", async (SellerRegistrationSubmitInput input,
             HttpContext context, IServiceProvider services,
             CancellationToken cancellationToken) =>
@@ -197,6 +268,7 @@ internal static class SellerRegistrationEndpoints
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
                       AND status = 'DRAFT'
+                      AND completed_step = 6
                       AND revision = {input.Revision}
                     """, cancellationToken);
 
@@ -227,9 +299,12 @@ internal static class SellerRegistrationEndpoints
                 {
                     message = current.Status == "SUBMITTED"
                         ? "این درخواست قبلاً برای بررسی ثبت شده است."
-                        : "پیش‌نویس تغییر کرده است؛ قبل از ثبت نهایی تازه‌ترین نسخه را دریافت کنید.",
+                        : current.CompletedStep < 6
+                            ? "ثبت نهایی فقط پس از تکمیل مراحل ۱ تا ۶ مجاز است."
+                            : "پیش‌نویس تغییر کرده است؛ قبل از ثبت نهایی تازه‌ترین نسخه را دریافت کنید.",
                     currentRevision = current.Revision,
-                    currentStatus = current.Status
+                    currentStatus = current.Status,
+                    completedStep = current.CompletedStep
                 });
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -255,5 +330,9 @@ internal sealed record SellerRegistrationInput(
     string? StoreName, string? OwnerName, string? Phone,
     string? City, string? Address, string? PostalCode,
     int? Revision);
+
+internal sealed record SellerApplicantTypeInput(
+    string? ApplicantType,
+    int Revision);
 
 internal sealed record SellerRegistrationSubmitInput(int Revision);
