@@ -1,21 +1,21 @@
 import styles from "./henna-homepage.module.css";
 
 const categories = [
-  ["لبنیات محلی", "photo-1.png"],
-  ["نوشیدنی‌ها", "photo-2.png"],
-  ["روغن و خواربار", "photo-3.png"],
-  ["میوه و سبزی", "photo-4.png"],
-  ["بهداشت و سلامت", "photo-5.png"],
-  ["کنسرو و ادویه", "photo-6.png"],
-  ["نان و شیرینی", "photo.png"],
+  ["لبنیات محلی", "product-1.svg"],
+  ["نوشیدنی‌ها", "product-5.svg"],
+  ["روغن و خواربار", "product-4.svg"],
+  ["میوه و سبزی", "category-produce.svg"],
+  ["بهداشت و سلامت", "category-health.svg"],
+  ["کنسرو و ادویه", "category-spices.svg"],
+  ["نان و شیرینی", "hero.svg"],
 ];
 
 const products = [
-  { title: "پنیر سفید ایرانی ممتاز", subtitle: "۴۰۰ گرم - لبنیات هراز", image: "product-1.png", price: "۵۴٬۰۰۰", old: "۶۵٬۰۰۰", tag: "ویژه کالابرگ" },
-  { title: "ماست سون همزده پرچرب", subtitle: "۹۰۰ گرم - کاله", image: "product-2.png", price: "۴۸٬۵۰۰", old: "", tag: "تخفیف ویژه" },
-  { title: "برنج هاشمی درجه یک", subtitle: "۵ کیلوگرم - کشتزار شمال", image: "product-3.png", price: "۶۴۰٬۰۰۰", old: "۷۲۰٬۰۰۰", tag: "طرح حمایتی" },
-  { title: "روغن آفتابگردان خالص", subtitle: "۱.۵ لیتر - لادن", image: "product-4.png", price: "۸۹٬۰۰۰", old: "", tag: "" },
-  { title: "چای سیاه ارگانیک لاهیجان", subtitle: "۴۵۰ گرم - ممتاز باروتی", image: "product-5.png", price: "۱۲۸٬۰۰۰", old: "۱۴۵٬۰۰۰", tag: "تخفیف ویژه" },
+  { title: "پنیر سفید ایرانی ممتاز", subtitle: "۴۰۰ گرم - لبنیات هراز", image: "product-1.svg", price: "۵۴٬۰۰۰", old: "۶۵٬۰۰۰", tag: "ویژه کالابرگ" },
+  { title: "ماست سون همزده پرچرب", subtitle: "۹۰۰ گرم - کاله", image: "product-2.svg", price: "۴۸٬۵۰۰", old: "", tag: "تخفیف ویژه" },
+  { title: "برنج هاشمی درجه یک", subtitle: "۵ کیلوگرم - کشتزار شمال", image: "product-3.svg", price: "۶۴۰٬۰۰۰", old: "۷۲۰٬۰۰۰", tag: "طرح حمایتی" },
+  { title: "روغن آفتابگردان خالص", subtitle: "۱.۵ لیتر - لادن", image: "product-4.svg", price: "۸۹٬۰۰۰", old: "", tag: "" },
+  { title: "چای سیاه ارگانیک لاهیجان", subtitle: "۴۵۰ گرم - ممتاز باروتی", image: "product-5.svg", price: "۱۲۸٬۰۰۰", old: "۱۴۵٬۰۰۰", tag: "تخفیف ویژه" },
 ];
 
 const benefits = [
@@ -56,7 +56,7 @@ export default function HennaHomepage() {
             <div className={styles.heroButtons}><a className={styles.primaryButton} href="#offers">شروع خرید روزانه</a><a className={styles.secondaryButton} href="#offers">مشاهده پیشنهادها</a></div>
           </div>
           <div className={styles.heroVisual}>
-            <img src="/landing/hero.png" alt="سفره‌ای از محصولات تازه و محلی" />
+            <img src="/landing/hero.svg" alt="سفره‌ای از محصولات تازه و محلی" />
             <div className={styles.heroCaption}><strong>سبد خود را با محصولات تازه و محلی کامل کنید</strong><span>از فروشگاه‌های نزدیک، انتخابی بهتر داشته باشید.</span></div>
           </div>
         </div>
@@ -84,11 +84,11 @@ export default function HennaHomepage() {
         </div>
       </section>
 
-      <section className={styles.impact} id="impact"><div className={`${styles.container} ${styles.impactInner}`}><img src="/landing/impact.png" alt="فروشنده محلی در فروشگاه مواد غذایی" /><div><span className={styles.eyebrow}>ارزش اجتماعی و توسعه محلی</span><h2>خریدی که اثرش ادامه پیدا می‌کند</h2><p>ما در حنا معتقدیم خرید روزمره می‌تواند فراتر از تأمین نیازهای مصرفی باشد. با اتصال مستقیم شما به فروشگاه‌های محله، اقتصاد کسب‌وکارهای کوچک محلی تقویت می‌شود و سهمی از هر خرید صرف حمایت اجتماعی می‌شود؛ شفاف، انسانی و بدون هزینهٔ اضافی برای شما.</p><div className={styles.stats}><div><strong>۳٬۴۰۰+</strong><span>فروشگاه محلی فعال</span></div><div><strong>۱۲٬۸۰۰+</strong><span>خانواده تحت پوشش حمایتی</span></div></div></div></div></section>
+      <section className={styles.impact} id="impact"><div className={`${styles.container} ${styles.impactInner}`}><img src="/landing/impact.svg" alt="فروشنده محلی در فروشگاه مواد غذایی" /><div><span className={styles.eyebrow}>ارزش اجتماعی و توسعه محلی</span><h2>خریدی که اثرش ادامه پیدا می‌کند</h2><p>ما در حنا معتقدیم خرید روزمره می‌تواند فراتر از تأمین نیازهای مصرفی باشد. با اتصال مستقیم شما به فروشگاه‌های محله، اقتصاد کسب‌وکارهای کوچک محلی تقویت می‌شود و سهمی از هر خرید صرف حمایت اجتماعی می‌شود؛ شفاف، انسانی و بدون هزینهٔ اضافی برای شما.</p><div className={styles.stats}><div><strong>۳٬۴۰۰+</strong><span>فروشگاه محلی فعال</span></div><div><strong>۱۲٬۸۰۰+</strong><span>خانواده تحت پوشش حمایتی</span></div></div></div></div></section>
 
       <section className={styles.benefits} id="benefits"><div className={styles.container}><div className={styles.centerHeading}><h2>یک حساب، چند امکان</h2><p>تمام نیازهای خرید روزانه و حمایت اجتماعی را یک‌جا مدیریت کنید.</p></div><div className={styles.benefitGrid}>{benefits.map(([title, body, icon]) => <article className={styles.benefitCard} key={title}><span><img src={icon} alt="" /></span><h3>{title}</h3><p>{body}</p></article>)}</div></div></section>
 
-      <section className={styles.finalCta} style={{ backgroundImage: "url('/landing/final-cta.png')" }}><div className={styles.ctaOverlay}><h2>حنا؛ بازارگاه گرم و عادلانه محله شما</h2><p>همین حالا اولین سبد خرید را پر کنید و مقایسه هوشمندانه قیمت‌ها را در محله‌تان تجربه کنید.</p><div><a href="/products" className={styles.primaryButton}>شروع پر کردن سبد خرید</a><a href="/seller/register" className={styles.ctaSecondary}>ثبت‌نام فروشگاه‌ها</a></div></div></section>
+      <section className={styles.finalCta}><div className={styles.ctaOverlay}><h2>حنا؛ بازارگاه گرم و عادلانه محله شما</h2><p>همین حالا اولین سبد خرید را پر کنید و مقایسه هوشمندانه قیمت‌ها را در محله‌تان تجربه کنید.</p><div><a href="/products" className={styles.primaryButton}>شروع پر کردن سبد خرید</a><a href="/seller/register" className={styles.ctaSecondary}>ثبت‌نام فروشگاه‌ها</a></div></div></section>
 
       <footer className={styles.footer}><div className={`${styles.container} ${styles.footerGrid}`}><div className={styles.footerBrand}><img src="/hana-logo.png" alt="حنا" /><p>حنا بازارگاهی برای خرید هوشمندانه، حمایت اجتماعی و رونق فروشگاه‌های محلی است.</p></div><div><h3>طرح‌های حنا</h3><a href="#offers">تخفیف‌های روزانه</a><a href="#offers">کالابرگ الکترونیک</a><a href="#benefits">طرح‌های حمایتی</a></div><div><h3>همکاری با ما</h3><a href="/seller/register">ثبت‌نام فروشگاه</a><a href="#impact">درباره حنا</a><a href="#impact">تماس با ما</a></div><div><h3>دسترسی سریع</h3><a href="/products">خرید کالا</a><a href="/auth">ورود یا ثبت‌نام</a><a href="#how-it-works">راهنمای خرید</a></div></div><div className={`${styles.container} ${styles.footerBottom}`}><span>© حنا، بازارگاه خرید روزانه و حمایت اجتماعی</span><div><a href="#impact"><img src="/landing/instagram.svg" alt="اینستاگرام" /></a><a href="#impact"><img src="/landing/twitter.svg" alt="توییتر" /></a><a href="#impact"><img src="/landing/linkedin.svg" alt="لینکدین" /></a></div></div></footer>
     </main>
