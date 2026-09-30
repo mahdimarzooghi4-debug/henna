@@ -65,15 +65,16 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     setPageRecovery("");
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
-    const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    const pathname = window.location.pathname === "/products" ? "/products" : "/";
+    const href = buyerBrowseHref(next, pathname);
+    if ((window.location.pathname === "/" || window.location.pathname === "/products") &&
       window.location.pathname + window.location.search !== href)
       window.history.pushState(window.history.state, "", href);
   }
 
   useEffect(() => {
     function restore() {
-      if (window.location.pathname !== "/") return;
+      if (window.location.pathname !== "/" && window.location.pathname !== "/products") return;
       const next = parseBuyerBrowseLocation(
         new URLSearchParams(window.location.search),
       );
@@ -84,7 +85,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       setSearchError("");
       setCategoryRecovery("");
       setPageRecovery("");
-      const href = buyerBrowseHref(next);
+      const href = buyerBrowseHref(next, window.location.pathname);
       if (window.location.pathname + window.location.search !== href)
         window.history.replaceState(window.history.state, "", href);
     }
