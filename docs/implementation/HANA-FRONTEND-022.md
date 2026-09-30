@@ -1,5 +1,7 @@
 # Frontend 022 — iOS Simulator native custom-scheme buyer links
 
+> **Archived:** this records a previous iOS Simulator experiment. Native iOS support and its CI tests were removed by [ADR-048](../adr/ADR-048-ANDROID-AND-WEB-ONLY.md); this document is not an active build or QA instruction.
+
 ## Scope / previously approved UI
 
 No new screen or product contract: the already owner-approved browse frames (Frontend 010/015/016) and public product detail 200/404/unavailable frames (Frontend 017/018) are tested on a **native installed iOS Simulator app**, extending Android Emulator CI in Frontend 021. `hana://` was already registered in Expo app.json by the previous work. No HTTPS App/Universal Link domain, iOS App Store bundle identity or production signing material is invented.
