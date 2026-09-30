@@ -1,7 +1,7 @@
 /**
  * Frontend 026: exercise the shipping Expo browse coordinator with CI-only
  * public HTTP. No categories/products from this file enter the app bundle.
- * The existing native Android/iOS gates separately verify the installed UI.
+ * The Android emulator gate separately verifies the installed native UI.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
