@@ -183,3 +183,5 @@
 .nav{padding-inline:max(16px,calc((100% - 1280px)/2))}
 @media(max-width:1000px){.nav{padding-inline:max(20px,calc((100% - 760px)/2))}}
 @media(max-width:640px){.nav{padding-inline:16px}}
+/* Right-align the impact section heading on the same edge as its copy. */
+.impactInner h2{align-self:flex-start;text-align:right}
