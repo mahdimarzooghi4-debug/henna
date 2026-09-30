@@ -100,7 +100,7 @@ export default function HennaHomepage() {
           </div>
           <a href="/" className={styles.brand} aria-label="حنا، صفحه اصلی"><img className={styles.logoImage} src="/hana-logo.png" alt="حنا" /></a>
           <form className={styles.search} action="/products">
-            <input name="q" placeholder="جست‌وجوی نان، لبنیات، برنج و اقلام روزانه..." aria-label="جستجو" />
+            <input name="search" placeholder="جست‌وجوی نان، لبنیات، برنج و اقلام روزانه..." aria-label="جستجو" />
             <button aria-label="جستجو"><img src="/landing/search.svg" alt="" /></button>
           </form>
         </div>
@@ -145,7 +145,7 @@ export default function HennaHomepage() {
 
         <section className={`${styles.container} ${styles.offers}`} id="offers">
           <div className={styles.sectionHeading}><h2>پیشنهادهای امروز</h2><a href="/products">مشاهده همه محصولات</a></div>
-          <div className={styles.productGrid}>{products.map((product) => <article className={styles.productCard} key={product.title}><div className={styles.productImage}><img src={`/landing/${product.image}`} alt={product.title} />{product.tag && <span>{product.tag}</span>}</div><div className={styles.productInfo}><h3>{product.title}</h3><p>{product.subtitle}</p></div><div className={styles.productAction}><a href="/products" className={styles.addButton}>افزودن +</a><div className={styles.productPrice}>{product.old && <del>{product.old}</del>}<strong>{product.price} <small>تومان</small></strong></div></div></article>)}</div>
+          <div className={styles.productGrid}>{products.map((product) => <article className={styles.productCard} key={product.title}><div className={styles.productImage}><img src={`/landing/${product.image}`} alt={product.title} />{product.tag && <span>{product.tag}</span>}</div><div className={styles.productInfo}><h3>{product.title}</h3><p>{product.subtitle}</p></div><div className={styles.productAction}><a href={`/products?search=${encodeURIComponent(product.title)}`} className={styles.addButton}>مشاهده در کاتالوگ</a><div className={styles.productPrice}>{product.old && <del>{product.old}</del>}<strong>{product.price} <small>تومان</small></strong></div></div></article>)}</div>
         </section>
       </section>
 
@@ -165,23 +165,23 @@ export default function HennaHomepage() {
         <div className={`${styles.container} ${styles.footerGrid}`}>
           <div className={`${styles.footerColumn} ${styles.footerSupport}`}>
             <h3>طرح‌های حمایتی</h3>
-            <a href="#benefits">ثبت‌نام کالابرگ</a>
-            <a href="#benefits">اعتبارات سازمانی</a>
-            <a href="#benefits">کارت‌های معیشتی</a>
-            <a href="#benefits">گزارش شفافیت مالی</a>
+            <a href="/programs">ثبت‌نام کالابرگ</a>
+            <a href="/programs">اعتبارات سازمانی</a>
+            <a href="/programs">کارت‌های معیشتی</a>
+            <a href="/programs">گزارش شفافیت مالی</a>
           </div>
           <div className={`${styles.footerColumn} ${styles.footerCooperation}`}>
             <h3>همکاری با حنا</h3>
             <a href="/seller/register">ثبت فروشگاه جدید</a>
             <a href="/seller">پنل فروشندگان</a>
-            <a href="/seller/register">شرایط همکاری پیک‌ها</a>
-            <a href="/careers">فرصت‌های شغلی</a>
+            <a href="/seller-guide">شرایط همکاری پیک‌ها</a>
+            <a href="/support">ارتباط با حنا</a>
           </div>
           <div className={`${styles.footerColumn} ${styles.footerQuickLinks}`}>
             <h3>دسترسی سریع</h3>
             <a href="/faq">سوالات متداول</a>
             <a href="/terms">قوانین و مقررات</a>
-            <a href="#impact">درباره حنا</a>
+            <a href="/about">درباره حنا</a>
             <a href="/support">تماس با پشتیبانی</a>
           </div>
           <div className={styles.footerBrand}>
