@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import styles from "./henna-homepage.module.css";
+import {
+  addBuyerDemoCartItem, buyerDemoCartCount, buyerDemoCartEventName,
+  readBuyerDemoCart,
+} from "../lib/buyer-demo-cart";
 
 const heroSlides = [
   {
@@ -61,11 +65,11 @@ const categories = [
 const catalogSearchHref = (search: string) => `/products?search=${encodeURIComponent(search)}`;
 
 const products = [
-  { title: "پنیر سفید ایرانی ممتاز", subtitle: "۴۰۰ گرم - لبنیات هراز", image: "figma/product-cheese.png", price: "۵۴,۰۰۰", old: "۶۵,۰۰۰", tag: "ویژه کالابرگ" },
-  { title: "ماست سون همزده پرچرب", subtitle: "۹۰۰ گرم - کاله", image: "figma/product-yogurt.png", price: "۴۸,۵۰۰", old: "", tag: "تخفیف ویژه" },
-  { title: "برنج هاشمی درجه یک", subtitle: "۵ کیلوگرم - کشتزار شمال", image: "figma/product-rice.png", price: "۶۴۰,۰۰۰", old: "۷۲۰,۰۰۰", tag: "طرح حمایتی" },
-  { title: "روغن آفتابگردان خالص", subtitle: "۱.۵ لیتر - لادن", image: "figma/product-oil.png", price: "۸۹,۰۰۰", old: "", tag: "" },
-  { title: "چای سیاه ارگانیک لاهیجان", subtitle: "۴۵۰ گرم - ممتاز باروتی", image: "figma/product-tea.png", price: "۱۲۸,۰۰۰", old: "۱۴۵,۰۰۰", tag: "تخفیف ویژه" },
+  { id: "featured-cheese", title: "پنیر سفید ایرانی ممتاز", subtitle: "۴۰۰ گرم - لبنیات هراز", image: "figma/product-cheese.png", price: "۵۴,۰۰۰", priceValue: 54000, old: "۶۵,۰۰۰", tag: "ویژه کالابرگ" },
+  { id: "featured-yogurt", title: "ماست سون همزده پرچرب", subtitle: "۹۰۰ گرم - کاله", image: "figma/product-yogurt.png", price: "۴۸,۵۰۰", priceValue: 48500, old: "", tag: "تخفیف ویژه" },
+  { id: "featured-rice", title: "برنج هاشمی درجه یک", subtitle: "۵ کیلوگرم - کشتزار شمال", image: "figma/product-rice.png", price: "۶۴۰,۰۰۰", priceValue: 640000, old: "۷۲۰,۰۰۰", tag: "طرح حمایتی" },
+  { id: "featured-oil", title: "روغن آفتابگردان خالص", subtitle: "۱.۵ لیتر - لادن", image: "figma/product-oil.png", price: "۸۹,۰۰۰", priceValue: 89000, old: "", tag: "" },
+  { id: "featured-tea", title: "چای سیاه ارگانیک لاهیجان", subtitle: "۴۵۰ گرم - ممتاز باروتی", image: "figma/product-tea.png", price: "۱۲۸,۰۰۰", priceValue: 128000, old: "۱۴۵,۰۰۰", tag: "تخفیف ویژه" },
 ];
 
 const benefits = [
@@ -76,7 +80,20 @@ const benefits = [
 
 export default function HennaHomepage() {
   const [activeHero, setActiveHero] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
+  const [addedProduct, setAddedProduct] = useState("");
   const hero = heroSlides[activeHero];
+
+  useEffect(() => {
+    const syncCart = () => setCartCount(buyerDemoCartCount(readBuyerDemoCart()));
+    syncCart();
+    window.addEventListener(buyerDemoCartEventName(), syncCart);
+    window.addEventListener("storage", syncCart);
+    return () => {
+      window.removeEventListener(buyerDemoCartEventName(), syncCart);
+      window.removeEventListener("storage", syncCart);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -95,7 +112,7 @@ export default function HennaHomepage() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.actions}>
-            <a className={styles.cart} href="/products"><img src="/landing/shopping-cart.svg" alt="" /> مشاهده کالاها</a>
+            <a className={styles.cart} href="/basket"><img src="/landing/shopping-cart.svg" alt="" /> سبد خرید <span className={styles.cartCount}>{new Intl.NumberFormat("fa-IR").format(cartCount)}</span></a>
             <a className={styles.login} href="/auth">ورود یا ثبت‌نام <img src="/landing/user.svg" alt="" /></a>
             <span className={styles.divider} />
             <a className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها</a>
@@ -147,7 +164,7 @@ export default function HennaHomepage() {
 
         <section className={`${styles.container} ${styles.offers}`} id="offers">
           <div className={styles.sectionHeading}><h2>پیشنهادهای امروز</h2><a href="/products">مشاهده همه محصولات</a></div>
-          <div className={styles.productGrid}>{products.map((product) => <article className={styles.productCard} key={product.title}><div className={styles.productImage}><img src={`/landing/${product.image}`} alt={product.title} />{product.tag && <span>{product.tag}</span>}</div><div className={styles.productInfo}><h3>{product.title}</h3><p>{product.subtitle}</p></div><div className={styles.productAction}><a href={`/products?search=${encodeURIComponent(product.title)}`} className={styles.addButton}>مشاهده در کاتالوگ</a><div className={styles.productPrice}>{product.old && <del>{product.old}</del>}<strong>{product.price} <small>تومان</small></strong></div></div></article>)}</div>
+          <div className={styles.productGrid}>{products.map((product) => <article className={styles.productCard} key={product.title}><div className={styles.productImage}><img src={`/landing/${product.image}`} alt={product.title} />{product.tag && <span>{product.tag}</span>}</div><div className={styles.productInfo}><h3><a href={`/products?search=${encodeURIComponent(product.title)}`}>{product.title}</a></h3><p>{product.subtitle}</p></div><div className={styles.productAction}><button type="button" onClick={() => { addBuyerDemoCartItem({ id: product.id, name: product.title, detail: product.subtitle, kind: "GOOD", unitPrice: product.priceValue, image: `/landing/${product.image}` }); setAddedProduct(product.id); window.setTimeout(() => setAddedProduct(""), 1300); }} className={styles.addButton}>{addedProduct === product.id ? "به سبد اضافه شد ✓" : "افزودن +"}</button><div className={styles.productPrice}>{product.old && <del>{product.old}</del>}<strong>{product.price} <small>تومان</small></strong></div></div></article>)}</div>
         </section>
       </section>
 
