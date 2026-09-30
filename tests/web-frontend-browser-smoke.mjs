@@ -16,6 +16,7 @@ const phone = "09123456789";
 const challengeId = "6b2bc828-cf5d-4af7-a026-a653739d8509";
 const provinceId = "4ef06bf5-32f3-4b10-a41e-5bd69f6bb442";
 const cityId = "fbf47579-71b4-4b85-996c-842ac497fb12";
+const businessCategoryId = "7f4b4df8-69c1-4c11-8eef-0d8e2ae6a851";
 const province = { id: provinceId, name: "استان مرورگر CI", slug: "ci-province" };
 const city = { id: cityId, provinceId,
   name: "شهر مرورگر CI", slug: "ci-city" };
@@ -121,6 +122,47 @@ async function fakeApi(route) {
       identityStatus: "VERIFIED",
       nationalCodeMasked: "******5948",
       completedStep: 3,
+    }));
+  }
+  if (path === "/api/seller/registration/business-categories" &&
+    req.method() === "GET") {
+    assert.ok(signedIn);
+    return route.fulfill(json({
+      configured: true,
+      items: [{ id: businessCategoryId, name: "دسته‌بندی مرورگر CI" }],
+    }));
+  }
+  if (path === "/api/seller/registration/business-information" &&
+    req.method() === "PUT") {
+    assert.ok(signedIn);
+    const body = req.postDataJSON();
+    assert.equal(body.categoryId, businessCategoryId);
+    assert.equal(body.businessName, "کسب‌وکار مرورگر");
+    assert.equal(body.description, "ارائه کالا و خدمات محلی در مرورگر CI");
+    assert.equal(body.businessPhone, "02112345678");
+    assert.equal(body.offeringType, "BOTH");
+    assert.equal(body.revision, draft?.revision);
+    assert.equal(draft?.completedStep, 3);
+    draft = {
+      ...draft,
+      businessCategoryId,
+      businessCategoryName: "دسته‌بندی مرورگر CI",
+      businessName: body.businessName,
+      businessDescription: body.description,
+      businessPhone: body.businessPhone,
+      offeringType: body.offeringType,
+      completedStep: 4,
+      revision: draft.revision + 1,
+    };
+    return route.fulfill(json({
+      status: "DRAFT",
+      revision: draft.revision,
+      completedStep: 4,
+      category: { id: businessCategoryId, name: "دسته‌بندی مرورگر CI" },
+      businessName: draft.businessName,
+      description: draft.businessDescription,
+      businessPhone: draft.businessPhone,
+      offeringType: draft.offeringType,
     }));
   }
   if (path === "/api/seller/registration" && req.method() === "POST") {
@@ -378,10 +420,40 @@ async function main() {
   await otherTab.getByText("******5948").waitFor();
   await otherTab.getByText("مرحله بعد «اطلاعات کسب‌وکار» است.").waitFor();
 
+  const categorySelect = otherTab.getByLabel("دسته‌بندی کسب‌وکار");
+  await categorySelect.waitFor();
+  await categorySelect.selectOption(businessCategoryId);
+  await otherTab.locator("#seller-business-name")
+    .fill("کسب‌وکار مرورگر");
+  await otherTab.locator("#seller-business-description")
+    .fill("ارائه کالا و خدمات محلی در مرورگر CI");
+  await otherTab.locator("#seller-business-phone")
+    .fill("۰۲۱۱۲۳۴۵۶۷۸");
+  await otherTab.getByRole("button", {
+    name: "کالا و خدمت", exact: true,
+  }).click();
+
+  await otherTab.getByRole("button", {
+    name: "ذخیره و ادامه", exact: true,
+  }).click();
+  await otherTab.getByText("اطلاعات کسب‌وکار ذخیره شد.", {
+    exact: true,
+  }).waitFor();
+  assert.equal(draft.businessCategoryId, businessCategoryId);
+  assert.equal(draft.businessPhone, "02112345678");
+  assert.equal(draft.offeringType, "BOTH");
+  assert.equal(draft.completedStep, 4);
+  assert.equal(draft.revision, 6);
+  await otherTab.locator(".seller-business__completed").getByText("دسته‌بندی مرورگر CI", { exact: true }).waitFor();
+  await otherTab.getByText("مرحله بعد «محدوده فعالیت» است.").waitFor();
+  assert.equal(await otherTab.getByRole("button", {
+    name: "ثبت درخواست برای بررسی",
+  }).count(), 0);
+
   assert.deepEqual(pageErrors, []);
   assert.ok(apiRequests > 10, "browser must exercise actual client UI");
   await context.close();
-  console.log("Chromium CI frontend: OTP → seller draft → applicant type → verified identity step → submit gated OK");
+  console.log("Chromium CI frontend: OTP → seller draft → identity → business information step → submit gated OK");
 }
 
 try {
