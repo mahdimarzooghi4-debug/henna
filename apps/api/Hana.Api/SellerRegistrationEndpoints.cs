@@ -45,6 +45,12 @@ internal static class SellerRegistrationEndpoints
                     draft.Address,
                     draft.PostalCode,
                     draft.ApplicantType,
+                    draft.IdentityStatus,
+                    nationalCodeMasked = MaskNationalCode(draft.NaturalNationalCode),
+                    draft.LegalNationalId,
+                    draft.LegalName,
+                    draft.LegalRepresentativeName,
+                    draft.LegalRepresentativePhone,
                     draft.CompletedStep,
                     draft.Status,
                     draft.Revision,
@@ -134,6 +140,7 @@ internal static class SellerRegistrationEndpoints
                           updated_at_utc = {now}
                         WHERE account_id = {accountId.Value}
                           AND status = 'DRAFT'
+                          AND completed_step = 1
                           AND revision = {expectedRevision}
                         """, cancellationToken);
                 return updated == 1
@@ -195,11 +202,18 @@ internal static class SellerRegistrationEndpoints
                 var updated = await db.Database.ExecuteSqlInterpolatedAsync($"""
                     UPDATE seller.registration_drafts SET
                       applicant_type = {applicantType},
-                      completed_step = GREATEST(completed_step, 2),
+                      natural_national_code = NULL,
+                      legal_national_id = NULL,
+                      legal_name = NULL,
+                      legal_representative_name = NULL,
+                      legal_representative_phone = NULL,
+                      identity_status = NULL,
+                      completed_step = 2,
                       revision = revision + 1,
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
                       AND status = 'DRAFT'
+                      AND completed_step <= 2
                       AND revision = {input.Revision}
                     """, cancellationToken);
 
@@ -222,6 +236,221 @@ internal static class SellerRegistrationEndpoints
             }
         })
         .WithName("SaveMySellerApplicantType")
+        .ProducesValidationProblem();
+
+        routes.MapPost("/identity/natural", async (
+            SellerNaturalIdentityInput input,
+            HttpContext context,
+            IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            var token = BearerToken(context);
+            if (token is null) return Results.Unauthorized();
+            if (input.Revision < 1 || input.Revision == int.MaxValue)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["revision"] = ["نسخهٔ پیش‌نویس معتبر نیست؛ صفحه را بازخوانی کنید."]
+                });
+
+            var nationalCode = SellerIdentityInputValidation.NormalizeDigits(
+                input.NationalCode);
+            if (!SellerIdentityInputValidation.IsIranianNationalCode(nationalCode))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["nationalCode"] = ["فرمت کد ملی صحیح نیست."]
+                });
+            if (!hasDatabase)
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            try
+            {
+                var accountId = await services.GetRequiredService<AuthSessionService>()
+                    .ResolveAccountAsync(token, cancellationToken);
+                if (accountId is null) return Results.Unauthorized();
+
+                var identity = services.GetRequiredService<HanaIdentityDbContext>();
+                var account = await identity.Accounts.AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.Id == accountId,
+                        cancellationToken);
+                if (account?.PhoneVerifiedAtUtc is null)
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["phone"] = ["شماره همراه حساب هنوز تأیید نشده است."]
+                    });
+
+                var db = services.GetRequiredService<HanaSellerDbContext>();
+                var current = await db.RegistrationDrafts.AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.AccountId == accountId,
+                        cancellationToken);
+                if (current is null) return Results.NotFound();
+                if (current.Status != "DRAFT" ||
+                    current.ApplicantType != "NATURAL" ||
+                    current.CompletedStep != 2 ||
+                    current.Revision != input.Revision)
+                    return Results.Conflict(new
+                    {
+                        message = "مرحله احراز هویت با نسخه یا نوع متقاضی فعلی سازگار نیست.",
+                        currentRevision = current.Revision,
+                        currentStatus = current.Status,
+                        completedStep = current.CompletedStep
+                    });
+
+                var verifier = services
+                    .GetRequiredService<ISellerNaturalIdentityVerifier>();
+                if (!verifier.IsAvailable)
+                    return Results.StatusCode(
+                        StatusCodes.Status503ServiceUnavailable);
+
+                var verification = await verifier.VerifyAsync(
+                    nationalCode,
+                    account.NormalizedPhone,
+                    cancellationToken);
+                if (verification == SellerIdentityVerificationResult.Unavailable)
+                    return Results.StatusCode(
+                        StatusCodes.Status503ServiceUnavailable);
+                if (verification == SellerIdentityVerificationResult.NotMatched)
+                    return Results.ValidationProblem(
+                        new Dictionary<string, string[]>
+                        {
+                            ["nationalCode"] = ["اطلاعات هویتی با حساب تأییدشده تطبیق داده نشد."]
+                        });
+
+                var now = services.GetRequiredService<IClock>().UtcNow
+                    .ToUniversalTime();
+                var updated = await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    UPDATE seller.registration_drafts SET
+                      natural_national_code = {nationalCode},
+                      identity_status = 'VERIFIED',
+                      completed_step = 3,
+                      revision = revision + 1,
+                      updated_at_utc = {now}
+                    WHERE account_id = {accountId.Value}
+                      AND status = 'DRAFT'
+                      AND applicant_type = 'NATURAL'
+                      AND completed_step = 2
+                      AND revision = {input.Revision}
+                    """, cancellationToken);
+
+                return updated == 1
+                    ? Results.Ok(new
+                    {
+                        status = "DRAFT",
+                        revision = input.Revision + 1,
+                        identityStatus = "VERIFIED",
+                        nationalCodeMasked = MaskNationalCode(nationalCode),
+                        completedStep = 3
+                    })
+                    : Results.Conflict(new
+                    {
+                        message = "پیش‌نویس هنگام استعلام تغییر کرد؛ نتیجه روی نسخهٔ جدید اعمال نشد."
+                    });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("VerifyMyNaturalSellerIdentity")
+        .ProducesValidationProblem();
+
+        routes.MapPut("/identity/legal", async (
+            SellerLegalIdentityInput input,
+            HttpContext context,
+            IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            var token = BearerToken(context);
+            if (token is null) return Results.Unauthorized();
+            if (input.Revision < 1 || input.Revision == int.MaxValue)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["revision"] = ["نسخهٔ پیش‌نویس معتبر نیست؛ صفحه را بازخوانی کنید."]
+                });
+
+            var legalNationalId = SellerIdentityInputValidation.NormalizeDigits(
+                input.LegalNationalId);
+            var representativePhone = SellerIdentityInputValidation.NormalizeDigits(
+                input.RepresentativePhone);
+            var legalName = SellerIdentityInputValidation.CleanText(
+                input.LegalName, 180);
+            var representativeName = SellerIdentityInputValidation.CleanText(
+                input.RepresentativeName, 120);
+            if (!SellerIdentityInputValidation.IsElevenDigits(legalNationalId) ||
+                !SellerIdentityInputValidation.IsPhone(representativePhone) ||
+                legalName is null || representativeName is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["identity"] = ["اطلاعات شخصیت حقوقی معتبر نیست."]
+                });
+            if (!hasDatabase)
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            try
+            {
+                var accountId = await services.GetRequiredService<AuthSessionService>()
+                    .ResolveAccountAsync(token, cancellationToken);
+                if (accountId is null) return Results.Unauthorized();
+
+                var identity = services.GetRequiredService<HanaIdentityDbContext>();
+                var account = await identity.Accounts.AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.Id == accountId,
+                        cancellationToken);
+                if (account?.PhoneVerifiedAtUtc is null ||
+                    account.NormalizedPhone != representativePhone)
+                    return Results.ValidationProblem(
+                        new Dictionary<string, string[]>
+                        {
+                            ["representativePhone"] =
+                                ["شماره موبایل نماینده باید همان شماره تأییدشده حساب باشد."]
+                        });
+
+                var db = services.GetRequiredService<HanaSellerDbContext>();
+                var now = services.GetRequiredService<IClock>().UtcNow
+                    .ToUniversalTime();
+                var updated = await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    UPDATE seller.registration_drafts SET
+                      legal_national_id = {legalNationalId},
+                      legal_name = {legalName},
+                      legal_representative_name = {representativeName},
+                      legal_representative_phone = {representativePhone},
+                      identity_status = 'RECORDED',
+                      completed_step = 3,
+                      revision = revision + 1,
+                      updated_at_utc = {now}
+                    WHERE account_id = {accountId.Value}
+                      AND status = 'DRAFT'
+                      AND applicant_type = 'LEGAL'
+                      AND completed_step = 2
+                      AND revision = {input.Revision}
+                    """, cancellationToken);
+
+                return updated == 1
+                    ? Results.Ok(new
+                    {
+                        status = "DRAFT",
+                        revision = input.Revision + 1,
+                        identityStatus = "RECORDED",
+                        completedStep = 3
+                    })
+                    : Results.Conflict(new
+                    {
+                        message = "پیش‌نویس تغییر کرده یا نوع متقاضی با این فرم سازگار نیست."
+                    });
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("SaveMyLegalSellerIdentity")
         .ProducesValidationProblem();
 
         routes.MapPost("/submit", async (SellerRegistrationSubmitInput input,
@@ -316,6 +545,11 @@ internal static class SellerRegistrationEndpoints
         .ProducesValidationProblem();
     }
 
+    private static string? MaskNationalCode(string? value) =>
+        value is { Length: 10 }
+            ? "******" + value[^4..]
+            : null;
+
     private static string? BearerToken(HttpContext context)
     {
         var header = context.Request.Headers.Authorization.ToString();
@@ -333,6 +567,17 @@ internal sealed record SellerRegistrationInput(
 
 internal sealed record SellerApplicantTypeInput(
     string? ApplicantType,
+    int Revision);
+
+internal sealed record SellerNaturalIdentityInput(
+    string? NationalCode,
+    int Revision);
+
+internal sealed record SellerLegalIdentityInput(
+    string? LegalNationalId,
+    string? LegalName,
+    string? RepresentativeName,
+    string? RepresentativePhone,
     int Revision);
 
 internal sealed record SellerRegistrationSubmitInput(int Revision);
