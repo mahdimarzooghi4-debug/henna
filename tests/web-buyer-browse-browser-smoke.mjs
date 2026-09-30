@@ -98,7 +98,7 @@ async function main() {
   const errors = [];
   page.on("pageerror", e => { errors.push(e.message); });
 
-  await page.goto(base);
+  await page.goto(base + "/products");
   await page.getByText("هنوز دسته‌بندی قابل نمایش در حنا ثبت نشده است.").waitFor();
   await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
   assert.equal(await page.getByRole("link", { name: "ورود / ثبت‌نام" }).count(), 1);
@@ -150,7 +150,7 @@ async function main() {
 
   // A bookmarked filter can later become unpublished. Only a CONFIRMED
   // published category list can remove it; 503 must preserve the URL.
-  const oldBookmark = "/?categoryId=" + categoryB +
+  const oldBookmark = "/products?categoryId=" + categoryB +
     "&search=" + encodeURIComponent("عنوان") + "&page=2";
   mode = "outage";
   publishedCategories = categories;
@@ -169,7 +169,7 @@ async function main() {
   await page.getByText(
     "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
   ).waitFor();
-  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+  await page.waitForURL(base + "/products?search=" + encodeURIComponent("عنوان"));
   await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 1", exact: true,
   }).waitFor();
@@ -188,7 +188,7 @@ async function main() {
   // Only memory-only CI route fixtures produce these example products.
   mode = "rich";
   publishedCategories = categories;
-  const resumedBookmark = "/?categoryId=" + categoryB +
+  const resumedBookmark = "/products?categoryId=" + categoryB +
     "&search=" + encodeURIComponent("عنوان");
   await page.goto(base + resumedBookmark);
   await page.getByRole("heading", {
@@ -219,7 +219,7 @@ async function main() {
   await page.getByText(
     "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
   ).waitFor();
-  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+  await page.waitForURL(base + "/products?search=" + encodeURIComponent("عنوان"));
   await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 1", exact: true,
   }).waitFor();
@@ -240,7 +240,7 @@ async function main() {
   await page.getByText(
     "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
   ).waitFor();
-  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+  await page.waitForURL(base + "/products?search=" + encodeURIComponent("عنوان"));
 
   // Frontend 029: a once-valid saved page two can become out of range
   // after actual published entries are withdrawn. These are ONLY CI-memory
@@ -248,7 +248,7 @@ async function main() {
   mode = "rich";
   publishedCategories = categories;
   visibleGoods = goods.map(item => ({ ...item, categoryId: categoryB }));
-  const savedPage = "/?categoryId=" + categoryB +
+  const savedPage = "/products?categoryId=" + categoryB +
     "&search=" + encodeURIComponent("عنوان") + "&page=2";
   await page.goto(base + savedPage);
   await page.getByRole("heading", {
@@ -277,7 +277,7 @@ async function main() {
   await page.getByText(
     "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
   ).waitFor();
-  await page.waitForURL(base + "/?categoryId=" + categoryB +
+  await page.waitForURL(base + "/products?categoryId=" + categoryB +
     "&search=" + encodeURIComponent("عنوان"));
   await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 1", exact: true,
@@ -311,12 +311,12 @@ async function main() {
   // page-one EMPTY state. Keep the Persian text, do not invent results.
   mode = "rich";
   visibleGoods = goods;
-  await page.goto(base + "/?search=" +
+  await page.goto(base + "/products?search=" +
     encodeURIComponent("ناموجود") + "&page=2");
   await page.getByText(
     "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
   ).waitFor();
-  await page.waitForURL(base + "/?search=" + encodeURIComponent("ناموجود"));
+  await page.waitForURL(base + "/products?search=" + encodeURIComponent("ناموجود"));
   await page.getByRole("heading", {
     name: "فعلاً کالایی برای نمایش نداریم",
   }).waitFor();
