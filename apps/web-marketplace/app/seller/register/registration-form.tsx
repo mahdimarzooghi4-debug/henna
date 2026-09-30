@@ -13,6 +13,7 @@ import {
   type SellerFields,
 } from "../../../lib/seller-draft-preflight";
 import { sellerLoginHref } from "../../../lib/seller-return";
+import { normalizeDigits } from "../../../lib/normalize-digits";
 import {
   chooseSellerDraftCopy, sellerFieldDifferences,
 } from "../../../lib/seller-conflict";
@@ -45,6 +46,16 @@ export function RegistrationForm() {
   const [applicantType, setApplicantType] =
     useState<"NATURAL" | "LEGAL" | null>(null);
   const [completedStep, setCompletedStep] = useState(1);
+  const [identityStatus, setIdentityStatus] =
+    useState<"VERIFIED" | "RECORDED" | null>(null);
+  const [nationalCode, setNationalCode] = useState("");
+  const [nationalCodeMasked, setNationalCodeMasked] = useState<string | null>(null);
+  const [legalNationalId, setLegalNationalId] = useState("");
+  const [legalName, setLegalName] = useState("");
+  const [legalRepresentativeName, setLegalRepresentativeName] = useState("");
+  const [legalRepresentativePhone, setLegalRepresentativePhone] = useState("");
+  const [identityFeedback, setIdentityFeedback] =
+    useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [submitKey, setSubmitKey] = useState<string | null>(null);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
@@ -83,6 +94,13 @@ export function RegistrationForm() {
       setRevision(result.revision);
       setApplicantType(result.applicantType);
       setCompletedStep(result.completedStep);
+      setIdentityStatus(result.identityStatus);
+      setNationalCodeMasked(result.nationalCodeMasked);
+      setLegalNationalId(result.legalNationalId ?? "");
+      setLegalName(result.legalName ?? "");
+      setLegalRepresentativeName(result.legalRepresentativeName ?? "");
+      setLegalRepresentativePhone(result.legalRepresentativePhone ?? "");
+      setIdentityFeedback(null);
       if (result.status === "submitted") {
         setSubmittedAtUtc(result.submittedAtUtc);
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
@@ -103,8 +121,19 @@ export function RegistrationForm() {
   }, [conflict?.status]);
 
   const hasUnsavedChanges = hasUnsavedSellerEdits(fields, baseline);
+  const hasUnsavedIdentityChanges = completedStep === 2 &&
+    (applicantType === "NATURAL"
+      ? nationalCode.trim().length > 0
+      : applicantType === "LEGAL" &&
+        (legalNationalId.trim().length > 0 ||
+          legalName.trim().length > 0 ||
+          legalRepresentativeName.trim() !== fields.ownerName ||
+          normalizeDigits(legalRepresentativePhone.trim()) !== fields.phone));
+  const hasAnyUnsavedChanges =
+    hasUnsavedChanges || hasUnsavedIdentityChanges;
+
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
+    if (!hasAnyUnsavedChanges) return;
 
     // Browsers choose their own generic text for refresh/close warning.
     const onUnload = (event: BeforeUnloadEvent) => {
@@ -141,7 +170,7 @@ export function RegistrationForm() {
       window.removeEventListener("beforeunload", onUnload);
       document.removeEventListener("click", onLink, true);
     };
-  }, [hasUnsavedChanges]);
+  }, [hasAnyUnsavedChanges]);
 
   function update(field: keyof SellerFields, value: string) {
     if (access !== "signedIn" || busy || conflict || submittedAtUtc) return;
@@ -315,7 +344,7 @@ export function RegistrationForm() {
 
   async function saveApplicantType(type: "NATURAL" | "LEGAL") {
     if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
-      revision < 1 || hasUnsavedChanges) return;
+      revision < 1 || hasUnsavedChanges || hasUnsavedIdentityChanges) return;
     setBusy(true);
     setMessage("");
     try {
@@ -339,6 +368,14 @@ export function RegistrationForm() {
           setApplicantType(type);
           setCompletedStep(2);
           setRevision(result.revision);
+          setIdentityStatus(null);
+          setNationalCode("");
+          setNationalCodeMasked(null);
+          setLegalNationalId("");
+          setLegalName("");
+          setLegalRepresentativeName(type === "LEGAL" ? fields.ownerName : "");
+          setLegalRepresentativePhone(type === "LEGAL" ? fields.phone : "");
+          setIdentityFeedback(null);
           setSaved(true);
           setMessage(type === "NATURAL"
             ? "نوع متقاضی «شخص حقیقی» ذخیره شد. مرحله بعد احراز هویت شخص حقیقی است."
@@ -357,6 +394,170 @@ export function RegistrationForm() {
         : "ذخیره نوع متقاضی تأیید نشد؛ لطفاً دوباره تلاش کنید.");
     } catch {
       setMessage("ذخیره نوع متقاضی تأیید نشد؛ لطفاً دوباره تلاش کنید.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function validNaturalNationalCode(value: string) {
+    const code = normalizeDigits(value.trim());
+    if (!/^\d{10}$/.test(code) || /^(\d)\1{9}$/.test(code)) return false;
+    const sum = [...code.slice(0, 9)].reduce(
+      (total, digit, index) =>
+        total + Number(digit) * (10 - index), 0);
+    const remainder = sum % 11;
+    const check = remainder < 2 ? remainder : 11 - remainder;
+    return check === Number(code[9]);
+  }
+
+  async function verifyNaturalIdentity() {
+    if (busy || access !== "signedIn" || applicantType !== "NATURAL" ||
+      completedStep !== 2 || revision < 1 || hasUnsavedChanges) return;
+
+    const normalized = normalizeDigits(nationalCode.trim());
+    setNationalCode(normalized);
+    if (!validNaturalNationalCode(normalized)) {
+      setIdentityFeedback({ kind: "error", text: "فرمت کد ملی صحیح نیست." });
+      return;
+    }
+
+    setBusy(true);
+    setIdentityFeedback({ kind: "info", text: "در حال بررسی اطلاعات هویتی…" });
+    try {
+      const response = await fetch(
+        "/api/seller/registration/identity/natural",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nationalCode: normalized, revision }),
+          cache: "no-store",
+        },
+      );
+      if (response.ok) {
+        const result: unknown = await response.json();
+        if (result && typeof result === "object" &&
+          "status" in result && result.status === "DRAFT" &&
+          "revision" in result && result.revision === revision + 1 &&
+          "identityStatus" in result &&
+          result.identityStatus === "VERIFIED" &&
+          "nationalCodeMasked" in result &&
+          typeof result.nationalCodeMasked === "string" &&
+          "completedStep" in result && result.completedStep === 3) {
+          setRevision(result.revision as number);
+          setCompletedStep(3);
+          setIdentityStatus("VERIFIED");
+          setNationalCodeMasked(result.nationalCodeMasked);
+          setNationalCode("");
+          setIdentityFeedback({
+            kind: "info",
+            text: "اطلاعات هویتی تأیید شد. مرحله بعد اطلاعات کسب‌وکار است.",
+          });
+          return;
+        }
+      }
+      if (response.status === 401) setAccess("signedOut");
+      if (response.status === 409) {
+        checkInitialDraft();
+        setIdentityFeedback({
+          kind: "error",
+          text: "نسخه یا نوع متقاضی تغییر کرده است؛ آخرین وضعیت دوباره دریافت می‌شود.",
+        });
+        return;
+      }
+      setIdentityFeedback({
+        kind: "error",
+        text: response.status === 503
+          ? "استعلام هویت در حال حاضر در دسترس نیست؛ هیچ تأییدی ثبت نشد."
+          : response.status === 400
+            ? "اطلاعات هویتی تأیید نشد."
+            : "استعلام هویت تکمیل نشد؛ دوباره تلاش کنید.",
+      });
+    } catch {
+      setIdentityFeedback({
+        kind: "error",
+        text: "استعلام هویت در حال حاضر در دسترس نیست؛ هیچ تأییدی ثبت نشد.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveLegalIdentity() {
+    if (busy || access !== "signedIn" || applicantType !== "LEGAL" ||
+      completedStep !== 2 || revision < 1 || hasUnsavedChanges) return;
+
+    const normalizedId = normalizeDigits(legalNationalId.trim());
+    const normalizedPhone = normalizeDigits(legalRepresentativePhone.trim());
+    setLegalNationalId(normalizedId);
+    setLegalRepresentativePhone(normalizedPhone);
+    if (!/^\d{11}$/.test(normalizedId) ||
+      !legalName.trim() || legalName.trim().length > 180 ||
+      !legalRepresentativeName.trim() ||
+      legalRepresentativeName.trim().length > 120 ||
+      !/^09\d{9}$/.test(normalizedPhone)) {
+      setIdentityFeedback({
+        kind: "error",
+        text: "اطلاعات شخصیت حقوقی کامل یا معتبر نیست.",
+      });
+      return;
+    }
+
+    setBusy(true);
+    setIdentityFeedback(null);
+    try {
+      const response = await fetch(
+        "/api/seller/registration/identity/legal",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            legalNationalId: normalizedId,
+            legalName: legalName.trim(),
+            representativeName: legalRepresentativeName.trim(),
+            representativePhone: normalizedPhone,
+            revision,
+          }),
+          cache: "no-store",
+        },
+      );
+      if (response.ok) {
+        const result: unknown = await response.json();
+        if (result && typeof result === "object" &&
+          "status" in result && result.status === "DRAFT" &&
+          "revision" in result && result.revision === revision + 1 &&
+          "identityStatus" in result &&
+          result.identityStatus === "RECORDED" &&
+          "completedStep" in result && result.completedStep === 3) {
+          setRevision(result.revision as number);
+          setCompletedStep(3);
+          setIdentityStatus("RECORDED");
+          setIdentityFeedback({
+            kind: "info",
+            text: "اطلاعات شخصیت حقوقی ثبت شد. این وضعیت به معنی احراز خارجی یا تأیید نهایی نیست.",
+          });
+          return;
+        }
+      }
+      if (response.status === 401) setAccess("signedOut");
+      if (response.status === 409) {
+        checkInitialDraft();
+        setIdentityFeedback({
+          kind: "error",
+          text: "نسخه یا نوع متقاضی تغییر کرده است؛ آخرین وضعیت دوباره دریافت می‌شود.",
+        });
+        return;
+      }
+      setIdentityFeedback({
+        kind: "error",
+        text: response.status === 400
+          ? "اطلاعات شخصیت حقوقی یا شماره نماینده معتبر نیست."
+          : "ذخیره اطلاعات شخصیت حقوقی تأیید نشد؛ دوباره تلاش کنید.",
+      });
+    } catch {
+      setIdentityFeedback({
+        kind: "error",
+        text: "ذخیره اطلاعات شخصیت حقوقی تأیید نشد؛ دوباره تلاش کنید.",
+      });
     } finally {
       setBusy(false);
     }
@@ -441,33 +642,34 @@ export function RegistrationForm() {
         <div className="seller-fields">
           <FormField id="store-name" label="نام فروشگاه" placeholder="مثلاً سوپرمارکت بهار"
             maxLength={120} value={fields.storeName} error={Boolean(fieldErrors.storeName)} errorMessage={fieldErrors.storeName} required
-            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("storeName", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("storeName", e.target.value)} />
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
             maxLength={120} autoComplete="name" value={fields.ownerName} error={Boolean(fieldErrors.ownerName)} errorMessage={fieldErrors.ownerName} required
-            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("ownerName", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("ownerName", e.target.value)} />
           <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
             className="field__input--phone" value={fields.phone} error={Boolean(fieldErrors.phone)} errorMessage={fieldErrors.phone} required
-            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("phone", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("phone", e.target.value)} />
           <FormField id="city" label="شهر / منطقه" placeholder="شهر و محدوده فعالیت"
             maxLength={120} value={fields.city} error={Boolean(fieldErrors.city)} errorMessage={fieldErrors.city} required
-            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("city", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("city", e.target.value)} />
           <SellerLocationReference
-            enabled={access === "signedIn" && !busy && conflict === null}
+            enabled={access === "signedIn" && !busy && conflict === null &&
+              completedStep < 2}
             onChoose={(value) => update("city", value)} />
           <FormField id="store-address" label="آدرس فروشگاه" placeholder="نشانی کامل فروشگاه"
             maxLength={500} autoComplete="street-address" value={fields.address} error={Boolean(fieldErrors.address)} errorMessage={fieldErrors.address} required
-            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("address", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("address", e.target.value)} />
           <FormField id="postal-code" label="کدپستی" placeholder="کدپستی ۱۰ رقمی"
             inputMode="numeric" autoComplete="postal-code" maxLength={10}
             className="field__input--phone" value={fields.postalCode}
             error={Boolean(fieldErrors.postalCode)} errorMessage={fieldErrors.postalCode} required
-            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null} onChange={(e) => update("postalCode", e.target.value)} />
+            disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("postalCode", e.target.value)} />
         </div>
         <aside className="account-note">
           <p>ثبت‌نام طبق مسیر ۸ مرحله‌ای فیگما ادامه پیدا می‌کند. پس از اطلاعات اولیه، نوع متقاضی انتخاب می‌شود و ثبت نهایی تا تکمیل مراحل ۱ تا ۶ در سرور مجاز نیست.</p>
         </aside>
-        {!submittedAtUtc && (
+        {!submittedAtUtc && completedStep < 2 && (
           <button className="primary-button" type="submit"
             disabled={busy || access !== "signedIn" || conflict !== null}>
             {busy ? "در حال ذخیره…" :
@@ -490,7 +692,7 @@ export function RegistrationForm() {
                   : "seller-applicant-type__option"}
                 aria-pressed={applicantType === "NATURAL"}
                 disabled={busy || access !== "signedIn" || conflict !== null ||
-                  hasUnsavedChanges}
+                  hasAnyUnsavedChanges || completedStep >= 3}
                 onClick={() => void saveApplicantType("NATURAL")}>
                 <strong>شخص حقیقی</strong>
                 <span>ثبت‌نام به نام یک فرد با کدملی شخصی؛ مناسب کسب‌وکارهای خانگی، ارائه‌دهندگان محلی، آزادکاران و تولیدکنندگان انفرادی.</span>
@@ -501,7 +703,7 @@ export function RegistrationForm() {
                   : "seller-applicant-type__option"}
                 aria-pressed={applicantType === "LEGAL"}
                 disabled={busy || access !== "signedIn" || conflict !== null ||
-                  hasUnsavedChanges}
+                  hasAnyUnsavedChanges || completedStep >= 3}
                 onClick={() => void saveApplicantType("LEGAL")}>
                 <strong>شخص حقوقی</strong>
                 <span>ثبت‌نام به نام یک شخصیت حقوقی یا سازمان.</span>
@@ -514,7 +716,144 @@ export function RegistrationForm() {
               <p className="seller-applicant-type__saved" role="status">
                 انتخاب ذخیره‌شده: {applicantType === "NATURAL"
                   ? "شخص حقیقی"
-                  : "شخص حقوقی"} — مرحله بعد «احراز هویت» است.
+                  : "شخص حقوقی"}
+                {completedStep === 2
+                  ? " — مرحله بعد «احراز هویت» است."
+                  : " — مرحله احراز هویت ثبت شده است."}
+              </p>
+            )}
+          </section>
+        )}
+        {completedStep >= 2 && applicantType && !submittedAtUtc && (
+          <section className="seller-identity"
+            aria-labelledby="seller-identity-heading">
+            <div className="seller-identity__intro">
+              <p className="seller-applicant-type__step">مرحله ۳ از ۸</p>
+              <h3 id="seller-identity-heading">
+                {applicantType === "NATURAL"
+                  ? "احراز هویت شخص حقیقی"
+                  : "اطلاعات شخصیت حقوقی"}
+              </h3>
+              <p>
+                {applicantType === "NATURAL"
+                  ? "اطلاعات هویتی فقط از طریق استعلام مجاز تأیید می‌شود؛ وارد کردن کد ملی به‌تنهایی احراز هویت محسوب نمی‌شود."
+                  : "اطلاعات ثبتی و نماینده در این مرحله ثبت می‌شود؛ ثبت این داده‌ها به معنی احراز خارجی یا تأیید نهایی شخصیت حقوقی نیست."}
+              </p>
+            </div>
+
+            {completedStep === 2 && applicantType === "NATURAL" && (
+              <div className="seller-identity__body">
+                <div className="seller-identity__summary">
+                  <p><strong>نام و نام خانوادگی</strong><bdi>{fields.ownerName}</bdi></p>
+                  <p><strong>شماره موبایل تأییدشده</strong><bdi dir="ltr">{fields.phone}</bdi></p>
+                </div>
+                <FormField id="seller-national-code" label="کد ملی"
+                  placeholder="مثال: ۰۰۸۴۵۷۵۹۴۸"
+                  inputMode="numeric" maxLength={10}
+                  className="field__input--phone"
+                  value={nationalCode} required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(e) => {
+                    setNationalCode(e.target.value);
+                    setIdentityFeedback(null);
+                  }} />
+                <button type="button" className="primary-button"
+                  disabled={busy || access !== "signedIn"}
+                  onClick={() => void verifyNaturalIdentity()}>
+                  {busy ? "در حال استعلام…" : "استعلام و ادامه"}
+                </button>
+              </div>
+            )}
+
+            {completedStep === 2 && applicantType === "LEGAL" && (
+              <div className="seller-identity__body seller-identity__legal-grid">
+                <FormField id="seller-legal-name"
+                  label="نام شخصیت حقوقی / سازمان"
+                  placeholder="مثال: شرکت نمونه"
+                  maxLength={180} value={legalName} required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(e) => {
+                    setLegalName(e.target.value);
+                    setIdentityFeedback(null);
+                  }} />
+                <FormField id="seller-legal-national-id"
+                  label="شناسه ملی ۱۱ رقمی"
+                  placeholder="شناسه ملی ۱۱ رقمی"
+                  inputMode="numeric" maxLength={11}
+                  className="field__input--phone"
+                  value={legalNationalId} required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(e) => {
+                    setLegalNationalId(e.target.value);
+                    setIdentityFeedback(null);
+                  }} />
+                <FormField id="seller-representative-name"
+                  label="نام نماینده"
+                  placeholder="نام نماینده رسمی"
+                  maxLength={120} value={legalRepresentativeName} required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(e) => {
+                    setLegalRepresentativeName(e.target.value);
+                    setIdentityFeedback(null);
+                  }} />
+                <FormField id="seller-representative-phone"
+                  label="شماره موبایل نماینده"
+                  placeholder="09xxxxxxxxx"
+                  inputMode="numeric" type="tel" maxLength={11}
+                  className="field__input--phone"
+                  value={legalRepresentativePhone} required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(e) => {
+                    setLegalRepresentativePhone(e.target.value);
+                    setIdentityFeedback(null);
+                  }} />
+                <p className="seller-identity__legal-note">
+                  شماره نماینده باید همان شماره تأییدشده حساب حنا باشد.
+                  مدارک تکمیلی در مرحله ۶ تعیین می‌شوند.
+                </p>
+                <button type="button" className="primary-button"
+                  disabled={busy || access !== "signedIn"}
+                  onClick={() => void saveLegalIdentity()}>
+                  {busy ? "در حال ذخیره…" : "ادامه"}
+                </button>
+              </div>
+            )}
+
+            {completedStep >= 3 && identityStatus && (
+              <div className="seller-identity__completed" role="status">
+                {applicantType === "NATURAL" ? (
+                  <>
+                    <strong>اطلاعات هویتی تأیید شد.</strong>
+                    <p>کد ملی ثبت‌شده: <bdi dir="ltr">
+                      {nationalCodeMasked ?? "—"}
+                    </bdi></p>
+                  </>
+                ) : (
+                  <>
+                    <strong>اطلاعات شخصیت حقوقی ثبت شد.</strong>
+                    <p>
+                      {legalName} — شناسه ملی <bdi dir="ltr">
+                        {legalNationalId}
+                      </bdi>
+                    </p>
+                    <p>وضعیت فعلی «ثبت اطلاعات» است و معادل احراز یا تأیید نهایی نیست.</p>
+                  </>
+                )}
+                <p>مرحله بعد «اطلاعات کسب‌وکار» است.</p>
+              </div>
+            )}
+
+            {hasUnsavedIdentityChanges && (
+              <p className="seller-unsaved-note" role="status">
+                اطلاعات مرحله احراز هویت هنوز روی سرور ثبت نشده است.
+              </p>
+            )}
+            {identityFeedback && (
+              <p className={identityFeedback.kind === "error"
+                ? "form-status form-status--error"
+                : "form-status"}
+                role={identityFeedback.kind === "error" ? "alert" : "status"}>
+                {identityFeedback.text}
               </p>
             )}
           </section>

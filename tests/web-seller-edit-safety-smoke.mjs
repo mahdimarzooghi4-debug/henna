@@ -122,7 +122,14 @@ test("retrying an unavailable preflight only unlocks after authenticated draft o
   const second = await loadSellerDraft(fetchFn);
   assert.deepEqual(second, {
     status: "restored", fields: valid, revision: 7,
-    applicantType: null, completedStep: 1,
+    applicantType: null,
+    completedStep: 1,
+    identityStatus: null,
+    nationalCodeMasked: null,
+    legalNationalId: null,
+    legalName: null,
+    legalRepresentativeName: null,
+    legalRepresentativePhone: null,
   });
   assert.equal(calls.length, 2);
   assert.ok(calls.every(({ url, options }) =>

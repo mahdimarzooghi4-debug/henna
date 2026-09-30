@@ -77,10 +77,48 @@ export async function GET(request: NextRequest) {
       (completedStep >= 2 && applicantType === null))
       return error(unavailable, 503);
 
+    const identityStatus = "identityStatus" in payload
+      ? payload.identityStatus : null;
+    const nationalCodeMasked = "nationalCodeMasked" in payload
+      ? payload.nationalCodeMasked : null;
+    const legalNationalId = "legalNationalId" in payload
+      ? payload.legalNationalId : null;
+    const legalName = "legalName" in payload ? payload.legalName : null;
+    const legalRepresentativeName = "legalRepresentativeName" in payload
+      ? payload.legalRepresentativeName : null;
+    const legalRepresentativePhone = "legalRepresentativePhone" in payload
+      ? payload.legalRepresentativePhone : null;
+
+    if (completedStep < 3) {
+      if (identityStatus !== null || nationalCodeMasked !== null ||
+        legalNationalId !== null || legalName !== null ||
+        legalRepresentativeName !== null || legalRepresentativePhone !== null)
+        return error(unavailable, 503);
+    } else if (applicantType === "NATURAL") {
+      if (identityStatus !== "VERIFIED" ||
+        typeof nationalCodeMasked !== "string" ||
+        !/^\*{6}\d{4}$/.test(nationalCodeMasked) ||
+        legalNationalId !== null || legalName !== null ||
+        legalRepresentativeName !== null || legalRepresentativePhone !== null)
+        return error(unavailable, 503);
+    } else {
+      if (identityStatus !== "RECORDED" ||
+        nationalCodeMasked !== null ||
+        typeof legalNationalId !== "string" ||
+        !/^\d{11}$/.test(legalNationalId) ||
+        typeof legalName !== "string" || !legalName ||
+        typeof legalRepresentativeName !== "string" ||
+        !legalRepresentativeName ||
+        typeof legalRepresentativePhone !== "string" ||
+        !/^09\d{9}$/.test(legalRepresentativePhone))
+        return error(unavailable, 503);
+    }
+
     const submittedAtUtc = "submittedAtUtc" in payload
       ? payload.submittedAtUtc : null;
     if (payload.status === "SUBMITTED" &&
-      (typeof submittedAtUtc !== "string" ||
+      (completedStep !== 6 ||
+        typeof submittedAtUtc !== "string" ||
         Number.isNaN(Date.parse(submittedAtUtc))))
       return error(unavailable, 503);
     return NextResponse.json(
@@ -91,6 +129,12 @@ export async function GET(request: NextRequest) {
           revision: payload.revision,
           submittedAtUtc,
           applicantType,
+          identityStatus,
+          nationalCodeMasked,
+          legalNationalId,
+          legalName,
+          legalRepresentativeName,
+          legalRepresentativePhone,
           completedStep,
         }
         : {
@@ -98,6 +142,12 @@ export async function GET(request: NextRequest) {
           status: "DRAFT",
           revision: payload.revision,
           applicantType,
+          identityStatus,
+          nationalCodeMasked,
+          legalNationalId,
+          legalName,
+          legalRepresentativeName,
+          legalRepresentativePhone,
           completedStep,
         },
       { headers: noStore });

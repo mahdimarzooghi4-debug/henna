@@ -55,6 +55,7 @@ internal static class AdminSellerApplicationEndpoints
                         x.StoreName,
                         x.OwnerName,
                         x.ApplicantType,
+                        x.IdentityStatus,
                         x.Status,
                         x.Revision,
                         x.SubmittedAtUtc
@@ -107,6 +108,14 @@ internal static class AdminSellerApplicationEndpoints
                     application.StoreName,
                     application.OwnerName,
                     application.ApplicantType,
+                    application.IdentityStatus,
+                    nationalCodeMasked = MaskNationalCode(
+                        application.NaturalNationalCode),
+                    application.LegalNationalId,
+                    application.LegalName,
+                    application.LegalRepresentativeName,
+                    legalRepresentativePhoneMasked = MaskPhone(
+                        application.LegalRepresentativePhone),
                     phoneMasked = MaskPhone(application.Phone),
                     application.City,
                     application.Address,
@@ -158,8 +167,18 @@ internal static class AdminSellerApplicationEndpoints
         return SessionTokenCodec.TryComputeDigest(token, out _) ? token : null;
     }
 
-    private static string MaskPhone(string phone) =>
-        phone.Length == 11
+    private static string MaskPhone(string? phone) =>
+        phone is { Length: 11 }
             ? phone[..4] + "*******"
             : "***********";
+
+    private static string? MaskOptionalPhone(string? phone) =>
+        phone is { Length: 11 }
+            ? phone[..4] + "*******"
+            : null;
+
+    private static string? MaskNationalCode(string? nationalCode) =>
+        nationalCode is { Length: 10 }
+            ? "******" + nationalCode[^4..]
+            : null;
 }

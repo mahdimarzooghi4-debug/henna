@@ -71,6 +71,8 @@ public sealed class AdminSellerApplicationApiTests
                 Address = "نشانی ثبت‌شده",
                 PostalCode = "1234567890",
                 ApplicantType = "NATURAL",
+                NaturalNationalCode = "0084575948",
+                IdentityStatus = "VERIFIED",
                 CompletedStep = 6,
                 Status = "SUBMITTED",
                 Revision = 2,
