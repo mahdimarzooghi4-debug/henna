@@ -5,7 +5,8 @@ type JsonObject = Record<string, unknown>;
 type AllocationMode = "HENNA_NEEDS_BASED" | "ORGANIZATION_DEFINED";
 type Instruction = {
   instructionId: string; programId: string; programRevision: number; allocationMode: AllocationMode;
-  sourceInstructionReference: string; state: "PENDING_VERIFICATION"; revision: number; submittedAtUtc: string;
+  sourceInstructionReference: string; state: "PENDING_VERIFICATION" | "VERIFIED" | "REJECTED";
+  revision: number; submittedAtUtc: string; reviewReason: string | null; reviewedAtUtc: string | null;
 };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const modes = new Set<AllocationMode>(["HENNA_NEEDS_BASED", "ORGANIZATION_DEFINED"]);
@@ -18,12 +19,16 @@ function parseInstruction(value: unknown, expectedProgramId: string): Instructio
   if (!isRecord(value) || typeof value.instructionId !== "string" || !uuid.test(value.instructionId) ||
     value.programId !== expectedProgramId || !Number.isSafeInteger(value.programRevision) || (value.programRevision as number) < 1 ||
     typeof value.allocationMode !== "string" || !modes.has(value.allocationMode as AllocationMode) ||
-    !validReference(value.sourceInstructionReference) || value.state !== "PENDING_VERIFICATION" ||
-    !Number.isSafeInteger(value.revision) || (value.revision as number) < 1 || !validTimestamp(value.submittedAtUtc)) return null;
+    !validReference(value.sourceInstructionReference) ||
+    !["PENDING_VERIFICATION", "VERIFIED", "REJECTED"].includes(String(value.state)) ||
+    !Number.isSafeInteger(value.revision) || (value.revision as number) < 1 || !validTimestamp(value.submittedAtUtc) ||
+    !(value.reviewReason === null || typeof value.reviewReason === "string" && value.reviewReason.length <= 1000) ||
+    !(value.reviewedAtUtc === null || validTimestamp(value.reviewedAtUtc))) return null;
   return {
     instructionId: value.instructionId, programId: expectedProgramId, programRevision: value.programRevision as number,
     allocationMode: value.allocationMode as AllocationMode, sourceInstructionReference: value.sourceInstructionReference,
-    state: "PENDING_VERIFICATION", revision: value.revision as number, submittedAtUtc: value.submittedAtUtc,
+    state: value.state as Instruction["state"], revision: value.revision as number, submittedAtUtc: value.submittedAtUtc,
+    reviewReason: value.reviewReason as string | null, reviewedAtUtc: value.reviewedAtUtc as string | null,
   };
 }
 
@@ -91,4 +96,38 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!instruction || instruction.programRevision !== body.programRevision || instruction.sourceInstructionReference !== body.sourceInstructionReference) return error("ثبت دستور منبع تأیید نشد.", 503);
     return NextResponse.json(instruction, { status: upstream.status, headers: noStore });
   } catch { return error("ثبت دستور منبع تأیید نشد.", 503); }
+}
+
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ programId: string }> }) {
+  if (!isSameOrigin(request)) return error("درخواست نامعتبر است.", 403);
+  const { programId } = await params;
+  const context = await requestContext(request, programId);
+  if ("response" in context) return context.response;
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return error("درخواست نامعتبر است.", 400);
+  const idempotencyKey = request.headers.get("idempotency-key")?.trim() ?? "";
+  if (!uuid.test(idempotencyKey) || idempotencyKey === "00000000-0000-0000-0000-000000000000") return error("کلید یکتای درخواست معتبر نیست.", 400);
+  let body: { revision: number; sourceInstructionReference: string };
+  try {
+    const raw = await request.text();
+    if (raw.length > 8192) return error("درخواست معتبر نیست.", 400);
+    const value: unknown = JSON.parse(raw);
+    if (!isRecord(value) || Object.keys(value).length !== 2 || !Number.isSafeInteger(value.revision) ||
+      (value.revision as number) < 1 || !validReference(value.sourceInstructionReference)) return error("مشخصات مرجع اصلاح‌شده معتبر نیست.", 400);
+    body = { revision: value.revision as number, sourceInstructionReference: value.sourceInstructionReference };
+  } catch { return error("درخواست معتبر نیست.", 400); }
+  try {
+    const upstream = await fetch(context.target, {
+      method: "PUT", headers: { Authorization: `Bearer ${context.token}`, Accept: "application/json", "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify(body), cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000),
+    });
+    if (upstream.status === 401) return error("نشست معتبر نیست؛ دوباره وارد شوید.", 401);
+    if (upstream.status === 403) return error("این حساب اجازه اصلاح دستور منبع را ندارد.", 403);
+    if (upstream.status === 404) return error("طرح یا دستور منبع پیدا نشد.", 404);
+    if (upstream.status === 400) return error("مشخصات مرجع اصلاح‌شده معتبر نیست.", 400);
+    if (upstream.status === 409) return error("وضعیت یا نسخه تغییر کرده است؛ صفحه را تازه کنید.", 409);
+    if (upstream.status !== 200) return error("ارسال مجدد دستور منبع تأیید نشد.", 503);
+    const instruction = parseInstruction(await readJson(upstream), programId);
+    if (!instruction || instruction.sourceInstructionReference !== body.sourceInstructionReference) return error("ارسال مجدد تأیید نشد.", 503);
+    return NextResponse.json(instruction, { headers: noStore });
+  } catch { return error("ارسال مجدد دستور منبع در دسترس نیست.", 503); }
 }

@@ -78,7 +78,8 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             {
                 table.HasCheckConstraint("ck_organization_funding_instructions_reference", "char_length(btrim(source_instruction_reference)) BETWEEN 1 AND 160");
                 table.HasCheckConstraint("ck_organization_funding_instructions_mode", "allocation_mode IN ('HENNA_NEEDS_BASED','ORGANIZATION_DEFINED')");
-                table.HasCheckConstraint("ck_organization_funding_instructions_state", "state = 'PENDING_VERIFICATION' AND program_revision = 1 AND revision = 1");
+                table.HasCheckConstraint("ck_organization_funding_instructions_state", "state IN ('PENDING_VERIFICATION','VERIFIED','REJECTED') AND program_revision = 1 AND revision >= 1");
+                table.HasCheckConstraint("ck_organization_funding_instructions_review", "(state = 'PENDING_VERIFICATION' AND reviewed_by_account_id IS NULL AND reviewed_at_utc IS NULL AND review_reason IS NULL) OR (state = 'VERIFIED' AND reviewed_by_account_id IS NOT NULL AND reviewed_at_utc IS NOT NULL) OR (state = 'REJECTED' AND reviewed_by_account_id IS NOT NULL AND reviewed_at_utc IS NOT NULL AND review_reason IS NOT NULL AND char_length(btrim(review_reason)) BETWEEN 1 AND 1000)");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
@@ -91,9 +92,35 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
             entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc").IsRequired();
             entity.Property(x => x.SubmittedByAccountId).HasColumnName("submitted_by_account_id").IsRequired();
             entity.Property(x => x.CreationKey).HasColumnName("creation_key").IsRequired();
+            entity.Property(x => x.ReviewedByAccountId).HasColumnName("reviewed_by_account_id");
+            entity.Property(x => x.ReviewedAtUtc).HasColumnName("reviewed_at_utc");
+            entity.Property(x => x.ReviewReason).HasColumnName("review_reason").HasMaxLength(1000);
             entity.HasOne<OrganizationProgramRecord>().WithMany().HasForeignKey(x => x.ProgramId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_organization_funding_instructions_programs");
             entity.HasIndex(x => x.ProgramId).IsUnique().HasDatabaseName("ux_organization_funding_instructions_program");
             entity.HasIndex(x => x.CreationKey).IsUnique().HasDatabaseName("ux_organization_funding_instructions_creation_key");
+        });
+        modelBuilder.Entity<OrganizationFundingInstructionEventRecord>(entity =>
+        {
+            entity.ToTable("funding_instruction_events", "organization", table =>
+            {
+                table.HasCheckConstraint("ck_organization_funding_instruction_events_revision", "revision >= 2");
+                table.HasCheckConstraint("ck_organization_funding_instruction_events_type", "event_type IN ('VERIFIED','REJECTED','RESUBMITTED')");
+                table.HasCheckConstraint("ck_organization_funding_instruction_events_reason", "event_type <> 'REJECTED' OR (reason IS NOT NULL AND char_length(btrim(reason)) BETWEEN 1 AND 1000)");
+                table.HasCheckConstraint("ck_organization_funding_instruction_events_reference", "char_length(btrim(source_instruction_reference)) BETWEEN 1 AND 160");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.FundingInstructionId).HasColumnName("funding_instruction_id").IsRequired();
+            entity.Property(x => x.Revision).HasColumnName("revision").IsRequired();
+            entity.Property(x => x.EventType).HasColumnName("event_type").HasMaxLength(16).IsRequired();
+            entity.Property(x => x.SourceInstructionReference).HasColumnName("source_instruction_reference").HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Reason).HasColumnName("reason").HasMaxLength(1000);
+            entity.Property(x => x.ActorAccountId).HasColumnName("actor_account_id").IsRequired();
+            entity.Property(x => x.OccurredAtUtc).HasColumnName("occurred_at_utc").IsRequired();
+            entity.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").IsRequired();
+            entity.HasOne<OrganizationFundingInstructionRecord>().WithMany().HasForeignKey(x => x.FundingInstructionId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_organization_funding_instruction_events_instructions");
+            entity.HasIndex(x => new { x.FundingInstructionId, x.Revision }).IsUnique().HasDatabaseName("ux_organization_funding_instruction_events_revision");
+            entity.HasIndex(x => x.IdempotencyKey).IsUnique().HasDatabaseName("ux_organization_funding_instruction_events_idempotency_key");
         });
         modelBuilder.Entity<OrganizationHouseholdReferralRecord>(entity =>
         {
@@ -160,7 +187,7 @@ public sealed class HanaOrganizationDbContextModelSnapshot : ModelSnapshot
                 table.HasCheckConstraint("ck_organization_allocation_previews_revision", "program_revision = 1");
                 table.HasCheckConstraint("ck_organization_allocation_previews_mode", "allocation_mode IN ('HENNA_NEEDS_BASED','ORGANIZATION_DEFINED')");
                 table.HasCheckConstraint("ck_organization_allocation_previews_source", "funding_source = 'ORGANIZATION'");
-                table.HasCheckConstraint("ck_organization_allocation_previews_instruction_state", "funding_instruction_state = 'PENDING_VERIFICATION'");
+                table.HasCheckConstraint("ck_organization_allocation_previews_instruction_state", "funding_instruction_state IN ('PENDING_VERIFICATION','VERIFIED')");
                 table.HasCheckConstraint("ck_organization_allocation_previews_state", "state = 'PREVIEW_ONLY'");
                 table.HasCheckConstraint("ck_organization_allocation_previews_hash", "payload_sha256 ~ '^[a-f0-9]{64}$'");
             });
