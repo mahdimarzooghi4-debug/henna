@@ -224,6 +224,8 @@ public sealed class SellerRegistrationApiTests
         await seller.RegistrationDrafts
             .Where(x => x.AccountId == firstId)
             .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.NaturalNationalCode, "0084575948")
+                .SetProperty(x => x.IdentityStatus, "VERIFIED")
                 .SetProperty(x => x.CompletedStep, 6));
 
         // The Figma "review and submit" step is a single atomic transition.
