@@ -16,6 +16,8 @@ const key = join(dir, "mock-local.key");
 const challengeId = "6b2bc828-cf5d-4af7-a026-a653739d8509";
 const accountId = "fbf47579-71b4-4b85-996c-842ac497fb12";
 const businessCategoryId = "7f4b4df8-69c1-4c11-8eef-0d8e2ae6a851";
+const activityProvinceId = "11111111-2222-4333-8444-555555555555";
+const activityCityId = "66666666-7777-4888-8999-aaaaaaaaaaaa";
 const token = "hn1_" + Buffer.alloc(32, 7).toString("base64url");
 const phone = "09123456789";
 let revoked = false;
@@ -244,6 +246,60 @@ async function main() {
             offeringType: sellerDraft.offeringType,
           }));
         }
+      } else if (url === "/api/v1/seller/registration/activity-area" &&
+        request.headers.authorization === `Bearer ${token}` && !revoked &&
+        request.method === "PUT") {
+        const data = JSON.parse(body);
+        assert.deepEqual(Object.keys(data).sort(), [
+          "activityHours", "address", "cityId", "pickup",
+          "provinceId", "revision", "sellerDelivery", "serviceArea",
+        ].sort());
+        if (sellerDraft?.revision !== data.revision ||
+          sellerDraft?.completedStep !== 4) {
+          response.writeHead(409);
+          response.end(JSON.stringify({ message: "stale activity step" }));
+        } else {
+          assert.equal(data.provinceId, activityProvinceId);
+          assert.equal(data.cityId, activityCityId);
+          assert.equal(data.address, "خیابان فعالیت CI، پلاک ۱۲");
+          assert.equal(data.activityHours, "شنبه تا پنجشنبه، ۸ تا ۲۲");
+          assert.equal(data.sellerDelivery, true);
+          assert.equal(data.pickup, true);
+          assert.equal(data.serviceArea, "کل شهر");
+          sellerDraft = {
+            ...sellerDraft,
+            activityProvinceId,
+            activityProvinceName: "استان فعالیت CI",
+            activityCityId,
+            activityCityName: "شهر فعالیت CI",
+            activityAddress: data.address,
+            activityHours: data.activityHours,
+            sellerDelivery: data.sellerDelivery,
+            pickup: data.pickup,
+            serviceArea: data.serviceArea,
+            completedStep: 5,
+            revision: data.revision + 1,
+          };
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            status: "DRAFT",
+            revision: sellerDraft.revision,
+            completedStep: 5,
+            province: {
+              id: activityProvinceId,
+              name: "استان فعالیت CI",
+            },
+            city: {
+              id: activityCityId,
+              name: "شهر فعالیت CI",
+            },
+            address: sellerDraft.activityAddress,
+            activityHours: sellerDraft.activityHours,
+            sellerDelivery: true,
+            pickup: true,
+            serviceArea: sellerDraft.serviceArea,
+          }));
+        }
       } else if (url === "/api/v1/seller/registration/submit" &&
         request.headers.authorization === `Bearer ${token}` && !revoked &&
         request.method === "POST") {
@@ -421,6 +477,15 @@ async function main() {
     businessDescription: null,
     businessPhone: null,
     offeringType: null,
+    activityProvinceId: null,
+    activityProvinceName: null,
+    activityCityId: null,
+    activityCityName: null,
+    activityAddress: null,
+    activityHours: null,
+    sellerDelivery: null,
+    pickup: null,
+    serviceArea: null,
     completedStep: 1,
   });
   const sellerStale = await fetch(sellerUrl, {
@@ -624,7 +689,70 @@ async function main() {
   assert.equal(sellerDraft.completedStep, 4);
   assert.equal(sellerDraft.revision, 5);
 
-  // Steps 5-6 are exercised by their own slices. Advance only the CI fixture
+  const activityCsrf = await fetch(
+    sellerUrl + "/activity-area", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: "https://other.test",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provinceId: activityProvinceId,
+        cityId: activityCityId,
+        address: "خیابان فعالیت CI، پلاک ۱۲",
+        activityHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
+        sellerDelivery: true,
+        pickup: true,
+        serviceArea: "کل شهر",
+        revision: 5,
+      }),
+    });
+  assert.equal(activityCsrf.status, 403);
+
+  const activityUnknown = await fetch(
+    sellerUrl + "/activity-area", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provinceId: activityProvinceId,
+        cityId: activityCityId,
+        address: "خیابان فعالیت CI، پلاک ۱۲",
+        activityHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
+        sellerDelivery: true,
+        pickup: true,
+        serviceArea: "کل شهر",
+        revision: 5,
+        mapReady: true,
+      }),
+    });
+  assert.equal(activityUnknown.status, 400);
+
+  const activitySaved = await fetch(
+    sellerUrl + "/activity-area", {
+      method: "PUT",
+      headers: {
+        Cookie: sessionCookie, Origin: base,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provinceId: activityProvinceId,
+        cityId: activityCityId,
+        address: "خیابان فعالیت CI، پلاک ۱۲",
+        activityHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
+        sellerDelivery: true,
+        pickup: true,
+        serviceArea: "کل شهر",
+        revision: 5,
+      }),
+    });
+  assert.equal(activitySaved.status, 200);
+  assert.equal((await activitySaved.json()).completedStep, 5);
+  assert.equal(sellerDraft.revision, 6);
+
+  // Step 6 is exercised by its own slice. Advance only the in-memory fixture
   // so the older final-submit gateway remains covered.
   sellerDraft = { ...sellerDraft, completedStep: 6 };
 
@@ -635,7 +763,7 @@ async function main() {
       Cookie: sessionCookie, Origin: "https://other.test",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 5, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 6, idempotencyKey: submissionKey }),
   });
   assert.equal(submitCsrf.status, 403);
   const submitUnknown = await fetch(sellerUrl, {
@@ -645,7 +773,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      revision: 5, idempotencyKey: submissionKey, status: "ACTIVE",
+      revision: 6, idempotencyKey: submissionKey, status: "ACTIVE",
     }),
   });
   assert.equal(submitUnknown.status, 400);
@@ -655,11 +783,11 @@ async function main() {
       Cookie: sessionCookie, Origin: base,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ revision: 5, idempotencyKey: submissionKey }),
+    body: JSON.stringify({ revision: 6, idempotencyKey: submissionKey }),
   });
   assert.equal(submitted.status, 200);
   assert.deepEqual(await submitted.json(), {
-    status: "SUBMITTED", revision: 6,
+    status: "SUBMITTED", revision: 7,
     submittedAtUtc: "2026-09-25T12:30:00Z",
   });
   assert.equal(submitted.headers.get("cache-control"), "no-store");

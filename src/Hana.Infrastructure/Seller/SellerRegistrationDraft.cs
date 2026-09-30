@@ -25,6 +25,13 @@ public sealed class SellerRegistrationDraft
     public string? BusinessDescription { get; set; }
     public string? BusinessPhone { get; set; }
     public string? OfferingType { get; set; }
+    public Guid? ActivityProvinceId { get; set; }
+    public Guid? ActivityCityId { get; set; }
+    public string? ActivityAddress { get; set; }
+    public string? ActivityHours { get; set; }
+    public bool? SellerDelivery { get; set; }
+    public bool? Pickup { get; set; }
+    public string? ServiceArea { get; set; }
     public int CompletedStep { get; set; } = 1;
     public string Status { get; set; } = "DRAFT";
     public int Revision { get; set; } = 1;
