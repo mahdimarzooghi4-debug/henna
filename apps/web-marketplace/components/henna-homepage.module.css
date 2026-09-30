@@ -172,3 +172,6 @@
 .benefitCard{direction:rtl;align-items:flex-start;text-align:right}
 .brand .logoImage,.footerBrand .logoImage{height:auto;object-fit:contain;image-rendering:auto}
 .footerBrand .logoImage{width:147px}
+/* Center the desktop category menu and each category icon with its label. */
+@media(min-width:901px){.nav{justify-content:center}}
+.category{align-items:center;text-align:center}
