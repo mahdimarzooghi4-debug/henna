@@ -273,10 +273,105 @@ public sealed class OrganizationPortalApiTests
         Assert.Equal(OrganizationAllocationModes.OrganizationDefined, organizationInstructionBody.RootElement.GetProperty("allocationMode").GetString());
         Assert.False(organizationInstructionBody.RootElement.TryGetProperty("amount", out _));
 
+        var organizationInstructionId = organizationInstructionBody.RootElement.GetProperty("instructionId").GetGuid();
+        const string adminFundingInstructionsUrl = "/api/v1/admin/organization-funding-instructions";
+        Assert.Equal(HttpStatusCode.Forbidden, (await member.GetAsync(adminFundingInstructionsUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await member.GetAsync($"{adminFundingInstructionsUrl}/{organizationInstructionId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync($"{adminFundingInstructionsUrl}?state=UNKNOWN")).StatusCode);
+        var fundingQueue = await admin.GetAsync($"{adminFundingInstructionsUrl}?page=1&pageSize=10&state=PENDING_VERIFICATION");
+        Assert.Equal(HttpStatusCode.OK, fundingQueue.StatusCode);
+        Assert.Equal("no-store", fundingQueue.Headers.GetValues("Cache-Control").Single());
+        using var fundingQueueBody = JsonDocument.Parse(await fundingQueue.Content.ReadAsStringAsync());
+        Assert.Equal(2, fundingQueueBody.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal(2, fundingQueueBody.RootElement.GetProperty("items").GetArrayLength());
+        var queuedInstruction = Assert.Single(fundingQueueBody.RootElement.GetProperty("items").EnumerateArray(), item =>
+            item.GetProperty("instructionId").GetGuid() == organizationInstructionId);
+        Assert.Equal("سازمان آزمایش", queuedInstruction.GetProperty("organizationName").GetString());
+        Assert.Equal("طرح تخصیص سازمان", queuedInstruction.GetProperty("programName").GetString());
+        Assert.False(queuedInstruction.TryGetProperty("amount", out _));
+        Assert.False(queuedInstruction.TryGetProperty("balance", out _));
+        var fundingDetail = await admin.GetAsync($"{adminFundingInstructionsUrl}/{organizationInstructionId}");
+        Assert.Equal(HttpStatusCode.OK, fundingDetail.StatusCode);
+        Assert.Equal("no-store", fundingDetail.Headers.GetValues("Cache-Control").Single());
+        using var fundingDetailBody = JsonDocument.Parse(await fundingDetail.Content.ReadAsStringAsync());
+        Assert.Equal(organizationInstructionId, fundingDetailBody.RootElement.GetProperty("instructionId").GetGuid());
+        Assert.Equal("ORG-INSTRUCTION-1405-02", fundingDetailBody.RootElement.GetProperty("sourceInstructionReference").GetString());
+        Assert.False(fundingDetailBody.RootElement.TryGetProperty("amount", out _));
+        Assert.False(fundingDetailBody.RootElement.TryGetProperty("balance", out _));
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync($"{adminFundingInstructionsUrl}/{organizationInstructionId}?debug=true")).StatusCode);
+        var reviewUrl = $"/api/v1/admin/organization-funding-instructions/{organizationInstructionId}/review";
+        var reviewReadUrl = $"/api/v1/admin/organization-funding-instructions/{organizationInstructionId}/events";
+        Assert.Equal(HttpStatusCode.Forbidden, (await member.PostAsJsonAsync(reviewUrl,
+            new { revision = 1, decision = "REJECTED", reason = "مرجع نامعتبر" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync(reviewUrl,
+            new { revision = 1, decision = "REJECTED", reason = " " })).StatusCode);
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        var rejectKey = Guid.NewGuid();
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", rejectKey.ToString());
+        var rejected = await admin.PostAsJsonAsync(reviewUrl,
+            new { revision = 1, decision = "REJECTED", reason = "مرجع نیاز به اصلاح دارد" });
+        Assert.Equal(HttpStatusCode.Created, rejected.StatusCode);
+        var rejectedRetry = await admin.PostAsJsonAsync(reviewUrl,
+            new { revision = 1, decision = "REJECTED", reason = "مرجع نیاز به اصلاح دارد" });
+        Assert.Equal(HttpStatusCode.OK, rejectedRetry.StatusCode);
+
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        var resubmitKey = Guid.NewGuid();
+        member.DefaultRequestHeaders.Add("Idempotency-Key", resubmitKey.ToString());
+        const string correctedReference = "ORG-INSTRUCTION-1405-02-CORRECTED";
+        var resubmitted = await member.PutAsJsonAsync(
+            $"/api/v1/organization/programs/{organizationProgramId}/funding-instruction",
+            new { revision = 2, sourceInstructionReference = correctedReference });
+        Assert.Equal(HttpStatusCode.OK, resubmitted.StatusCode);
+        using var resubmittedBody = JsonDocument.Parse(await resubmitted.Content.ReadAsStringAsync());
+        Assert.Equal("PENDING_VERIFICATION", resubmittedBody.RootElement.GetProperty("state").GetString());
+        Assert.Equal(3, resubmittedBody.RootElement.GetProperty("revision").GetInt32());
+        var resubmittedRetry = await member.PutAsJsonAsync(
+            $"/api/v1/organization/programs/{organizationProgramId}/funding-instruction",
+            new { revision = 2, sourceInstructionReference = correctedReference });
+        Assert.Equal(HttpStatusCode.OK, resubmittedRetry.StatusCode);
+
+        member.DefaultRequestHeaders.Remove("Idempotency-Key");
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        var verifyKey = Guid.NewGuid();
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", verifyKey.ToString());
+        var verified = await admin.PostAsJsonAsync(reviewUrl,
+            new { revision = 3, decision = "VERIFIED", reason = (string?)null });
+        Assert.Equal(HttpStatusCode.Created, verified.StatusCode);
+        using var verifiedBody = JsonDocument.Parse(await verified.Content.ReadAsStringAsync());
+        Assert.Equal("VERIFIED", verifiedBody.RootElement.GetProperty("decision").GetString());
+        Assert.Equal(4, verifiedBody.RootElement.GetProperty("revision").GetInt32());
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var staleDecision = await admin.PostAsJsonAsync(reviewUrl,
+            new { revision = 3, decision = "REJECTED", reason = "stale" });
+        Assert.Equal(HttpStatusCode.Conflict, staleDecision.StatusCode);
+        var reviewHistory = await admin.GetAsync(reviewReadUrl);
+        Assert.Equal(HttpStatusCode.OK, reviewHistory.StatusCode);
+        using var historyBody = JsonDocument.Parse(await reviewHistory.Content.ReadAsStringAsync());
+        Assert.Equal(3, historyBody.RootElement.GetProperty("events").GetArrayLength());
+        var verifiedQueue = await admin.GetAsync($"{adminFundingInstructionsUrl}?state=VERIFIED");
+        Assert.Equal(HttpStatusCode.OK, verifiedQueue.StatusCode);
+        using var verifiedQueueBody = JsonDocument.Parse(await verifiedQueue.Content.ReadAsStringAsync());
+        Assert.Contains(verifiedQueueBody.RootElement.GetProperty("items").EnumerateArray(), item =>
+            item.GetProperty("instructionId").GetGuid() == organizationInstructionId &&
+            item.GetProperty("state").GetString() == "VERIFIED");
+        var finalFundingDetail = await admin.GetAsync($"{adminFundingInstructionsUrl}/{organizationInstructionId}");
+        using var finalFundingDetailBody = JsonDocument.Parse(await finalFundingDetail.Content.ReadAsStringAsync());
+        Assert.Equal("VERIFIED", finalFundingDetailBody.RootElement.GetProperty("state").GetString());
+        var finalInstruction = await organizations.FundingInstructions.SingleAsync(x => x.Id == organizationInstructionId);
+        Assert.Equal("VERIFIED", finalInstruction.State);
+        Assert.Equal(4, finalInstruction.Revision);
+        Assert.Equal(adminId, finalInstruction.ReviewedByAccountId);
+        Assert.Equal("مرجع نیاز به اصلاح دارد", organizations.FundingInstructionEvents
+            .Where(x => x.FundingInstructionId == organizationInstructionId && x.EventType == "REJECTED")
+            .Select(x => x.Reason).Single());
+
         var storedInstructions = await organizations.FundingInstructions.OrderBy(x => x.ProgramId).ToListAsync();
         Assert.Equal(2, storedInstructions.Count);
         Assert.Contains(storedInstructions, item => item.ProgramId == hennaProgramId && item.AllocationMode == OrganizationAllocationModes.HennaNeedsBased && item.State == "PENDING_VERIFICATION");
-        Assert.Contains(storedInstructions, item => item.ProgramId == organizationProgramId && item.AllocationMode == OrganizationAllocationModes.OrganizationDefined && item.State == "PENDING_VERIFICATION");
+        Assert.Contains(storedInstructions, item => item.ProgramId == organizationProgramId && item.AllocationMode == OrganizationAllocationModes.OrganizationDefined && item.State == "VERIFIED" && item.Revision == 4);
 
         var previewPath = $"/api/v1/admin/organization/programs/{organizationProgramId}/allocation-previews";
         var organizationReferralPreview = new
@@ -301,12 +396,12 @@ public sealed class OrganizationPortalApiTests
         admin.DefaultRequestHeaders.Remove("Idempotency-Key");
         admin.DefaultRequestHeaders.Add("Idempotency-Key", previewKey.ToString());
         var organizationPreviewResponse = await admin.PostAsJsonAsync(previewPath, organizationReferralPreview);
-        Assert.Equal(HttpStatusCode.Created, organizationPreviewResponse.StatusCode);
+        Assert.True(organizationPreviewResponse.StatusCode == HttpStatusCode.Created, $"Organization allocation preview failed: {await organizationPreviewResponse.Content.ReadAsStringAsync()}");
         Assert.Equal("no-store", organizationPreviewResponse.Headers.GetValues("Cache-Control").Single());
         using var organizationPreviewJson = JsonDocument.Parse(await organizationPreviewResponse.Content.ReadAsStringAsync());
         var organizationPreviewId = organizationPreviewJson.RootElement.GetProperty("allocationPreviewId").GetGuid();
         Assert.Equal("PREVIEW_ONLY", organizationPreviewJson.RootElement.GetProperty("state").GetString());
-        Assert.Equal("PENDING_VERIFICATION", organizationPreviewJson.RootElement.GetProperty("fundingInstructionState").GetString());
+        Assert.Equal("VERIFIED", organizationPreviewJson.RootElement.GetProperty("fundingInstructionState").GetString());
         Assert.Equal(100_000_000, organizationPreviewJson.RootElement.GetProperty("calculations")[0].GetProperty("snapshot").GetProperty("payableAmount").GetProperty("value").GetInt64());
         Assert.Equal(JsonValueKind.Null, organizationPreviewJson.RootElement.GetProperty("calculations")[0].GetProperty("snapshot").GetProperty("formulaVersion").ValueKind);
         var organizationPreviewReplay = await admin.PostAsJsonAsync(previewPath, organizationReferralPreview);
@@ -365,6 +460,16 @@ public sealed class OrganizationPortalApiTests
         };
         admin.DefaultRequestHeaders.Remove("Idempotency-Key");
         admin.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PostAsJsonAsync(needsPreviewPath, needsPreviewRequest)).StatusCode);
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var verifiedNeedsInstruction = await admin.PostAsJsonAsync(
+            $"/api/v1/admin/organization-funding-instructions/{instructionId}/review",
+            new { revision = 1, decision = "VERIFIED", reason = (string?)null });
+        Assert.Equal(HttpStatusCode.Created, verifiedNeedsInstruction.StatusCode);
+
+        admin.DefaultRequestHeaders.Remove("Idempotency-Key");
+        admin.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
         var needsPreviewResponse = await admin.PostAsJsonAsync(needsPreviewPath, needsPreviewRequest);
         Assert.Equal(HttpStatusCode.Created, needsPreviewResponse.StatusCode);
         using var needsPreviewJson = JsonDocument.Parse(await needsPreviewResponse.Content.ReadAsStringAsync());
@@ -376,7 +481,7 @@ public sealed class OrganizationPortalApiTests
         Assert.Equal(80_000_000, needsSnapshot.GetProperty("payableAmount").GetProperty("value").GetInt64());
         var persistedPreview = await organizations.AllocationPreviews.SingleAsync(x => x.Id == needsPreviewJson.RootElement.GetProperty("allocationPreviewId").GetGuid());
         Assert.Equal("PREVIEW_ONLY", persistedPreview.State);
-        Assert.Equal("PENDING_VERIFICATION", persistedPreview.FundingInstructionState);
+        Assert.Equal("VERIFIED", persistedPreview.FundingInstructionState);
         Assert.Contains("HANA-NEEDS-BASED-ALLOCATION-v1.1", persistedPreview.SnapshotJson);
         Assert.False(await identity.RoleAssignments.AnyAsync(x => x.AccountId == memberId && x.Role == "SELLER"));
 
