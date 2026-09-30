@@ -18,13 +18,14 @@ async function main() {
   assert.ok(ready, "Next did not start: " + logs);
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ locale: "fa-IR", viewport: { width: 1280, height: 900 } });
+  const existingReferral = { referralId: "123e4567-e89b-42d3-a456-426614174007", programId, externalReference: "CASE-EXISTING-01", provinceId, cityId, settlementType: "URBAN", housingTenure: "TENANT", healthBurdenLevel: "ONE_MANAGEABLE_ONGOING_CASE", economicHardshipLevel: "OCCASIONAL_SHORTFALL_IN_ONE_ESSENTIAL_NEED", careSupportLevel: "EFFECTIVE_ADULT_OR_PRACTICAL_SUPPORT_AVAILABLE", educationAttainment: "DIPLOMA_OR_ASSOCIATE", revision: 1, submittedAtUtc: "2026-09-27T11:30:00Z", members: [{ memberNumber: 1, genderCategory: "FEMALE", lifeStage: "INFANT", educationLevel: "NOT_REPORTED", healthNeed: "CHRONIC_NEED", needsPracticalSupport: false }] };
   const referral = () => ({ referralId: "123e4567-e89b-42d3-a456-426614174006", programId, externalReference: posted?.externalReference ?? "", provinceId, cityId, settlementType: "URBAN", housingTenure: posted?.housingTenure ?? null, healthBurdenLevel: posted?.healthBurdenLevel ?? null, economicHardshipLevel: posted?.economicHardshipLevel ?? null, careSupportLevel: posted?.careSupportLevel ?? null, educationAttainment: posted?.educationAttainment ?? null, revision: 1, submittedAtUtc: "2026-09-27T12:30:00Z", members: (posted?.members ?? []).map((x, i) => ({ memberNumber: i + 1, ...x })) });
   await context.route("**/api/organization/programs", route => route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ programs: [program] }) }));
   await context.route("**/api/organization/profiles", route => route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ profiles: [{ organizationId: orgId, organizationName: "سازمان آزمون", memberRole: "ORG_REPRESENTATIVE", membershipId: "123e4567-e89b-42d3-a456-426614174001" }] }) }));
   await context.route("**/api/geography/provinces", route => route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ items: [{ id: provinceId, name: "استان نمونه", slug: "sample" }] }) }));
   await context.route(`**/api/geography/cities?provinceId=${provinceId}`, route => route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ items: [{ id: cityId, provinceId, name: "شهر نمونه", slug: "sample-city" }] }) }));
   await context.route(`**/api/organization/programs/${programId}/household-referrals`, async route => {
-    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ referrals: [] }) });
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify({ referrals: [existingReferral] }) });
     posted = route.request().postDataJSON();
     return route.fulfill({ status: 201, contentType: "application/json", headers: { "Cache-Control": "no-store" }, body: JSON.stringify(referral()) });
   });
@@ -32,6 +33,12 @@ async function main() {
   await page.goto(base + "/organization/programs");
   await page.locator(`a[href="/organization/programs/${programId}/household-referrals"]`).click();
   await page.getByRole("heading", { name: "ارجاع خانوارها" }).waitFor();
+  await page.getByText("CASE-EXISTING-01", { exact: true }).waitFor();
+  await page.getByText("مشاهده جزئیات ثبت‌شده").click();
+  await page.getByText("جنسیت: زن").waitFor();
+  await page.getByText("گروه سنی: زیر ۲ سال").waitFor();
+  await page.getByText("تحصیلات: گزارش نشده").waitFor();
+  await page.getByText("نیاز مزمن: نیاز مزمن گزارش شده").waitFor();
   await page.getByLabel("شناسه پرونده در سازمان").fill("CASE-1405-001");
   await page.getByLabel("استان").selectOption(provinceId);
   await page.getByLabel("شهر", { exact: true }).selectOption(cityId);
@@ -50,7 +57,7 @@ async function main() {
   assert.equal(posted.educationAttainment, "DIPLOMA_OR_ASSOCIATE");
   assert.equal(posted.members.length, 1);
   assert.equal(posted.members[0].lifeStage, "ADULT");
-  assert.equal(await page.getByText("در این صفحه بررسی استحقاق یا تخصیص انجام نمی‌شود.").count(), 1);
+  assert.equal(await page.getByText("در این صفحه بررسی استحقاق یا تخصیص انجام نمی‌شود.").count(), 2);
   assert.equal(await page.getByText(/[0-9۰-۹٠-٩][0-9۰-۹٠-٩,٬]*\s*(?:تومان|ریال)/).count(), 0);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "referral page must fit a narrow viewport");
