@@ -13,7 +13,7 @@ export default async function BuyerProductDetailPage({
   const { id } = await params;
   const backHref = buyerBrowseHref(parseBuyerBrowseLocation(
     buyerParamsFromRecord(await searchParams),
-  ));
+  ), "/products");
   return (
     <>
       <SiteHeader backHref={backHref} backLabel="بازگشت به فهرست" />
