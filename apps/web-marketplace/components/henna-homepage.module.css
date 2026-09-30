@@ -215,3 +215,22 @@
   .footerBrand p{width:auto;max-width:100%;line-height:1.5}
   .footerBottom{height:auto}
 }
+
+/* Use the original 147×58 Figma logo badge in both desktop brand positions. */
+@media(min-width:901px){
+  .brand{width:147px}
+  .brand .logoImage{width:147px;height:58px;object-fit:contain}
+  .footerBrand{width:320px;align-items:flex-end;gap:16px}
+  .footerBrand .logoImage{width:147px;height:58px;object-fit:contain}
+  .footerBrand p{width:320px;max-width:320px;height:60px;line-height:20px}
+  .footerGrid{grid-template-columns:109px 116px 94px 320px;justify-content:space-between;gap:0;margin-bottom:48px;padding-bottom:0}
+  .footerBottom{direction:ltr;display:flex;align-items:center;justify-content:space-between;height:64px;padding-top:24px}
+}
+
+@media(max-width:640px){
+  .brand{width:120px}
+  .brand .logoImage{width:120px;height:auto}
+  .footerBrand{width:100%;align-items:flex-start;gap:12px}
+  .footerBrand .logoImage{width:120px;height:auto}
+  .footerBrand p{width:auto;max-width:100%;height:auto;line-height:1.5}
+}
