@@ -14,6 +14,12 @@ public sealed class SellerRegistrationDraft
     public string Address { get; set; } = null!;
     public string PostalCode { get; set; } = null!;
     public string? ApplicantType { get; set; }
+    public string? NaturalNationalCode { get; set; }
+    public string? LegalNationalId { get; set; }
+    public string? LegalName { get; set; }
+    public string? LegalRepresentativeName { get; set; }
+    public string? LegalRepresentativePhone { get; set; }
+    public string? IdentityStatus { get; set; }
     public int CompletedStep { get; set; } = 1;
     public string Status { get; set; } = "DRAFT";
     public int Revision { get; set; } = 1;
