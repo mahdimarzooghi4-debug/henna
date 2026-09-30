@@ -179,3 +179,7 @@
 .nav{justify-content:flex-start;gap:24px;color:var(--green)}
 .nav a{font-weight:600}
 .nav a[aria-current="page"]{color:var(--terracotta);font-weight:800}
+/* Keep the RTL category menu's right edge on the hero container's right edge. */
+.nav{padding-inline:max(16px,calc((100% - 1280px)/2))}
+@media(max-width:1000px){.nav{padding-inline:max(20px,calc((100% - 760px)/2))}}
+@media(max-width:640px){.nav{padding-inline:16px}}
