@@ -98,6 +98,9 @@ async function main() {
   const errors = [];
   page.on("pageerror", e => { errors.push(e.message); });
 
+  await page.goto(base);
+  await page.getByRole("heading", { name: /با اثری فراتر از خرید/ }).waitFor();
+
   await page.goto(base + "/products");
   await page.getByText("هنوز دسته‌بندی قابل نمایش در حنا ثبت نشده است.").waitFor();
   await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
