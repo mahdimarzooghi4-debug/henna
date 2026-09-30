@@ -53,3 +53,21 @@
 @keyframes hero-fade-in{from{opacity:.5}to{opacity:1}}
 @media(max-width:640px){.brand{width:102px}.brand .logoImage{height:auto}.footerBrand .logoImage{width:120px}.heroControls{left:12px;bottom:12px}.heroControls>button{width:25px;height:25px;font-size:18px}}
 @media(prefers-reduced-motion:reduce){.heroVisual>img{animation:none}}
+
+/* Footer layout and copy aligned with Figma frame 190:252. */
+.footer{border-top:1px solid var(--line);padding:64px 0 32px}
+.footerGrid{direction:ltr;grid-template-columns:109px 116px 94px 320px;justify-content:space-between;gap:0;padding-bottom:0;margin-bottom:48px}
+.footerColumn{direction:rtl;display:flex;flex-direction:column;align-items:flex-end;gap:12px;text-align:right;white-space:nowrap}
+.footerGrid .footerColumn h3{font-size:14px;line-height:1.5;margin:0;color:var(--green)}
+.footerGrid .footerColumn a{font-size:13px;line-height:1.5;margin:0;color:var(--muted)}
+.footerGrid .footerColumn a:hover{color:var(--terracotta)}
+.footerBrand{direction:rtl;text-align:right;align-items:flex-end}
+.footerBrand .logoImage{width:147px;height:58px;object-fit:contain}
+.footerBrand p{max-width:320px;margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.footerBottom{direction:ltr;border-top:1px solid var(--line);padding-top:24px;display:flex;align-items:center;justify-content:space-between;color:var(--muted)}
+.footerSocial{display:flex;gap:12px}
+.footerSocial a{width:36px;height:36px;border-radius:18px;background:var(--cream);display:grid;place-items:center}
+.footerSocial img{width:18px;height:18px}
+.footerCopyright{direction:rtl;text-align:right;font-size:13px;line-height:1.5;margin:0}
+@media(max-width:900px){.footerGrid{grid-template-columns:repeat(3,minmax(0,1fr)) 260px;gap:20px}.footerBrand .logoImage{width:136px}}
+@media(max-width:640px){.footer{padding:32px 0 20px}.footerGrid{direction:rtl;grid-template-columns:1fr 1fr;gap:24px 18px;margin-bottom:28px}.footerColumn{white-space:normal;align-items:flex-start}.footerBrand{grid-column:1/-1;grid-row:1;align-items:flex-start}.footerBrand p{max-width:100%;font-size:12px}.footerGrid .footerColumn h3{font-size:12px}.footerGrid .footerColumn a{font-size:11px}.footerBottom{align-items:flex-start;gap:16px;flex-direction:column}.footerCopyright{align-self:flex-start;font-size:11px}}
