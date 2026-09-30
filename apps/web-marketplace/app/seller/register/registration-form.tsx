@@ -103,6 +103,7 @@ export function RegistrationForm() {
   const [additionalFeedback, setAdditionalFeedback] =
     useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
+  const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [submitKey, setSubmitKey] = useState<string | null>(null);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
@@ -180,6 +181,7 @@ export function RegistrationForm() {
       setAdditionalFeedback(null);
       if (result.status === "submitted") {
         setSubmittedAtUtc(result.submittedAtUtc);
+        setTrackingCode(result.trackingCode);
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
       } else {
         setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
@@ -1085,9 +1087,12 @@ export function RegistrationForm() {
           "submittedAtUtc" in result &&
           typeof result.submittedAtUtc === "string" &&
           "accuracyConfirmedAtUtc" in result &&
-          typeof result.accuracyConfirmedAtUtc === "string") {
+          typeof result.accuracyConfirmedAtUtc === "string" &&
+          "trackingCode" in result &&
+          typeof result.trackingCode === "string") {
           setRevision(result.revision);
           setSubmittedAtUtc(result.submittedAtUtc);
+          setTrackingCode(result.trackingCode);
           setReviewConfirmed(true);
           setSaved(true);
           setMessage("درخواست فروشندگی برای بررسی ثبت شد. ثبت درخواست به معنی تأیید یا فعال‌شدن فروشگاه نیست.");
@@ -2023,15 +2028,35 @@ export function RegistrationForm() {
           </section>
         )}
         {submittedAtUtc && (
-          <section className="seller-review" aria-labelledby="seller-status-heading">
-            <h3 id="seller-status-heading">وضعیت درخواست</h3>
-            <p role="status">درخواست شما ثبت شده و در انتظار بررسی است.</p>
+          <section className="seller-review seller-submitted"
+            aria-labelledby="seller-status-heading">
+            <h3 id="seller-status-heading">درخواست ثبت شد</h3>
+            <p role="status">
+              درخواست ثبت‌نام فروشنده / ارائه‌دهنده شما دریافت شد و
+              وضعیت آن از همین حساب قابل پیگیری است.
+            </p>
+            {trackingCode && (
+              <p className="seller-submitted__tracking" dir="ltr">
+                کد پیگیری درخواست: {trackingCode}
+              </p>
+            )}
             <p>زمان ثبت: <time dateTime={submittedAtUtc}>
               {new Intl.DateTimeFormat("fa-IR", {
                 dateStyle: "medium", timeStyle: "short",
               }).format(new Date(submittedAtUtc))}
             </time></p>
-            <p>این وضعیت هیچ مجوز فروشندگی، دسترسی پنل یا فعال‌سازی فروشگاه ایجاد نمی‌کند.</p>
+            <div className="seller-submitted__actions">
+              <Link className="primary-button"
+                href="/seller/register/status">
+                مشاهده وضعیت درخواست
+              </Link>
+              <Link className="auth-card__secondary" href="/">
+                بازگشت به حنا
+              </Link>
+            </div>
+            <p>
+              ثبت درخواست به معنی تأیید یا فعال‌شدن فروشگاه نیست.
+            </p>
           </section>
         )}
         {conflict && access === "signedIn" && (

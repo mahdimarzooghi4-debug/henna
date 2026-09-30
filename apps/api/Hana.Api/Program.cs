@@ -346,6 +346,7 @@ app.MapSellerRegistration(hasIdentityDb);
 app.MapSellerBusinessInformation(hasIdentityDb);
 app.MapSellerActivityArea(hasIdentityDb);
 app.MapSellerAdditionalInformation(hasIdentityDb);
+app.MapSellerApplicationStatus(hasIdentityDb);
 app.MapAdminSellerApplications(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);

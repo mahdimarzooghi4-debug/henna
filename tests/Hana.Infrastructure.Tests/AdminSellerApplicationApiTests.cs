@@ -107,6 +107,7 @@ public sealed class AdminSellerApplicationApiTests
                 SubmissionExpectedRevision = 1,
                 SubmittedAtUtc = now.AddMinutes(-5),
                 AccuracyConfirmedAtUtc = now.AddMinutes(-5),
+                TrackingCode = "HNA-A1B2C3D4E5F60718",
                 UpdatedAtUtc = now.AddMinutes(-5)
             },
             new SellerRegistrationDraft
