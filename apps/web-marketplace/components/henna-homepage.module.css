@@ -37,3 +37,19 @@
   .finalCta{background-image:radial-gradient(ellipse at 12% 18%,#ffffff0d 0 10%,transparent 10.5%),radial-gradient(ellipse at 88% 72%,#ffffff0c 0 13%,transparent 13.5%),radial-gradient(ellipse at 35% 80%,#d7b89512 0 15%,transparent 15.5%),linear-gradient(135deg,#173d37,#1c3f3a 55%,#153a35)}
 }
 @media(max-width:640px){.heroCaption{margin:10px;padding:12px 14px}.heroCopy{gap:12px}.eyebrow{background:#b5523b14;border-radius:20px;padding:4px 8px}.promoCard{display:grid;grid-template-columns:1fr auto;align-items:center;gap:0}.promoIcon{position:static;grid-column:2;grid-row:1/4;width:36px;height:36px}.promoCard strong{font-size:15px}.promoCard p{font-size:10px}.promoMore{font-size:10px;margin-top:6px}}
+
+/* Header and carousel behavior from Figma page 181:2. */
+.brand{width:147px}
+.brand .logoImage{display:block;width:100%;height:auto;object-fit:contain}
+.footerBrand .logoImage{display:block;width:147px;height:auto;object-fit:contain}
+.actions{flex-direction:row-reverse}
+.heroVisual{isolation:isolate}
+.heroVisual>img{animation:hero-fade-in .45s ease both}
+.heroControls{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;align-items:center;gap:7px;direction:ltr}
+.heroControls>button{width:28px;height:28px;border:1px solid #faf8f5a8;border-radius:50%;background:#1c3f3a99;color:#fff;font:inherit;font-size:20px;line-height:1;display:grid;place-items:center;cursor:pointer}
+.heroDots{display:flex;align-items:center;gap:5px}
+.heroDot,.heroDotActive{width:7px;height:7px;padding:0;border:0;border-radius:8px;background:#faf8f5aa;cursor:pointer}
+.heroDotActive{width:18px;background:#fff}
+@keyframes hero-fade-in{from{opacity:.5}to{opacity:1}}
+@media(max-width:640px){.brand{width:102px}.brand .logoImage{height:auto}.footerBrand .logoImage{width:120px}.heroControls{left:12px;bottom:12px}.heroControls>button{width:25px;height:25px;font-size:18px}}
+@media(prefers-reduced-motion:reduce){.heroVisual>img{animation:none}}
