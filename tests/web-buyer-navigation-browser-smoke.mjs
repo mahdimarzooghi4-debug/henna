@@ -82,8 +82,9 @@ async function main() {
   page.setDefaultTimeout(12000);
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
-  const shared = "/products?" + q({ categoryId: A, search: "کالای مرور", page: "2" });
-  const detail = "/products/" + good[20].id + "?" + shared.slice(2);
+  const browseQuery = "?" + q({ categoryId: A, search: "کالای مرور", page: "2" });
+  const shared = "/products" + browseQuery;
+  const detail = "/products/" + good[20].id + browseQuery;
 
   // A direct, shared URL must load page 2 from the first real catalog
   // response: not first page then a UI-only claim of page 2.
@@ -94,7 +95,7 @@ async function main() {
   assert.equal(await page.getByRole("button", {
     name: "دستهٔ یک CI",
   }).getAttribute("aria-pressed"), "true");
-  assert.equal(new URL(page.url()).search, shared.slice(1));
+  assert.equal(new URL(page.url()).search, browseQuery);
   assert.equal(calls.find(x => x.path === "/api/catalog/products")
     .search.get("page"), "2");
 
