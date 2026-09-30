@@ -154,7 +154,7 @@ async function main() {
   }).getAttribute("href");
   const backLocation = new URL(backHref, base);
   assert.equal(backLocation.origin, base);
-  assert.equal(backLocation.pathname, "/");
+  assert.equal(backLocation.pathname, "/products");
   assert.equal(backLocation.searchParams.get("search"), "جست‌وجوی فارسی");
   assert.equal(backLocation.searchParams.get("page"), "2");
   assert.deepEqual([...backLocation.searchParams.keys()].sort(),
