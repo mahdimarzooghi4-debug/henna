@@ -71,3 +71,95 @@
 .footerCopyright{direction:rtl;text-align:right;font-size:13px;line-height:1.5;margin:0}
 @media(max-width:900px){.footerGrid{grid-template-columns:repeat(3,minmax(0,1fr)) 260px;gap:20px}.footerBrand .logoImage{width:136px}}
 @media(max-width:640px){.footer{padding:32px 0 20px}.footerGrid{direction:rtl;grid-template-columns:1fr 1fr;gap:24px 18px;margin-bottom:28px}.footerColumn{white-space:normal;align-items:flex-start}.footerBrand{grid-column:1/-1;grid-row:1;align-items:flex-start}.footerBrand p{max-width:100%;font-size:12px}.footerGrid .footerColumn h3{font-size:12px}.footerGrid .footerColumn a{font-size:11px}.footerBottom{align-items:flex-start;gap:16px;flex-direction:column}.footerCopyright{align-self:flex-start;font-size:11px}}
+
+/* Figma 190:4 section sizing, copy hierarchy, and image assets. */
+.announcement{height:40px;font-size:13px}
+.header{border-bottom:0}
+.headerTop{height:90px}
+.search input{font-size:14px}
+.nav{height:61px;justify-content:flex-start;gap:0;padding-inline:80px;border-top:0;border-bottom:1px solid var(--line);font-size:14px}
+.nav a{padding:8px 12px}
+.shoppingArea{padding-bottom:0}
+.hero{grid-template-columns:591fr 641fr;gap:48px;padding-top:64px;padding-bottom:64px}
+.heroCopy{display:flex;flex-direction:column;gap:24px;padding-inline:0}
+.eyebrow{align-items:center;gap:6px;width:max-content;background:#b5523b14;border-radius:20px;padding:6px 12px;margin:0;font-size:12px;line-height:1.4}
+.eyebrow img{width:14px;height:14px}
+.hero h1{font-size:44px;line-height:1.45;margin:0;font-weight:800;letter-spacing:0}
+.heroCopy>p{font-size:18px;line-height:1.55;color:var(--muted);margin:0;max-width:none}
+.heroButtons{direction:ltr;gap:16px;margin:0}
+.heroButtons .primaryButton,.heroButtons .secondaryButton{min-height:50px;border-radius:12px;padding:14px 32px;font-size:16px}
+.heroButtons .secondaryButton{padding-inline:24px}
+.heroVisual{height:420px;border:0;border-radius:24px;background:transparent}
+.heroVisual>img{width:100%;height:100%;object-fit:cover;border-radius:24px}
+.heroCaption{display:none}
+.promoGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;padding-top:24px;padding-bottom:24px}
+.promoCard{height:180px;min-height:180px;border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:16px}
+.promoTitle{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.promoTitle strong{font-size:20px;line-height:1.4}
+.promoTitle img{width:24px;height:24px;object-fit:contain}
+.promoCard p{max-width:100%;font-size:13px;line-height:1.5;margin:0;opacity:.85}
+.promoMore{font-size:12px;line-height:1.4;margin:0}
+.categories{padding-top:48px;padding-bottom:48px}
+.offers{padding-top:48px;padding-bottom:48px}
+.categories .sectionHeading,.offers .sectionHeading{margin-bottom:24px}
+.categories .sectionHeading h2,.offers .sectionHeading h2{font-size:22px;line-height:1.55}
+.categories .sectionHeading>a,.offers .sectionHeading>a{font-size:14px}
+.categoryGrid{gap:20px}
+.category{font-size:14px;gap:12px}
+.category span{width:100px;height:100px;box-shadow:none}
+.category img{object-fit:cover}
+.productGrid{gap:18px}
+.productCard{height:322px;display:flex;flex-direction:column;border-radius:16px;padding:16px;gap:12px;box-shadow:none}
+.productImage{height:180px;flex:0 0 180px;border-radius:12px}
+.productInfo{width:100%;display:flex;flex-direction:column;gap:6px;text-align:right}
+.productCard h3{font-size:16px;line-height:1.4;margin:0;white-space:nowrap}
+.productCard .productInfo>p{font-size:12px;line-height:1.4;margin:0;color:var(--muted)}
+.productAction{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;direction:ltr;margin-top:auto}
+.productPrice{display:flex;flex-direction:column;align-items:flex-end;gap:2px;direction:rtl;white-space:nowrap}
+.productPrice strong{font-size:16px;line-height:1.4}
+.productPrice small{font-size:11px}
+.productPrice del{font-size:12px;line-height:1.4;color:var(--muted)}
+.addButton{height:36px;min-height:36px;padding:8px 16px;margin:0;border-radius:20px;font-size:13px;line-height:1.5}
+.steps{padding:64px 0;background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.steps .centerHeading{margin-bottom:40px}
+.steps .centerHeading h2{font-size:24px;line-height:1.4}
+.steps .centerHeading p{font-size:14px;line-height:1.5}
+.stepsGrid{gap:32px;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1fr)}
+.stepsGrid>div{padding:0 8px}
+.stepsGrid>div>span{width:48px;height:48px;border-radius:24px;margin:0 auto;font-size:18px}
+.stepsGrid h3{font-size:18px;line-height:1.55;margin:0}
+.stepsGrid p{font-size:14px;line-height:1.5}
+.stepsGrid>b{width:24px;height:120px;display:flex;align-items:center;justify-content:center;font-size:0}
+.stepsGrid>b img{width:24px;height:24px}
+.impact{padding:80px 0}
+.impactInner{direction:ltr;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px}
+.impactInner>img{height:380px;border-radius:24px}
+.impactInner>div{direction:rtl;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:20px}
+.impactInner .eyebrow{padding:0;background:none;color:var(--terracotta)}
+.impactInner h2{font-size:32px;line-height:1.4;margin:0}
+.impactInner p{font-size:16px;line-height:1.55;margin:0}
+.stats{width:100%;gap:24px;margin-top:0}
+.stats div{gap:4px;border:0;padding:0}
+.stats div:last-child{border-right:1px solid var(--line);padding-right:24px}
+.stats strong{font-size:24px;line-height:1.4}
+.stats span{font-size:12px;line-height:1.4}
+.benefits{padding:64px 0;background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.benefits .centerHeading{margin-bottom:32px}
+.benefits .centerHeading h2{font-size:24px;line-height:1.4}
+.benefits .centerHeading p{font-size:14px;line-height:1.5}
+.benefitGrid{gap:24px}
+.benefitCard{height:200px;min-height:200px;border-radius:16px;padding:24px;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.benefitCard>span{width:40px;height:40px;border-radius:20px;background:#b5523b14;display:grid;place-items:center;margin:0}
+.benefitCard img{width:20px;height:20px}
+.benefitCard h3{font-size:18px;line-height:1.55;margin:0}
+.benefitCard p{font-size:13px;line-height:1.5;margin:0}
+.finalCta{min-height:365px;padding:80px 20px;background-color:var(--green)}
+.ctaOverlay{min-height:365px;background:#1c3f3aeb;padding:0 20px;gap:24px}
+.ctaOverlay h2{font-size:32px;line-height:1.4;margin:0}
+.ctaOverlay p{width:min(640px,100%);font-size:16px;line-height:1.55;color:var(--beige);margin:0}
+.ctaOverlay>div{direction:rtl;gap:16px;padding-top:12px}
+.ctaOverlay .primaryButton,.ctaOverlay .ctaSecondary{min-height:50px;border-radius:12px;padding:14px 32px;font-size:16px}
+.ctaOverlay .ctaSecondary{border:1.5px solid var(--beige);color:var(--beige)!important}
+.brand .logoImage,.footerBrand .logoImage{object-fit:contain;image-rendering:auto}
+@media(max-width:900px){.nav{overflow-x:auto;justify-content:flex-start;white-space:nowrap;padding-inline:24px}.hero{grid-template-columns:1fr 1fr;gap:24px}.hero h1{font-size:34px}.heroCopy>p{font-size:15px}.promoTitle strong{font-size:16px}.promoCard{padding:18px}.promoCard p{font-size:11px}.productGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.impactInner{gap:32px}.impactInner h2{font-size:27px}.impactInner p{font-size:14px}}
+@media(max-width:640px){.announcement{min-height:40px;height:auto;font-size:10px}.headerTop{height:auto;min-height:82px}.nav{height:48px;padding-inline:16px}.nav a{font-size:11px;padding:8px}.hero{grid-template-columns:1fr;gap:22px;padding-top:24px;padding-bottom:24px}.heroCopy{grid-column:1;grid-row:2;gap:16px}.heroVisual{grid-column:1;grid-row:1;height:auto;aspect-ratio:641/420}.hero h1{font-size:29px}.heroCopy>p{font-size:13px;line-height:1.8}.heroButtons{gap:8px;flex-wrap:wrap}.heroButtons .primaryButton,.heroButtons .secondaryButton{min-height:40px;padding:8px 14px;font-size:12px}.promoGrid{grid-template-columns:1fr;gap:12px;padding:16px 0}.promoCard{height:auto;min-height:148px;padding:20px;gap:12px}.promoTitle strong{font-size:17px}.categories,.offers{padding:32px 0}.categoryGrid{grid-template-columns:repeat(7,100px);gap:14px;overflow-x:auto;justify-content:start;padding-bottom:8px}.category{font-size:11px}.category span{width:72px;height:72px}.productGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.productCard{height:300px;padding:10px;gap:9px}.productImage{height:145px;flex-basis:145px}.productCard h3{font-size:12px}.productCard .productInfo>p{font-size:10px}.productPrice strong{font-size:12px}.productPrice small,.productPrice del{font-size:9px}.addButton{height:30px;min-height:30px;padding:5px 10px;font-size:10px}.steps{padding:36px 0}.steps .centerHeading{margin-bottom:22px}.steps .centerHeading h2,.benefits .centerHeading h2{font-size:18px}.steps .centerHeading p,.benefits .centerHeading p{font-size:11px}.stepsGrid{grid-template-columns:1fr;gap:8px;text-align:right}.stepsGrid>div{display:grid;grid-template-columns:48px 1fr;column-gap:12px;row-gap:4px;padding:8px 0;text-align:right}.stepsGrid>div>span{grid-column:1;grid-row:1/3}.stepsGrid h3{grid-column:2;font-size:14px}.stepsGrid p{grid-column:2;font-size:11px}.stepsGrid>b{display:none}.impact{padding:36px 0}.impactInner{direction:rtl;grid-template-columns:1fr;gap:22px}.impactInner>img{height:auto;aspect-ratio:608/380;grid-row:1}.impactInner>div{gap:12px}.impactInner h2{font-size:22px}.impactInner p{font-size:12px}.stats{gap:16px}.stats div:last-child{padding-right:16px}.stats strong{font-size:18px}.stats span{font-size:10px}.benefits{padding:36px 0}.benefits .centerHeading{margin-bottom:20px}.benefitGrid{grid-template-columns:1fr;gap:12px}.benefitCard{height:auto;min-height:156px;padding:18px}.benefitCard h3{font-size:15px}.benefitCard p{font-size:11px}.finalCta,.ctaOverlay{min-height:280px}.finalCta{padding:28px 16px}.ctaOverlay{gap:16px;padding:22px 10px}.ctaOverlay h2{font-size:21px}.ctaOverlay p{font-size:12px}.ctaOverlay>div{flex-wrap:wrap;justify-content:center;padding-top:4px;gap:8px}.ctaOverlay .primaryButton,.ctaOverlay .ctaSecondary{min-height:40px;padding:8px 14px;font-size:12px}}
