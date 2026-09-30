@@ -33,6 +33,10 @@ export function InfoPageTitle({ eyebrow, title, description }: {
   return <header className="info-title"><span>{eyebrow}</span><h1>{title}</h1><p>{description}</p></header>;
 }
 
+function InfoSectionTitle({ title, description }: { title: string; description: string }) {
+  return <header className="info-section-title-wrap"><h2>{title}</h2><p>{description}</p></header>;
+}
+
 function InfoCard({ title, children, className = "" }: {
   title: string; children: ReactNode; className?: string;
 }) {
@@ -50,9 +54,9 @@ export function AboutPage() {
       <div className="info-about-copy"><span className="info-eyebrow">درباره ما</span><h1>پیوند انسان‌ها برای فردایی بهتر</h1><p>حنا بستری برای پیوند خرید، عرضه کالا و خدمات و مشارکت اجتماعی در یک تجربه یکپارچه است.</p><Link className="info-button" href="/products">ورود به بازارگاه</Link></div>
     </section>
     <InfoCard title="حنا چیست؟" className="info-about-definition"><p>حنا بازارگاهی چنددسته‌ای برای دسترسی به کالاها و خدمات و ارتباط کاربران با فروشندگان و ارائه‌دهندگان است.</p></InfoCard>
-    <section className="info-section"><InfoPageTitle eyebrow="" title="چرا حنا؟" description="مزایای کلیدی حضور در خانواده بزرگ ما"/><div className="info-grid info-grid--4">{[["دسترسی ساده‌تر","امکانات جست‌وجو و مقایسه اطلاعات، انتخاب را برای کاربران ساده‌تر می‌کند."],["ارتباط خریدار و ارائه‌دهنده","ارتباط خریداران با فروشندگان و ارائه‌دهندگان کالا و خدمات در یک تجربه یکپارچه."],["طرح‌ها و اعتبارها","امکان استفاده از طرح‌ها و اعتبارهای مرتبط، فقط در صورت ثبت و نمایش آن‌ها روی همان حساب."],["مشارکت اجتماعی","حنا امکان مشارکت اجتماعی را در کنار تجربه بازارگاه معرفی می‌کند."]].map(([title,body])=><InfoCard key={title} title={title}><p>{body}</p></InfoCard>)}</div></section>
-    <section className="info-section"><InfoPageTitle eyebrow="" title="بازیگران حنا" description="بازیگران بازارگاه حنا"/><div className="info-grid info-grid--4">{[["ارائه‌دهندگان خدمات مکمل","ارائه‌دهندگان خدمات مکمل که در صورت اتصال به حنا، اطلاعات مرتبط با ارسال یا ارائه خدمت را پشتیبانی می‌کنند."],["سازمان‌ها و نهادهای مرتبط","سازمان‌ها و نهادهایی که در صورت تعریف همکاری یا طرح مرتبط، می‌توانند از ظرفیت‌های حنا استفاده کنند."],["فروشندگان و ارائه‌دهندگان","فروشندگان و ارائه‌دهندگانی که کالاها یا خدمات خود را در بازارگاه عرضه می‌کنند."],["کاربران","کاربرانی که برای دسترسی به کالاها و خدمات از بازارگاه حنا استفاده می‌کنند."]].map(([title,body])=><InfoCard key={title} title={title}><p>{body}</p></InfoCard>)}</div></section>
-    <section className="info-section"><InfoPageTitle eyebrow="" title="ارزش‌های حنا" description="باورهایی که ما را در این مسیر راهنمایی می‌کنند"/><div className="info-values">{["امید","رشد","حمایت","اتصال","انسان‌محوری"].map((value,index)=><div className="info-value" key={value}><span>{["✳","↗","♡","↗","◎"][index]}</span><b>{value}</b></div>)}</div></section>
+    <section className="info-section"><InfoSectionTitle title="چرا حنا؟" description="مزایای کلیدی حضور در خانواده بزرگ ما"/><div className="info-grid info-grid--4">{[["دسترسی ساده‌تر","امکانات جست‌وجو و مقایسه اطلاعات، انتخاب را برای کاربران ساده‌تر می‌کند."],["ارتباط خریدار و ارائه‌دهنده","ارتباط خریداران با فروشندگان و ارائه‌دهندگان کالا و خدمات در یک تجربه یکپارچه."],["طرح‌ها و اعتبارها","امکان استفاده از طرح‌ها و اعتبارهای مرتبط، فقط در صورت ثبت و نمایش آن‌ها روی همان حساب."],["مشارکت اجتماعی","حنا امکان مشارکت اجتماعی را در کنار تجربه بازارگاه معرفی می‌کند."]].map(([title,body])=><InfoCard key={title} title={title}><p>{body}</p></InfoCard>)}</div></section>
+    <section className="info-section"><InfoSectionTitle title="بازیگران حنا" description="بازیگران بازارگاه حنا"/><div className="info-grid info-grid--4">{[["ارائه‌دهندگان خدمات مکمل","ارائه‌دهندگان خدمات مکمل که در صورت اتصال به حنا، اطلاعات مرتبط با ارسال یا ارائه خدمت را پشتیبانی می‌کنند."],["سازمان‌ها و نهادهای مرتبط","سازمان‌ها و نهادهایی که در صورت تعریف همکاری یا طرح مرتبط، می‌توانند از ظرفیت‌های حنا استفاده کنند."],["فروشندگان و ارائه‌دهندگان","فروشندگان و ارائه‌دهندگانی که کالاها یا خدمات خود را در بازارگاه عرضه می‌کنند."],["کاربران","کاربرانی که برای دسترسی به کالاها و خدمات از بازارگاه حنا استفاده می‌کنند."]].map(([title,body])=><InfoCard key={title} title={title}><p>{body}</p></InfoCard>)}</div></section>
+    <section className="info-section"><InfoSectionTitle title="ارزش‌های حنا" description="باورهایی که ما را در این مسیر راهنمایی می‌کنند"/><div className="info-values">{["امید","رشد","حمایت","اتصال","انسان‌محوری"].map((value,index)=><div className="info-value" key={value}><span>{["✳","↗","♡","↗","◎"][index]}</span><b>{value}</b></div>)}</div></section>
   </>;
 }
 
