@@ -11,6 +11,8 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
 {
     public DbSet<SellerRegistrationDraft> RegistrationDrafts =>
         Set<SellerRegistrationDraft>();
+    public DbSet<SellerApplicationReviewRecord> ApplicationReviews =>
+        Set<SellerApplicationReviewRecord>();
     public DbSet<SellerBusinessCategoryRecord> BusinessCategories =>
         Set<SellerBusinessCategoryRecord>();
     public DbSet<SellerBusinessCategoryImportReceipt> BusinessCategoryImportReceipts =>
@@ -99,6 +101,12 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 table.HasCheckConstraint("ck_registration_submission_metadata",
                     "(status = 'DRAFT' AND submission_key IS NULL AND submission_expected_revision IS NULL AND submitted_at_utc IS NULL AND accuracy_confirmed_at_utc IS NULL AND tracking_code IS NULL) OR " +
                     "(status = 'SUBMITTED' AND submission_key IS NOT NULL AND submission_expected_revision >= 1 AND submitted_at_utc IS NOT NULL AND accuracy_confirmed_at_utc IS NOT NULL AND tracking_code IS NOT NULL AND char_length(tracking_code) BETWEEN 8 AND 24)");
+                table.HasCheckConstraint("ck_registration_review_status",
+                    "(status = 'DRAFT' AND review_status IS NULL AND review_reason IS NULL AND reviewed_by_account_id IS NULL AND reviewed_at_utc IS NULL) OR " +
+                    "(status = 'SUBMITTED' AND review_status IN ('UNDER_REVIEW','NEEDS_INFORMATION','APPROVED','REJECTED') AND " +
+                    "((review_status = 'UNDER_REVIEW' AND review_reason IS NULL AND reviewed_by_account_id IS NULL AND reviewed_at_utc IS NULL) OR " +
+                    "(review_status <> 'UNDER_REVIEW' AND reviewed_by_account_id IS NOT NULL AND reviewed_at_utc IS NOT NULL AND " +
+                    "(review_status = 'APPROVED' OR char_length(btrim(review_reason)) BETWEEN 1 AND 500))))");
             });
             entity.HasKey(x => x.AccountId);
             entity.Property(x => x.AccountId).HasColumnName("account_id")
@@ -174,6 +182,13 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasColumnName("accuracy_confirmed_at_utc");
             entity.Property(x => x.TrackingCode).HasColumnName("tracking_code")
                 .HasMaxLength(24);
+            entity.Property(x => x.ReviewStatus).HasColumnName("review_status")
+                .HasMaxLength(32);
+            entity.Property(x => x.ReviewReason).HasColumnName("review_reason")
+                .HasMaxLength(500);
+            entity.Property(x => x.ReviewedByAccountId)
+                .HasColumnName("reviewed_by_account_id");
+            entity.Property(x => x.ReviewedAtUtc).HasColumnName("reviewed_at_utc");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc")
                 .IsRequired();
             entity.HasIndex(x => x.TrackingCode)
@@ -186,6 +201,44 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasForeignKey(x => x.BusinessCategoryId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_registration_drafts_business_categories_business_category_id");
+        });
+
+        modelBuilder.Entity<SellerApplicationReviewRecord>(entity =>
+        {
+            entity.ToTable("application_reviews", table =>
+            {
+                table.HasCheckConstraint("ck_application_reviews_decision",
+                    "decision IN ('NEEDS_INFORMATION','APPROVED','REJECTED')");
+                table.HasCheckConstraint("ck_application_reviews_revision",
+                    "expected_revision >= 1");
+                table.HasCheckConstraint("ck_application_reviews_reason",
+                    "(decision = 'APPROVED' AND (reason IS NULL OR char_length(btrim(reason)) BETWEEN 1 AND 500)) OR " +
+                    "(decision IN ('NEEDS_INFORMATION','REJECTED') AND char_length(btrim(reason)) BETWEEN 1 AND 500)");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.ApplicationAccountId)
+                .HasColumnName("application_account_id").IsRequired();
+            entity.Property(x => x.ReviewerAccountId)
+                .HasColumnName("reviewer_account_id").IsRequired();
+            entity.Property(x => x.DecisionKey).HasColumnName("decision_key")
+                .IsRequired();
+            entity.Property(x => x.ExpectedRevision)
+                .HasColumnName("expected_revision").IsRequired();
+            entity.Property(x => x.Decision).HasColumnName("decision")
+                .HasMaxLength(32).IsRequired();
+            entity.Property(x => x.Reason).HasColumnName("reason")
+                .HasMaxLength(500);
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc")
+                .IsRequired();
+            entity.HasIndex(x => x.DecisionKey).IsUnique()
+                .HasDatabaseName("ux_application_reviews_decision_key");
+            entity.HasIndex(x => new { x.ApplicationAccountId, x.CreatedAtUtc })
+                .HasDatabaseName("ix_application_reviews_application_created");
+            entity.HasOne<SellerRegistrationDraft>().WithMany()
+                .HasForeignKey(x => x.ApplicationAccountId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_application_reviews_registration_drafts");
         });
     }
 }

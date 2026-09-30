@@ -551,6 +551,7 @@ internal static class SellerRegistrationEndpoints
                       submitted_at_utc = {now},
                       accuracy_confirmed_at_utc = {now},
                       tracking_code = {trackingCode},
+                      review_status = 'UNDER_REVIEW',
                       updated_at_utc = {now}
                     WHERE account_id = {accountId.Value}
                       AND status = 'DRAFT'
@@ -565,7 +566,8 @@ internal static class SellerRegistrationEndpoints
                         revision = input.Revision + 1,
                         submittedAtUtc = now,
                         accuracyConfirmedAtUtc = now,
-                        trackingCode
+                        trackingCode,
+                        reviewStatus = "UNDER_REVIEW"
                     });
 
                 var current = await db.RegistrationDrafts.AsNoTracking()
@@ -583,7 +585,8 @@ internal static class SellerRegistrationEndpoints
                         revision = current.Revision,
                         submittedAtUtc = submittedAt,
                         accuracyConfirmedAtUtc = confirmedAt,
-                        trackingCode = current.TrackingCode
+                        trackingCode = current.TrackingCode,
+                        reviewStatus = current.ReviewStatus
                     });
 
                 return Results.Conflict(new

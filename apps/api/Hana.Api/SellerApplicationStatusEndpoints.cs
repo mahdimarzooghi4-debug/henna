@@ -42,7 +42,10 @@ internal static class SellerApplicationStatusEndpoints
                         x.CompletedStep,
                         x.TrackingCode,
                         x.SubmittedAtUtc,
-                        x.AccuracyConfirmedAtUtc
+                        x.AccuracyConfirmedAtUtc,
+                        x.ReviewStatus,
+                        x.ReviewReason,
+                        x.ReviewedAtUtc
                     })
                     .SingleOrDefaultAsync(cancellationToken);
 
@@ -52,7 +55,8 @@ internal static class SellerApplicationStatusEndpoints
                     draft.CompletedStep != 6 ||
                     draft.TrackingCode is null ||
                     draft.SubmittedAtUtc is null ||
-                    draft.AccuracyConfirmedAtUtc is null)
+                    draft.AccuracyConfirmedAtUtc is null ||
+                    draft.ReviewStatus is null)
                     return Results.Conflict(new
                     {
                         status = "DRAFT",
@@ -64,11 +68,13 @@ internal static class SellerApplicationStatusEndpoints
                 return Results.Ok(new
                 {
                     trackingCode = draft.TrackingCode,
-                    overallStatus = "UNDER_REVIEW",
+                    overallStatus = draft.ReviewStatus,
                     applicantType = draft.ApplicantType,
                     identityStatus = draft.IdentityStatus,
                     submittedAtUtc = draft.SubmittedAtUtc,
                     accuracyConfirmedAtUtc = draft.AccuracyConfirmedAtUtc,
+                    reviewReason = draft.ReviewReason,
+                    reviewedAtUtc = draft.ReviewedAtUtc,
                     sellerPanelEnabled = false,
                     steps = new[]
                     {
@@ -76,7 +82,7 @@ internal static class SellerApplicationStatusEndpoints
                         new { key = "BUSINESS", status = "COMPLETED" },
                         new { key = "ACTIVITY", status = "COMPLETED" },
                         new { key = "ADDITIONAL", status = "COMPLETED" },
-                        new { key = "REVIEW", status = "UNDER_REVIEW" }
+                        new { key = "REVIEW", status = draft.ReviewStatus }
                     }
                 });
             }

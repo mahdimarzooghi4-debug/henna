@@ -46,5 +46,9 @@ public sealed class SellerRegistrationDraft
     public DateTimeOffset? SubmittedAtUtc { get; set; }
     public DateTimeOffset? AccuracyConfirmedAtUtc { get; set; }
     public string? TrackingCode { get; set; }
+    public string? ReviewStatus { get; set; }
+    public string? ReviewReason { get; set; }
+    public Guid? ReviewedByAccountId { get; set; }
+    public DateTimeOffset? ReviewedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

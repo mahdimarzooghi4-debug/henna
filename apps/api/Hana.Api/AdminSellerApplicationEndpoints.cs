@@ -1,3 +1,4 @@
+using Hana.Application.Time;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
 using Microsoft.EntityFrameworkCore;
@@ -62,6 +63,8 @@ internal static class AdminSellerApplicationEndpoints
                         x.Status,
                         x.Revision,
                         x.TrackingCode,
+                        x.ReviewStatus,
+                        x.ReviewedAtUtc,
                         x.SubmittedAtUtc
                     })
                     .ToListAsync(cancellationToken);
@@ -146,6 +149,9 @@ internal static class AdminSellerApplicationEndpoints
                     application.Status,
                     application.Revision,
                     application.TrackingCode,
+                    application.ReviewStatus,
+                    application.ReviewReason,
+                    application.ReviewedAtUtc,
                     application.SubmittedAtUtc
                 });
             }
@@ -155,6 +161,146 @@ internal static class AdminSellerApplicationEndpoints
             }
         })
         .WithName("GetSubmittedSellerApplication");
+
+        routes.MapPost("/{applicationId:guid}/review", async (
+            Guid applicationId,
+            AdminSellerReviewInput input,
+            HttpContext context,
+            IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!context.Request.IsHttps && !app.Environment.IsDevelopment())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            var auth = await AuthorizeAdminAsync(
+                context, services, hasDatabase, cancellationToken);
+            if (auth.Error is not null) return auth.Error;
+            if (auth.AccountId is null)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            if (input.Revision < 1 || input.Revision == int.MaxValue)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["revision"] = ["نسخه پرونده معتبر نیست."]
+                });
+
+            if (!TryDecision(input.Decision, out var decision))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["decision"] = ["نتیجه بررسی معتبر نیست."]
+                });
+
+            var reason = CleanReason(input.Reason);
+            if ((decision is "NEEDS_INFORMATION" or "REJECTED") &&
+                reason is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["reason"] = ["برای این نتیجه، دلیل بررسی الزامی است."]
+                });
+            if (input.Reason is not null && reason is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["reason"] = ["متن دلیل بررسی معتبر نیست."]
+                });
+
+            var keyHeader = context.Request.Headers["Idempotency-Key"].ToString();
+            if (!Guid.TryParse(keyHeader, out var decisionKey) ||
+                decisionKey == Guid.Empty)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["idempotencyKey"] = ["کلید ثبت تصمیم معتبر نیست."]
+                });
+
+            try
+            {
+                var db = services.GetRequiredService<HanaSellerDbContext>();
+                var existing = await db.ApplicationReviews.AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.DecisionKey == decisionKey,
+                        cancellationToken);
+                if (existing is not null)
+                {
+                    if (existing.ApplicationAccountId != applicationId ||
+                        existing.ExpectedRevision != input.Revision ||
+                        existing.Decision != decision ||
+                        existing.Reason != reason ||
+                        existing.ReviewerAccountId != auth.AccountId.Value)
+                        return Results.Conflict(new
+                        {
+                            message = "کلید تصمیم قبلاً برای درخواست دیگری استفاده شده است."
+                        });
+
+                    var replay = await db.RegistrationDrafts.AsNoTracking()
+                        .SingleOrDefaultAsync(x => x.AccountId == applicationId,
+                            cancellationToken);
+                    if (replay is null) return Results.NotFound();
+                    return Results.Ok(ReviewResponse(replay));
+                }
+
+                await using var transaction = await db.Database
+                    .BeginTransactionAsync(cancellationToken);
+                var now = services.GetRequiredService<IClock>().UtcNow
+                    .ToUniversalTime();
+
+                var updated = await db.RegistrationDrafts
+                    .Where(x => x.AccountId == applicationId &&
+                        x.Status == "SUBMITTED" &&
+                        x.ReviewStatus == "UNDER_REVIEW" &&
+                        x.Revision == input.Revision)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(x => x.ReviewStatus, decision)
+                        .SetProperty(x => x.ReviewReason, reason)
+                        .SetProperty(x => x.ReviewedByAccountId,
+                            auth.AccountId.Value)
+                        .SetProperty(x => x.ReviewedAtUtc, now)
+                        .SetProperty(x => x.Revision, input.Revision + 1)
+                        .SetProperty(x => x.UpdatedAtUtc, now),
+                        cancellationToken);
+
+                if (updated != 1)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    var current = await db.RegistrationDrafts.AsNoTracking()
+                        .SingleOrDefaultAsync(x => x.AccountId == applicationId,
+                            cancellationToken);
+                    return current is null
+                        ? Results.NotFound()
+                        : Results.Conflict(new
+                        {
+                            message =
+                                "پرونده تغییر کرده یا قبلاً بررسی شده است.",
+                            currentRevision = current.Revision,
+                            reviewStatus = current.ReviewStatus
+                        });
+                }
+
+                db.ApplicationReviews.Add(new SellerApplicationReviewRecord
+                {
+                    Id = Guid.NewGuid(),
+                    ApplicationAccountId = applicationId,
+                    ReviewerAccountId = auth.AccountId.Value,
+                    DecisionKey = decisionKey,
+                    ExpectedRevision = input.Revision,
+                    Decision = decision,
+                    Reason = reason,
+                    CreatedAtUtc = now
+                });
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                var currentRow = await db.RegistrationDrafts.AsNoTracking()
+                    .SingleAsync(x => x.AccountId == applicationId,
+                        cancellationToken);
+                return Results.Ok(ReviewResponse(currentRow));
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("ReviewSubmittedSellerApplication")
+        .ProducesValidationProblem();
+
     }
 
     private static async Task<(Guid? AccountId, IResult? Error)> AuthorizeAdminAsync(
@@ -205,4 +351,39 @@ internal static class AdminSellerApplicationEndpoints
         nationalCode is { Length: 10 }
             ? "******" + nationalCode[^4..]
             : null;
+
+    private static bool TryDecision(string? value, out string decision)
+    {
+        decision = value?.Trim().ToUpperInvariant() ?? "";
+        return decision is "NEEDS_INFORMATION" or "APPROVED" or "REJECTED";
+    }
+
+    private static string? CleanReason(string? value)
+    {
+        if (value is null) return null;
+        var cleaned = value.Trim();
+        if (cleaned.Length == 0) return null;
+        if (cleaned.Length > 500 || cleaned.Any(char.IsControl))
+            return null;
+        return cleaned;
+    }
+
+    private static object ReviewResponse(SellerRegistrationDraft application) =>
+        new
+        {
+            applicationId = application.AccountId,
+            application.Status,
+            application.Revision,
+            application.TrackingCode,
+            application.ReviewStatus,
+            application.ReviewReason,
+            application.ReviewedAtUtc,
+            sellerActivated = false
+        };
 }
+
+internal sealed record AdminSellerReviewInput(
+    int Revision,
+    string? Decision,
+    string? Reason);
+
