@@ -93,6 +93,15 @@ export function RegistrationForm() {
   const [serviceArea, setServiceArea] = useState("");
   const [activityFeedback, setActivityFeedback] =
     useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [registrationContactName, setRegistrationContactName] = useState("");
+  const [registrationContactRole, setRegistrationContactRole] = useState("");
+  const [backupPhone, setBackupPhone] = useState("");
+  const [websiteOrSocial, setWebsiteOrSocial] = useState("");
+  const [businessEmail, setBusinessEmail] = useState("");
+  const [responseHours, setResponseHours] = useState("");
+  const [additionalTouched, setAdditionalTouched] = useState(false);
+  const [additionalFeedback, setAdditionalFeedback] =
+    useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [submitKey, setSubmitKey] = useState<string | null>(null);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
@@ -155,6 +164,19 @@ export function RegistrationForm() {
       setPickup(result.pickup ?? false);
       setServiceArea(result.serviceArea ?? "");
       setActivityFeedback(null);
+      const defaultContact = result.applicantType === "LEGAL"
+        ? (result.legalRepresentativeName ?? result.fields.ownerName)
+        : result.fields.ownerName;
+      setRegistrationContactName(
+        result.registrationContactName ?? defaultContact,
+      );
+      setRegistrationContactRole(result.registrationContactRole ?? "");
+      setBackupPhone(result.backupPhone ?? "");
+      setWebsiteOrSocial(result.websiteOrSocial ?? "");
+      setBusinessEmail(result.businessEmail ?? "");
+      setResponseHours(result.responseHours ?? result.activityHours ?? "");
+      setAdditionalTouched(false);
+      setAdditionalFeedback(null);
       if (result.status === "submitted") {
         setSubmittedAtUtc(result.submittedAtUtc);
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
@@ -282,11 +304,14 @@ export function RegistrationForm() {
       activityHours.trim().length > 0 ||
       sellerDelivery || pickup ||
       serviceArea.trim().length > 0);
+  const hasUnsavedAdditionalChanges =
+    completedStep === 5 && additionalTouched;
   const hasAnyUnsavedChanges =
     hasUnsavedChanges ||
     hasUnsavedIdentityChanges ||
     hasUnsavedBusinessChanges ||
-    hasUnsavedActivityChanges;
+    hasUnsavedActivityChanges ||
+    hasUnsavedAdditionalChanges;
 
   useEffect(() => {
     if (!hasAnyUnsavedChanges) return;
@@ -879,6 +904,13 @@ export function RegistrationForm() {
           setActivityAddress(nextAddress);
           setActivityHours(nextHours);
           setServiceArea(nextServiceArea);
+          setRegistrationContactName(
+            applicantType === "LEGAL"
+              ? (legalRepresentativeName || fields.ownerName)
+              : fields.ownerName,
+          );
+          setResponseHours(nextHours);
+          setAdditionalTouched(false);
           setActivityFeedback({
             kind: "info",
             text: "محدوده فعالیت ذخیره شد. مرحله بعد اطلاعات تکمیلی است.",
@@ -900,6 +932,125 @@ export function RegistrationForm() {
       setActivityFeedback({
         kind: "error",
         text: "ذخیره محدوده فعالیت تأیید نشد؛ دوباره تلاش کنید.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveAdditionalInformation() {
+    if (busy || access !== "signedIn" || completedStep !== 5 ||
+      revision < 1) return;
+
+    const nextContactName = registrationContactName.trim();
+    const nextContactRole = registrationContactRole.trim();
+    const normalizedBackup = normalizeDigits(backupPhone.trim());
+    const nextWebsite = websiteOrSocial.trim();
+    const nextEmail = businessEmail.trim();
+    const nextResponseHours = responseHours.trim();
+
+    setRegistrationContactName(nextContactName);
+    setRegistrationContactRole(nextContactRole);
+    setBackupPhone(normalizedBackup);
+    setWebsiteOrSocial(nextWebsite);
+    setBusinessEmail(nextEmail);
+    setResponseHours(nextResponseHours);
+
+    if (!nextContactName || nextContactName.length > 120 ||
+      nextContactRole.length > 120 ||
+      (normalizedBackup.length > 0 &&
+        !/^09\d{9}$/.test(normalizedBackup)) ||
+      nextWebsite.length > 300 ||
+      nextEmail.length > 254 ||
+      (nextEmail.length > 0 &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) ||
+      !nextResponseHours || nextResponseHours.length > 180) {
+      setAdditionalFeedback({
+        kind: "error",
+        text: "اطلاعات تکمیلی کامل یا معتبر نیست.",
+      });
+      return;
+    }
+
+    setBusy(true);
+    setAdditionalFeedback(null);
+    try {
+      const response = await fetch(
+        "/api/seller/registration/additional-information",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contactName: nextContactName,
+            contactRole: nextContactRole || null,
+            backupPhone: normalizedBackup || null,
+            websiteOrSocial: nextWebsite || null,
+            businessEmail: nextEmail || null,
+            responseHours: nextResponseHours,
+            revision,
+          }),
+          cache: "no-store",
+        },
+      );
+
+      if (response.ok) {
+        const result: unknown = await response.json();
+        if (result && typeof result === "object" &&
+          "status" in result && result.status === "DRAFT" &&
+          "revision" in result && result.revision === revision + 1 &&
+          "completedStep" in result && result.completedStep === 6 &&
+          "documentsRequired" in result &&
+          result.documentsRequired === false &&
+          "contactName" in result &&
+          typeof result.contactName === "string" &&
+          "responseHours" in result &&
+          typeof result.responseHours === "string") {
+          setRevision(result.revision as number);
+          setCompletedStep(6);
+          setRegistrationContactName(result.contactName);
+          setRegistrationContactRole(
+            "contactRole" in result &&
+            typeof result.contactRole === "string"
+              ? result.contactRole : "",
+          );
+          setBackupPhone(
+            "backupPhone" in result &&
+            typeof result.backupPhone === "string"
+              ? result.backupPhone : "",
+          );
+          setWebsiteOrSocial(
+            "websiteOrSocial" in result &&
+            typeof result.websiteOrSocial === "string"
+              ? result.websiteOrSocial : "",
+          );
+          setBusinessEmail(
+            "businessEmail" in result &&
+            typeof result.businessEmail === "string"
+              ? result.businessEmail : "",
+          );
+          setResponseHours(result.responseHours);
+          setAdditionalTouched(false);
+          setAdditionalFeedback({
+            kind: "info",
+            text: "اطلاعات تکمیلی ذخیره شد. مرحله بعد بازبینی و ثبت است.",
+          });
+          return;
+        }
+      }
+
+      if (response.status === 401) setAccess("signedOut");
+      setAdditionalFeedback({
+        kind: "error",
+        text: response.status === 409
+          ? "نسخه یا مرحله ثبت‌نام تغییر کرده است؛ اطلاعات واردشده حفظ شده است."
+          : response.status === 400
+            ? "اطلاعات تکمیلی معتبر نیست."
+            : "ذخیره اطلاعات تکمیلی تأیید نشد؛ دوباره تلاش کنید.",
+      });
+    } catch {
+      setAdditionalFeedback({
+        kind: "error",
+        text: "ذخیره اطلاعات تکمیلی تأیید نشد؛ دوباره تلاش کنید.",
       });
     } finally {
       setBusy(false);
@@ -1570,19 +1721,187 @@ export function RegistrationForm() {
             )}
           </section>
         )}
+        {completedStep >= 5 && !submittedAtUtc && (
+          <section className="seller-additional"
+            aria-labelledby="seller-additional-heading">
+            <div className="seller-additional__intro">
+              <p className="seller-applicant-type__step">مرحله ۶ از ۸</p>
+              <h3 id="seller-additional-heading">اطلاعات تکمیلی</h3>
+              <p>
+                جزئیات تکمیلی برای ادامه ثبت‌نام کسب‌وکار ثبت می‌شود.
+                اطلاعات هویتی قبلی دوباره کپی یا بازنویسی نمی‌شود.
+              </p>
+            </div>
+
+            {completedStep === 5 && (
+              <div className="seller-additional__body">
+                <div className="seller-additional__identity-summary">
+                  <p>
+                    <strong>اطلاعات مسئول کسب‌وکار</strong>
+                    <span>
+                      {applicantType === "NATURAL"
+                        ? "کد ملی ثبت‌شده: " + (nationalCodeMasked ?? "—")
+                        : "شناسه ملی ثبت‌شده: " + (legalNationalId || "—")}
+                    </span>
+                  </p>
+                </div>
+
+                <FormField id="seller-registration-contact"
+                  label="نام رابط یا مسئول ثبت‌نام"
+                  placeholder="مسئول ثبت‌نام"
+                  maxLength={120}
+                  value={registrationContactName}
+                  required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setRegistrationContactName(event.target.value);
+                    setAdditionalTouched(true);
+                    setAdditionalFeedback(null);
+                  }} />
+
+                <FormField id="seller-registration-role"
+                  label="سمت در کسب‌وکار (اختیاری)"
+                  placeholder="مثال: مدیر فروش، صاحب پروانه"
+                  maxLength={120}
+                  value={registrationContactRole}
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setRegistrationContactRole(event.target.value);
+                    setAdditionalTouched(true);
+                    setAdditionalFeedback(null);
+                  }} />
+
+                <FormField id="seller-backup-phone"
+                  label="تلفن همراه دوم / پشتیبان (اختیاری)"
+                  placeholder="09xxxxxxxxx"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
+                  className="field__input--phone"
+                  value={backupPhone}
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setBackupPhone(event.target.value);
+                    setAdditionalTouched(true);
+                    setAdditionalFeedback(null);
+                  }} />
+
+                <FormField id="seller-website-social"
+                  label="آدرس وب‌سایت / شبکه اجتماعی (اختیاری)"
+                  placeholder="مثال: instagram.com/shop"
+                  maxLength={300}
+                  value={websiteOrSocial}
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setWebsiteOrSocial(event.target.value);
+                    setAdditionalTouched(true);
+                    setAdditionalFeedback(null);
+                  }} />
+
+                <FormField id="seller-business-email"
+                  label="ایمیل کسب‌وکار (اختیاری)"
+                  placeholder="info@example.com"
+                  type="email"
+                  maxLength={254}
+                  value={businessEmail}
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setBusinessEmail(event.target.value);
+                    setAdditionalTouched(true);
+                    setAdditionalFeedback(null);
+                  }} />
+
+                <FormField id="seller-response-hours"
+                  label="ساعات کاری پاسخگویی"
+                  placeholder="ساعات فعالیت ثبت‌شده"
+                  maxLength={180}
+                  value={responseHours}
+                  required
+                  disabled={busy || access !== "signedIn"}
+                  onChange={(event) => {
+                    setResponseHours(event.target.value);
+                    setAdditionalTouched(true);
+                    setAdditionalFeedback(null);
+                  }} />
+
+                <div className="seller-additional__documents">
+                  <strong>مدارک در صورت نیاز</strong>
+                  <p>
+                    مدارک موردنیاز، در صورت لزوم، متناسب با نوع کسب‌وکار
+                    در همین بخش اعلام می‌شود.
+                  </p>
+                  <div className="seller-additional__documents-empty"
+                    role="status">
+                    در این مرحله نیازی به بارگذاری مدرک خاصی نیست.
+                  </div>
+                </div>
+
+                <button type="button" className="primary-button"
+                  disabled={busy || access !== "signedIn"}
+                  onClick={() => void saveAdditionalInformation()}>
+                  {busy ? "در حال ذخیره…" : "ذخیره و ادامه"}
+                </button>
+
+                {hasUnsavedAdditionalChanges && (
+                  <p className="seller-unsaved-note" role="status">
+                    تغییرات اطلاعات تکمیلی هنوز روی سرور ثبت نشده است.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {completedStep >= 6 && (
+              <div className="seller-additional__completed" role="status">
+                <strong>اطلاعات تکمیلی ذخیره شد.</strong>
+                <dl>
+                  <div>
+                    <dt>مسئول ثبت‌نام</dt>
+                    <dd>{registrationContactName}</dd>
+                  </div>
+                  <div>
+                    <dt>سمت</dt>
+                    <dd>{registrationContactRole || "ثبت نشده"}</dd>
+                  </div>
+                  <div>
+                    <dt>تلفن پشتیبان</dt>
+                    <dd dir="ltr">{backupPhone || "ثبت نشده"}</dd>
+                  </div>
+                  <div>
+                    <dt>ساعات پاسخگویی</dt>
+                    <dd>{responseHours}</dd>
+                  </div>
+                </dl>
+                {websiteOrSocial && <p>{websiteOrSocial}</p>}
+                {businessEmail && <p dir="ltr">{businessEmail}</p>}
+                <p>مدرک خاصی برای این مرحله درخواست نشده است.</p>
+                <p>مرحله بعد «بازبینی و ثبت» است.</p>
+              </div>
+            )}
+
+            {additionalFeedback && (
+              <p className={additionalFeedback.kind === "error"
+                ? "form-status form-status--error"
+                : "form-status"}
+                role={additionalFeedback.kind === "error"
+                  ? "alert" : "status"}>
+                {additionalFeedback.text}
+              </p>
+            )}
+          </section>
+        )}
         {completedStep >= 6 && revision > 0 && !submittedAtUtc && (
           <section className="seller-review" aria-labelledby="seller-review-heading">
             <h3 id="seller-review-heading">بازبینی و ثبت</h3>
-            <p>درخواست فقط از آخرین نسخهٔ ذخیره‌شده ثبت می‌شود. پس از ثبت، این نسخه دیگر قابل ویرایش نیست.</p>
+            <p>
+              اطلاعات مرحله ۶ کامل است. بازبینی نهایی و تأیید صریح صحت
+              اطلاعات در مرحله ۷ انجام می‌شود؛ ثبت نهایی از این صفحه
+              مستقیماً فعال نیست.
+            </p>
             <button type="button" className="auth-card__secondary"
-              disabled={busy || access !== "signedIn" || conflict !== null ||
-                hasUnsavedChanges}
+              disabled
               onClick={() => void submitForReview()}>
-              {busy ? "در حال ثبت…" : "ثبت درخواست برای بررسی"}
+              ادامه در مرحله ۷
             </button>
-            {hasUnsavedChanges && (
-              <p className="seller-conflict__hint">ابتدا تغییرات فعلی را ذخیره کنید؛ درخواست از متن ذخیره‌نشده ساخته نمی‌شود.</p>
-            )}
           </section>
         )}
         {submittedAtUtc && (

@@ -41,8 +41,14 @@ public sealed class GeographyReadApiTests
             initiallyVisible.Headers.GetValues("Cache-Control").Single());
         using (var initial = JsonDocument.Parse(
             await initiallyVisible.Content.ReadAsStringAsync()))
-            Assert.Equal(0, initial.RootElement.GetProperty("items")
-                .GetArrayLength());
+        {
+            // The CI PostgreSQL database is shared by concurrently running
+            // integration tests. Do not infer "shipping seeds exist" merely
+            // because another test has a short-lived SELECTABLE fixture.
+            // This test proves visibility using only the IDs it owns below.
+            Assert.Equal(JsonValueKind.Array,
+                initial.RootElement.GetProperty("items").ValueKind);
+        }
 
         var activeProvince = Guid.NewGuid();
         var hiddenProvince = Guid.NewGuid();

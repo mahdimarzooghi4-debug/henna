@@ -345,6 +345,7 @@ app.MapDelete("/api/v1/auth/session", async (
 app.MapSellerRegistration(hasIdentityDb);
 app.MapSellerBusinessInformation(hasIdentityDb);
 app.MapSellerActivityArea(hasIdentityDb);
+app.MapSellerAdditionalInformation(hasIdentityDb);
 app.MapAdminSellerApplications(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);

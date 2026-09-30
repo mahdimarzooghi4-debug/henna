@@ -32,6 +32,12 @@ public sealed class SellerRegistrationDraft
     public bool? SellerDelivery { get; set; }
     public bool? Pickup { get; set; }
     public string? ServiceArea { get; set; }
+    public string? RegistrationContactName { get; set; }
+    public string? RegistrationContactRole { get; set; }
+    public string? BackupPhone { get; set; }
+    public string? WebsiteOrSocial { get; set; }
+    public string? BusinessEmail { get; set; }
+    public string? ResponseHours { get; set; }
     public int CompletedStep { get; set; } = 1;
     public string Status { get; set; } = "DRAFT";
     public int Revision { get; set; } = 1;
