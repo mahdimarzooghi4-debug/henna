@@ -33,6 +33,12 @@ export type SellerPreflight =
     legalName: string | null;
     legalRepresentativeName: string | null;
     legalRepresentativePhone: string | null;
+    businessCategoryId: string | null;
+    businessCategoryName: string | null;
+    businessName: string | null;
+    businessDescription: string | null;
+    businessPhone: string | null;
+    offeringType: "GOOD" | "SERVICE" | "BOTH" | null;
     completedStep: number;
   }
   | {
@@ -46,6 +52,12 @@ export type SellerPreflight =
     legalName: string | null;
     legalRepresentativeName: string | null;
     legalRepresentativePhone: string | null;
+    businessCategoryId: string | null;
+    businessCategoryName: string | null;
+    businessName: string | null;
+    businessDescription: string | null;
+    businessPhone: string | null;
+    offeringType: "GOOD" | "SERVICE" | "BOTH" | null;
     completedStep: 6;
     submittedAtUtc: string;
   };
@@ -130,6 +142,44 @@ export async function loadSellerDraft(
         return { status: "unavailable" };
     }
 
+    const businessCategoryId = "businessCategoryId" in draft
+      ? draft.businessCategoryId : null;
+    const businessCategoryName = "businessCategoryName" in draft
+      ? draft.businessCategoryName : null;
+    const businessName = "businessName" in draft
+      ? draft.businessName : null;
+    const businessDescription = "businessDescription" in draft
+      ? draft.businessDescription : null;
+    const businessPhone = "businessPhone" in draft
+      ? draft.businessPhone : null;
+    const offeringType = "offeringType" in draft
+      ? draft.offeringType : null;
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    if (completedStep < 4) {
+      if (businessCategoryId !== null || businessCategoryName !== null ||
+        businessName !== null || businessDescription !== null ||
+        businessPhone !== null || offeringType !== null)
+        return { status: "unavailable" };
+    } else if (
+      typeof businessCategoryId !== "string" ||
+      !uuidPattern.test(businessCategoryId) ||
+      typeof businessCategoryName !== "string" ||
+      !businessCategoryName.trim() || businessCategoryName.length > 120 ||
+      typeof businessName !== "string" ||
+      !businessName.trim() || businessName.length > 180 ||
+      typeof businessDescription !== "string" ||
+      !businessDescription.trim() || businessDescription.length > 500 ||
+      typeof businessPhone !== "string" ||
+      !/^0\d{10}$/.test(businessPhone) ||
+      (offeringType !== "GOOD" &&
+        offeringType !== "SERVICE" &&
+        offeringType !== "BOTH")
+    ) {
+      return { status: "unavailable" };
+    }
+
     if (draft.status === "SUBMITTED") {
       if (!("submittedAtUtc" in draft) ||
         typeof draft.submittedAtUtc !== "string" ||
@@ -146,6 +196,12 @@ export async function loadSellerDraft(
         legalName: legalName as string | null,
         legalRepresentativeName: legalRepresentativeName as string | null,
         legalRepresentativePhone: legalRepresentativePhone as string | null,
+        businessCategoryId: businessCategoryId as string | null,
+        businessCategoryName: businessCategoryName as string | null,
+        businessName: businessName as string | null,
+        businessDescription: businessDescription as string | null,
+        businessPhone: businessPhone as string | null,
+        offeringType: offeringType as "GOOD" | "SERVICE" | "BOTH" | null,
         completedStep: 6,
         submittedAtUtc: draft.submittedAtUtc,
       };
@@ -161,6 +217,12 @@ export async function loadSellerDraft(
       legalName: legalName as string | null,
       legalRepresentativeName: legalRepresentativeName as string | null,
       legalRepresentativePhone: legalRepresentativePhone as string | null,
+      businessCategoryId: businessCategoryId as string | null,
+      businessCategoryName: businessCategoryName as string | null,
+      businessName: businessName as string | null,
+      businessDescription: businessDescription as string | null,
+      businessPhone: businessPhone as string | null,
+      offeringType: offeringType as "GOOD" | "SERVICE" | "BOTH" | null,
       completedStep,
     };
   } catch {
