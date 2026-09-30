@@ -93,12 +93,12 @@ export default function HennaHomepage() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.actions}>
-            <a className={styles.cart} href="/products"><span className={styles.cartCount}>۰</span> سبد خرید <img src="/landing/shopping-cart.svg" alt="" /></a>
+            <a className={styles.cart} href="/products"><img src="/landing/shopping-cart.svg" alt="" /> سبد خرید <span className={styles.cartCount}>۰</span></a>
             <a className={styles.login} href="/auth">ورود یا ثبت‌نام <img src="/landing/user.svg" alt="" /></a>
             <span className={styles.divider} />
             <a className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها</a>
           </div>
-          <a href="/" className={styles.brand} aria-label="حنا، صفحه اصلی"><img className={styles.logoImage} src="/landing/figma/hana-logo.png" alt="حنا" /></a>
+          <a href="/" className={styles.brand} aria-label="حنا، صفحه اصلی"><img className={styles.logoImage} src="/hana-logo.png" alt="حنا" /></a>
           <form className={styles.search} action="/products">
             <input name="q" placeholder="جست‌وجوی نان، لبنیات، برنج و اقلام روزانه..." aria-label="جستجو" />
             <button aria-label="جستجو"><img src="/landing/search.svg" alt="" /></button>
@@ -112,7 +112,7 @@ export default function HennaHomepage() {
       <section className={styles.shoppingArea}>
         <div className={`${styles.container} ${styles.hero}`} aria-label="اسلایدهای معرفی حنا" aria-roledescription="carousel">
           <div className={styles.heroCopy} key={`copy-${activeHero}`} aria-live="polite">
-            <span className={styles.eyebrow}><span>{hero.eyebrow}</span>{activeHero === 0 && <img src="/landing/figma/icon-users.png" alt="" />}</span>
+            <span className={styles.eyebrow}>{activeHero === 0 && <img src="/landing/figma/icon-users.png" alt="" />}<span>{hero.eyebrow}</span></span>
             <h1>{hero.title}</h1>
             <p>{hero.description}</p>
             <div className={styles.heroButtons}>
@@ -133,9 +133,9 @@ export default function HennaHomepage() {
         </div>
 
         <div className={`${styles.container} ${styles.promoGrid}`}>
-          <a href="#offers" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoTitle}><strong>تخفیف‌دارهای روزانه</strong><img src="/landing/figma/icon-percent.png" alt="" /></span><p>محبوب‌ترین کالاهای سبد خرید روزانه شما با قیمت‌های استثنایی و فرصت‌های خرید تکرارنشدنی</p><span className={styles.promoMore}>لیست تخفیف‌ها ←</span></a>
-          <a href="#offers" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoTitle}><strong>کالابرگ الکترونیک</strong><img src="/landing/figma/icon-credit-card.png" alt="" /></span><p>امکان پرداخت سهم یارانه‌ای با استفاده از کارت‌های معتبر حمایتی برای اقلام اساسی مصوب</p><span className={styles.promoMore}>استفاده از کالابرگ ←</span></a>
-          <a href="#benefits" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoTitle}><strong>طرح‌های ویژه حنا</strong><img src="/landing/figma/icon-gift.png" alt="" /></span><p>بسته‌ها و فرصت‌های خرید اشتراکی خانواده و محله با مشارکت مستقیم فروشگاه‌های منتخب</p><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></a>
+          <a href="#offers" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-percent.png" alt="" /><strong>تخفیف‌دارهای روزانه</strong></span><p>محبوب‌ترین کالاهای سبد خرید روزانه شما با قیمت‌های استثنایی و فرصت‌های خرید تکرارنشدنی</p><span className={styles.promoMore}>لیست تخفیف‌ها ←</span></a>
+          <a href="#offers" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-credit-card.png" alt="" /><strong>کالابرگ الکترونیک</strong></span><p>امکان پرداخت سهم یارانه‌ای با استفاده از کارت‌های معتبر حمایتی برای اقلام اساسی مصوب</p><span className={styles.promoMore}>استفاده از کالابرگ ←</span></a>
+          <a href="#benefits" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoTitle}><img src="/landing/figma/icon-gift.png" alt="" /><strong>طرح‌های ویژه حنا</strong></span><p>بسته‌ها و فرصت‌های خرید اشتراکی خانواده و محله با مشارکت مستقیم فروشگاه‌های منتخب</p><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></a>
         </div>
 
         <section className={`${styles.container} ${styles.categories}`} id="categories">
@@ -185,7 +185,7 @@ export default function HennaHomepage() {
             <a href="/support">تماس با پشتیبانی</a>
           </div>
           <div className={styles.footerBrand}>
-            <img className={styles.logoImage} src="/landing/figma/hana-logo.png" alt="حنا" />
+            <img className={styles.logoImage} src="/hana-logo.png" alt="حنا" />
             <p>حنا اولین بازارگاه هوشمند اجتماعی برای خریدهای روزمره در ایران است که اولویت خود را بر توسعه عادلانه و حمایت اجتماعی قرار داده است.</p>
           </div>
         </div>
