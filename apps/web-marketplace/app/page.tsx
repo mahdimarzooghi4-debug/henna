@@ -1,21 +1,11 @@
-import { SiteHeader } from "../components/site-header";
-import { BuyerBrowse } from "../components/buyer-browse";
-import {
-  buyerBrowseQuery, buyerParamsFromRecord, parseBuyerBrowseLocation,
-} from "../lib/buyer-catalog";
+import HennaHomepage from "../components/henna-homepage";
+import type { Metadata } from "next";
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const query = buyerBrowseQuery(parseBuyerBrowseLocation(
-    buyerParamsFromRecord(await searchParams),
-  ));
-  return (
-    <>
-      <SiteHeader backHref="/auth" backLabel="ورود / ثبت‌نام" />
-      <BuyerBrowse initialQuery={query} />
-    </>
-  );
+export const metadata: Metadata = {
+  title: "خرید روزمره، با اثری فراتر از خرید | حنا",
+  description: "خرید کالاهای روزمره از فروشگاه‌های نزدیک، با مقایسه قیمت و پیشنهادهای حنا.",
+};
+
+export default function HomePage() {
+  return <HennaHomepage />;
 }
