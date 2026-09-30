@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { addBuyerDemoCartItem } from "../lib/buyer-demo-cart";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
@@ -43,6 +44,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   const [draftSearch, setDraftSearch] = useState(initial.search);
   const [search, setSearch] = useState(initial.search);
   const [searchError, setSearchError] = useState("");
+  const [addedProduct, setAddedProduct] = useState<string | null>(null);
   const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
   const [products, setProducts] = useState<Load<BuyerPage>>({
@@ -315,6 +317,14 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
                     <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
                     <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}</p>
                     {item.description && <p>{item.description}</p>}
+                    <button className="buyer-product__add" type="button" onClick={() => {
+                      addBuyerDemoCartItem({
+                        id: item.id, name: item.name, detail: item.description ?? "",
+                        kind: item.kind, unitPrice: null, image: null,
+                      });
+                      setAddedProduct(item.id);
+                      window.setTimeout(() => setAddedProduct((current) => current === item.id ? null : current), 1400);
+                    }}>{addedProduct === item.id ? "به سبد اضافه شد ✓" : "افزودن به سبد خرید"}</button>
                   </li>
                 ))}
               </ul>
