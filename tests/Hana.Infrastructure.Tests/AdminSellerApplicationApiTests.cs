@@ -160,9 +160,9 @@ public sealed class AdminSellerApplicationApiTests
             await list.Content.ReadAsStringAsync()))
         {
             var items = body.RootElement.GetProperty("items");
-            var applicant = items.EnumerateArray().FirstOrDefault(item =>
+            var applicantItem = items.EnumerateArray().FirstOrDefault(item =>
                 item.GetProperty("applicationId").GetGuid() == applicantId);
-            Assert.NotEqual(JsonValueKind.Undefined, applicant.ValueKind);
+            Assert.NotEqual(JsonValueKind.Undefined, applicantItem.ValueKind);
             Assert.DoesNotContain(items.EnumerateArray(), item =>
                 item.GetProperty("applicationId").GetGuid() == draftOnlyId);
             Assert.All(items.EnumerateArray(), item =>
