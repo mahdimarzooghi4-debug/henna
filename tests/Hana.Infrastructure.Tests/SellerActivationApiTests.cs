@@ -225,7 +225,7 @@ public sealed class SellerActivationApiTests
                 "sellerRoleGranted").GetBoolean());
             Assert.True(body.RootElement.GetProperty(
                 "sellerAccessEnabled").GetBoolean());
-            Assert.False(body.RootElement.GetProperty(
+            Assert.True(body.RootElement.GetProperty(
                 "sellerPanelEnabled").GetBoolean());
             Assert.True(body.RootElement.TryGetProperty(
                 "activatedAtUtc", out var activatedAt));
@@ -285,6 +285,17 @@ public sealed class SellerActivationApiTests
             Assert.Equal("HNA-1111222233334444",
                 body.RootElement.GetProperty(
                     "trackingCode").GetString());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
+            Assert.Equal("کسب‌وکار فعال‌سازی",
+                body.RootElement.GetProperty(
+                    "businessName").GetString());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "dashboard").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "orders").GetBoolean());
         }
 
         var status = await applicant.GetAsync(
@@ -298,7 +309,7 @@ public sealed class SellerActivationApiTests
                     "overallStatus").GetString());
             Assert.True(body.RootElement.GetProperty(
                 "sellerAccessEnabled").GetBoolean());
-            Assert.False(body.RootElement.GetProperty(
+            Assert.True(body.RootElement.GetProperty(
                 "sellerPanelEnabled").GetBoolean());
             Assert.NotEqual(JsonValueKind.Null,
                 body.RootElement.GetProperty(
