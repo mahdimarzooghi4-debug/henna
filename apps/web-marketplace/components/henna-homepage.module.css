@@ -282,3 +282,6 @@
 .impactInner>div{display:flex;flex-direction:column;align-items:stretch;direction:rtl;text-align:right}
 .impactInner .eyebrow{align-self:flex-start;text-align:right}
 .impactInner h2,.impactInner p{width:100%;text-align:right;direction:rtl}
+
+/* Restore visible CTA copy after the previous image-hotspot hiding rules. */
+.ctaContent h2,.ctaContent p{position:static;width:100%;height:auto;margin:0;padding:0;overflow:visible;clip:auto;white-space:normal;border:0}
