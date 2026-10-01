@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { addBuyerDemoCartItem } from "../lib/buyer-demo-cart";
+import { BUYER_FIGMA_DEMO_PRODUCTS } from "../lib/buyer-figma-demo";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
@@ -15,12 +16,6 @@ type Load<T> =
   | { status: "loading"; key: string }
   | { status: "unavailable"; key: string }
   | { status: "ok"; key: string; data: T };
-
-const productImages = [
-  "/landing/figma/product-rice.png", "/landing/figma/product-oil.png",
-  "/landing/figma/product-cheese.png", "/landing/figma/product-tea.png",
-  "/landing/figma/product-yogurt.png",
-];
 
 async function publicJson(path: string, signal: AbortSignal): Promise<unknown> {
   const response = await fetch(path, {
@@ -63,11 +58,15 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   const locationState: BuyerBrowseLocation = {
     categoryId: selected, search, page,
   };
-  const visibleItems = current.status === "ok" ? [...current.data.items].sort((a, b) => {
+  const showFigmaPreview = current.status === "ok" && current.data.items.length === 0 &&
+    current.data.total === 0 && page === 1 && !search && selected === null;
+  const sourceItems = showFigmaPreview ? BUYER_FIGMA_DEMO_PRODUCTS :
+    current.status === "ok" ? current.data.items : [];
+  const visibleItems = [...sourceItems].sort((a, b) => {
     if (sort === "name") return a.name.localeCompare(b.name, "fa");
     if (sort === "kind") return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name, "fa");
     return 0;
-  }) : [];
+  });
 
   function setBrowseLocation(next: BuyerBrowseLocation) {
     setSelected(next.categoryId);
@@ -296,7 +295,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
             <p>ارتباط با کاتالوگ برقرار نشد یا پاسخ قابل اعتماد نبود؛ دوباره تلاش کنید.</p>
             <button type="button" onClick={() => setProductRetry((n) => n + 1)}>تلاش دوباره برای کالاها</button>
           </div>
-        ) : current.data.items.length === 0 ? (
+        ) : current.data.items.length === 0 && !showFigmaPreview ? (
           <div className="buyer-panel buyer-products-status">
             <h3>فعلاً کالایی برای نمایش نداریم</h3>
             <p>{search || selected
@@ -307,20 +306,26 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           <>
             <div className="buyer-panel buyer-product-wrap">
               <ul className="buyer-products" aria-label="فهرست کالاهای منتشرشده">
-                {visibleItems.map((item, index) => (
+                {visibleItems.map((item) => (
+                  (() => {
+                  const demoItem = showFigmaPreview ? BUYER_FIGMA_DEMO_PRODUCTS.find((entry) => entry.id === item.id) : undefined;
+                  const image = demoItem?.image ?? "/landing/figma/product-cheese.png";
+                  return (
                   <li className="buyer-product" key={item.id}>
-                    <Link className="buyer-product-image" href={buyerDetailHref(item.id, locationState) ?? "/"} aria-label={`مشاهده ${item.name}`}><img src={productImages[index % productImages.length]} alt="تصویر نمونه از طرح فیگما" /><span>{item.kind === "SERVICE" ? "خدمات محلی" : "کالای محلی"}</span></Link>
+                    <Link className="buyer-product-image" href={buyerDetailHref(item.id, locationState) ?? "/"} aria-label={`مشاهده ${item.name}`}><img src={image} alt="تصویر نمونه از طرح فیگما" /><span>{showFigmaPreview ? "نمونه فیگما" : item.kind === "SERVICE" ? "خدمات محلی" : "کالای محلی"}</span></Link>
                     <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
                     <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}{item.description ? ` · ${item.description}` : ""}</p>
                     <div className="buyer-product-actions"><button className="buyer-product__add" type="button" onClick={() => {
                       addBuyerDemoCartItem({
                         id: item.id, name: item.name, detail: item.description ?? "",
-                        kind: item.kind, unitPrice: null, image: productImages[index % productImages.length],
+                        kind: item.kind, unitPrice: null, image,
                       });
                       setAddedProduct(item.id);
                       window.setTimeout(() => setAddedProduct((current) => current === item.id ? null : current), 1400);
-                    }}>{addedProduct === item.id ? "به سبد اضافه شد ✓" : "افزودن +"}</button><span>قیمت اعلام نشده</span></div>
+                    }}>{addedProduct === item.id ? "به سبد اضافه شد ✓" : "افزودن +"}</button><span>{demoItem ? `قیمت نمونه ${demoItem.samplePrice}` : "قیمت اعلام نشده"}</span></div>
                   </li>
+                  );
+                  })()
                 ))}
               </ul>
             </div>
@@ -333,7 +338,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
                 page >= 10000 || page * BUYER_PAGE_SIZE >= current.data.total
               } onClick={() => choosePage(page + 1)}>صفحهٔ بعد</button>
             </nav>
-            <p className="buyer-not-commerce">تصاویر در این پیش‌نمایش نمونهٔ فیگما هستند. قیمت، موجودی فروشگاه و پرداخت زنده به سرویس فروشندگان نیاز دارد.</p>
+            <p className="buyer-not-commerce">{showFigmaPreview ? "این کالاها، تصویرها و قیمت‌ها فقط برای پیش‌نمایش فیگما هستند و از API واقعی نیامده‌اند." : "تصاویر در این پیش‌نمایش نمونهٔ فیگما هستند. قیمت، موجودی فروشگاه و پرداخت زنده به سرویس فروشندگان نیاز دارد."} قیمت، موجودی فروشگاه و پرداخت واقعی فعال نیست.</p>
           </>
         )}
         {categoryRecovery && categories.status === "ok" && <p className="buyer-panel" role="status">{categoryRecovery}</p>}
