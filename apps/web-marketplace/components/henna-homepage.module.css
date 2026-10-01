@@ -299,3 +299,4 @@
 .footerGrid>div>span{font-size:10px;color:var(--muted);margin:3px 0}
 .footerBottom>div>span{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;color:var(--muted)}
 .footerBottom svg{width:16px;height:16px}
+.footerBottom>div>a{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--cream);color:var(--green)}

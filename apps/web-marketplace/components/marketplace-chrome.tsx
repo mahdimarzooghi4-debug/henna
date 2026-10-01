@@ -3,14 +3,14 @@ import Link from "next/link";
 import styles from "./marketplace-chrome.module.css";
 
 const navItems = [
-  ["همه دسته‌ها", "/products"],
-  ["فروشگاه‌ها", "/products"],
+  ["نیازهای روزمره", "/products"],
+  ["فروشندگان / ارائه‌دهندگان", "/seller/register"],
   ["کالاها و خدمات", "/products"],
-  ["لبنیات و تخم‌مرغ", "/products"],
-  ["روغن و خواربار", "/products"],
-  ["دسته‌بندی‌های منتخب", "/products"],
-  ["طرح‌های ویژه", "/products"],
-  ["پیشنهادها", "/products"],
+  ["همه دسته‌ها", "/products#buyer-categories-title"],
+  ["دسته‌بندی‌های منتخب", "/products#buyer-categories-title"],
+  ["طرح‌های ویژه", "/benefits#special-plans"],
+  ["کالابرگ / اعتبارها", "/benefits#food-credit"],
+  ["پیشنهادها", "/discounts"],
 ] as const;
 
 export function MarketplaceChrome({ footerOnly = false, initialSearch = "" }: { footerOnly?: boolean; initialSearch?: string }) {
@@ -25,8 +25,8 @@ export function MarketplaceChrome({ footerOnly = false, initialSearch = "" }: { 
             <p>حنا، بازارگاه خرید روزمره با هدف پشتیبانی از فروشگاه‌های محلی و توسعه اجتماعی.</p>
           </div>
           <div><h2>دسترسی سریع</h2><Link href="/products">کالاها و خدمات</Link><Link href="/auth">ورود یا ثبت‌نام</Link><Link href="/buyer/cart">سبد خرید</Link></div>
-          <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/products">طرح‌های حمایتی</Link></div>
-          <div><h2>پشتیبانی</h2><Link href="/products">سوالات متداول</Link><Link href="/products">قوانین و مقررات</Link><Link href="/auth">تماس با ما</Link></div>
+          <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/courier-partners">همکاری پیک‌ها</Link><Link href="/careers">فرصت‌های شغلی</Link></div>
+          <div><h2>پشتیبانی</h2><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/support">تماس با پشتیبانی</Link></div>
         </div>
         <div className={styles.footerBottom}>© حنا — تمامی حقوق محفوظ است.</div>
       </footer>
