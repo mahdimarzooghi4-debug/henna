@@ -6,19 +6,19 @@ import styles from "./henna-homepage.module.css";
 
 const slides = [
   {
-    src: "/landing/hero.webp",
+    src: "/landing/hero.png",
     alt: "سفره‌ای از نان و خوراکی‌های محلی",
     title: "سبد خود را با محصولات تازه و محلی کامل کنید",
     description: "حنا پس از تکمیل سبد، هوشمندترین و به‌صرفه‌ترین فروشگاه‌های اطراف را در لحظه برایتان مقایسه می‌کند.",
   },
   {
-    src: "/landing/impact.webp",
+    src: "/landing/impact.png",
     alt: "فروشنده‌ای در فروشگاه محلی",
     title: "با خرید روزانه، فروشگاه‌های محله را همراهی کنید",
     description: "کالاهای موردنیاز را از فروشگاه‌های نزدیک انتخاب کنید.",
   },
   {
-    src: "/landing/category-produce.webp",
+    src: "/landing/category-produce.png",
     alt: "محصولات تازه و محلی",
     title: "محصولات تازه را برای خانه انتخاب کنید",
     description: "دسته‌بندی‌ها و پیشنهادهای روزانهٔ حنا را ببینید.",

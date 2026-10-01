@@ -5,21 +5,21 @@ import HeroCarousel from "./hero-carousel";
 import styles from "./henna-homepage.module.css";
 
 const categories = [
-  ["نان و شیرینی", "hero.webp"],
-  ["کنسرو و آماده", "category-spices.webp"],
-  ["بهداشتی و سلامت", "category-health.webp"],
-  ["میوه و صیفی", "category-produce.webp"],
-  ["روغن و خواربار", "product-4.webp"],
-  ["نوشیدنی‌ها", "product-5.webp"],
-  ["لبنیات محلی", "product-2.webp"],
+  ["نان و شیرینی", "category-bread.png"],
+  ["کنسرو و آماده", "category-canned.png"],
+  ["بهداشتی و سلامت", "category-health.png"],
+  ["میوه و صیفی", "category-produce.png"],
+  ["روغن و خواربار", "category-grocery.png"],
+  ["نوشیدنی‌ها", "category-drinks.png"],
+  ["لبنیات محلی", "category-dairy.png"],
 ] as const;
 
 const previewProducts: { title: string; detail: string; image: string; badge?: string; oldPrice?: string; price: string }[] = [
-  { title: "پنیر سفید ایرانی ممتاز", detail: "۴۰۰ گرم - لبنیات هراز", image: "product-1.webp", badge: "ویژه کالابرگ", oldPrice: "۶۵,۰۰۰", price: "۵۴,۰۰۰ تومان" },
-  { title: "ماست سون همزده پرچرب", detail: "۹۰۰ گرم - کاله", image: "product-2.webp", badge: "تخفیف ویژه", price: "۴۸,۵۰۰ تومان" },
-  { title: "برنج هاشمی درجه یک", detail: "۵ کیلوگرم - کشتزار شمال", image: "product-3.webp", badge: "طرح حمایتی", oldPrice: "۷۲۰,۰۰۰", price: "۶۴۰,۰۰۰ تومان" },
-  { title: "روغن آفتابگردان خالص", detail: "۱.۵ لیتر - لادن", image: "product-4.webp", price: "۸۹,۰۰۰ تومان" },
-  { title: "چای سیاه ارگانیک لاهیجان", detail: "۴۵۰ گرم - ممتاز باروتی", image: "product-5.webp", badge: "تخفیف ویژه", oldPrice: "۱۴۵,۰۰۰", price: "۱۲۸,۰۰۰ تومان" },
+  { title: "پنیر سفید ایرانی ممتاز", detail: "۴۰۰ گرم - لبنیات هراز", image: "product-1.png", badge: "ویژه کالابرگ", oldPrice: "۶۵,۰۰۰", price: "۵۴,۰۰۰ تومان" },
+  { title: "ماست سون همزده پرچرب", detail: "۹۰۰ گرم - کاله", image: "product-2.png", badge: "تخفیف ویژه", price: "۴۸,۵۰۰ تومان" },
+  { title: "برنج هاشمی درجه یک", detail: "۵ کیلوگرم - کشتزار شمال", image: "product-3.png", badge: "طرح حمایتی", oldPrice: "۷۲۰,۰۰۰", price: "۶۴۰,۰۰۰ تومان" },
+  { title: "روغن آفتابگردان خالص", detail: "۱.۵ لیتر - لادن", image: "product-4.png", price: "۸۹,۰۰۰ تومان" },
+  { title: "چای سیاه ارگانیک لاهیجان", detail: "۴۵۰ گرم - ممتاز باروتی", image: "product-5.png", badge: "تخفیف ویژه", oldPrice: "۱۴۵,۰۰۰", price: "۱۲۸,۰۰۰ تومان" },
 ] as const;
 
 const steps = [
@@ -71,9 +71,9 @@ export default function HennaHomepage() {
         </section>
 
         <div className={`${styles.container} ${styles.promoGrid}`}>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoTitle}><strong>تخفیف‌دارهای روزانه</strong><span className={styles.promoIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M19 5 5 19"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/></svg></span></span><span className={styles.promoCopy}>محبوب‌ترین کالاهای سبد خرید روزانه شما با قیمت‌های استثنایی و فرصت‌های خرید تکرارنشدنی</span><span className={styles.promoMore}>لیست تخفیف‌ها ←</span></Link>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoTitle}><strong>کالابرگ الکترونیک</strong><span className={styles.promoIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span></span><span className={styles.promoCopy}>امکان پرداخت سهم یارانه‌ای با استفاده از کارت‌های معتبر حمایتی برای اقلام اساسی مصوب</span><span className={styles.promoMore}>استفاده از کالابرگ ←</span></Link>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoTitle}><strong>طرح‌های ویژه حنا</strong><span className={styles.promoIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7"/><path d="M12 7H7.8a2.4 2.4 0 1 1 2.4-2.4C10.2 6 12 7 12 7Zm0 0h4.2a2.4 2.4 0 1 0-2.4-2.4C13.8 6 12 7 12 7Z"/></svg></span></span><span className={styles.promoCopy}>بسته‌ها و فرصت‌های خرید اشتراکی خانواده و محله با مشارکت مستقیم فروشگاه‌های منتخب</span><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoTitle}><strong>تخفیف‌دارهای روزانه</strong><span className={styles.promoIcon} aria-hidden="true"><Image src="/landing/icons/percent.svg" alt="" width={24} height={24} /></span></span><span className={styles.promoCopy}>محبوب‌ترین کالاهای سبد خرید روزانه شما با قیمت‌های استثنایی و فرصت‌های خرید تکرارنشدنی</span><span className={styles.promoMore}>لیست تخفیف‌ها ←</span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoTitle}><strong>کالابرگ الکترونیک</strong><span className={styles.promoIcon} aria-hidden="true"><Image src="/landing/icons/credit-card.svg" alt="" width={24} height={24} /></span></span><span className={styles.promoCopy}>امکان پرداخت سهم یارانه‌ای با استفاده از کارت‌های معتبر حمایتی برای اقلام اساسی مصوب</span><span className={styles.promoMore}>استفاده از کالابرگ ←</span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoTitle}><strong>طرح‌های ویژه حنا</strong><span className={styles.promoIcon} aria-hidden="true"><Image src="/landing/icons/gift.svg" alt="" width={24} height={24} /></span></span><span className={styles.promoCopy}>بسته‌ها و فرصت‌های خرید اشتراکی خانواده و محله با مشارکت مستقیم فروشگاه‌های منتخب</span><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></Link>
         </div>
 
         <section className={`${styles.container} ${styles.categories}`} id="categories">
@@ -90,11 +90,11 @@ export default function HennaHomepage() {
 
       <section className={styles.steps} id="how-it-works"><div className={styles.container}><div className={styles.centerHeading}><h2>چرا خرید از حنا هوشمندانه‌تر است؟</h2><p>فرآیند خرید و مقایسه بدون انتخاب پیش‌فرض فروشگاه</p></div><div className={styles.stepsGrid}>{steps.map(([title, body, number], index) => <Fragment key={number}><div><span>{number}</span><h3>{title}</h3><p>{body}</p></div>{index < steps.length - 1 && <b aria-hidden="true">←</b>}</Fragment>)}</div></div></section>
 
-      <section className={styles.impact} id="impact"><div className={`${styles.container} ${styles.impactInner}`}><Image src="/landing/impact.webp" alt="فروشنده محلی در فروشگاه مواد غذایی" width={800} height={520} /><div><span className={styles.eyebrow}>ارزش اجتماعی و توسعه محلی</span><h2>خریدی که اثرش ادامه پیدا می‌کند</h2><p>ما در حنا معتقدیم خرید روزمره می‌تواند فراتر از تامین نیازهای مصرفی باشد. با اتصال مستقیم شما به سوپرمارکت‌ها و فروشگاه‌های محله خودتان، نه‌تنها اقتصاد کسب‌وکارهای کوچک محلی تقویت می‌شود، بلکه سهمی از درآمد هر خرید صرف صندوق حمایت ازمحرومان واجد شرایط یا توانمندسازی خانواده‌های محلی می‌شود. همه‌چیز شفاف، انسانی و بدون هزینه اضافی برای شماست.</p><div className={styles.stats}><div><strong>۱۲,۸۰۰+</strong><span>خانواده تحت پوشش حمایتی</span></div><div><strong>۳,۴۰۰+</strong><span>فروشگاه محلی فعال</span></div></div></div></div></section>
+      <section className={styles.impact} id="impact"><div className={`${styles.container} ${styles.impactInner}`}><Image src="/landing/impact.png" alt="فروشنده محلی در فروشگاه مواد غذایی" width={800} height={520} /><div><span className={styles.eyebrow}>ارزش اجتماعی و توسعه محلی</span><h2>خریدی که اثرش ادامه پیدا می‌کند</h2><p>ما در حنا معتقدیم خرید روزمره می‌تواند فراتر از تامین نیازهای مصرفی باشد. با اتصال مستقیم شما به سوپرمارکت‌ها و فروشگاه‌های محله خودتان، نه‌تنها اقتصاد کسب‌وکارهای کوچک محلی تقویت می‌شود، بلکه سهمی از درآمد هر خرید صرف صندوق حمایت ازمحرومان واجد شرایط یا توانمندسازی خانواده‌های محلی می‌شود. همه‌چیز شفاف، انسانی و بدون هزینه اضافی برای شماست.</p><div className={styles.stats}><div><strong>۱۲,۸۰۰+</strong><span>خانواده تحت پوشش حمایتی</span></div><div><strong>۳,۴۰۰+</strong><span>فروشگاه محلی فعال</span></div></div></div></div></section>
 
-      <section className={styles.benefits} id="benefits"><div className={styles.container}><div className={styles.centerHeading}><h2>یک حساب، چند امکان</h2><p>تمام نیازهای خرید روزانه و حمایت‌های سازمانی یا حاکمیتی در یک درگاه امن</p></div><div className={styles.benefitGrid}>{accountFeatures.map(([title, body, icon]) => <article className={styles.benefitCard} key={icon}><span aria-hidden="true">{icon === "bag" ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M5 8h14l1 12H4L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg> : icon === "heart" ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M20.8 8.8c0 5.1-8.8 10.1-8.8 10.1S3.2 13.9 3.2 8.8A4.3 4.3 0 0 1 12 6.6a4.3 4.3 0 0 1 8.8 2.2Z"/></svg> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="9" r="5.5"/><path d="m9 14-1 7 4-2.4 4 2.4-1-7M10 9l1.3 1.3L14 7.5"/></svg>}</span><h3>{title}</h3><p>{body}</p></article>)}</div></div></section>
+      <section className={styles.benefits} id="benefits"><div className={styles.container}><div className={styles.centerHeading}><h2>یک حساب، چند امکان</h2><p>تمام نیازهای خرید روزانه و حمایت‌های سازمانی یا حاکمیتی در یک درگاه امن</p></div><div className={styles.benefitGrid}>{accountFeatures.map(([title, body, icon]) => <article className={styles.benefitCard} key={icon}><span aria-hidden="true"><Image src={`/landing/icons/${icon === "bag" ? "shopping-bag" : icon === "heart" ? "heart" : "award"}.svg`} alt="" width={24} height={24} /></span><h3>{title}</h3><p>{body}</p></article>)}</div></div></section>
 
-      <section className={styles.finalCta}><div className={styles.ctaOverlay}><h2>حنا؛ بازارگاه گرم و عادلانه محله شما</h2><p>همین حالا اولین سبد خرید خود را پر کنید و هوشمندترین مقایسه قیمت را در محله خود تجربه کنید. با هر خرید، لبخندی بر لبان فروشندگان کوچک محله بنشانید.</p><div><Link href="/products" className={styles.primaryButton}>شروع پر کردن سبد خرید</Link><Link href="/seller/register" className={styles.ctaSecondary}>ثبت‌نام فروشگاه‌ها و تامین‌کنندگان</Link></div></div></section>
+      <section className={styles.finalCta} aria-labelledby="final-cta-title"><div className={styles.ctaOverlay}><h2 id="final-cta-title">حنا؛ بازارگاه گرم و عادلانه محله شما</h2><p>همین حالا اولین سبد خرید خود را پر کنید و هوشمندترین مقایسه قیمت را در محله خود تجربه کنید. با هر خرید، لبخندی بر لبان فروشندگان کوچک محله بنشانید.</p><div className={styles.ctaHotspots}><Link href="/products" className={styles.ctaShopHotspot} aria-label="شروع پر کردن سبد خرید" /><Link href="/seller/register" className={styles.ctaSellerHotspot} aria-label="ثبت‌نام فروشگاه‌ها و تامین‌کنندگان" /></div></div></section>
 
       <footer className={styles.footer} id="footer">
         <div className={`${styles.container} ${styles.footerGrid}`}>
