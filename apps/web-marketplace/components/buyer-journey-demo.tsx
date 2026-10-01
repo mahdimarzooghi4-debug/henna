@@ -23,16 +23,27 @@ function DemoNotice() {
 }
 
 function JourneyHeader({ count }: { count: number }) {
-  return <header className="journey-header" dir="rtl">
-    <Link href="/" className="journey-logo" aria-label="صفحه اصلی حنا"><img src="/hana-logo.png" alt="حنا" /></Link>
-    <form action="/products" className="journey-search"><input name="search" placeholder="جست‌وجوی کالاها، خدمات و نیازهای روزمره..." aria-label="جست‌وجو"/><button type="submit" aria-label="جست‌وجو">⌕</button></form>
-    <div className="journey-header-actions"><Link href="/account">حساب کاربری</Link><Link href="/basket" className="journey-cart">سبد خرید <span>{new Intl.NumberFormat("fa-IR").format(count)}</span></Link></div>
-    <nav className="journey-nav"><Link href="/products">همه دسته‌ها</Link><Link href="/products">کالاها و خدمات</Link><Link href="/programs">کالابرگ / اعتبارها</Link><Link href="/programs">طرح‌های ویژه</Link><Link href="/#offers">پیشنهادها</Link></nav>
-  </header>;
+  return <>
+    <div className="journey-announcement">بازارگاه حنا؛ کالاها و خدمات در یک تجربه یکپارچه</div>
+    <header className="journey-header" dir="rtl">
+      <Link href="/" className="journey-logo" aria-label="صفحه اصلی حنا"><img src="/hana-logo.png" alt="حنا" /></Link>
+      <form action="/products" className="journey-search"><input name="search" placeholder="جست‌وجوی کالاها، خدمات و نیازهای روزمره..." aria-label="جست‌وجو"/><button type="submit" aria-label="جست‌وجو">⌕</button></form>
+      <div className="journey-header-actions"><Link href="/basket" className="journey-cart">سبد خرید <span>{new Intl.NumberFormat("fa-IR").format(count)}</span></Link><Link href="/auth">ورود یا ثبت‌نام</Link><Link href="/seller/register" className="journey-seller-link">ثبت‌نام فروشگاه‌ها</Link></div>
+      <nav className="journey-nav"><Link href="/products">نیازهای روزمره</Link><Link href="/products">فروشندگان / ارائه‌دهندگان</Link><Link href="/products">کالاها و خدمات</Link><Link href="/products">همه دسته‌ها</Link><Link href="/products">دسته‌بندی‌های منتخب</Link><Link href="/programs">طرح‌های ویژه</Link><Link href="/programs">کالابرگ / اعتبارها</Link><Link href="/#offers">پیشنهادها</Link></nav>
+    </header>
+  </>;
 }
 
 function JourneyFooter() {
-  return <footer className="journey-footer"><Link href="/buyer-guide">راهنمای خرید</Link><Link href="/seller-guide">همکاری با حنا</Link><Link href="/support">تماس با پشتیبانی</Link><Link href="/">صفحه اصلی حنا</Link></footer>;
+  return <footer className="journey-footer" dir="rtl">
+    <div className="journey-footer-grid">
+      <div><h2>طرح‌های حمایتی</h2><Link href="/programs">ثبت‌نام کالابرگ</Link><Link href="/programs">اعتبارات سازمانی</Link><Link href="/programs">کارت‌های معیشتی</Link><Link href="/programs">گزارش شفافیت مالی</Link></div>
+      <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/seller-guide">شرایط همکاری پیک‌ها</Link><Link href="/support">فرصت‌های شغلی</Link></div>
+      <div><h2>دسترسی سریع</h2><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/about">درباره حنا</Link><Link href="/support">تماس با پشتیبانی</Link></div>
+      <div className="journey-footer-brand"><Link href="/"><img src="/hana-logo.png" alt="حنا" /></Link><p>حنا بازارگاه هوشمند اجتماعی برای خریدهای روزمره در ایران است که اولویت خود را بر توسعه عادلانه و حمایت اجتماعی قرار داده است.</p></div>
+    </div>
+    <div className="journey-footer-bottom"><span>◎　♥　in</span><p>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است.<br/>کلیه حقوق برای حنا محفوظ است.</p></div>
+  </footer>;
 }
 
 export function BuyerJourneyDemo({ screen }: { screen: Screen }) {
