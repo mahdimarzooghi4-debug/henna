@@ -1,0 +1,15 @@
+.section { margin-top: 10px; }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.heading h3 { margin: 0; color: #1c3f3a; font-size: 13px; font-weight: 800; }
+.heading button { border: 0; padding: 5px 0; background: transparent; color: #0f5b5a; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.map { position: relative; height: 220px; overflow: hidden; border-radius: 10px; background: linear-gradient(135deg, #eeeae1, #e3e0d7); cursor: grab; touch-action: none; user-select: none; }
+.map[data-dragging="true"] { cursor: grabbing; }
+.tile { position: absolute; width: 256px; height: 256px; max-width: none; pointer-events: none; }
+.pin { position: absolute; z-index: 2; left: 50%; top: 50%; display: grid; width: 27px; height: 34px; place-items: start center; transform: translate(-50%, -100%); color: #b5523b; font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 1px #fff); pointer-events: none; }
+.pin::after { content: ""; position: absolute; left: 50%; bottom: -1px; width: 8px; height: 8px; transform: translateX(-50%); border-radius: 50%; background: #b5523b; border: 2px solid white; }
+.zoomControls { position: absolute; z-index: 3; top: 10px; left: 10px; display: grid; gap: 4px; }
+.zoomControls button { width: 30px; height: 30px; border: 1px solid #d9d3cb; border-radius: 6px; background: white; color: #1c3f3a; font-size: 20px; line-height: 1; cursor: pointer; }
+.attribution { position: absolute; z-index: 3; right: 0; bottom: 0; padding: 3px 6px; background: #fffdf8e8; color: #333; font: 10px/1.4 Arial, sans-serif; }
+.attribution a { color: #1674a4; }
+.help { margin: 6px 0 0; color: #706963; font-size: 10px; line-height: 1.7; }
+.error { margin: 6px 0 0; color: #a83f2d; font-size: 11px; }
