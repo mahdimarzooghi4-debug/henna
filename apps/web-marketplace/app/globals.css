@@ -1659,3 +1659,34 @@ a { color: inherit; }
 .market-footer__grid>div,.journey-footer-grid>div { direction:rtl; }
 .market-footer__bottom,.journey-footer-bottom { direction:ltr; }
 .market-footer__bottom p,.journey-footer-bottom p { direction:rtl; text-align:right; }
+.journey-checkout-section { padding: 16px; border: 1px solid #eae6e1; border-radius: 14px; background: #fff; }
+.journey-checkout-section h2 { margin: 0 0 12px; padding: 0; border: 0; }
+.journey-checkout-section>p { margin: 4px 0 10px; }
+.journey-form .journey-checkout-section>label:not(.journey-check):not(.journey-radio) { margin-top: 12px; }
+.journey-map { height: 112px; display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 14px; overflow: hidden; border-radius: 10px; background: repeating-linear-gradient(25deg,transparent 0 22px,#dcd8cf 23px 25px,transparent 26px 43px),repeating-linear-gradient(115deg,#efede6 0 28px,#d5d1c7 29px 31px,#efede6 32px 50px); color: #193f39; }
+.journey-map span { font-size: 26px; }
+.journey-map b { padding: 4px 8px; border-radius: 5px; background: #193f39; color: #fff; font-size: 11px; }
+.journey-form-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.journey-option-row { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 8px 10px; border: 1px solid #eae6e1; border-radius: 9px; background: #faf8f5; color: #193f39; font-size: 12px; }
+.journey-checkout-layout { grid-template-columns: minmax(0,1fr) 360px; }
+.journey-checkout-side { display: grid; gap: 16px; }
+.journey-checkout-side .journey-summary { position: sticky; top: 16px; }
+.journey-info-card { padding: 14px; border-radius: 10px; background: #eaf4f2; color: #193f39; font-size: 12px; }
+.journey-info-card p { margin: 5px 0 0; font-size: 11px; }
+.journey-order-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; padding: 10px 12px; overflow-x: auto; border: 1px solid #eae6e1; border-radius: 10px; background: #fff; }
+.journey-order-filters button { padding: 8px 12px; border: 0; border-radius: 7px; background: transparent; color: #706963; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
+.journey-order-filters button[aria-pressed="true"] { background: #fcf0ec; color: #b5523b; font-weight: 800; }
+.journey-order-list>article { margin-bottom: 14px; }
+.journey-order-main { display: grid; gap: 5px; min-width: 200px; }
+.journey-order-main span { color: #706963; font-size: 11px; }
+.journey-account-layout { display: grid; grid-template-columns: minmax(0,1fr) 280px; gap: 24px; direction: ltr; align-items: start; }
+.journey-account-content { display: grid; gap: 16px; direction: rtl; }
+.journey-account-content .journey-card { text-align: right; }
+.journey-account-content label { display: grid; gap: 6px; margin: 12px 0; color: #706963; font-size: 12px; }
+.journey-account-content input { min-height: 42px; padding: 8px 12px; border: 1px solid #eae6e1; border-radius: 8px; background: #faf8f5; color: #706963; font: inherit; }
+.journey-account-nav { grid-column: 2; grid-row: 1; display: grid; gap: 6px; direction: rtl; }
+.journey-account-nav a,.journey-account-nav button { padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #193f39; font: inherit; font-size: 12px; text-align: right; text-decoration: none; cursor: pointer; }
+.journey-account-nav .is-active { background: #fbf0ed; color: #b5523b; font-weight: 800; }
+.journey-account-content .journey-actions { justify-content: flex-start; }
+@media(max-width:900px) { .journey-checkout-layout { grid-template-columns: minmax(0,1fr) 300px; } .journey-account-layout { grid-template-columns: minmax(0,1fr) 220px; } }
+@media(max-width:700px) { .journey-checkout-layout,.journey-account-layout { grid-template-columns: 1fr; } .journey-account-nav { grid-column: 1; grid-row: 1; display: flex; overflow-x: auto; } .journey-account-nav a,.journey-account-nav button { white-space: nowrap; } .journey-account-content { grid-row: 2; } .journey-checkout-side .journey-summary { position: static; } .journey-form-row { grid-template-columns: 1fr; } }
