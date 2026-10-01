@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  logo: { width: 82, height: 38 },
+  logo: { width: 110, height: 44 },
   backTouch: {
     width: 44,
     height: 44,

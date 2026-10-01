@@ -82,8 +82,9 @@ async function main() {
   page.setDefaultTimeout(12000);
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
-  const shared = "/?" + q({ categoryId: A, search: "کالای مرور", page: "2" });
-  const detail = "/products/" + good[20].id + "?" + shared.slice(2);
+  const browseQuery = "?" + q({ categoryId: A, search: "کالای مرور", page: "2" });
+  const shared = "/products" + browseQuery;
+  const detail = "/products/" + good[20].id + browseQuery;
 
   // A direct, shared URL must load page 2 from the first real catalog
   // response: not first page then a UI-only claim of page 2.
@@ -94,7 +95,7 @@ async function main() {
   assert.equal(await page.getByRole("button", {
     name: "دستهٔ یک CI",
   }).getAttribute("aria-pressed"), "true");
-  assert.equal(new URL(page.url()).search, shared.slice(1));
+  assert.equal(new URL(page.url()).search, browseQuery);
   assert.equal(calls.find(x => x.path === "/api/catalog/products")
     .search.get("page"), "2");
 
@@ -126,26 +127,26 @@ async function main() {
   await page.reload();
   await page.getByRole("heading", { name: good[20].name, exact: true }).waitFor();
   await page.getByRole("button", { name: "همه دسته‌ها" }).click();
-  await page.waitForURL(base + "/?" + q({ search: "کالای مرور" }));
+  await page.waitForURL(base + "/products?" + q({ search: "کالای مرور" }));
   await page.getByRole("heading", { name: good[0].name, exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 20);
   await page.getByRole("button", { name: "صفحهٔ بعد" }).click();
-  await page.waitForURL(base + "/?" + q({ search: "کالای مرور", page: "2" }));
+  await page.waitForURL(base + "/products?" + q({ search: "کالای مرور", page: "2" }));
   await page.getByRole("heading", { name: good[20].name, exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 5);
   await page.goBack();
-  await page.waitForURL(base + "/?" + q({ search: "کالای مرور" }));
+  await page.waitForURL(base + "/products?" + q({ search: "کالای مرور" }));
   await page.getByRole("heading", { name: good[0].name, exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 20);
   await page.goForward();
-  await page.waitForURL(base + "/?" + q({ search: "کالای مرور", page: "2" }));
+  await page.waitForURL(base + "/products?" + q({ search: "کالای مرور", page: "2" }));
   await page.getByRole("heading", { name: good[20].name, exact: true }).waitFor();
 
   // Search submission resets page to one, encoded safely, and previous
   // category filter does not reappear by accident.
   await page.locator("#buyer-search").fill("کالای مرور واقعی CI 1");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
-  await page.waitForURL(base + "/?" + q({ search: "کالای مرور واقعی CI 1" }));
+  await page.waitForURL(base + "/products?" + q({ search: "کالای مرور واقعی CI 1" }));
   await page.getByRole("heading", { name: good[0].name, exact: true }).waitFor();
   assert.equal(await page.getByRole("button", {
     name: "همه دسته‌ها",
@@ -154,7 +155,7 @@ async function main() {
   // Unknown keys, oversized search, non-UUID category and out-of-range page
   // cannot sneak into a public request or be reused as external back href.
   const before = calls.length;
-  await page.goto(base + "/?returnTo=https%3A%2F%2Fevil.test" +
+  await page.goto(base + "/products?returnTo=https%3A%2F%2Fevil.test" +
     "&categoryId=bad&page=10001&search=" + "x".repeat(81));
   await page.getByRole("heading", { name: good[0].name, exact: true }).waitFor();
   assert.equal(new URL(page.url()).search, "");
@@ -170,7 +171,7 @@ async function main() {
   await page.getByRole("heading", { name: good[0].name, exact: true }).waitFor();
   assert.equal(await page.getByRole("link", {
     name: "بازگشت به فهرست کالاها",
-  }).getAttribute("href"), "/");
+  }).getAttribute("href"), "/products");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(base + shared);

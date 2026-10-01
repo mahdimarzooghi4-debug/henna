@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { addBuyerDemoCartItem } from "../lib/buyer-demo-cart";
+import { BUYER_FIGMA_DEMO_PRODUCTS } from "../lib/buyer-figma-demo";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
@@ -43,6 +45,8 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   const [draftSearch, setDraftSearch] = useState(initial.search);
   const [search, setSearch] = useState(initial.search);
   const [searchError, setSearchError] = useState("");
+  const [addedProduct, setAddedProduct] = useState<string | null>(null);
+  const [sort, setSort] = useState<"newest" | "name" | "kind">("newest");
   const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
   const [products, setProducts] = useState<Load<BuyerPage>>({
@@ -54,6 +58,15 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   const locationState: BuyerBrowseLocation = {
     categoryId: selected, search, page,
   };
+  const showFigmaPreview = current.status === "ok" && current.data.items.length === 0 &&
+    current.data.total === 0 && page === 1 && !search && selected === null;
+  const sourceItems = showFigmaPreview ? BUYER_FIGMA_DEMO_PRODUCTS :
+    current.status === "ok" ? current.data.items : [];
+  const visibleItems = [...sourceItems].sort((a, b) => {
+    if (sort === "name") return a.name.localeCompare(b.name, "fa");
+    if (sort === "kind") return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name, "fa");
+    return 0;
+  });
 
   function setBrowseLocation(next: BuyerBrowseLocation) {
     setSelected(next.categoryId);
@@ -65,15 +78,16 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     setPageRecovery("");
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
-    const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    const pathname = window.location.pathname === "/products" ? "/products" : "/";
+    const href = buyerBrowseHref(next, pathname);
+    if ((window.location.pathname === "/" || window.location.pathname === "/products") &&
       window.location.pathname + window.location.search !== href)
       window.history.pushState(window.history.state, "", href);
   }
 
   useEffect(() => {
     function restore() {
-      if (window.location.pathname !== "/") return;
+      if (window.location.pathname !== "/" && window.location.pathname !== "/products") return;
       const next = parseBuyerBrowseLocation(
         new URLSearchParams(window.location.search),
       );
@@ -84,7 +98,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       setSearchError("");
       setCategoryRecovery("");
       setPageRecovery("");
-      const href = buyerBrowseHref(next);
+      const href = buyerBrowseHref(next, window.location.pathname);
       if (window.location.pathname + window.location.search !== href)
         window.history.replaceState(window.history.state, "", href);
     }
@@ -148,8 +162,8 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     setPageRecovery("");
     // Correct this SAME history entry rather than creating a ghost "Back"
     // step that reinstates the removed category. Preserve public search.
-    const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    const href = buyerBrowseHref(next, window.location.pathname);
+    if ((window.location.pathname === "/" || window.location.pathname === "/products") &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, selected, search, page]);
@@ -176,8 +190,8 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
     );
     // Replace the SAME history entry; preserve category and Persian search.
-    const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    const href = buyerBrowseHref(next, window.location.pathname);
+    if ((window.location.pathname === "/" || window.location.pathname === "/products") &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, current, selected, search, page]);
@@ -189,7 +203,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     let lastRefreshAt = -Infinity;
     function revalidateOnReturn() {
       if (document.visibilityState !== "visible" ||
-        window.location.pathname !== "/") return;
+        window.location.pathname !== "/" && window.location.pathname !== "/products") return;
       // Safari can emit both visibilitychange and persisted pageshow on one
       // return. Treat them as one refresh rather than racing duplicate GETs.
       const now = performance.now();
@@ -239,12 +253,6 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
 
   return (
     <main dir="rtl" className="buyer-main">
-      <div className="buyer-intro">
-        <p className="buyer-intro__eyebrow">مرور کاتالوگ حنا</p>
-        <h1>کالاها را در حنا مرور کنید</h1>
-        <p>دسته‌بندی‌ها و کالاها تنها در صورت تأیید و انتشار در کاتالوگ حنا نمایش داده می‌شوند.</p>
-      </div>
-
       <form className="buyer-search" onSubmit={submitSearch} role="search">
         <label className="buyer-visually-hidden" htmlFor="buyer-search">جست‌وجو در نام کالاها</label>
         <input id="buyer-search" name="search" type="search" maxLength={80}
@@ -258,35 +266,24 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       </form>
       {searchError && <p id="buyer-search-error" className="buyer-error" role="alert">{searchError}</p>}
 
-      <section className="buyer-section" aria-labelledby="buyer-categories-title">
-        <h2 id="buyer-categories-title">دسته‌بندی‌ها</h2>
-        {categories.status === "loading" ? (
-          <p className="buyer-panel" role="status">در حال دریافت دسته‌بندی‌ها…</p>
-        ) : categories.status === "unavailable" ? (
-          <div className="buyer-panel buyer-panel--error" role="alert">
-            <p>دریافت دسته‌بندی‌ها از سرور تأیید نشد.</p>
-            <button type="button" onClick={() => setCategoryRetry((n) => n + 1)}>تلاش دوباره برای دسته‌بندی‌ها</button>
+      <section className="buyer-section buyer-catalog-layout" aria-labelledby="buyer-products-title">
+        <aside className="buyer-filter buyer-panel" aria-label="فیلترهای کالا">
+          <h2>فیلترها</h2>
+          <div className="buyer-filter-group"><h3>دسته‌بندی</h3>
+            <button className="buyer-filter-option" type="button" aria-pressed={selected === null} onClick={() => chooseCategory(null)}><span>همه دسته‌ها</span><i/></button>
+            {categories.status === "loading" ? <p role="status">دریافت دسته‌بندی‌ها…</p> : categories.status === "unavailable" ? <div role="alert"><p>دریافت دسته‌بندی‌ها ممکن نشد.</p><button type="button" onClick={() => setCategoryRetry((n) => n + 1)}>تلاش دوباره</button></div> : categories.data.map((item) => <button key={item.id} className="buyer-filter-option" type="button" aria-pressed={selected === item.id} onClick={() => chooseCategory(item.id)}><span>{item.name}</span><i/></button>)}
           </div>
-        ) : categories.data.length === 0 ? (
-          <p className="buyer-panel">هنوز دسته‌بندی قابل نمایش در حنا ثبت نشده است.</p>
-        ) : (
-          <div className="buyer-panel buyer-categories" aria-label="فیلتر دسته‌بندی">
-            <button className="buyer-chip" type="button" aria-pressed={selected === null}
-              onClick={() => chooseCategory(null)}>همه دسته‌ها</button>
-            {categories.data.map((item) => (
-              <button key={item.id} className="buyer-chip" type="button"
-                aria-pressed={selected === item.id}
-                onClick={() => chooseCategory(item.id)}>{item.name}</button>
-            ))}
+          <div className="buyer-filter-group"><h3>ویژگی‌ها</h3><p className="buyer-filter-note">فیلترهای قیمت و موجودی بعد از اتصال پیشنهاد فروشندگان فعال می‌شوند.</p></div>
+        </aside>
+        <div className="buyer-catalog-results">
+        <div className="buyer-catalog-toolbar">
+          <div className="buyer-catalog-chips" aria-label="دسته‌بندی فعال">
+            <button type="button" aria-pressed={selected === null} onClick={() => chooseCategory(null)}>همه</button>
+            {categories.status === "ok" && categories.data.slice(0, 3).map((category) => <button key={category.id} type="button" aria-pressed={selected === category.id} onClick={() => chooseCategory(category.id)}>{category.name}</button>)}
           </div>
-        )}
-        {categoryRecovery && categories.status === "ok" && (
-          <p className="buyer-panel" role="status">{categoryRecovery}</p>
-        )}
-      </section>
-
-      <section className="buyer-section" aria-labelledby="buyer-products-title">
-        <h2 id="buyer-products-title">کالاها</h2>
+          <div className="buyer-sort" role="group" aria-label="مرتب‌سازی کالاها"><span>مرتب‌سازی:</span>{([ ["newest", "پیش‌فرض"], ["name", "نام کالا"], ["kind", "نوع کالا"] ] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={sort === key} onClick={() => setSort(key)}>{label}</button>)}</div>
+        </div>
+        <div className="buyer-catalog-heading"><h1 id="buyer-products-title">{search ? `نتایج جست‌وجو برای «${search}»` : "کالاها و خدمات حنا"}</h1><p>اطلاعات کالاها از کاتالوگ منتشرشده دریافت می‌شود؛ قیمت و موجودی هنوز اعلام نشده است.</p></div>
         {pageRecovery && (
           <p className="buyer-panel" role="status">{pageRecovery}</p>
         )}
@@ -298,7 +295,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
             <p>ارتباط با کاتالوگ برقرار نشد یا پاسخ قابل اعتماد نبود؛ دوباره تلاش کنید.</p>
             <button type="button" onClick={() => setProductRetry((n) => n + 1)}>تلاش دوباره برای کالاها</button>
           </div>
-        ) : current.data.items.length === 0 ? (
+        ) : current.data.items.length === 0 && !showFigmaPreview ? (
           <div className="buyer-panel buyer-products-status">
             <h3>فعلاً کالایی برای نمایش نداریم</h3>
             <p>{search || selected
@@ -309,12 +306,26 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           <>
             <div className="buyer-panel buyer-product-wrap">
               <ul className="buyer-products" aria-label="فهرست کالاهای منتشرشده">
-                {current.data.items.map((item) => (
+                {visibleItems.map((item) => (
+                  (() => {
+                  const demoItem = showFigmaPreview ? BUYER_FIGMA_DEMO_PRODUCTS.find((entry) => entry.id === item.id) : undefined;
+                  const image = demoItem?.image ?? "/landing/figma/product-cheese.png";
+                  return (
                   <li className="buyer-product" key={item.id}>
+                    <Link className="buyer-product-image" href={buyerDetailHref(item.id, locationState) ?? "/"} aria-label={`مشاهده ${item.name}`}><img src={image} alt="تصویر نمونه از طرح فیگما" /><span>{showFigmaPreview ? "نمونه فیگما" : item.kind === "SERVICE" ? "خدمات محلی" : "کالای محلی"}</span></Link>
                     <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
-                    <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}</p>
-                    {item.description && <p>{item.description}</p>}
+                    <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}{item.description ? ` · ${item.description}` : ""}</p>
+                    <div className="buyer-product-actions"><button className="buyer-product__add" type="button" onClick={() => {
+                      addBuyerDemoCartItem({
+                        id: item.id, name: item.name, detail: item.description ?? "",
+                        kind: item.kind, unitPrice: null, image,
+                      });
+                      setAddedProduct(item.id);
+                      window.setTimeout(() => setAddedProduct((current) => current === item.id ? null : current), 1400);
+                    }}>{addedProduct === item.id ? "به سبد اضافه شد ✓" : "افزودن +"}</button><span>{demoItem ? `قیمت نمونه ${demoItem.samplePrice}` : "قیمت اعلام نشده"}</span></div>
                   </li>
+                  );
+                  })()
                 ))}
               </ul>
             </div>
@@ -327,9 +338,11 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
                 page >= 10000 || page * BUYER_PAGE_SIZE >= current.data.total
               } onClick={() => choosePage(page + 1)}>صفحهٔ بعد</button>
             </nav>
-            <p className="buyer-not-commerce">این فهرست صرفاً برای مرور است؛ قیمت، موجودی و امکان خرید هنوز فعال نیست.</p>
+            <p className="buyer-not-commerce">{showFigmaPreview ? "این کالاها، تصویرها و قیمت‌ها فقط برای پیش‌نمایش فیگما هستند و از API واقعی نیامده‌اند." : "تصاویر در این پیش‌نمایش نمونهٔ فیگما هستند. قیمت، موجودی فروشگاه و پرداخت زنده به سرویس فروشندگان نیاز دارد."} قیمت، موجودی فروشگاه و پرداخت واقعی فعال نیست.</p>
           </>
         )}
+        {categoryRecovery && categories.status === "ok" && <p className="buyer-panel" role="status">{categoryRecovery}</p>}
+        </div>
       </section>
     </main>
   );

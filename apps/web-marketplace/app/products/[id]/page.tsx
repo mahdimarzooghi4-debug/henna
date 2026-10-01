@@ -1,4 +1,4 @@
-import { SiteHeader } from "../../../components/site-header";
+import { SiteFooter, SiteHeader } from "../../../components/site-header";
 import { BuyerProductDetail } from "../../../components/buyer-product-detail";
 import {
   buyerBrowseHref, buyerParamsFromRecord, parseBuyerBrowseLocation,
@@ -13,11 +13,12 @@ export default async function BuyerProductDetailPage({
   const { id } = await params;
   const backHref = buyerBrowseHref(parseBuyerBrowseLocation(
     buyerParamsFromRecord(await searchParams),
-  ));
+  ), "/products");
   return (
     <>
       <SiteHeader backHref={backHref} backLabel="بازگشت به فهرست" />
       <BuyerProductDetail id={id} backHref={backHref} />
+      <SiteFooter />
     </>
   );
 }
