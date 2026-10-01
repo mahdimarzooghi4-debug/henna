@@ -11,6 +11,7 @@ Implements the Figma `WEB / 06 Checkout` screen (`227:1733`) at `/checkout` and 
 - The final order action stays disabled until an order API and payment integration exist.
 - Cash on delivery is not shown, per ADR-009. No unsupported financial-credit option is offered.
 - The screen reports loading, signed-out, unavailable, absent-selection and stale-selection states without creating sample records.
+- Groups the seller-registration progress marker into the three phases shown in Figma `160:77`, while retaining the existing eight backend steps underneath.
 
 ## Deliberate boundary
 
