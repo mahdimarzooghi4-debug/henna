@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import styles from "./henna-homepage.module.css";
 
@@ -9,7 +9,7 @@ const slides = [
     src: "/landing/hero.webp",
     alt: "سفره‌ای از نان و خوراکی‌های محلی",
     title: "سبد خود را با محصولات تازه و محلی کامل کنید",
-    description: "پیشنهادهای فروشگاه‌های اطراف را بررسی کنید.",
+    description: "حنا پس از تکمیل سبد، هوشمندترین و به‌صرفه‌ترین فروشگاه‌های اطراف را در لحظه برایتان مقایسه می‌کند.",
   },
   {
     src: "/landing/impact.webp",
@@ -29,6 +29,13 @@ export default function HeroCarousel() {
   const [active, setActive] = useState(0);
   const slide = slides[active];
   const move = (direction: number) => setActive((current) => (current + direction + slides.length) % slides.length);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActive((current) => (current + 1) % slides.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <div className={styles.heroVisual} aria-roledescription="اسلایدر" aria-label="پیشنهادهای حنا">
