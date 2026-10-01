@@ -12,6 +12,7 @@
   --hana-pale-teal: #e5f2f1;
   --hana-surface: #fff;
   --hana-border: #d7b895;
+  --hana-font-family: HennaEstedad, Tahoma, Arial, sans-serif;
   --hana-space-1: 4px;
   --hana-space-2: 8px;
   --hana-space-3: 12px;
@@ -27,7 +28,7 @@ body {
   min-height: 100vh;
   background: var(--hana-cream);
   color: var(--hana-charcoal);
-  font-family: "Vazirmatn", Tahoma, Arial, sans-serif;
+  font-family: var(--hana-font-family);
   line-height: 1.7;
 }
 
@@ -479,7 +480,7 @@ a { color: inherit; }
   display: flex;
   background: #faf8f5;
   color: #2d2d2d;
-  font-family: "Estedad-VF", "Vazirmatn", Tahoma, Arial, sans-serif;
+  font-family: var(--hana-font-family);
   line-height: 1.55;
 }
 .admin-main { min-width: 0; flex: 1 1 auto; }

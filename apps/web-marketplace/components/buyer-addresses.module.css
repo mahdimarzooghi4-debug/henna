@@ -1,4 +1,4 @@
-.page { min-height: 100vh; background: #faf8f5; color: #1c3f3a; font-family: "Vazirmatn", Tahoma, Arial, sans-serif; }
+.page { min-height: 100vh; background: #faf8f5; color: #1c3f3a; font-family: var(--hana-font-family); }
 .announcement { min-height: 28px; display: flex; align-items: center; justify-content: center; padding: 4px 16px; background: #1c3f3a; color: #fff; font-size: 11px; font-weight: 700; text-align: center; }
 .header { min-height: 96px; display: grid; grid-template-columns: minmax(135px, 1fr) minmax(220px, 460px) minmax(320px, 1fr); gap: 20px; align-items: center; padding: 8px max(24px, calc((100% - 1320px) / 2)); background: #fff; border-bottom: 1px solid #eae6e1; }
 .logo { grid-column: 1; grid-row: 1; width: 140px; height: 78px; display: inline-flex; align-items: center; }
