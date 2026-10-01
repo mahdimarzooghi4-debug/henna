@@ -33,7 +33,7 @@ function Header() {
         <button type="submit" aria-label="جست‌وجو">⌕</button>
       </form>
       <Link href="/" className={styles.logo} aria-label="صفحه اصلی حنا">
-        <Image src="/hana-logo.png" alt="حنا" width={147} height={58} priority />
+        <Image src="/hana-logo.png" alt="حنا" width={147} height={82} unoptimized priority />
       </Link>
     </header>
     <nav className={styles.categoryNav} aria-label="دسته‌بندی‌ها">
@@ -48,7 +48,7 @@ function Footer() {
       <div><h2>طرح‌های حمایتی</h2><Link href="/programs">ثبت‌نام کالابرگ</Link><Link href="/programs">اعتبارات سازمانی</Link><Link href="/programs">کارت‌های معیشتی</Link></div>
       <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/seller-guide">شرایط همکاری</Link></div>
       <div><h2>دسترسی سریع</h2><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/about">درباره حنا</Link><Link href="/support">تماس با پشتیبانی</Link></div>
-      <div className={styles.footerBrand}><Link href="/"><Image src="/hana-logo.png" alt="حنا" width={140} height={56} /></Link><p>حنا بازارگاه هوشمند اجتماعی برای خریدهای روزمره در بستر اقتصاد عادلانه و حمایت اجتماعی قرار دارد.</p></div>
+      <div className={styles.footerBrand}><Link href="/"><Image src="/hana-logo.png" alt="حنا" width={140} height={79} unoptimized /></Link><p>حنا بازارگاه هوشمند اجتماعی برای خریدهای روزمره در بستر اقتصاد عادلانه و حمایت اجتماعی قرار دارد.</p></div>
     </div>
     <div className={styles.copyright}>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است. کلیه حقوق برای حنا محفوظ است.</div>
   </footer>;

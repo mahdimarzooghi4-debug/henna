@@ -51,7 +51,7 @@ export default function HennaHomepage() {
             <button aria-label="جست‌وجو"><svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg></button>
           </form>
           <Link href="/" className={styles.brand} aria-label="حنا، صفحه اصلی">
-            <Image src="/hana-logo.png" alt="حنا" width={220} height={88} priority />
+            <Image src="/hana-logo.png" alt="حنا" width={220} height={124} unoptimized priority />
           </Link>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی">
@@ -115,7 +115,7 @@ export default function HennaHomepage() {
           <div className={styles.footerSupport}><h3>طرح‌های حمایتی</h3><Link href="/products">ثبت‌نام کالابرگ</Link><Link href="/products">اعتبارات سازمانی</Link><Link href="/products">کارت‌های معیشتی</Link><a href="#benefits">گزارش شفافیت مالی</a></div>
           <div><h3>همکاری با حنا</h3><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/seller/register">شرایط همکاری پیک‌ها</Link><Link href="/seller/register">فرصت‌های شغلی</Link></div>
           <div><h3>دسترسی سریع</h3><a href="#how-it-works">سوالات متداول</a><a href="#footer">قوانین و مقررات</a><a href="#impact">درباره حنا</a><Link href="/auth">تماس با پشتیبانی</Link></div>
-          <div className={styles.footerBrand}><Image src="/hana-logo.png" alt="حنا" width={220} height={72} /><p>حنا اولین بازارگاه هوشمند اجتماعی برای خریدهای روزمره در ایران است که اولویت خود را بر توسعه عادلانه و حمایت اجتماعی قرار داده است.</p></div>
+          <div className={styles.footerBrand}><Image src="/hana-logo.png" alt="حنا" width={220} height={124} unoptimized /><p>حنا اولین بازارگاه هوشمند اجتماعی برای خریدهای روزمره در ایران است که اولویت خود را بر توسعه عادلانه و حمایت اجتماعی قرار داده است.</p></div>
         </div>
         <div className={`${styles.container} ${styles.footerBottom}`}><span>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است. کلیه حقوق برای حنا محفوظ است.</span><div><a href="#footer" aria-label="اینستاگرام حنا"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.8" r=".8" fill="currentColor"/></svg></a><a href="#footer" aria-label="توییتر حنا"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 3H22l-6.8 7.8L23.2 21h-6.3L12 14.6 6.4 21H3.2l7.3-8.4L2.8 3h6.4l4.5 5.9L18.9 3Zm-1.1 16h1.7L8.2 4.9H6.4L17.8 19Z"/></svg></a><a href="#footer" aria-label="لینکدین حنا"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM3.6 9h3.2v11H3.6V9Zm5.3 0H12v1.5h.1a3.6 3.6 0 0 1 3.3-1.8c3.5 0 4.1 2.3 4.1 5.2V20h-3.3v-5.4c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V20H8.9V9Z"/></svg></a></div></div>
       </footer>

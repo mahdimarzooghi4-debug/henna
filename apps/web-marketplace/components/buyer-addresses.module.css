@@ -50,7 +50,7 @@
 .footerGrid a { display: block; margin: 5px 0; color: #706963; font-size: 11px; text-decoration: none; }
 .footerBrand { justify-self: end; max-width: 270px; }
 .footerBrand p, .copyright { margin: 4px 0 0; color: #706963; font-size: 10px; line-height: 1.8; }
-.footerBrand img { width: 130px; height: 52px; object-fit: contain; }
+.footerBrand img { width: 130px; height: 73px; object-fit: contain; }
 .copyright { border-top: 1px solid #eee9e4; padding-top: 12px; }
 
 @media (max-width: 900px) {
