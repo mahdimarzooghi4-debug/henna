@@ -315,7 +315,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
                     <div className="buyer-product-actions"><button className="buyer-product__add" type="button" onClick={() => {
                       addBuyerDemoCartItem({
                         id: item.id, name: item.name, detail: item.description ?? "",
-                        kind: item.kind, unitPrice: null, image: null,
+                        kind: item.kind, unitPrice: null, image: productImages[index % productImages.length],
                       });
                       setAddedProduct(item.id);
                       window.setTimeout(() => setAddedProduct((current) => current === item.id ? null : current), 1400);
