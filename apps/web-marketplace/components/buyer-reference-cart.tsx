@@ -343,6 +343,7 @@ function BuyerCartOffers({ cart, products }: {
       <h3>پیش‌نویس ذخیره‌شده</h3>
       <p>این پیش‌نویس به فروشنده ارسال نشده، سفارش یا رزرو نیست و سبد مرجع را تغییر نمی‌دهد.</p>
       {readyDraft.lines.map(line => <p key={line.offerId}>{title(line.productId)} · {formatQuantity(line.quantity, line.quantityScale)} {line.unitName} · {formatRials(line.expectedPriceRials)} قیمت دیده‌شده{line.priceChanged && line.currentPriceRials !== null ? ` · قیمت فعلی ${formatRials(line.currentPriceRials)} — نیازمند تأیید` : ""}{!line.offerAvailable ? " · پیشنهاد دیگر در دسترس نیست" : !line.coversRequestedQuantity ? " · مقدار اعلامی دیگر کافی نیست" : ""}</p>)}
+      <Link className="buyer-purchase-draft__checkout" href="/checkout">رفتن به پیش‌نمایش تکمیل سفارش</Link>
       <button type="button" disabled={draftBusy} onClick={() => void clearPurchaseDraft()}>{draftBusy ? "در حال حذف…" : "حذف پیش‌نویس"}</button>
     </section>}
     {draftMessage && <p className="buyer-cart-comparison__status" role="status">{draftMessage}</p>}
