@@ -66,9 +66,9 @@ export default function HennaHomepage() {
         </section>
 
         <div className={`${styles.container} ${styles.promoGrid}`}>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoIcon} aria-hidden="true">٪</span><strong>تخفیف‌دارهای روزانه</strong><p>پیشنهادهای خرید روزانه را در کاتالوگ حنا ببینید.</p><span className={styles.promoMore}>دیدن کالاها ←</span></Link>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoIcon} aria-hidden="true">▣</span><strong>کالابرگ الکترونیک</strong><p>اقلام کالابرگ را در سبد خریدتان پیدا کنید.</p><span className={styles.promoMore}>مشاهده اقلام ←</span></Link>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoIcon} aria-hidden="true">✦</span><strong>طرح‌های ویژه حنا</strong><p>طرح‌های خرید خانواده و محله را دنبال کنید.</p><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoIcon} aria-hidden="true">٪</span><span className={styles.promoCopy}><strong>تخفیف‌دارهای روزانه</strong><span>پیشنهادهای خرید روزانه را در کاتالوگ حنا ببینید.</span><span className={styles.promoMore}>دیدن کالاها ←</span></span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoIcon} aria-hidden="true">▣</span><span className={styles.promoCopy}><strong>کالابرگ الکترونیک</strong><span>اقلام کالابرگ را در سبد خریدتان پیدا کنید.</span><span className={styles.promoMore}>مشاهده اقلام ←</span></span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoIcon} aria-hidden="true">✦</span><span className={styles.promoCopy}><strong>طرح‌های ویژه حنا</strong><span>طرح‌های خرید خانواده و محله را دنبال کنید.</span><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></span></Link>
         </div>
 
         <section className={`${styles.container} ${styles.categories}`} id="categories">

@@ -35,3 +35,12 @@
 .footerBottom>div>a{color:var(--green);font-size:15px;font-weight:700}
 @media(max-width:1000px){.announcement{height:auto;min-height:40px}.headerTop{height:auto}.hero{padding-top:38px;padding-bottom:38px}.heroVisual{height:300px}.hero h1{font-size:34px}.category span{width:76px;height:76px}}
 @media(max-width:640px){.announcement{min-height:34px}.headerTop{height:auto}.nav{height:42px}.hero{padding-top:22px;padding-bottom:24px}.heroVisual{height:230px}.hero h1{font-size:28px}.heroCopy>p{font-size:12px}.promoCard{min-height:104px;padding:14px 16px}.promoCard strong{font-size:14px}.promoCard p{font-size:10px}.category span{width:58px;height:58px}.productImage{height:125px}.previewNotice{font-size:10px}.footerGrid>div:not(:first-child){align-items:flex-start;text-align:right}}
+
+/* Keep promotional card copy visible and aligned consistently in RTL layouts. */
+.promoCard{display:flex;flex-direction:row;align-items:center;gap:18px;direction:ltr}
+.promoCopy{display:flex;flex:1;min-width:0;flex-direction:column;align-items:flex-start;direction:rtl;text-align:right}
+.promoCopy>strong{align-self:stretch;color:inherit;font-size:inherit;line-height:1.7}
+.promoCopy>span:not(.promoMore){align-self:stretch;margin-top:5px;color:inherit;font-size:inherit;line-height:1.9;opacity:.9}
+.promoCopy>.promoMore{align-self:stretch;margin-top:8px;color:inherit;font-size:inherit}
+.promoIcon{flex:0 0 42px;grid-column:auto;grid-row:auto}
+@media(max-width:640px){.promoCard{gap:12px}.promoCopy>strong{font-size:14px}.promoCopy>span:not(.promoMore){font-size:10px}.promoCopy>.promoMore{font-size:10px}}
