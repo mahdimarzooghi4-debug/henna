@@ -78,7 +78,6 @@
 .search .actionIcon{width:19px;height:19px}
 .promoIcon svg{width:20px;height:20px;display:block;color:currentColor}
 
-@font-face{font-family:HennaEstedad;src:url('/fonts/estedad-arabic-variable.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
 .page{font-family:HennaEstedad,Tahoma,Arial,sans-serif;color:#1c3f3a;background:#faf8f5;line-height:1.55}
 .container,.headerTop{width:min(1280px,calc(100% - 160px))}
 .announcement{height:40px;font-size:13px;font-weight:600}

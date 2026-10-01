@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { MarketplaceChrome } from "./marketplace-chrome";
+import { LandingFooter, LandingHeader } from "./landing-chrome";
 import styles from "./information-page.module.css";
 
 export type InfoLink = { label: string; href: string; tone?: "primary" | "secondary" };
@@ -30,7 +30,7 @@ export function InformationPage({
 }) {
   return (
     <div className={styles.page} dir="rtl">
-      <MarketplaceChrome />
+      <LandingHeader />
       <main className={styles.main}>
         <div className={styles.breadcrumb}><Link href="/">خانه</Link><span aria-hidden="true">/</span><span>{title}</span></div>
         <header className={styles.hero}>
@@ -55,7 +55,7 @@ export function InformationPage({
         </div>
         {closing && <aside className={styles.closing}>{closing}</aside>}
       </main>
-      <MarketplaceChrome footerOnly />
+      <LandingFooter />
     </div>
   );
 }
