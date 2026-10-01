@@ -41,10 +41,28 @@ export default function HeroCarousel() {
   const move = (direction: number) => setActive((current) => (current + direction + slides.length) % slides.length);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActive((current) => (current + 1) % slides.length);
-    }, 5000);
-    return () => window.clearInterval(timer);
+    let cancelled = false;
+    let timer = 0;
+    const preload = slides.map(({ src }) => {
+      const image = new window.Image();
+      image.src = src;
+      return image.decode ? image.decode().catch(() => undefined) : new Promise<void>((resolve) => {
+        image.onload = () => resolve();
+        image.onerror = () => resolve();
+      });
+    });
+
+    Promise.all(preload).then(() => {
+      if (cancelled) return;
+      timer = window.setInterval(() => {
+        setActive((current) => (current + 1) % slides.length);
+      }, 5000);
+    });
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, []);
 
   return (
@@ -59,7 +77,7 @@ export default function HeroCarousel() {
         </div>
       </div>
       <div className={styles.heroVisual} aria-roledescription="اسلایدر" aria-label="پیشنهادهای حنا">
-        <Image src={slide.src} alt={slide.alt} fill priority sizes="(max-width: 640px) 100vw, 50vw" />
+        <Image src={slide.src} alt={slide.alt} fill priority unoptimized sizes="(max-width: 640px) 100vw, 50vw" />
         <div className={styles.carouselControls}>
           <button type="button" onClick={() => move(-1)} aria-label="اسلاید قبلی">‹</button>
           <button type="button" onClick={() => move(1)} aria-label="اسلاید بعدی">›</button>
