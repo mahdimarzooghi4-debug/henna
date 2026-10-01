@@ -90,7 +90,7 @@ async function main() {
   await page.goto(base + shared);
   await page.getByRole("heading", { name: good[20].name, exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 1);
-  assert.equal(await page.locator("input[name="search"]").inputValue(), "کالای مرور");
+  assert.equal(await page.locator('input[name="search"]').inputValue(), "کالای مرور");
   assert.equal(await page.getByRole("button", {
     name: "دستهٔ یک CI",
   }).getAttribute("aria-pressed"), "true");
@@ -143,7 +143,7 @@ async function main() {
 
   // Search submission resets page to one, encoded safely, and previous
   // category filter does not reappear by accident.
-  await page.locator("input[name="search"]").fill("کالای مرور واقعی CI 1");
+  await page.locator('input[name="search"]').fill("کالای مرور واقعی CI 1");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.waitForURL(base + "/products?" + q({ search: "کالای مرور واقعی CI 1" }));
   await page.getByRole("heading", { name: good[0].name, exact: true }).waitFor();
