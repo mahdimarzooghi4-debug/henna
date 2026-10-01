@@ -38,7 +38,7 @@ export function SiteHeader({ backHref, backLabel }: SiteHeaderProps) {
         </Link>
       </div>
       <nav className="site-header__nav" aria-label="دسته‌بندی اصلی">
-        <Link href="/products">نیازهای روزمره</Link><Link href="/products">فروشندگان / ارائه‌دهندگان</Link>
+        <Link href="/products">نیازهای روزمره</Link><Link href="/seller">فروشندگان / ارائه‌دهندگان</Link>
         <Link href="/products">کالاها و خدمات</Link><Link href="/products">همه دسته‌ها</Link>
         <Link href="/products">دسته‌بندی‌های منتخب</Link><Link href="/programs">طرح‌های ویژه</Link>
         <Link href="/programs">کالابرگ / اعتبارها</Link><Link href="/#offers">پیشنهادها</Link>
