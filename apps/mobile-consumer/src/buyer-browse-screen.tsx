@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Image, KeyboardAvoidingView, Platform, Pressable, ScrollView,
-  StatusBar, StyleSheet, Text, TextInput, View,
+  StatusBar, StyleSheet, TextInput, View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -13,6 +13,7 @@ import {
   type BuyerBrowseState,
 } from "./buyer-browse-controller.ts";
 import { colors } from "./theme";
+import { HanaText as Text } from "./hana-text";
 
 const logo = require("../assets/hana-app-logo.png");
 
@@ -67,6 +68,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   // Keep the mounted browse coordinator and its real search/filter/page state.
   if (detailId !== null) return (
     <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
+      categories={categories.status === "ok" ? categories.data : []}
       onBack={() => {
         setDetailId(null);
         // A category can leave publication while the buyer reads detail.
@@ -324,7 +326,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1, minWidth: 0, fontSize: 14, color: colors.charcoal,
-    paddingHorizontal: 14, ...rtl,
+    paddingHorizontal: 14, fontFamily: "Vazirmatn-Regular", ...rtl,
   },
   searchButton: {
     backgroundColor: colors.teal, paddingHorizontal: 12,

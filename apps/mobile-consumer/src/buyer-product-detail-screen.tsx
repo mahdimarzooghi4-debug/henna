@@ -1,21 +1,24 @@
 import { useEffect, useState } from "react";
 import {
   BackHandler, Image, Pressable, ScrollView, StatusBar,
-  StyleSheet, Text, View,
+  StyleSheet, View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BuyerDetailController, type BuyerDetailState } from "./buyer-detail-controller.ts";
 import { MobileCatalogClient } from "./mobile-catalog.ts";
 import { colors } from "./theme";
+import { HanaText as Text } from "./hana-text";
+import type { CatalogCategory } from "./mobile-catalog.ts";
 
 const logo = require("../assets/hana-app-logo.png");
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 
 /** Owner-approved Figma 480:3/480:5/480:7 — real public detail only. */
 export function BuyerProductDetailScreen({
-  id, catalog, onBack,
-}: { id: string; catalog: MobileCatalogClient; onBack: () => void }) {
+  id, catalog, categories, onBack,
+}: { id: string; catalog: MobileCatalogClient;
+  categories: readonly CatalogCategory[]; onBack: () => void }) {
   const [state, setState] = useState<BuyerDetailState>({ status: "loading", id });
   const [controller] = useState(
     () => new BuyerDetailController(catalog, setState, id),
@@ -35,6 +38,11 @@ export function BuyerProductDetailScreen({
 
   const detail: BuyerDetailState = state.id === id
     ? state : { status: "loading", id };
+  const categoryName = detail.status === "ok"
+    ? categories.find(category =>
+        category.id.toLowerCase() === detail.product.categoryId.toLowerCase(),
+      )?.name
+    : undefined;
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
@@ -105,9 +113,9 @@ export function BuyerProductDetailScreen({
                 <Text style={styles.text}>
                   نوع: {detail.product.kind === "SERVICE" ? "خدمت" : "کالا"}
                 </Text>
-                <Text style={styles.category} selectable>
-                  شناسهٔ دسته‌بندی: {detail.product.categoryId}
-                </Text>
+                {categoryName ? (
+                  <Text style={styles.category}>دسته‌بندی: {categoryName}</Text>
+                ) : null}
                 {detail.product.description !== null ? (
                   <Text style={styles.description}>
                     {detail.product.description}
