@@ -101,7 +101,7 @@ async function main() {
   await page.goto(base);
   await page.getByText("هنوز دسته‌بندی قابل نمایش در حنا ثبت نشده است.").waitFor();
   await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
-  assert.equal(await page.getByRole("link", { name: "ورود / ثبت‌نام" }).count(), 1);
+  assert.equal(await page.getByRole("link", { name: "ورود یا ثبت‌نام" }).count(), 1);
   assert.equal(await page.getByText("عنوان واقعی API در تست 1").count(), 0);
 
   mode = "rich";
