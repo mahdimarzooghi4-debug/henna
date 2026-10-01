@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import HeroCarousel from "./hero-carousel";
 import { LandingFooter, LandingHeader } from "./landing-chrome";
+import { LandingAddButton } from "./landing-add-button";
 import styles from "./henna-homepage.module.css";
 
 const categories = [
@@ -75,7 +76,7 @@ export default function HennaHomepage() {
                   <p>{product.detail}</p>
                 </div>
                 <div className={styles.productAction}>
-                  <Link href={`/products?search=${encodeURIComponent(product.title)}`} className={styles.addButton} aria-label={`جست‌وجوی ${product.title} برای افزودن به سبد`}>افزودن +</Link>
+                  <LandingAddButton productName={product.title} className={styles.addButton} messageClassName={styles.addMessage} />
                   <div className={styles.productPrice}>
                     {product.oldPrice && <del>{product.oldPrice}</del>}
                     <strong><span>{product.price}</span> <small>تومان</small></strong>

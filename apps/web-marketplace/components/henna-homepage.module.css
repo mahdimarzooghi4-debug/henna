@@ -303,3 +303,5 @@
 
 /* Match the Figma call-to-action on the sample deal cards. */
 .addButton{margin-top:8px;min-height:unset;padding:8px 16px;border-radius:20px;font-size:13px}
+.addButton{border:0;font:inherit;font-size:13px;cursor:pointer}.addButton:disabled{opacity:.7;cursor:wait}
+.addMessage{display:block;flex-basis:100%;margin-top:6px;color:#9f4531;font-size:11px;line-height:1.6;text-align:right}
