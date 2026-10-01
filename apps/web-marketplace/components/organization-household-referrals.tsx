@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { OrganizationPortalShell } from "./organization-portal";
 
 type Program = { programId: string; organizationId: string; name: string; state: "DRAFT"; revision: number };
 type Member = { genderCategory: string; lifeStage: string; educationLevel: string; healthNeed: string };
@@ -74,9 +75,7 @@ export function OrganizationHouseholdReferrals({ programId }: { programId: strin
   }
 
   const select = (label: string, value: string, onChange: (value: string) => void, options: string[]) => <label>{label}<select value={value} onChange={e => onChange(e.target.value)}>{options.map(option => <option key={option} value={option}>{labels[option] ?? option}</option>)}</select></label>;
-  return <main className="organization-page organization-shell" dir="rtl">
-    <aside className="organization-sidebar"><Link href="/organization" className="organization-brand"><img src="/hana-logo.png" alt="حنا"/><strong>پنل سازمان‌ها</strong></Link><nav aria-label="منوی سازمان"><Link href="/organization">داشبورد</Link><Link href="/organization/programs">طرح‌ها و اعتبارها</Link><Link className="is-active" href={`/organization/programs/${programId}/household-referrals`}>افراد و مشمولان</Link><span>تخصیص</span><span>وضعیت استفاده</span><span>گزارش‌ها</span></nav></aside>
-    <div className="organization-main"><header className="organization-topbar"><span>سازمان همکار</span><h1>ارجاع خانوارها</h1></header><section className="organization-program-form-area" aria-live="polite">
+  return <OrganizationPortalShell active="people" title="ارجاع خانوارها"><section className="organization-program-form-area" aria-live="polite">
       <div className="organization-form-card"><Link href="/organization/programs" className="organization-back-link">بازگشت به طرح‌ها</Link><h2>{program?.name ?? "ارجاع به طرح"}</h2><p>این فرم فقط داده‌های کیفی و مرجع داخلی سازمان را ثبت می‌کند؛ ثبت ارجاع به‌معنای تأیید استحقاق یا تخصیص اعتبار نیست.</p>
         {loading ? <p role="status">در حال دریافت اطلاعات…</p> : message && referrals.length === 0 ? <p className="organization-form-message" role="alert">{message}</p> : <>
           {canSubmit ? <form onSubmit={submit} className="organization-referral-form"><label>شناسه پرونده در سازمان<input value={reference} maxLength={120} onChange={e => setReference(e.target.value)} required /></label><p className="organization-form-hint">نام، کد ملی، شماره تماس و اطلاعات بانکی اعضا دریافت نمی‌شود.</p>
@@ -87,6 +86,5 @@ export function OrganizationHouseholdReferrals({ programId }: { programId: strin
           <div className="organization-referral-list"><h3>ارجاع‌های ثبت‌شده ({referrals.length})</h3>{referrals.length === 0 ? <p>برای این طرح ارجاعی ثبت نشده است.</p> : referrals.map(item => <article className="organization-referral-item" key={item.referralId}><strong>{item.externalReference}</strong><span>{provinceNames.get(item.provinceId) ?? "استان ثبت‌شده"}{item.cityId ? `، ${cityNames.get(item.cityId) ?? "شهر ثبت‌شده"}` : "، محل روستایی"} · {item.settlementType === "URBAN" ? "شهری" : "روستایی"}</span><span>{item.members.length} عضو · {new Intl.DateTimeFormat("fa-IR", { dateStyle: "short", timeZone: "Asia/Tehran" }).format(new Date(item.submittedAtUtc))}</span><span>ارجاع ثبت شده است؛ در این صفحه بررسی استحقاق یا تخصیص انجام نمی‌شود.</span><details className="organization-referral-details"><summary>مشاهده جزئیات ثبت‌شده</summary><p>این موارد همان داده‌های کیفی ثبت‌شده هستند و نتیجهٔ بررسی یا استحقاق را نشان نمی‌دهند.</p><ol>{item.members.map(member => <li key={member.memberNumber}><strong>عضو {member.memberNumber}</strong><span>جنسیت: {labels[member.genderCategory] ?? "گزارش نشده"}</span><span>گروه سنی: {labels[member.lifeStage] ?? "گزارش نشده"}</span><span>تحصیلات: {labels[member.educationLevel] ?? "گزارش نشده"}</span><span>نیاز مزمن: {labels[member.healthNeed] ?? "گزارش نشده"}</span></li>)}</ol></details></article>)}</div>
         </>}
       </div>
-    </section></div>
-  </main>;
+    </section></OrganizationPortalShell>;
 }
