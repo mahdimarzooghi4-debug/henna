@@ -154,7 +154,7 @@ async function main() {
   // Unknown keys, oversized search, non-UUID category and out-of-range page
   // cannot sneak into a public request or be reused as external back href.
   const before = calls.length;
-  await page.goto(base + "/?returnTo=https%3A%2F%2Fevil.test" +
+  await page.goto(base + "/products?returnTo=https%3A%2F%2Fevil.test" +
     "&categoryId=bad&page=10001&search=" + "x".repeat(81));
   await page.getByRole("heading", { name: good[0].name, exact: true }).waitFor();
   assert.equal(new URL(page.url()).search, "");
