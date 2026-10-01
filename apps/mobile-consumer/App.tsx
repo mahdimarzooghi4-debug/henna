@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as SecureStore from "expo-secure-store";
+import { useFonts } from "expo-font";
 import {
   Alert,
   AppState,
@@ -11,13 +12,13 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, space } from "./src/theme";
+import { HanaText as Text } from "./src/hana-text";
 import { BuyerBrowseScreen } from "./src/buyer-browse-screen";
 import {
   parseBuyerLink, type BuyerLinkEvent, type BuyerLinkRoute,
@@ -26,6 +27,7 @@ import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from ".
 import { MobileAuthClient } from "./src/mobile-auth";
 import { otpRequestTransition } from "./src/otp-request-transition";
 import { validateOtpEntry } from "./src/otp-form-input";
+import { sellerRegistrationUrl } from "./src/seller-registration-url";
 import {
   shouldRecheckOnForeground, type MobileAuthView,
 } from "./src/session-foreground";
@@ -68,6 +70,11 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
   const mounted = useRef(true);
   const viewRef = useRef<ViewState>("checking");
   const appState = useRef(AppState.currentState);
+  const webRegistrationUrl = sellerRegistrationUrl(
+    process.env.EXPO_PUBLIC_HANA_WEB_BASE_URL, __DEV__,
+  );
+  const maskedPhone = phone.length >= 7
+    ? `${phone.slice(0, 4)}••••${phone.slice(-3)}` : phone;
 
   async function refreshSession() {
     if (pending.current) return;
@@ -247,11 +254,15 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
           </View>
 
           <View style={styles.intro}>
-            <Text style={styles.title}>ورود به حنا</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              {view === "code" ? "تأیید شماره موبایل" : "ورود به حنا"}
+            </Text>
             <Text style={styles.subtitle}>
-              {view === "session"
-                ? "نشست شما در سرور حنا بررسی شده است."
-                : "با شماره موبایل وارد شوید یا ثبت‌نام کنید."}
+              {view === "code"
+                ? `کد شش‌رقمی ارسال‌شده به ${maskedPhone} را وارد کنید.`
+                : view === "session"
+                  ? "نشست شما در سرور حنا بررسی شده است."
+                  : "با شماره موبایل وارد شوید یا ثبت‌نام کنید."}
             </Text>
           </View>
 
@@ -322,12 +333,16 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="ثبت‌نام فروشگاه"
-                    onPress={() =>
-                      Alert.alert(
-                        "ثبت‌نام فروشگاه",
-                        "ثبت‌نام فروشگاه فقط در نسخه وب حنا ارائه می‌شود. فرم اولیه وب به API و پایگاه داده متصل است؛ اما ورود عمومی با پیامک و تأیید نهایی فروشگاه هنوز فعال نیست."
-                      )
-                    }
+                    onPress={() => {
+                      if (!webRegistrationUrl) {
+                        Alert.alert("فرم ثبت‌نام فروشگاه",
+                          "نشانی وب حنا هنوز تنظیم نشده است. پس از مشخص‌شدن دامنه، EXPO_PUBLIC_HANA_WEB_BASE_URL را وارد کنید.");
+                        return;
+                      }
+                      void Linking.openURL(webRegistrationUrl).catch(() =>
+                        Alert.alert("بازشدن فرم ممکن نشد",
+                          "اتصال به فرم وب ثبت‌نام فروشگاه برقرار نشد. دوباره تلاش کنید."));
+                    }}
                   >
                     <Text style={styles.sellerLink}>ثبت‌نام فروشگاه</Text>
                   </Pressable>
@@ -337,8 +352,10 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
 
             {view === "code" && (
               <>
-                {/* Technical OTP step only: its final visual frame needs approved Figma. */}
-                <Text style={styles.fieldLabel}>کد تأیید برای {phone}</Text>
+                <Text style={styles.fieldLabel}>کد تأیید</Text>
+                <Text style={styles.codeHint}>
+                  شمارهٔ {maskedPhone} را بررسی کنید و کد پیامک‌شده را وارد کنید.
+                </Text>
                 <TextInput
                   ref={codeInput}
                   accessibilityLabel="کد شش رقمی تأیید"
@@ -348,10 +365,14 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                   accessibilityState={{ disabled: status === "loading" }}
                   editable={status !== "loading"}
                   style={[styles.input, status === "invalid" && styles.invalidInput]}
-                  placeholder="xxxxxx"
+                  placeholder="------"
                   placeholderTextColor={colors.muted}
-                  textAlign="right"
+                  textAlign="center"
                   keyboardType="number-pad"
+                  textContentType="oneTimeCode"
+                  autoComplete="sms-otp"
+                  returnKeyType="done"
+                  onSubmitEditing={verifyCode}
                   maxLength={6}
                   value={code}
                   onChangeText={(value) => {
@@ -374,7 +395,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                   disabled={status === "loading"}
                 >
                   <Text style={styles.primaryButtonText}>
-                    {status === "loading" ? "در حال تأیید…" : "تأیید کد"}
+                    {status === "loading" ? "در حال تأیید…" : "تأیید و ورود"}
                   </Text>
                 </Pressable>
                 {status !== "idle" && status !== "loading" && (
@@ -400,7 +421,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                   disabled={status === "loading"}
                 >
                   <Text style={[styles.sellerLink, styles.secondaryLink]}>
-                    درخواست کد جدید
+                    کد را دریافت نکردید؟ ارسال دوباره
                   </Text>
                 </Pressable>
                 <Pressable
@@ -500,6 +521,10 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    "Vazirmatn-Regular": require("./assets/fonts/Vazirmatn-400.ttf"),
+    "Vazirmatn-Bold": require("./assets/fonts/Vazirmatn-700.ttf"),
+  });
   const [screen, setScreen] = useState<"browse" | "auth">("browse");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
   // link must not first fetch page 1 and briefly paint unrelated content.
@@ -529,6 +554,9 @@ export default function App() {
       });
     return () => { active = false; listener.remove(); };
   }, []);
+
+  if (!fontsLoaded)
+    return <View style={[styles.flex, { backgroundColor: colors.cream }]} />;
 
   return (
     <SafeAreaProvider>
@@ -610,7 +638,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: 14,
     fontSize: 15,
+    fontFamily: "Vazirmatn-Regular",
     color: colors.charcoal,
+  },
+  codeHint: {
+    color: colors.muted, fontSize: 13, lineHeight: 24,
+    textAlign: "right", writingDirection: "rtl", marginTop: 4,
   },
   invalidInput: { borderColor: colors.terracotta },
   primaryButton: {
@@ -623,7 +656,10 @@ const styles = StyleSheet.create({
   },
   primaryButtonPressed: { opacity: 0.84 },
   primaryButtonLoading: { opacity: 0.6 },
-  primaryButtonText: { color: colors.surface, fontSize: 16, fontWeight: "700" },
+  primaryButtonText: {
+    color: colors.surface, fontSize: 16, fontWeight: "700",
+    fontFamily: "Vazirmatn-Bold",
+  },
   formStatus: {
     backgroundColor: colors.paleTeal,
     color: colors.teal,
