@@ -257,3 +257,10 @@
 .benefitCard{direction:rtl;text-align:right}
 .benefitCard>span{margin:0 0 8px auto}
 .benefitCard h3,.benefitCard p{direction:rtl;text-align:right}
+
+/* Stretch RTL text blocks so headings align to the right edge, not the left edge. */
+.benefitCard{align-items:stretch}
+.benefitCard h3,.benefitCard p{width:100%;align-self:stretch;text-align:right;direction:rtl}
+.impactInner>div{display:flex;flex-direction:column;align-items:stretch;direction:rtl;text-align:right}
+.impactInner .eyebrow{align-self:flex-start;text-align:right}
+.impactInner h2,.impactInner p{width:100%;text-align:right;direction:rtl}
