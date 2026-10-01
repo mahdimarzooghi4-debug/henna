@@ -129,7 +129,7 @@ async function main() {
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 2", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.categoryId, undefined);
 
-  await page.locator("input[name="search"]").fill("عنوان واقعی API در تست 21");
+  await page.locator('input[name="search"]').fill("عنوان واقعی API در تست 21");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 21", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.search, "عنوان واقعی API در تست 21");
@@ -137,7 +137,7 @@ async function main() {
   assert.equal(await page.locator(".buyer-product").count(), 1);
 
   mode = "outage";
-  await page.locator("input[name="search"]").fill("قطعی کاتالوگ");
+  await page.locator('input[name="search"]').fill("قطعی کاتالوگ");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "دریافت کالاها تأیید نشد" }).waitFor();
   assert.equal(await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).count(), 0);
@@ -324,7 +324,7 @@ async function main() {
 
   // On the approved 390px design, real content reflows and stays in viewport.
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator("input[name="search"]").fill("");
+  await page.locator('input[name="search"]').fill("");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.evaluate(() =>
