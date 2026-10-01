@@ -244,7 +244,7 @@ export function buyerBrowseQuery(state: BuyerBrowseLocation): string {
 
 export function buyerBrowseHref(state: BuyerBrowseLocation): string {
   const query = buyerBrowseQuery(state);
-  return "/" + (query ? "?" + query : "");
+  return "/products" + (query ? "?" + query : "");
 }
 
 export function buyerDetailHref(

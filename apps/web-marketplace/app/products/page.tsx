@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SiteHeader } from "../../components/site-header";
+import { MarketplaceChrome } from "../../components/marketplace-chrome";
 import { BuyerBrowse } from "../../components/buyer-browse";
 import {
   buyerBrowseQuery,
@@ -23,8 +23,9 @@ export default async function ProductsPage({
 
   return (
     <>
-      <SiteHeader backHref="/" backLabel="صفحهٔ اصلی حنا" />
+      <MarketplaceChrome />
       <BuyerBrowse initialQuery={query} />
+      <MarketplaceChrome footerOnly />
     </>
   );
 }

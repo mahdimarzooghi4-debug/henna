@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import styles from "./buyer-marketplace.module.css";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
@@ -66,14 +67,14 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
     const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.pushState(window.history.state, "", href);
   }
 
   useEffect(() => {
     function restore() {
-      if (window.location.pathname !== "/") return;
+      if (window.location.pathname !== "/products") return;
       const next = parseBuyerBrowseLocation(
         new URLSearchParams(window.location.search),
       );
@@ -149,7 +150,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     // Correct this SAME history entry rather than creating a ghost "Back"
     // step that reinstates the removed category. Preserve public search.
     const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, selected, search, page]);
@@ -177,7 +178,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     );
     // Replace the SAME history entry; preserve category and Persian search.
     const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, current, selected, search, page]);
@@ -189,7 +190,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     let lastRefreshAt = -Infinity;
     function revalidateOnReturn() {
       if (document.visibilityState !== "visible" ||
-        window.location.pathname !== "/") return;
+        window.location.pathname !== "/products") return;
       // Safari can emit both visibilitychange and persisted pageshow on one
       // return. Treat them as one refresh rather than racing duplicate GETs.
       const now = performance.now();
@@ -238,26 +239,11 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   }
 
   return (
-    <main dir="rtl" className="buyer-main">
-      <div className="buyer-intro">
-        <p className="buyer-intro__eyebrow">مرور کاتالوگ حنا</p>
-        <h1>کالاها را در حنا مرور کنید</h1>
-        <p>دسته‌بندی‌ها و کالاها تنها در صورت تأیید و انتشار در کاتالوگ حنا نمایش داده می‌شوند.</p>
-      </div>
-
-      <form className="buyer-search" onSubmit={submitSearch} role="search">
-        <label className="buyer-visually-hidden" htmlFor="buyer-search">جست‌وجو در نام کالاها</label>
-        <input id="buyer-search" name="search" type="search" maxLength={80}
-          value={draftSearch} onChange={(event) => {
-            setDraftSearch(event.target.value);
-            setSearchError("");
-          }} placeholder="جست‌وجو در نام کالاها..."
-          aria-invalid={searchError ? true : undefined}
-          aria-describedby={searchError ? "buyer-search-error" : undefined} />
-        <button type="submit">جست‌وجو</button>
-      </form>
-      {searchError && <p id="buyer-search-error" className="buyer-error" role="alert">{searchError}</p>}
-
+    <main dir="rtl" className={`buyer-main ${styles.main}`}>
+      <h1 className={styles.visuallyHidden}>کالاها و خدمات منتشرشده در حنا</h1>
+      <div className={styles.layout}>
+        <aside className={styles.filters} aria-labelledby="buyer-filter-title">
+          <h2 id="buyer-filter-title">فیلترها</h2>
       <section className="buyer-section" aria-labelledby="buyer-categories-title">
         <h2 id="buyer-categories-title">دسته‌بندی‌ها</h2>
         {categories.status === "loading" ? (
@@ -284,7 +270,21 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           <p className="buyer-panel" role="status">{categoryRecovery}</p>
         )}
       </section>
-
+          <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
+        </aside>
+        <div className={styles.results}>
+      <form className="buyer-search" onSubmit={submitSearch} role="search">
+        <label className="buyer-visually-hidden" htmlFor="buyer-search">جست‌وجو در نام کالاها</label>
+        <input id="buyer-search" name="search" type="search" maxLength={80}
+          value={draftSearch} onChange={(event) => {
+            setDraftSearch(event.target.value);
+            setSearchError("");
+          }} placeholder="جست‌وجو در نام کالاها..."
+          aria-invalid={searchError ? true : undefined}
+          aria-describedby={searchError ? "buyer-search-error" : undefined} />
+        <button type="submit">جست‌وجو</button>
+      </form>
+      {searchError && <p id="buyer-search-error" className="buyer-error" role="alert">{searchError}</p>}
       <section className="buyer-section" aria-labelledby="buyer-products-title">
         <h2 id="buyer-products-title">کالاها</h2>
         {pageRecovery && (
@@ -311,6 +311,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
               <ul className="buyer-products" aria-label="فهرست کالاهای منتشرشده">
                 {current.data.items.map((item) => (
                   <li className="buyer-product" key={item.id}>
+                    <div className={styles.productVisual} aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M10 18h28l-2 22H12l-2-22Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M17 19v-4a7 7 0 0 1 14 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M20 27h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg></div>
                     <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
                     <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}</p>
                     {item.description && <p>{item.description}</p>}
@@ -331,6 +332,8 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           </>
         )}
       </section>
+        </div>
+      </div>
     </main>
   );
 }
