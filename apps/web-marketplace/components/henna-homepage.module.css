@@ -215,3 +215,11 @@
 .heroCopy h1,.heroCopy>p{width:100%;direction:rtl;text-align:right}
 .heroButtons{width:100%;direction:rtl;justify-content:flex-start}
 @media(max-width:640px){.heroCopy{min-height:390px;gap:14px;text-align:right}.heroButtons{justify-content:flex-start;flex-wrap:wrap}}
+
+/* Match the Figma promo cards: title/icon group sits at the right edge and SVG colors stay intact. */
+.promoCard{align-items:stretch}
+.promoTitle{width:100%;direction:ltr;justify-content:flex-end;text-align:right}
+.promoTitle strong{direction:rtl;text-align:right;font-weight:600}
+.promoIcon img{width:24px;height:24px;filter:none}
+.promoCopy{opacity:.8}
+.promoTerracotta .promoCopy{opacity:.85}
