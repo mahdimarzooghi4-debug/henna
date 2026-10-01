@@ -285,3 +285,9 @@
 
 /* Restore visible CTA copy after the previous image-hotspot hiding rules. */
 .ctaContent h2,.ctaContent p{position:static;width:100%;height:auto;margin:0;padding:0;overflow:visible;clip:auto;white-space:normal;border:0}
+
+/* Match the centered alignment in the supplied Figma CTA reference. */
+.finalCta .ctaContent{align-items:center;text-align:center}
+.finalCta .ctaContent h2,.finalCta .ctaContent p{text-align:center}
+.finalCta .ctaButtons{justify-content:center}
+@media(max-width:640px){.finalCta .ctaButtons{justify-content:center}}
