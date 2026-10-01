@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SiteHeader } from "../../components/site-header";
+import { SiteFooter, SiteHeader } from "../../components/site-header";
 import { BuyerBrowse } from "../../components/buyer-browse";
 import {
   buyerBrowseQuery, buyerParamsFromRecord, parseBuyerBrowseLocation,
@@ -22,6 +22,7 @@ export default async function ProductsPage({
     <>
       <SiteHeader backHref="/" backLabel="صفحه اصلی حنا" />
       <BuyerBrowse initialQuery={query} />
+      <SiteFooter />
     </>
   );
 }
