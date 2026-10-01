@@ -33,10 +33,10 @@ test("invalid, oversized, duplicated and unknown URL fields cannot reach catalog
   )), { categoryId: category, search: "", page: 1 });
   assert.equal(buyerBrowseHref({
     categoryId: "not-a-uuid", search: "x".repeat(81), page: -1,
-  }), "/");
+  }), "/products");
   assert.equal(buyerBrowseHref({
     categoryId: null, search: "", page: 10001,
-  }), "/");
+  }), "/products");
   const params = buyerParamsFromRecord({
     search: ["first", "second"], categoryId: category,
     page: "2", returnTo: "https://evil.test",
