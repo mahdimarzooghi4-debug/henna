@@ -48,3 +48,10 @@
 /* Scoped anchor color wins over the page-wide link inheritance rule. */
 .page a.promoTerracotta,.page a.promoGreen{color:#fff}
 .page a.promoBeige{color:var(--green)}
+
+.carouselControls{position:absolute;z-index:2;inset:16px 16px auto;display:flex;justify-content:space-between;direction:ltr;pointer-events:none}
+.carouselControls button{pointer-events:auto;width:36px;height:36px;border:1px solid #ffffff99;border-radius:50%;background:#163b35a8;color:#fff;font-size:26px;line-height:1;cursor:pointer}
+.carouselDots{position:absolute;z-index:2;top:22px;left:50%;transform:translateX(-50%);display:flex;gap:7px;direction:ltr}
+.carouselDots button{width:7px;height:7px;padding:0;border:0;border-radius:50%;background:#ffffff91;cursor:pointer}
+.carouselDots button[aria-current="true"]{width:20px;border-radius:5px;background:#fff}
+@media(max-width:640px){.carouselControls{inset:10px 10px auto}.carouselControls button{width:30px;height:30px;font-size:22px}.carouselDots{top:21px}}

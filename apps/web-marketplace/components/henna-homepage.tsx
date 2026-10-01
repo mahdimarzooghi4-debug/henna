@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import HeroCarousel from "./hero-carousel";
 import styles from "./henna-homepage.module.css";
 
 const categories = [
@@ -59,10 +60,7 @@ export default function HennaHomepage() {
             <p>در حنا کالاها، تخفیف‌ها و اقلام کالابرگ را انتخاب کنید و سبد خریدتان را کامل کنید. حنا فروشگاه‌های نزدیک را از نظر قیمت، موجودی و سرعت ارسال مقایسه می‌کند تا انتخاب بهتری داشته باشید.</p>
             <div className={styles.heroButtons}><Link className={styles.primaryButton} href="/products">شروع خرید روزانه</Link><a className={styles.secondaryButton} href="#offers">مشاهده پیشنهادها</a></div>
           </div>
-          <div className={styles.heroVisual}>
-            <Image src="/landing/hero.webp" alt="سفره‌ای از نان و خوراکی‌های محلی" fill priority sizes="(max-width: 640px) 100vw, 50vw" />
-            <div className={styles.heroCaption}><strong>سبد خود را با محصولات تازه و محلی کامل کنید</strong><span>پیشنهادهای فروشگاه‌های اطراف را بررسی کنید.</span></div>
-          </div>
+          <HeroCarousel />
         </section>
 
         <div className={`${styles.container} ${styles.promoGrid}`}>
