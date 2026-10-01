@@ -175,6 +175,8 @@
 .footerBottom svg{width:18px;height:18px;display:block}
 .heroButtons{direction:ltr}
 .productCard{position:relative}
+.heroCopy{direction:rtl;text-align:right}
+.footerBottom{direction:rtl}
 @media(max-width:1000px){
  .container,.headerTop,.steps>.container,.impactInner,.benefits>.container{width:min(100% - 40px,760px)}
  .headerTop{height:auto;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;padding:14px 0;gap:12px}
