@@ -34,8 +34,8 @@ export default function HennaHomepage() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.actions}>
-            <Link className={styles.cart} href="/buyer/cart"><span className={styles.cartCount}>۰</span> سبد خرید <span aria-hidden="true">🛒</span></Link>
-            <Link className={styles.login} href="/auth">ورود یا ثبت‌نام <span aria-hidden="true">♙</span></Link>
+            <Link className={styles.cart} href="/buyer/cart"><span className={styles.cartCount}>۰</span> سبد خرید <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 4h2l2.2 11h10.7L20 8H6"/><circle cx="9" cy="19" r="1"/><circle cx="17" cy="19" r="1"/></svg></Link>
+            <Link className={styles.login} href="/auth">ورود یا ثبت‌نام <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 21c.5-4 2.8-6 7-6s6.5 2 7 6"/></svg></Link>
             <span className={styles.divider} />
             <Link className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها</Link>
           </div>
@@ -44,7 +44,7 @@ export default function HennaHomepage() {
           </Link>
           <form className={styles.search} action="/products">
             <input name="q" placeholder="جست‌وجوی نان، لبنیات، برنج و اقلام روزانه..." aria-label="جست‌وجو در کالاها" />
-            <button aria-label="جست‌وجو">⌕</button>
+            <button aria-label="جست‌وجو"><svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg></button>
           </form>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی">
@@ -64,9 +64,9 @@ export default function HennaHomepage() {
         </section>
 
         <div className={`${styles.container} ${styles.promoGrid}`}>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoIcon} aria-hidden="true">٪</span><span className={styles.promoCopy}><strong>تخفیف‌دارهای روزانه</strong><span>پیشنهادهای خرید روزانه را در کاتالوگ حنا ببینید.</span><span className={styles.promoMore}>دیدن کالاها ←</span></span></Link>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoIcon} aria-hidden="true">▣</span><span className={styles.promoCopy}><strong>کالابرگ الکترونیک</strong><span>اقلام کالابرگ را در سبد خریدتان پیدا کنید.</span><span className={styles.promoMore}>مشاهده اقلام ←</span></span></Link>
-          <Link href="/products" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoIcon} aria-hidden="true">✦</span><span className={styles.promoCopy}><strong>طرح‌های ویژه حنا</strong><span>طرح‌های خرید خانواده و محله را دنبال کنید.</span><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoTerracotta}`}><span className={styles.promoIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M19 5 5 19"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/></svg></span><span className={styles.promoCopy}><strong>تخفیف‌دارهای روزانه</strong><span>پیشنهادهای خرید روزانه را در کاتالوگ حنا ببینید.</span><span className={styles.promoMore}>دیدن کالاها ←</span></span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoBeige}`}><span className={styles.promoIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span><span className={styles.promoCopy}><strong>کالابرگ الکترونیک</strong><span>اقلام کالابرگ را در سبد خریدتان پیدا کنید.</span><span className={styles.promoMore}>مشاهده اقلام ←</span></span></Link>
+          <Link href="/products" className={`${styles.promoCard} ${styles.promoGreen}`}><span className={styles.promoIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m12 3 2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2L12 3Z"/></svg></span><span className={styles.promoCopy}><strong>طرح‌های ویژه حنا</strong><span>طرح‌های خرید خانواده و محله را دنبال کنید.</span><span className={styles.promoMore}>مشاهده طرح‌ها ←</span></span></Link>
         </div>
 
         <section className={`${styles.container} ${styles.categories}`} id="categories">

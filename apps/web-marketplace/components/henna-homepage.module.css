@@ -55,3 +55,7 @@
 .carouselDots button{width:7px;height:7px;padding:0;border:0;border-radius:50%;background:#ffffff91;cursor:pointer}
 .carouselDots button[aria-current="true"]{width:20px;border-radius:5px;background:#fff}
 @media(max-width:640px){.carouselControls{inset:10px 10px auto}.carouselControls button{width:30px;height:30px;font-size:22px}.carouselDots{top:21px}}
+
+.actionIcon{width:16px;height:16px;flex:0 0 16px}
+.search .actionIcon{width:19px;height:19px}
+.promoIcon svg{width:20px;height:20px;display:block;color:currentColor}
