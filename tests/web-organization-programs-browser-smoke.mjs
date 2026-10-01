@@ -59,7 +59,7 @@ async function main() {
   assert.equal(createdPayload?.organizationId, orgId);
   assert.equal("amount" in createdPayload, false);
   assert.equal("balance" in createdPayload, false);
-  await page.getByText("پیش‌نویس", { exact: true }).waitFor();
+  await page.getByRole("cell", { name: "پیش‌نویس" }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true,
     "organization programs must fit narrow viewports without page-level horizontal overflow");
