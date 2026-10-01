@@ -291,3 +291,7 @@
 .finalCta .ctaContent h2,.finalCta .ctaContent p{text-align:center}
 .finalCta .ctaButtons{justify-content:center}
 @media(max-width:640px){.finalCta .ctaButtons{justify-content:center}}
+
+
+/* Align the footer logo with the right edge of its brand column. */
+.footerGrid>div.footerBrand{align-items:flex-end;text-align:right}
