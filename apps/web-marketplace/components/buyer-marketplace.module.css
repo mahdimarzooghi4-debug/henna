@@ -11,9 +11,7 @@
 .filters :global(.buyer-chip[aria-pressed="true"]){border-color:#d5e8e4;background:#eaf3f1;color:#174940;font-weight:800}
 .filterNote{margin:16px 0 0;padding-top:12px;border-top:1px solid #eee8e1;color:#8a827b;font-size:10px;line-height:1.8}
 .results{min-width:0}
-.results :global(.buyer-search){min-height:48px;margin:0 0 16px;border:1px solid #eae5de;border-radius:10px;background:#fff}
-.results :global(.buyer-search input){font-size:13px}
-.results :global(.buyer-search button){background:#b8503b;font-size:12px}
+.toolbar{min-height:48px;margin-bottom:16px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #eae5de;border-radius:10px;background:#fff;color:#24443e;font-size:12px}.toolbar span{color:#817971;font-size:11px}
 .results :global(.buyer-section){margin:0}
 .results :global(.buyer-section>h2){margin:0 0 12px;color:#24443e;font-size:17px}
 .results :global(.buyer-panel){border-color:#eee8e1;background:#fff}

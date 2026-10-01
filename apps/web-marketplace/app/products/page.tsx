@@ -17,13 +17,14 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const query = buyerBrowseQuery(parseBuyerBrowseLocation(
+  const browseState = parseBuyerBrowseLocation(
     buyerParamsFromRecord(await searchParams),
-  ));
+  );
+  const query = buyerBrowseQuery(browseState);
 
   return (
     <>
-      <MarketplaceChrome />
+      <MarketplaceChrome initialSearch={browseState.search} />
       <BuyerBrowse initialQuery={query} />
       <MarketplaceChrome footerOnly />
     </>

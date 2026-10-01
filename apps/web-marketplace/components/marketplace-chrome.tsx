@@ -13,7 +13,7 @@ const navItems = [
   ["پیشنهادها", "/products"],
 ] as const;
 
-export function MarketplaceChrome({ footerOnly = false }: { footerOnly?: boolean }) {
+export function MarketplaceChrome({ footerOnly = false, initialSearch = "" }: { footerOnly?: boolean; initialSearch?: string }) {
   if (footerOnly) {
     return (
       <footer className={styles.footer} dir="rtl">
@@ -45,7 +45,7 @@ export function MarketplaceChrome({ footerOnly = false }: { footerOnly?: boolean
             <Link className={styles.seller} href="/seller/register">ثبت‌نام فروشگاه‌ها</Link>
           </div>
           <form className={styles.search} action="/products" role="search">
-            <input name="search" type="search" placeholder="جست‌وجوی کالاها و خدمات..." aria-label="جست‌وجو در کالاها و خدمات" />
+            <input name="search" type="search" defaultValue={initialSearch} placeholder="جست‌وجوی کالاها و خدمات..." aria-label="جست‌وجو در کالاها و خدمات" />
             <button type="submit" aria-label="جست‌وجو"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4 4" /></svg></button>
           </form>
           <Link href="/" className={styles.brand} aria-label="حنا، صفحه اصلی">

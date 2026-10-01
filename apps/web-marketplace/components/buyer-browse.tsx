@@ -41,9 +41,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   const [categoryRecovery, setCategoryRecovery] = useState("");
   const [pageRecovery, setPageRecovery] = useState("");
   const [selected, setSelected] = useState<string | null>(initial.categoryId);
-  const [draftSearch, setDraftSearch] = useState(initial.search);
   const [search, setSearch] = useState(initial.search);
-  const [searchError, setSearchError] = useState("");
   const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
   const [products, setProducts] = useState<Load<BuyerPage>>({
@@ -59,9 +57,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   function setBrowseLocation(next: BuyerBrowseLocation) {
     setSelected(next.categoryId);
     setSearch(next.search);
-    setDraftSearch(next.search);
     setPage(next.page);
-    setSearchError("");
     setCategoryRecovery("");
     setPageRecovery("");
     // Native browser Back/Forward and copied URLs restore the same approved
@@ -80,9 +76,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       );
       setSelected(next.categoryId);
       setSearch(next.search);
-      setDraftSearch(next.search);
       setPage(next.page);
-      setSearchError("");
       setCategoryRecovery("");
       setPageRecovery("");
       const href = buyerBrowseHref(next);
@@ -213,18 +207,6 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     };
   }, []);
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!validBuyerSearch(draftSearch)) {
-      setSearchError("جست‌وجو باید حداکثر ۸۰ نویسه و بدون نویسهٔ کنترلی باشد.");
-      return;
-    }
-    setSearchError("");
-    const term = draftSearch.trim();
-    if (term === search && page === 1) setProductRetry((n) => n + 1);
-    setBrowseLocation({ categoryId: selected, search: term, page: 1 });
-  }
-
   function chooseCategory(id: string | null) {
     // A category filter can only be selected from current published API data.
     if (id !== null && (categories.status !== "ok" ||
@@ -273,18 +255,12 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
         </aside>
         <div className={styles.results}>
-      <form className="buyer-search" onSubmit={submitSearch} role="search">
-        <label className="buyer-visually-hidden" htmlFor="buyer-search">جست‌وجو در نام کالاها</label>
-        <input id="buyer-search" name="search" type="search" maxLength={80}
-          value={draftSearch} onChange={(event) => {
-            setDraftSearch(event.target.value);
-            setSearchError("");
-          }} placeholder="جست‌وجو در نام کالاها..."
-          aria-invalid={searchError ? true : undefined}
-          aria-describedby={searchError ? "buyer-search-error" : undefined} />
-        <button type="submit">جست‌وجو</button>
-      </form>
-      {searchError && <p id="buyer-search-error" className="buyer-error" role="alert">{searchError}</p>}
+      <div className={styles.toolbar}>
+        <strong>{search ? `نتایج جست‌وجو برای «${search}»` : selected && categories.status === "ok"
+          ? categories.data.find((item) => item.id === selected)?.name ?? "کالاها و خدمات"
+          : "همه کالاها و خدمات"}</strong>
+        <span>{current.status === "ok" ? `${current.data.total} کالا و خدمت` : "کاتالوگ منتشرشدهٔ حنا"}</span>
+      </div>
       <section className="buyer-section" aria-labelledby="buyer-products-title">
         <h2 id="buyer-products-title">کالاها</h2>
         {pageRecovery && (
