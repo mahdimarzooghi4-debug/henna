@@ -29,3 +29,5 @@
 .footerBottom{width:min(1280px,calc(100% - 48px));margin:auto;padding:15px 0;border-top:1px solid #eee8e1;color:#756d65;font-size:11px}
 @media(max-width:1000px){.headerTop{grid-template-columns:1fr 180px;gap:12px;padding:9px 0}.brand{grid-column:2;grid-row:1;justify-self:end}.actions{grid-column:1;grid-row:1}.search{grid-column:1/-1;grid-row:2}.nav{justify-content:flex-start;min-height:42px}.footerInner{gap:24px}}
 @media(max-width:640px){.headerTop,.nav,.footerInner,.footerBottom{width:calc(100% - 28px)}.headerTop{grid-template-columns:1fr auto}.brand{width:130px;height:56px}.actions{gap:6px}.cart,.login,.seller{font-size:10px;padding:0 8px}.divider{display:none}.seller{display:none}.nav{gap:20px}.nav a{font-size:11px}.footerInner{grid-template-columns:1fr 1fr;gap:24px 18px;padding:28px 0}.footerBrand{grid-column:1/-1}.footerBrand p{max-width:100%}}
+
+.search:focus-within{outline:2px solid #174940;outline-offset:2px}.footerInner a:hover{text-decoration:underline;color:#174940}
