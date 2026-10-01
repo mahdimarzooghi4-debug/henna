@@ -75,7 +75,7 @@ export default function HennaHomepage() {
                   <p>{product.detail}</p>
                 </div>
                 <div className={styles.productAction}>
-                  <Link href={`/products?search=${encodeURIComponent(product.title)}`} className={styles.addButton}>مشاهده کالا</Link>
+                  <Link href={`/products?search=${encodeURIComponent(product.title)}`} className={styles.addButton} aria-label={`جست‌وجوی ${product.title} برای افزودن به سبد`}>افزودن +</Link>
                   <div className={styles.productPrice}>
                     {product.oldPrice && <del>{product.oldPrice}</del>}
                     <strong><span>{product.price}</span> <small>تومان</small></strong>

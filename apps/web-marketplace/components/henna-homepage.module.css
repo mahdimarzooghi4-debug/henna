@@ -299,3 +299,7 @@
 .footerBottom>div>span{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;color:var(--muted)}
 .footerBottom svg{width:16px;height:16px}
 .footerBottom>div>a{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--cream);color:var(--green)}
+
+
+/* Match the Figma call-to-action on the sample deal cards. */
+.addButton{margin-top:8px;min-height:unset;padding:8px 16px;border-radius:20px;font-size:13px}
