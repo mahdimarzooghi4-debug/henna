@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import styles from "./buyer-marketplace.module.css";
 import {
-  BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
+  BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref, findLandingBuyerCategory,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
   parseBuyerPage, reconcilePublishedBuyerCategory,
   reconcilePublishedBuyerPage, validBuyerSearch,
@@ -30,7 +30,9 @@ async function publicJson(path: string, signal: AbortSignal): Promise<unknown> {
 }
 
 /** Figma 476:3/476:4 (empty) + 478:2/478:22 (API-backed); approved by owner. */
-export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
+export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
+  initialQuery?: string; initialCategoryName?: string;
+}) {
   // Parse server-provided URL before the first paint or catalog request:
   // a directly shared /?page=2&search=... must not flash page 1 results.
   const initial = parseBuyerBrowseLocation(new URLSearchParams(initialQuery));
@@ -41,13 +43,20 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   const [categoryRecovery, setCategoryRecovery] = useState("");
   const [pageRecovery, setPageRecovery] = useState("");
   const [selected, setSelected] = useState<string | null>(initial.categoryId);
+  const [categoryName, setCategoryName] = useState(
+    initial.categoryId ? "" : initialCategoryName,
+  );
+  const [categoryNameStatus, setCategoryNameStatus] = useState<
+    "none" | "pending" | "unavailable" | "not-found"
+  >(initial.categoryId || !initialCategoryName ? "none" : "pending");
   const [search, setSearch] = useState(initial.search);
   const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
   const [products, setProducts] = useState<Load<BuyerPage>>({
     status: "loading", key: "",
   });
-  const path = buyerCatalogPath(page, selected, search);
+  const path = categoryNameStatus === "none"
+    ? buyerCatalogPath(page, selected, search) : "";
   const current = products.key === path && products.status !== "loading"
     ? products : { status: "loading" as const, key: path };
   const locationState: BuyerBrowseLocation = {
@@ -58,6 +67,8 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     setSelected(next.categoryId);
     setSearch(next.search);
     setPage(next.page);
+    setCategoryName("");
+    setCategoryNameStatus("none");
     setCategoryRecovery("");
     setPageRecovery("");
     // Native browser Back/Forward and copied URLs restore the same approved
@@ -77,9 +88,15 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
       setSelected(next.categoryId);
       setSearch(next.search);
       setPage(next.page);
-      setCategoryRecovery("");
-      setPageRecovery("");
-      const href = buyerBrowseHref(next);
+      const requestedName = next.categoryId
+        ? "" : new URLSearchParams(window.location.search).get("categoryName") ?? "";
+      setCategoryName(requestedName);
+    setCategoryNameStatus(requestedName ? "pending" : "none");
+    setCategoryRecovery("");
+    setPageRecovery("");
+    const href = requestedName
+      ? `/products?categoryName=${encodeURIComponent(requestedName)}${window.location.hash}`
+      : buyerBrowseHref(next);
       if (window.location.pathname + window.location.search !== href)
         window.history.replaceState(window.history.state, "", href);
     }
@@ -109,6 +126,33 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   }, [categoryRetry]);
 
   useEffect(() => {
+    if (!categoryName || categoryNameStatus !== "pending" ||
+      categories.status === "loading") return;
+    if (categories.status === "unavailable") {
+      setCategoryNameStatus("unavailable");
+      return;
+    }
+    const category = findLandingBuyerCategory(categories.data, categoryName);
+    if (!category) {
+      setCategoryNameStatus("not-found");
+      return;
+    }
+    const next = { categoryId: category.id, search, page: 1 };
+    setSelected(category.id);
+    setPage(1);
+    setCategoryName("");
+    setCategoryNameStatus("none");
+    setCategoryRecovery("");
+    window.history.replaceState(
+      window.history.state, "", buyerBrowseHref(next) + window.location.hash,
+    );
+  }, [categoryName, categoryNameStatus, categories, search]);
+
+  useEffect(() => {
+    if (categoryNameStatus !== "none") {
+      setProducts({ status: "loading", key: "" });
+      return;
+    }
     const abort = new AbortController();
     let active = true;
     setProducts({ status: "loading", key: path });
@@ -124,7 +168,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
         if (active) setProducts({ status: "unavailable", key: path });
       });
     return () => { active = false; abort.abort(); };
-  }, [path, page, productRetry]);
+  }, [path, page, productRetry, categoryNameStatus]);
 
   useEffect(() => {
     // The published taxonomy is authoritative only after a valid 200. An
@@ -228,6 +272,26 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           <h2 id="buyer-filter-title">فیلترها</h2>
       <section className="buyer-section" aria-labelledby="buyer-categories-title">
         <h2 id="buyer-categories-title">دسته‌بندی‌ها</h2>
+        {categoryNameStatus === "pending" && (
+          <p className="buyer-panel" role="status">در حال تطبیق دسته با فهرست دسته‌بندی‌های حنا…</p>
+        )}
+        {categoryNameStatus === "unavailable" && (
+          <div className="buyer-panel buyer-panel--error" role="alert">
+            <p>دسته‌بندی‌ها در دسترس نیستند؛ برای اعمال فیلتر باید فهرست حنا دریافت شود.</p>
+            <button type="button" onClick={() => {
+              setCategoryNameStatus("pending");
+              setCategoryRetry((n) => n + 1);
+            }}>تلاش دوباره برای دسته‌بندی‌ها</button>
+          </div>
+        )}
+        {categoryNameStatus === "not-found" && (
+          <div className="buyer-panel" role="status">
+            <p>این دسته در فهرست دسته‌بندی‌های منتشرشدهٔ حنا وجود ندارد.</p>
+            <button type="button" onClick={() => setBrowseLocation({
+              categoryId: null, search, page: 1,
+            })}>نمایش همهٔ دسته‌ها</button>
+          </div>
+        )}
         {categories.status === "loading" ? (
           <p className="buyer-panel" role="status">در حال دریافت دسته‌بندی‌ها…</p>
         ) : categories.status === "unavailable" ? (
@@ -266,7 +330,11 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
         {pageRecovery && (
           <p className="buyer-panel" role="status">{pageRecovery}</p>
         )}
-        {current.status === "loading" ? (
+        {categoryNameStatus === "pending" ? (
+          <p className="buyer-panel buyer-products-status" role="status">پس از تعیین دسته‌بندی، کالاهای همان دسته نمایش داده می‌شوند…</p>
+        ) : categoryNameStatus === "unavailable" || categoryNameStatus === "not-found" ? (
+          <p className="buyer-panel buyer-products-status">برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.</p>
+        ) : current.status === "loading" ? (
           <p className="buyer-panel buyer-products-status" role="status">در حال دریافت کالاها…</p>
         ) : current.status === "unavailable" ? (
           <div className="buyer-panel buyer-products-status buyer-panel--error" role="alert">

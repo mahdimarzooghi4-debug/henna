@@ -5,6 +5,7 @@ import {
   buyerBrowseQuery,
   buyerParamsFromRecord,
   parseBuyerBrowseLocation,
+  validBuyerSearch,
 } from "../../lib/buyer-catalog";
 
 export const metadata: Metadata = {
@@ -17,15 +18,17 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const browseState = parseBuyerBrowseLocation(
-    buyerParamsFromRecord(await searchParams),
-  );
+  const params = await searchParams;
+  const browseState = parseBuyerBrowseLocation(buyerParamsFromRecord(params));
+  const categoryName = typeof params.categoryName === "string" &&
+    validBuyerSearch(params.categoryName)
+    ? params.categoryName.trim() : "";
   const query = buyerBrowseQuery(browseState);
 
   return (
     <>
       <MarketplaceChrome initialSearch={browseState.search} />
-      <BuyerBrowse initialQuery={query} />
+      <BuyerBrowse initialQuery={query} initialCategoryName={categoryName} />
       <MarketplaceChrome footerOnly />
     </>
   );

@@ -295,3 +295,7 @@
 
 /* Align the footer logo with the right edge of its brand column. */
 .footerGrid>div.footerBrand{align-items:flex-end;text-align:right}
+
+.footerGrid>div>span{font-size:10px;color:var(--muted);margin:3px 0}
+.footerBottom>div>span{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;color:var(--muted)}
+.footerBottom svg{width:16px;height:16px}

@@ -72,7 +72,7 @@ export default function HeroCarousel() {
         <h1 id="home-title">{slide.title}</h1>
         <p>{slide.description}</p>
         <div className={styles.heroButtons}>
-          <a className={styles.secondaryButton} href={active === 1 ? "#impact" : active === 2 ? "/products" : "#offers"}>{slide.secondary}</a>
+          <a className={styles.secondaryButton} href={active === 1 ? "#impact" : active === 2 ? "#benefits" : "#offers"}>{slide.secondary}</a>
           <Link className={styles.primaryButton} href="/products">{slide.primary}</Link>
         </div>
       </div>
