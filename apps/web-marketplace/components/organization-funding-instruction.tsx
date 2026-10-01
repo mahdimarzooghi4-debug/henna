@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { OrganizationPortalShell } from "./organization-portal";
 
 type AllocationMode = "HENNA_NEEDS_BASED" | "ORGANIZATION_DEFINED";
 type Program = { programId: string; organizationId: string; organizationName: string; name: string; allocationMode: AllocationMode; description: string; state: "DRAFT"; revision: number; createdAtUtc: string };
@@ -74,13 +75,7 @@ export function OrganizationFundingInstruction({ programId }: { programId: strin
     finally { setBusy(false); }
   }
 
-  return <main className="organization-page organization-shell" dir="rtl">
-    <aside className="organization-sidebar">
-      <Link href="/organization" className="organization-brand"><img src="/hana-logo.png" alt="حنا" /><strong>پنل سازمان‌ها</strong></Link>
-      <nav aria-label="منوی سازمان"><Link href="/organization">داشبورد</Link><Link className="is-active" href="/organization/programs">طرح‌ها و اعتبارها</Link><span>افراد و مشمولان</span><span>تخصیص</span><span>وضعیت استفاده</span><span>منابع داده و API</span><span>گزارش‌ها</span><span>اعلانات</span><span>اطلاعات سازمان</span><span>پشتیبانی</span><span>تنظیمات</span></nav>
-    </aside>
-    <div className="organization-main">
-      <header className="organization-topbar"><span>سازمان همکار</span><h1>جزئیات دستور منبع</h1></header>
+  return <OrganizationPortalShell active="programs" title="دستور تأمین طرح">
       <section className="organization-detail-content" aria-live="polite">
         <Link className="organization-back-link" href="/organization/programs">← بازگشت به طرح‌ها</Link>
         {state.loading ? <p role="status">در حال دریافت اطلاعات طرح…</p> : state.message ? <div className="organization-notice" role="alert">{state.message}</div> : state.program ? <>
@@ -94,6 +89,5 @@ export function OrganizationFundingInstruction({ programId }: { programId: strin
           </section>}
         </> : null}
       </section>
-    </div>
-  </main>;
+  </OrganizationPortalShell>;
 }

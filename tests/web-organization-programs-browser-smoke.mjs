@@ -49,12 +49,12 @@ async function main() {
   await page.getByText("هنوز طرحی ثبت نشده است").waitFor();
   await page.getByRole("link", { name: "ایجاد پیش‌نویس" }).click();
   await page.getByRole("heading", { name: "ثبت طرح سازمانی" }).waitFor();
-  await page.getByText(/منبع صندوق نیکوکاری حنا فقط با مدل حنا تخصیص می‌یابد/).waitFor();
+  await page.getByText(/صندوق نیکوکاری حنا فقط با روش نیازمحور حنا کار می‌کند/).waitFor();
   await page.getByLabel("نام طرح").fill("طرح آزمایشی سازمان");
   await page.getByLabel("توضیحات و اهداف طرح").fill("خانوارهای معرفی‌شده");
-  await page.getByLabel(/تخصیص توسط سازمان/).check();
-  await page.getByRole("button", { name: "ثبت پیش‌نویس طرح" }).click();
-  await page.getByText("تخصیص توسط سازمان", { exact: true }).waitFor();
+  await page.getByLabel("روش ثبت‌شده").selectOption("ORGANIZATION_DEFINED");
+  await page.getByRole("button", { name: "ثبت اولیه طرح سازمانی" }).click();
+  await page.getByText("تعریف‌شده توسط سازمان", { exact: true }).waitFor();
   assert.equal(createdPayload?.allocationMode, "ORGANIZATION_DEFINED");
   assert.equal(createdPayload?.organizationId, orgId);
   assert.equal("amount" in createdPayload, false);
