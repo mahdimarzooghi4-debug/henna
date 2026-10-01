@@ -6,6 +6,7 @@ import {
   parseBuyerProduct, validBuyerProductId, type BuyerProduct,
 } from "../lib/buyer-catalog";
 import { addBuyerDemoCartItem } from "../lib/buyer-demo-cart";
+import { BUYER_FIGMA_DEMO_PRODUCTS } from "../lib/buyer-figma-demo";
 
 type Detail =
   | { status: "loading"; id: string }
@@ -25,8 +26,16 @@ export function BuyerProductDetail({ id, backHref }: {
   // Never paint previous product while a new route ID is being fetched.
   const current: Detail = state.id === id
     ? state : { status: "loading", id };
+  const figmaProduct = current.status === "ok"
+    ? BUYER_FIGMA_DEMO_PRODUCTS.find((item) => item.id === current.product.id)
+    : undefined;
 
   useEffect(() => {
+    const figmaProduct = BUYER_FIGMA_DEMO_PRODUCTS.find((item) => item.id === id);
+    if (figmaProduct) {
+      setState({ status: "ok", id, product: figmaProduct });
+      return;
+    }
     if (!validBuyerProductId(id)) {
       setState({ status: "missing", id });
       return;
@@ -72,7 +81,8 @@ export function BuyerProductDetail({ id, backHref }: {
     function revalidateOnReturn() {
       if (document.visibilityState !== "visible" ||
         !window.location.pathname.startsWith("/products/") ||
-        !validBuyerProductId(id)) return;
+        !validBuyerProductId(id) ||
+        BUYER_FIGMA_DEMO_PRODUCTS.some((item) => item.id === id)) return;
       // One mobile restore can emit both events. Keep a single fresh GET.
       const now = performance.now();
       if (now - lastRefreshAt < 500) return;
@@ -122,7 +132,7 @@ export function BuyerProductDetail({ id, backHref }: {
               <h1>{current.product.name}</h1>
               <p className="buyer-detail-weight">{current.product.kind === "SERVICE" ? "جزئیات خدمت" : "اطلاعات و مشخصات کالا"}</p>
               <article className="buyer-detail-offer">
-                <div className="buyer-detail-base-price"><span>قیمت پایه بازار (حدودی)</span><strong>قیمت از فروشنده دریافت نشده</strong></div>
+                <div className="buyer-detail-base-price"><span>{figmaProduct ? "قیمت نمونه فیگما" : "قیمت پایه بازار (حدودی)"}</span><strong>{figmaProduct ? `${figmaProduct.samplePrice} تومان` : "قیمت از فروشنده دریافت نشده"}</strong></div>
                 <p className="buyer-detail-hint">با افزودن کالا به سبد می‌توانید آن را برای مقایسه فروشگاه‌های نزدیک نگه دارید.</p>
                 <div className="buyer-detail-actions">
                   <div className="buyer-detail-quantity" aria-label="تعداد کالا"><button type="button" onClick={() => setQuantity((n) => Math.min(99, n + 1))} aria-label="افزایش تعداد">＋</button><span>{new Intl.NumberFormat("fa-IR").format(quantity)}</span><button type="button" onClick={() => setQuantity((n) => Math.max(1, n - 1))} aria-label="کاهش تعداد">−</button></div>
@@ -147,9 +157,9 @@ export function BuyerProductDetail({ id, backHref }: {
               <p className="buyer-detail-disclosure">تصویرها صرفاً برای پیش‌نمایش طراحی هستند. قیمت، موجودی، فروشنده و پرداخت زنده از API عمومی در دسترس نیستند.</p>
             </div>
             <div className="buyer-detail-gallery">
-              <div className="buyer-detail-main-image"><img src={activeImage === 0 ? "/landing/figma/product-cheese.png" : "/landing/figma/product-yogurt.png"} alt="تصویر نمونه محصول در طرح فیگما" /></div>
+              <div className="buyer-detail-main-image"><img src={activeImage === 0 ? figmaProduct?.image ?? "/landing/figma/product-cheese.png" : "/landing/figma/product-yogurt.png"} alt="تصویر نمونه محصول در طرح فیگما" /></div>
               <div className="buyer-detail-thumbnails" aria-label="تصاویر نمونه محصول">
-                {[0, 1].map((index) => <button key={index} type="button" aria-pressed={activeImage === index} onClick={() => setActiveImage(index)} aria-label={`تصویر نمونه ${index + 1}`}><img src={index === 0 ? "/landing/figma/product-cheese.png" : "/landing/figma/product-yogurt.png"} alt="" /></button>)}
+                {[0, 1].map((index) => <button key={index} type="button" aria-pressed={activeImage === index} onClick={() => setActiveImage(index)} aria-label={`تصویر نمونه ${index + 1}`}><img src={index === 0 ? figmaProduct?.image ?? "/landing/figma/product-cheese.png" : "/landing/figma/product-yogurt.png"} alt="" /></button>)}
               </div>
             </div>
           </div>
