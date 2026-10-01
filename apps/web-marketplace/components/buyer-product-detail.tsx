@@ -130,7 +130,7 @@ export function BuyerProductDetail({ id, backHref }: {
                     for (let i = 0; i < quantity; i++) addBuyerDemoCartItem({
                       id: current.product.id, name: current.product.name,
                       detail: current.product.description ?? "",
-                      kind: current.product.kind, unitPrice: null, image: null,
+                      kind: current.product.kind, unitPrice: null, image: "/landing/figma/product-cheese.png",
                     });
                     setAdded(true);
                     window.setTimeout(() => setAdded(false), 1500);
