@@ -44,3 +44,7 @@
 .promoCopy>.promoMore{align-self:stretch;margin-top:8px;color:inherit;font-size:inherit}
 .promoIcon{flex:0 0 42px;grid-column:auto;grid-row:auto}
 @media(max-width:640px){.promoCard{gap:12px}.promoCopy>strong{font-size:14px}.promoCopy>span:not(.promoMore){font-size:10px}.promoCopy>.promoMore{font-size:10px}}
+
+/* Scoped anchor color wins over the page-wide link inheritance rule. */
+.page a.promoTerracotta,.page a.promoGreen{color:#fff}
+.page a.promoBeige{color:var(--green)}
