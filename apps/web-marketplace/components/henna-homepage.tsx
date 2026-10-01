@@ -61,12 +61,6 @@ export default function HennaHomepage() {
 
       <div className={styles.shoppingArea}>
         <section className={`${styles.container} ${styles.hero}`} aria-labelledby="home-title">
-          <div className={styles.heroCopy}>
-            <span className={styles.eyebrow}>همراه با ارزش‌آفرینی محلی و اجتماعی</span>
-            <h1 id="home-title">خرید روزمره،<br />با اثری فراتر از خرید</h1>
-            <p>در حنا ابتدا با خیال آسوده کالاها، تخفیف‌ها و اقلام کالابرگ خود را انتخاب و سبد خریدتان را کامل کنید. پس از آماده شدن سبد، حنا به طور خودکار فروشگاه‌های تا شعاع ۵ کیلومتری شما را از نظر قیمت، موجودی کامل کالاها و سرعت ارسال مقایسه کرده و بهترین پیشنهاد خرید را به شما ارائه می‌دهد.</p>
-            <div className={styles.heroButtons}><a className={styles.secondaryButton} href="#offers">مشاهده پیشنهادها</a><Link className={styles.primaryButton} href="/products">شروع خرید روزانه</Link></div>
-          </div>
           <HeroCarousel />
         </section>
 
