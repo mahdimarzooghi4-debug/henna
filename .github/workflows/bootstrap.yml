@@ -2,8 +2,9 @@ name: Bootstrap checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/frontend-buyer-homepage-figma]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -515,3 +516,11 @@ jobs:
           ram-size: 3072M
           disable-animations: true
           script: python3 tests/mobile-android-native-smoke.py
+      - name: Upload CI-only Android APK for device review
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hana-consumer-android-ci-${{ github.sha }}
+          path: apps/mobile-consumer/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: ignore
+          retention-days: 7
