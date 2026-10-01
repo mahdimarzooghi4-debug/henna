@@ -252,3 +252,8 @@
   .productPrice del{font-size:10px}
   .addButton{padding:6px 10px;font-size:11px}
 }
+
+/* Keep all content in the three account-benefit cards right-aligned in RTL. */
+.benefitCard{direction:rtl;text-align:right}
+.benefitCard>span{margin:0 0 8px auto}
+.benefitCard h3,.benefitCard p{direction:rtl;text-align:right}
