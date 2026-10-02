@@ -113,7 +113,7 @@ export function BuyerCheckout() {
     <main className={styles.main}>
       {(draftState.status === "loading" || !selectedDraft || needsReview) && <div className={styles.draftNotice} role="status">
         {draftState.status === "loading" ? "در حال بررسی انتخاب ذخیره‌شده در سبد…" : draftState.status === "signed-out" ? "برای مشاهدهٔ انتخاب فروشنده وارد حساب شوید." : draftState.status === "unavailable" ? "وضعیت انتخاب ذخیره‌شده دریافت نشد؛ دوباره از سبد تلاش کنید." : !selectedDraft ? "هنوز انتخاب فروشنده‌ای ذخیره نشده است. برای شروع، یک فروشنده را در سبد انتخاب کنید." : "قیمت یا پوشش تعدادی بعضی اقلام تغییر کرده است. پیش از ادامه، انتخاب را در سبد دوباره بررسی کنید."}
-        {draftState.status !== "unavailable" && <Link href={draftState.status === "signed-out" ? "/auth" : "/buyer/cart"}>{draftState.status === "signed-out" ? "ورود به حساب" : "بازگشت به سبد"}</Link>}
+        {draftState.status !== "unavailable" && <Link href={draftState.status === "signed-out" ? "/auth?returnTo=%2Fcheckout" : "/buyer/cart"}>{draftState.status === "signed-out" ? "ورود به حساب" : "بازگشت به سبد"}</Link>}
       </div>}
       <aside className={styles.summaryColumn}>
         <section className={styles.summaryCard} aria-labelledby="summary-title">
