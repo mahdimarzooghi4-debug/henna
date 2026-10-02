@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
 import { normalizeDigits } from "../../lib/normalize-digits";
-import { sellerRegistrationPath } from "../../lib/seller-return";
+import { sellerRegistrationPath, type AuthReturnTo } from "../../lib/seller-return";
 import {
   otpRequestTransition, type OtpRequestOutcome,
 } from "../../lib/otp-request-transition";
@@ -20,7 +20,7 @@ const challengeIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function AuthForm({ returnTo }: {
-  returnTo: typeof sellerRegistrationPath | null;
+  returnTo: AuthReturnTo | null;
 }) {
   const [stage, setStage] = useState<Stage>("checking");
   const [phone, setPhone] = useState("");
@@ -72,9 +72,9 @@ export function AuthForm({ returnTo }: {
         setStage("session-unavailable");
         return;
       }
-      if (returnTo === sellerRegistrationPath) {
-        // Only the existing compile-time allowlisted destination is valid.
-        window.location.replace(sellerRegistrationPath);
+      if (returnTo) {
+        // The server allowlists same-origin destinations before this component receives them.
+        window.location.replace(returnTo);
         return;
       }
       setStage("authenticated");
@@ -197,8 +197,7 @@ export function AuthForm({ returnTo }: {
           setCode("");
           setChallengeId("");
           setStatus("idle");
-          if (returnTo === sellerRegistrationPath)
-            window.location.replace(sellerRegistrationPath);
+          if (returnTo) window.location.replace(returnTo);
           return;
         }
       }
@@ -324,6 +323,11 @@ export function AuthForm({ returnTo }: {
           {returnTo === sellerRegistrationPath && (
             <Link href={sellerRegistrationPath} className="auth-card__secondary">
               ادامه ثبت‌نام فروشگاه
+            </Link>
+          )}
+          {returnTo?.startsWith("/organization") && (
+            <Link href={returnTo} className="auth-card__secondary">
+              ادامه به پنل سازمان
             </Link>
           )}
           <button className="auth-card__secondary" type="button" disabled={busy}
