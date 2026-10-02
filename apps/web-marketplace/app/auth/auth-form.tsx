@@ -330,6 +330,11 @@ export function AuthForm({ returnTo }: {
               ادامه به پنل سازمان
             </Link>
           )}
+          {(returnTo === "/buyer/cart" || returnTo === "/checkout") && (
+            <Link href={returnTo} className="auth-card__secondary">
+              بازگشت به ادامهٔ خرید
+            </Link>
+          )}
           <button className="auth-card__secondary" type="button" disabled={busy}
             onClick={checkSession}>
             بررسی دوباره اعتبار نشست

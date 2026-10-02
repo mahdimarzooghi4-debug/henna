@@ -4,8 +4,9 @@
  */
 export const sellerRegistrationPath = "/seller/register" as const;
 export const sellerLoginHref = "/auth?returnTo=%2Fseller%2Fregister" as const;
-export type AuthReturnTo = typeof sellerRegistrationPath | `/organization/${string}`;
+export type AuthReturnTo = typeof sellerRegistrationPath | "/buyer/cart" | "/checkout" | `/organization/${string}`;
 
+const buyerReturnPaths = new Set(["/buyer/cart", "/checkout"]);
 const organizationReturnPaths = new Set([
   "/organization",
   "/organization/programs",
@@ -35,6 +36,7 @@ export function safeSellerReturnTo(value: unknown): typeof sellerRegistrationPat
 export function safeAuthReturnTo(value: unknown): AuthReturnTo | null {
   if (safeSellerReturnTo(value)) return sellerRegistrationPath;
   if (typeof value !== "string") return null;
+  if (buyerReturnPaths.has(value)) return value as AuthReturnTo;
   if (organizationReturnPaths.has(value) ||
     organizationDynamicReturnPatterns.some((pattern) => pattern.test(value)))
     return value as AuthReturnTo;

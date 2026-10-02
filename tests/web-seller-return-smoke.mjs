@@ -58,6 +58,7 @@ test("seller return destination remains exact and same-origin", () => {
 
 test("organization portal auth returns only to known same-origin routes", () => {
   for (const path of [
+    "/buyer/cart", "/checkout",
     "/organization", "/organization/programs", "/organization/programs/new",
     "/organization/people", "/organization/people/new", "/organization/allocation",
     "/organization/usage", "/organization/data-sources", "/organization/reports",
@@ -69,7 +70,7 @@ test("organization portal auth returns only to known same-origin routes", () => 
     "/organization/allocation/123e4567-e89b-42d3-a456-426614174000",
   ]) assert.equal(safeAuthReturnTo(path), path);
   for (const path of [
-    null, undefined, "/", "/organization/unknown", "/organization?next=/",
+    null, undefined, "/", "/checkout?next=https://evil.test", "/buyer/cart/../checkout", "/organization/unknown", "/organization?next=/",
     "/organization/programs/../auth", "/organization/programs/%2f%2fevil.test",
     "//evil.test", "https://evil.test",
   ]) assert.equal(safeAuthReturnTo(path), null);
