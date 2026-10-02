@@ -2,8 +2,9 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import styles from "./buyer-marketplace.module.css";
 import {
-  BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
+  BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref, findLandingBuyerCategory,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
   parseBuyerPage, reconcilePublishedBuyerCategory,
   reconcilePublishedBuyerPage, validBuyerSearch,
@@ -29,7 +30,9 @@ async function publicJson(path: string, signal: AbortSignal): Promise<unknown> {
 }
 
 /** Figma 476:3/476:4 (empty) + 478:2/478:22 (API-backed); approved by owner. */
-export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
+export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
+  initialQuery?: string; initialCategoryName?: string;
+}) {
   // Parse server-provided URL before the first paint or catalog request:
   // a directly shared /?page=2&search=... must not flash page 1 results.
   const initial = parseBuyerBrowseLocation(new URLSearchParams(initialQuery));
@@ -40,15 +43,20 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   const [categoryRecovery, setCategoryRecovery] = useState("");
   const [pageRecovery, setPageRecovery] = useState("");
   const [selected, setSelected] = useState<string | null>(initial.categoryId);
-  const [draftSearch, setDraftSearch] = useState(initial.search);
+  const [categoryName, setCategoryName] = useState(
+    initial.categoryId ? "" : initialCategoryName,
+  );
+  const [categoryNameStatus, setCategoryNameStatus] = useState<
+    "none" | "pending" | "unavailable" | "not-found"
+  >(initial.categoryId || !initialCategoryName ? "none" : "pending");
   const [search, setSearch] = useState(initial.search);
-  const [searchError, setSearchError] = useState("");
   const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
   const [products, setProducts] = useState<Load<BuyerPage>>({
     status: "loading", key: "",
   });
-  const path = buyerCatalogPath(page, selected, search);
+  const path = categoryNameStatus === "none"
+    ? buyerCatalogPath(page, selected, search) : "";
   const current = products.key === path && products.status !== "loading"
     ? products : { status: "loading" as const, key: path };
   const locationState: BuyerBrowseLocation = {
@@ -58,33 +66,37 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   function setBrowseLocation(next: BuyerBrowseLocation) {
     setSelected(next.categoryId);
     setSearch(next.search);
-    setDraftSearch(next.search);
     setPage(next.page);
-    setSearchError("");
+    setCategoryName("");
+    setCategoryNameStatus("none");
     setCategoryRecovery("");
     setPageRecovery("");
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
     const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.pushState(window.history.state, "", href);
   }
 
   useEffect(() => {
     function restore() {
-      if (window.location.pathname !== "/") return;
+      if (window.location.pathname !== "/products") return;
       const next = parseBuyerBrowseLocation(
         new URLSearchParams(window.location.search),
       );
       setSelected(next.categoryId);
       setSearch(next.search);
-      setDraftSearch(next.search);
       setPage(next.page);
-      setSearchError("");
-      setCategoryRecovery("");
-      setPageRecovery("");
-      const href = buyerBrowseHref(next);
+      const requestedName = next.categoryId
+        ? "" : new URLSearchParams(window.location.search).get("categoryName") ?? "";
+      setCategoryName(requestedName);
+    setCategoryNameStatus(requestedName ? "pending" : "none");
+    setCategoryRecovery("");
+    setPageRecovery("");
+    const href = requestedName
+      ? `/products?categoryName=${encodeURIComponent(requestedName)}${window.location.hash}`
+      : buyerBrowseHref(next);
       if (window.location.pathname + window.location.search !== href)
         window.history.replaceState(window.history.state, "", href);
     }
@@ -114,6 +126,33 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   }, [categoryRetry]);
 
   useEffect(() => {
+    if (!categoryName || categoryNameStatus !== "pending" ||
+      categories.status === "loading") return;
+    if (categories.status === "unavailable") {
+      setCategoryNameStatus("unavailable");
+      return;
+    }
+    const category = findLandingBuyerCategory(categories.data, categoryName);
+    if (!category) {
+      setCategoryNameStatus("not-found");
+      return;
+    }
+    const next = { categoryId: category.id, search, page: 1 };
+    setSelected(category.id);
+    setPage(1);
+    setCategoryName("");
+    setCategoryNameStatus("none");
+    setCategoryRecovery("");
+    window.history.replaceState(
+      window.history.state, "", buyerBrowseHref(next) + window.location.hash,
+    );
+  }, [categoryName, categoryNameStatus, categories, search]);
+
+  useEffect(() => {
+    if (categoryNameStatus !== "none") {
+      setProducts({ status: "loading", key: "" });
+      return;
+    }
     const abort = new AbortController();
     let active = true;
     setProducts({ status: "loading", key: path });
@@ -129,7 +168,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
         if (active) setProducts({ status: "unavailable", key: path });
       });
     return () => { active = false; abort.abort(); };
-  }, [path, page, productRetry]);
+  }, [path, page, productRetry, categoryNameStatus]);
 
   useEffect(() => {
     // The published taxonomy is authoritative only after a valid 200. An
@@ -149,7 +188,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     // Correct this SAME history entry rather than creating a ghost "Back"
     // step that reinstates the removed category. Preserve public search.
     const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, selected, search, page]);
@@ -177,7 +216,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     );
     // Replace the SAME history entry; preserve category and Persian search.
     const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
   }, [categories, current, selected, search, page]);
@@ -189,7 +228,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     let lastRefreshAt = -Infinity;
     function revalidateOnReturn() {
       if (document.visibilityState !== "visible" ||
-        window.location.pathname !== "/") return;
+        window.location.pathname !== "/products") return;
       // Safari can emit both visibilitychange and persisted pageshow on one
       // return. Treat them as one refresh rather than racing duplicate GETs.
       const now = performance.now();
@@ -212,18 +251,6 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     };
   }, []);
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!validBuyerSearch(draftSearch)) {
-      setSearchError("جست‌وجو باید حداکثر ۸۰ نویسه و بدون نویسهٔ کنترلی باشد.");
-      return;
-    }
-    setSearchError("");
-    const term = draftSearch.trim();
-    if (term === search && page === 1) setProductRetry((n) => n + 1);
-    setBrowseLocation({ categoryId: selected, search: term, page: 1 });
-  }
-
   function chooseCategory(id: string | null) {
     // A category filter can only be selected from current published API data.
     if (id !== null && (categories.status !== "ok" ||
@@ -238,28 +265,33 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   }
 
   return (
-    <main dir="rtl" className="buyer-main">
-      <div className="buyer-intro">
-        <p className="buyer-intro__eyebrow">مرور کاتالوگ حنا</p>
-        <h1>کالاها را در حنا مرور کنید</h1>
-        <p>دسته‌بندی‌ها و کالاها تنها در صورت تأیید و انتشار در کاتالوگ حنا نمایش داده می‌شوند.</p>
-      </div>
-
-      <form className="buyer-search" onSubmit={submitSearch} role="search">
-        <label className="buyer-visually-hidden" htmlFor="buyer-search">جست‌وجو در نام کالاها</label>
-        <input id="buyer-search" name="search" type="search" maxLength={80}
-          value={draftSearch} onChange={(event) => {
-            setDraftSearch(event.target.value);
-            setSearchError("");
-          }} placeholder="جست‌وجو در نام کالاها..."
-          aria-invalid={searchError ? true : undefined}
-          aria-describedby={searchError ? "buyer-search-error" : undefined} />
-        <button type="submit">جست‌وجو</button>
-      </form>
-      {searchError && <p id="buyer-search-error" className="buyer-error" role="alert">{searchError}</p>}
-
+    <main dir="rtl" className={`buyer-main ${styles.main}`}>
+      <h1 className={styles.visuallyHidden}>کالاها و خدمات منتشرشده در حنا</h1>
+      <div className={styles.layout}>
+        <aside className={styles.filters} aria-labelledby="buyer-filter-title">
+          <h2 id="buyer-filter-title">فیلترها</h2>
       <section className="buyer-section" aria-labelledby="buyer-categories-title">
         <h2 id="buyer-categories-title">دسته‌بندی‌ها</h2>
+        {categoryNameStatus === "pending" && (
+          <p className="buyer-panel" role="status">در حال تطبیق دسته با فهرست دسته‌بندی‌های حنا…</p>
+        )}
+        {categoryNameStatus === "unavailable" && (
+          <div className="buyer-panel buyer-panel--error" role="alert">
+            <p>دسته‌بندی‌ها در دسترس نیستند؛ برای اعمال فیلتر باید فهرست حنا دریافت شود.</p>
+            <button type="button" onClick={() => {
+              setCategoryNameStatus("pending");
+              setCategoryRetry((n) => n + 1);
+            }}>تلاش دوباره برای دسته‌بندی‌ها</button>
+          </div>
+        )}
+        {categoryNameStatus === "not-found" && (
+          <div className="buyer-panel" role="status">
+            <p>این دسته در فهرست دسته‌بندی‌های منتشرشدهٔ حنا وجود ندارد.</p>
+            <button type="button" onClick={() => setBrowseLocation({
+              categoryId: null, search, page: 1,
+            })}>نمایش همهٔ دسته‌ها</button>
+          </div>
+        )}
         {categories.status === "loading" ? (
           <p className="buyer-panel" role="status">در حال دریافت دسته‌بندی‌ها…</p>
         ) : categories.status === "unavailable" ? (
@@ -284,13 +316,25 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           <p className="buyer-panel" role="status">{categoryRecovery}</p>
         )}
       </section>
-
+          <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
+        </aside>
+        <div className={styles.results}>
+      <div className={styles.toolbar}>
+        <strong>{search ? `نتایج جست‌وجو برای «${search}»` : selected && categories.status === "ok"
+          ? categories.data.find((item) => item.id === selected)?.name ?? "کالاها و خدمات"
+          : "همه کالاها و خدمات"}</strong>
+        <span>{current.status === "ok" ? `${current.data.total} کالا و خدمت` : "کاتالوگ منتشرشدهٔ حنا"}</span>
+      </div>
       <section className="buyer-section" aria-labelledby="buyer-products-title">
         <h2 id="buyer-products-title">کالاها</h2>
         {pageRecovery && (
           <p className="buyer-panel" role="status">{pageRecovery}</p>
         )}
-        {current.status === "loading" ? (
+        {categoryNameStatus === "pending" ? (
+          <p className="buyer-panel buyer-products-status" role="status">پس از تعیین دسته‌بندی، کالاهای همان دسته نمایش داده می‌شوند…</p>
+        ) : categoryNameStatus === "unavailable" || categoryNameStatus === "not-found" ? (
+          <p className="buyer-panel buyer-products-status">برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.</p>
+        ) : current.status === "loading" ? (
           <p className="buyer-panel buyer-products-status" role="status">در حال دریافت کالاها…</p>
         ) : current.status === "unavailable" ? (
           <div className="buyer-panel buyer-products-status buyer-panel--error" role="alert">
@@ -311,6 +355,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
               <ul className="buyer-products" aria-label="فهرست کالاهای منتشرشده">
                 {current.data.items.map((item) => (
                   <li className="buyer-product" key={item.id}>
+                    <div className={styles.productVisual} aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M10 18h28l-2 22H12l-2-22Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M17 19v-4a7 7 0 0 1 14 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M20 27h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg></div>
                     <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
                     <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}</p>
                     {item.description && <p>{item.description}</p>}
@@ -331,6 +376,8 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           </>
         )}
       </section>
+        </div>
+      </div>
     </main>
   );
 }

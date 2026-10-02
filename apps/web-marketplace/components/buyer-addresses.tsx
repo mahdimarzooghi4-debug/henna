@@ -26,7 +26,7 @@ function BuyerHeader() {
     <div className={styles.announcement}>بازارگاه حنا؛ خرید روزمره با پشتیبانی از توسعهٔ اجتماعی</div>
     <header className={styles.header} dir="rtl">
       <Link href="/" className={styles.logo} aria-label="صفحه اصلی حنا">
-        <Image src="/hana-logo.png" alt="حنا" width={150} height={58} priority />
+        <Image src="/hana-logo.png" alt="حنا" width={150} height={84} unoptimized priority />
       </Link>
       <form action="/products" className={styles.search}>
         <input name="search" placeholder="جست‌وجوی کالاها و خدمات روزمره…" aria-label="جست‌وجو" />
@@ -51,7 +51,7 @@ function BuyerFooter() {
       <div><h2>دسترسی سریع</h2><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/about">درباره حنا</Link><Link href="/support">تماس با پشتیبانی</Link></div>
       <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/seller-guide">شرایط همکاری</Link></div>
       <div><h2>طرح‌های حمایتی</h2><Link href="/programs">اعتبارات سازمانی</Link><Link href="/programs">طرح‌های فعال</Link></div>
-      <div className={styles.footerBrand}><Link href="/"><Image src="/hana-logo.png" alt="حنا" width={140} height={56} /></Link><p>بازارگاه حنا برای خریدهای روزمره با رویکرد توسعهٔ عادلانه و حمایت اجتماعی.</p></div>
+      <div className={styles.footerBrand}><Link href="/"><Image src="/hana-logo.png" alt="حنا" width={140} height={79} unoptimized /></Link><p>بازارگاه حنا برای خریدهای روزمره با رویکرد توسعهٔ عادلانه و حمایت اجتماعی.</p></div>
     </div>
     <p className={styles.copyright}>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است. کلیه حقوق برای حنا محفوظ است.</p>
   </footer>;

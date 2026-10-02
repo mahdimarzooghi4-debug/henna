@@ -1121,8 +1121,15 @@ export function RegistrationForm() {
       fields, readyConflict.fields, readyConflict.choices,
     )
     : 0;
+  const registrationPhase = completedStep <= 1 ? 1 : completedStep <= 3 ? 2 : 3;
 
   return (
+    <>
+    <nav className="registration-steps" aria-label="مراحل ثبت‌نام فروشگاه">
+      <span className={registrationPhase === 1 ? "registration-steps__active" : ""} aria-current={registrationPhase === 1 ? "step" : undefined}>۱ اطلاعات اولیه</span>
+      <span className={registrationPhase === 2 ? "registration-steps__active" : ""} aria-current={registrationPhase === 2 ? "step" : undefined}>۲ احراز و مدارک</span>
+      <span className={registrationPhase === 3 ? "registration-steps__active" : ""} aria-current={registrationPhase === 3 ? "step" : undefined}>۳ فعال‌سازی فروشگاه</span>
+    </nav>
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
       {hasUnsavedChanges && (
@@ -2168,5 +2175,6 @@ export function RegistrationForm() {
         )}
       </form>
     </section>
+    </>
   );
 }

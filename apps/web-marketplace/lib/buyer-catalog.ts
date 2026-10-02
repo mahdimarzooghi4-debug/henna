@@ -100,6 +100,35 @@ export function parseBuyerCategories(raw: unknown): BuyerCategory[] | null {
   return items;
 }
 
+function normalizeCategoryLabel(value: string): string {
+  return value.normalize("NFKC").replace(/[يى]/g, "ی").replace(/ك/g, "ک")
+    .replace(/[\s\u200cـ]+/g, "").trim();
+}
+
+/** Resolve the Figma landing label only against the currently published taxonomy. */
+export function findLandingBuyerCategory(
+  categories: BuyerCategory[], label: string,
+): BuyerCategory | null {
+  const normalized = normalizeCategoryLabel(label);
+  const exact = categories.filter((category) =>
+    normalizeCategoryLabel(category.name) === normalized ||
+    normalizeCategoryLabel(category.slug) === normalized);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return null;
+
+  const aliases: Record<string, string[]> = {
+    [normalizeCategoryLabel("میوه و صیفی")]: ["میوه و سبزیجات"],
+    [normalizeCategoryLabel("میوه و سبزیجات")]: ["میوه و صیفی"],
+    [normalizeCategoryLabel("لبنیات محلی")]: ["لبنیات و تخم مرغ", "لبنیات و تخم‌مرغ"],
+    [normalizeCategoryLabel("لبنیات و تخم مرغ")]: ["لبنیات محلی"],
+    [normalizeCategoryLabel("لبنیات و تخم‌مرغ")]: ["لبنیات محلی"],
+  };
+  const names = aliases[normalized] ?? [];
+  const matches = categories.filter((category) =>
+    names.some((name) => normalizeCategoryLabel(name) === normalizeCategoryLabel(category.name)));
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage | null {
   const x = object(raw);
   if (!x || x.page !== requestedPage || x.pageSize !== BUYER_PAGE_SIZE ||
@@ -244,7 +273,7 @@ export function buyerBrowseQuery(state: BuyerBrowseLocation): string {
 
 export function buyerBrowseHref(state: BuyerBrowseLocation): string {
   const query = buyerBrowseQuery(state);
-  return "/" + (query ? "?" + query : "");
+  return "/products" + (query ? "?" + query : "");
 }
 
 export function buyerDetailHref(

@@ -145,7 +145,7 @@ export function BuyerReferenceCartPage() {
     <p className="buyer-cart-intro">کالاها و مقدارهای درخواستی را برای مقایسهٔ بعدی نگه دارید.</p>
     <div className="buyer-cart-note">این سبد فقط فهرست کالا و مقدار است؛ قیمت قطعی، پوشش و موجودی پس از دریافت پیشنهاد معتبر و بازبینی خریدار مشخص می‌شود. هنوز سفارش یا رزروی ساخته نمی‌شود.</div>
     {state.status === "loading" ? <p role="status">در حال دریافت سبد…</p> :
-      state.status === "signed-out" ? <div className="buyer-cart-panel"><h2>ورود به حساب لازم است</h2><p>سبد مرجع به حساب شما متصل است.</p><Link href="/auth">ورود / ثبت‌نام</Link></div> :
+      state.status === "signed-out" ? <div className="buyer-cart-panel"><h2>ورود به حساب لازم است</h2><p>سبد مرجع به حساب شما متصل است.</p><Link href="/auth?returnTo=%2Fbuyer%2Fcart">ورود / ثبت‌نام</Link></div> :
       state.status === "error" ? <div className="buyer-cart-panel" role="alert"><p>وضعیت سبد نامشخص است؛ اطلاعات قبلی را خالی فرض نمی‌کنیم.</p><button onClick={() => setRetry(n => n + 1)}>تلاش دوباره</button></div> :
       cart?.items.length === 0 ? <div className="buyer-cart-panel"><h2>سبد مرجع خالی است</h2><p>از کالاهای منتشرشده، مقدار موردنیازتان را نگه دارید.</p><Link href="/">رفتن به فهرست کالاها</Link></div> :
       <section className="buyer-cart-panel" aria-labelledby="buyer-cart-items-title">
@@ -343,6 +343,7 @@ function BuyerCartOffers({ cart, products }: {
       <h3>پیش‌نویس ذخیره‌شده</h3>
       <p>این پیش‌نویس به فروشنده ارسال نشده، سفارش یا رزرو نیست و سبد مرجع را تغییر نمی‌دهد.</p>
       {readyDraft.lines.map(line => <p key={line.offerId}>{title(line.productId)} · {formatQuantity(line.quantity, line.quantityScale)} {line.unitName} · {formatRials(line.expectedPriceRials)} قیمت دیده‌شده{line.priceChanged && line.currentPriceRials !== null ? ` · قیمت فعلی ${formatRials(line.currentPriceRials)} — نیازمند تأیید` : ""}{!line.offerAvailable ? " · پیشنهاد دیگر در دسترس نیست" : !line.coversRequestedQuantity ? " · مقدار اعلامی دیگر کافی نیست" : ""}</p>)}
+      <Link className="buyer-purchase-draft__checkout" href="/checkout">رفتن به پیش‌نمایش تکمیل سفارش</Link>
       <button type="button" disabled={draftBusy} onClick={() => void clearPurchaseDraft()}>{draftBusy ? "در حال حذف…" : "حذف پیش‌نویس"}</button>
     </section>}
     {draftMessage && <p className="buyer-cart-comparison__status" role="status">{draftMessage}</p>}
