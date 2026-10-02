@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { SiteHeader } from "../../components/site-header";
 import { AuthForm } from "./auth-form";
-import { safeSellerReturnTo } from "../../lib/seller-return";
+import { safeAuthReturnTo } from "../../lib/seller-return";
 
 export const metadata: Metadata = {
   title: "ورود به حنا",
@@ -14,7 +14,7 @@ export default async function AuthPage({
   searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
   // Resolve and allowlist on the server; do not expose arbitrary redirects.
-  const returnTo = safeSellerReturnTo((await searchParams).returnTo);
+  const returnTo = safeAuthReturnTo((await searchParams).returnTo);
   return (
     <>
       <SiteHeader backHref="/" backLabel="بازگشت به فروشگاه" />

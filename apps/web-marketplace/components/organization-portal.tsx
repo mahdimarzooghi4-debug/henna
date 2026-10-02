@@ -90,7 +90,36 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   };
   const title = titles[screen];
   if (data.loading) return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
-  if (data.error) return <OrganizationPortalShell active={active} title={title}><Notice tone="warning">{data.error}</Notice><p>اطلاعات نمایشی جایگزین سرویس نمی‌شود. بعداً دوباره تلاش کنید.</p></OrganizationPortalShell>;
+  if (data.error) {
+    const needsLogin = data.error.includes("وارد شوید") || data.error.includes("نشست معتبر نیست");
+    const returnTo = screen === "program-detail" && programId
+      ? `/organization/programs/${programId}`
+      : screen === "allocation-detail" && allocationId
+        ? `/organization/allocation/${allocationId}`
+        : screen === "people-new"
+          ? "/organization/people/new"
+          : ({
+              dashboard: "/organization", profile: "/organization/profile",
+              people: "/organization/people", api: "/organization/data-sources",
+              allocation: "/organization/allocation", usage: "/organization/usage",
+              reports: "/organization/reports", notifications: "/organization/notifications",
+              support: "/organization/support", settings: "/organization/settings",
+              "program-detail": "/organization/programs",
+              "allocation-detail": "/organization/allocation",
+            } as const)[screen];
+    return <OrganizationPortalShell active={active} title={title}>
+      {needsLogin ? <>
+        <Notice tone="warning">برای نمایش اطلاعات این بخش باید وارد حساب حنا شوید.</Notice>
+        <Card title="ورود به پنل سازمانی">
+          <p>اطلاعات این صفحه پس از تأیید نشست، از سرویس سازمان دریافت می‌شود. دادهٔ نمایشی جایگزین اطلاعات واقعی نیست.</p>
+          <Link className={styles.primaryButton} href={`/auth?returnTo=${encodeURIComponent(returnTo)}`}>ورود / ثبت‌نام با شماره موبایل</Link>
+        </Card>
+      </> : <>
+        <Notice tone="warning">{data.error}</Notice>
+        <Card title="اطلاعات فعلاً در دسترس نیست"><p>سرویس سازمان پاسخ کامل نداده است؛ صفحه دادهٔ ساختگی نمایش نمی‌دهد.</p><Link className={styles.outlineButton} href="/">بازگشت به فروشگاه</Link></Card>
+      </>}
+    </OrganizationPortalShell>;
+  }
 
   const selectedProgram = data.programs.find(program => program.programId === programId);
   if (screen === "dashboard") return <OrganizationPortalShell active="dashboard" title={title}>
