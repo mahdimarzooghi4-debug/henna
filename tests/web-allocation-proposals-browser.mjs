@@ -24,7 +24,7 @@ try {
   const page = await browser.newPage(); const errors = [];
   page.on("pageerror", e => { errors.push(e.message); console.log("Page error:", e.message); });
   page.on("requestfailed", request => console.log("Failed request:", request.url(), request.failure()?.errorText));
-  await page.route("**/api/admin/allocation-proposals**", async route => {
+  await page.route(/\/api\/admin\/allocation-proposals(?:\/|\?|$)/, async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     assert.equal(request.headers().authorization, undefined);
     if (mode === "forbidden") return route.fulfill(json({ message: "این صفحه فقط برای مدیر مجاز است." }, 403));
