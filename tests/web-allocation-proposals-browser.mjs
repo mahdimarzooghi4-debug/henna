@@ -23,7 +23,6 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage(); const errors = [];
   page.on("pageerror", e => { errors.push(e.message); console.log("Page error:", e.message); });
-  page.on("requestfailed", request => console.log("Failed request:", request.url(), request.failure()?.errorText));
   await page.route(/\/api\/admin\/allocation-proposals(?:\/|\?|$)/, async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     assert.equal(request.headers().authorization, undefined);
@@ -52,7 +51,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   mode = "forbidden"; await page.reload();
-  await page.getByRole("alert").waitFor();
+  await page.getByRole("alert").filter({ hasText: "این صفحه فقط برای مدیر مجاز است." }).waitFor();
   assert.equal(await page.getByRole("heading", { name: "ضرایب پیشنهادی" }).count(), 0);
   mode = "empty"; await page.reload(); await page.getByText("هنوز پیشنهادی ثبت نشده است.").waitFor();
   assert.deepEqual(errors, []);
