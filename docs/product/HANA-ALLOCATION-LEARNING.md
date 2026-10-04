@@ -159,3 +159,20 @@ Proposal detail includes the associated training-run ID and numeric learning met
 administrators. Review approval remains inactive. Tests exercise both successful and no-improvement
 training on explicitly synthetic labels, PostgreSQL persistence, authorization and audit immutability.
 No real Henna household labels have been collected or trained in this increment.
+
+## Administrative web review
+
+`/admin/allocation-proposals` provides a responsive Persian RTL review page using the existing
+site font. It loads the real proposal list and detail, shows learned weights, available training
+metrics and unrounded rial simulation shares, and requires a reason for approval/rejection.
+It handles loading, empty results, authorization errors, service failures and completed decisions.
+
+The Next gateways use the existing HTTP-only session cookie and forward the bearer only from
+the server. Mutations require the existing exact same-origin check. Backend ADMIN authorization
+remains authoritative. No token enters client JavaScript. Responses are non-cacheable and report
+schema is validated before display. Approval still does not activate allocations.
+
+The review page has no label-ingestion or training controls yet; those internal operations need
+their own reviewed administrative HTTP contracts. This page is a functional addition using existing
+brand styles, not a claimed reproduction of an unseen Figma screen. Browser tests use CI fixtures
+to verify review interactions, access denial, empty state and mobile reflow against real Next UI.

@@ -313,6 +313,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Typecheck web
         run: npm run web:typecheck
+      - name: Test administrative allocation report validation
+        run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
@@ -405,6 +407,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Browser test approved buyer login and seller form across two tabs
         run: node tests/web-frontend-browser-smoke.mjs
+      - name: Browser test administrative allocation proposal review
+        run: node tests/web-allocation-proposals-browser.mjs
       - name: Test web session recheck policy without interrupting OTP
         run: node --experimental-strip-types --test tests/web-session-visibility-smoke.mjs
       - name: Browser test buyer OTP recovery at mobile viewport
