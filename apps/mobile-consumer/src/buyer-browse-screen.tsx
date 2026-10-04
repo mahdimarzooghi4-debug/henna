@@ -23,8 +23,8 @@ const catalog = new MobileCatalogClient(
 );
 
 /** Approved Figma buyer mobile frames 476:4 (empty), 478:22 (API-backed). */
-export function BuyerBrowseScreen({ onLogin, link }: {
-  onLogin: () => void; link: BuyerLinkEvent;
+export function BuyerBrowseScreen({ onLogin, onCart, active=true, link }: {
+  active?:boolean; onLogin: () => void; onCart: (productId?:string)=>void; link: BuyerLinkEvent;
 }) {
   const [detailId, setDetailId] = useState<string | null>(
     link.route.kind === "detail" ? link.route.id : null,
@@ -66,7 +66,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   const categories = browse.categories;
   // Keep the mounted browse coordinator and its real search/filter/page state.
   if (detailId !== null) return (
-    <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
+    <BuyerProductDetailScreen key={detailId} id={detailId} active={active} catalog={catalog} onCart={onCart}
       onBack={() => {
         setDetailId(null);
         // A category can leave publication while the buyer reads detail.
@@ -90,6 +90,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
               style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}>
               <Text style={styles.headerLinkText}>ورود</Text>
             </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="سبد خرید" onPress={()=>onCart()}><Text style={styles.headerLinkText}>سبد خرید</Text></Pressable>
           </View>
 
           <View style={styles.content}>

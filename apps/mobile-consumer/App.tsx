@@ -17,6 +17,10 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
+import { useFonts } from "expo-font";
+import { Vazirmatn_400Regular, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
+import { MobileCommerceClient } from "./src/mobile-commerce";
+import { BuyerCartScreen } from "./src/buyer-cart-screen";
 import { colors, space } from "./src/theme";
 import { BuyerBrowseScreen } from "./src/buyer-browse-screen";
 import {
@@ -42,13 +46,15 @@ const secureOptions = {
 
 // Expo SecureStore uses iOS Keychain / Android Keystore-backed encrypted storage.
 // Keep the bearer OUT of React state, console, AsyncStorage and Expo public config.
+const tokenStore = {
+ read: () => SecureStore.getItemAsync(tokenKey, secureOptions),
+ write: (token: string) => SecureStore.setItemAsync(tokenKey, token, secureOptions),
+ remove: () => SecureStore.deleteItemAsync(tokenKey, secureOptions),
+};
+const commerce = new MobileCommerceClient(process.env.EXPO_PUBLIC_HANA_API_BASE_URL,tokenStore,fetch,__DEV__);
 const auth = new MobileAuthClient(
   process.env.EXPO_PUBLIC_HANA_API_BASE_URL,
-  {
-    read: () => SecureStore.getItemAsync(tokenKey, secureOptions),
-    write: (token) => SecureStore.setItemAsync(tokenKey, token, secureOptions),
-    remove: () => SecureStore.deleteItemAsync(tokenKey, secureOptions),
-  },
+  tokenStore,
   fetch,
   Date.now,
   __DEV__,
@@ -500,7 +506,10 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<"browse" | "auth">("browse");
+  const [screen, setScreen] = useState<"browse" | "auth" | "cart">("browse");
+  const [fontsLoaded,fontError] = useFonts({Vazirmatn_400Regular,Vazirmatn_700Bold});
+  const [selectedProduct,setSelectedProduct] = useState<string|null>(null);
+  const authReturn = useRef<"browse"|"cart">("browse");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
   // link must not first fetch page 1 and briefly paint unrelated content.
   const [link, setLink] = useState<BuyerLinkEvent | null>(null);
@@ -532,11 +541,15 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {link === null ? <View style={styles.flex} /> :
-        screen === "browse"
-          ? <BuyerBrowseScreen link={link}
-              onLogin={() => setScreen("auth")} />
-          : <ConsumerAuthScreen onBrowse={() => setScreen("browse")} />}
+      {!fontsLoaded && !fontError ? <View style={styles.flex}><Text>در حال آماده‌سازی فونت…</Text></View> : fontError ? <View style={styles.flex}><Text>بارگذاری فونت انجام نشد؛ اپ را دوباره باز کنید.</Text></View> : link === null ? <View style={styles.flex} /> :
+        <>
+          <View style={{flex:1,display:screen === "browse" ? "flex" : "none"}}><BuyerBrowseScreen link={link} active={screen === "browse"}
+            onLogin={() => {authReturn.current="browse";setScreen("auth");}}
+            onCart={(id) => {setSelectedProduct(id??null);setScreen("cart");}} /></View>
+          {screen === "cart" && <BuyerCartScreen api={commerce} selectedProduct={selectedProduct} onBack={() => setScreen("browse")} onLogin={() => {authReturn.current="cart";setScreen("auth");}} />}
+          {screen === "auth" && <ConsumerAuthScreen onBrowse={() => setScreen(authReturn.current)} />}
+        </>}
+
     </SafeAreaProvider>
   );
 }

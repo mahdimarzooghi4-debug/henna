@@ -14,8 +14,8 @@ const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 
 /** Owner-approved Figma 480:3/480:5/480:7 — real public detail only. */
 export function BuyerProductDetailScreen({
-  id, catalog, onBack,
-}: { id: string; catalog: MobileCatalogClient; onBack: () => void }) {
+  id, catalog, onBack, onCart, active=true,
+}: { active?:boolean; id: string; catalog: MobileCatalogClient; onBack: () => void; onCart: (productId?:string)=>void }) {
   const [state, setState] = useState<BuyerDetailState>({ status: "loading", id });
   const [controller] = useState(
     () => new BuyerDetailController(catalog, setState, id),
@@ -27,11 +27,12 @@ export function BuyerProductDetailScreen({
   }, [controller]);
 
   useEffect(() => {
+    if (!active) return;
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress", () => { onBack(); return true; },
     );
     return () => subscription.remove();
-  }, [onBack]);
+  }, [onBack, active]);
 
   const detail: BuyerDetailState = state.id === id
     ? state : { status: "loading", id };
@@ -55,7 +56,7 @@ export function BuyerProductDetailScreen({
             جزئیات کالا یا خدمت
           </Text>
           <Text style={styles.subtitle}>
-            فقط اطلاعات منتشرشده از API حنا؛ خرید در این مرحله فعال نیست.
+            اطلاعات منتشرشده از API حنا؛ کالا را برای بررسی پیشنهادها در سبد نگه دارید.
           </Text>
 
           {detail.status === "loading" ? (
@@ -114,9 +115,10 @@ export function BuyerProductDetailScreen({
                   </Text>
                 ) : null}
               </View>
+              {detail.product.kind === "GOOD" && <Pressable accessibilityRole="button" accessibilityLabel="انتخاب برای سبد خرید" onPress={()=>onCart(detail.product.id)} style={styles.primaryButton}><Text style={styles.primaryText}>انتخاب برای سبد خرید</Text></Pressable>}
               <View style={styles.disclosure}>
                 <Text style={styles.disclosureText}>
-                  قیمت، موجودی، تصویر، فروشنده، شهر و دکمهٔ خرید هنوز در قرارداد عمومی وجود ندارند.
+                  قیمت و موجودی قطعی هنگام بررسی پیشنهاد فروشگاه کنترل می‌شوند؛ انتخاب سبد سفارش یا رزرو نیست.
                 </Text>
               </View>
             </>

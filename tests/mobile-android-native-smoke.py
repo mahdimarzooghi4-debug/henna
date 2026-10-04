@@ -5,6 +5,7 @@ No OCR/screenshot guesses, test seed, SMS token or production HTTP endpoint.
 This test deliberately omits EXPO_PUBLIC_HANA_API_BASE_URL: the already
 approved 503/unavailable UI must remain truthful without an API server.
 """
+import base64
 import glob
 import os
 import re
@@ -64,6 +65,14 @@ def wait_screen(*phrases, timeout=110):
     )
 
 
+def tap_label(label):
+    execute("adb", "shell", "uiautomator", "dump", "/sdcard/hana-window.xml")
+    root=ET.fromstring(execute("adb", "exec-out", "cat", "/sdcard/hana-window.xml"))
+    node=next(n for n in root.iter() if n.attrib.get("content-desc")==label)
+    x1,y1,x2,y2=map(int,re.findall(r"\d+",node.attrib["bounds"]))
+    execute("adb","shell","input","tap",str((x1+x2)//2),str((y1+y2)//2))
+
+
 def open_uri(uri, package):
     # DO NOT force an explicit -n component/-p package: that bypasses
     # Android's real URI intent resolution and could falsely pass.
@@ -121,6 +130,11 @@ def main():
     # parsed-but-unused string in Node-only tests.
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(BROWSE, package)
+    wait_screen("کالاها را در حنا مرور کنید", TERM)
+    tap_label("سبد خرید")
+    wait_screen("سبد مرجع خرید", "پاسخ سرور تأیید نشد")
+    print("HANA_NATIVE_CART_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
+    execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
     print("PASS: installed Android native OS URI dispatch, cold/warm detail,"
           " Back to saved browse, invalid URI isolation and cold browse")
