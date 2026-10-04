@@ -42,6 +42,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
 {
     public DbSet<AllocationAssessmentRecord> Assessments => Set<AllocationAssessmentRecord>();
     public DbSet<AllocationOutcomeRecord> Outcomes => Set<AllocationOutcomeRecord>();
+    public DbSet<AllocationProposalRecord> Proposals => Set<AllocationProposalRecord>();
+    public DbSet<AllocationProposalReviewRecord> Reviews => Set<AllocationProposalReviewRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -76,6 +78,34 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.HasOne<AllocationAssessmentRecord>().WithMany().HasForeignKey(x => x.SnapshotId)
                 .OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.SnapshotId, x.PeriodEndUtc });
+        });
+        model.Entity<AllocationProposalRecord>(e =>
+        {
+            e.ToTable("proposals", t => t.HasCheckConstraint("ck_proposal_pool", "\"PoolRial\" > 0"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.CandidateVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ModelVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Rationale).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.BaselineVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.DatasetVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceInstructionReference).HasMaxLength(120).IsRequired();
+            e.Property(x => x.WeightsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.SnapshotIdsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.SimulationJson).HasColumnType("jsonb").IsRequired();
+            e.HasIndex(x => x.CandidateVersion).IsUnique();
+            e.HasIndex(x => new { x.CreatedAtUtc, x.Id });
+        });
+        model.Entity<AllocationProposalReviewRecord>(e =>
+        {
+            e.ToTable("reviews", t => t.HasCheckConstraint("ck_review_decision", "\"Decision\" IN ('APPROVED', 'REJECTED')"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Decision).HasMaxLength(16).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => x.ProposalId).IsUnique();
+            e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 

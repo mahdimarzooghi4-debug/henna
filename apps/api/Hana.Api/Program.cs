@@ -76,6 +76,7 @@ if (!string.IsNullOrWhiteSpace(learningConnectionString))
         options.UseNpgsql(learningConnectionString, postgres =>
             postgres.MigrationsHistoryTable("__EFMigrationsHistory", "allocation_learning")));
     builder.Services.AddScoped<AllocationLearningRecorder>();
+    builder.Services.AddScoped<AllocationProposalService>();
 }
 if (hasIdentityDb)
 {
@@ -360,6 +361,7 @@ app.MapSellerApplicationStatus(hasIdentityDb);
 app.MapSellerApplicationAmendments(hasIdentityDb);
 app.MapSellerAccess(hasIdentityDb);
 app.MapAdminSellerApplications(hasIdentityDb);
+app.MapAllocationLearningProposals(hasIdentityDb && !string.IsNullOrWhiteSpace(learningConnectionString));
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);

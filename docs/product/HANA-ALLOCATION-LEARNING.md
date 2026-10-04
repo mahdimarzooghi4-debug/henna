@@ -1,7 +1,7 @@
 # Henna allocation learning — foundation
 
 Status: offline evaluation and internal PostgreSQL recording infrastructure; no trained AI,
-provider integration, HTTP endpoint, live event producer, approval workflow, pilot activation
+provider integration, public research ingestion/export endpoint, live event producer, pilot activation
 or production deployment yet.
 
 The Domain simulator compares a versioned baseline with proposed six-dimension weights.
@@ -31,8 +31,8 @@ The simulator provides numeric changes only; it does not certify fairness or imp
 ## Human-controlled rollout
 
 Draft -> validated candidate -> offline comparison -> human review -> limited pilot ->
-explicit activation. Implement durable reviewer identity, rationale, audit history,
-authorization, rollback and pilot limits before allowing activation. Maintain a fixed
+explicit activation. Durable review, reviewer identity and rationale now exist for proposals;
+rollback and pilot limits remain to implement before allowing activation. Maintain a fixed
 coefficient version for each allocation run; never silently recalculate earlier grants.
 Human approval of a coefficient does not override the funding source's instructions.
 
@@ -46,6 +46,7 @@ Set `ConnectionStrings__AllocationLearningDb` only in the operator environment. 
 the internal recorder when this separate connection is configured. Apply its separate schema
 explicitly with `dotnet run --project apps/api/Hana.Api -- --apply-learning-migrations`.
 No migration occurs at ordinary startup. No public ingestion or research export route exists.
+Administrative proposal routes are separate from research data ingestion.
 
 `RecordAssessmentAsync` requires a frozen, authorized allocation result in whole rials, a stable
 pseudonymous household key, formula/dataset versions and an opaque funding instruction reference.
@@ -68,3 +69,34 @@ Integration tests exercise migrations, actual persistence, null preservation, du
 invalid periods and rewrite rejection when `ConnectionStrings__IdentityDb` points to a test DB.
 They create only the isolated `allocation_learning` schema. Local runs without that test variable
 omit PostgreSQL integration; the model/snapshot and Domain tests still apply.
+
+## Administrative proposal review
+
+All `/api/v1/admin/allocation-proposals` routes require an active server-side session,
+an explicit ADMIN assignment and configured IdentityDb plus AllocationLearningDb. HTTPS is
+required outside Development. Responses use `no-store`; database/auth failures fail closed.
+
+| Method / path | Purpose |
+| --- | --- |
+| POST / | Validate weights and freeze a server-generated pool simulation from 1–500 stored assessment IDs |
+| GET / | Paginated proposal list, ordered by creation time |
+| GET /{id} | Frozen weights, assessment references, report, rationale and review |
+| POST /{id}/review | Record APPROVED or REJECTED with a reason and authenticated reviewer |
+
+Submission requires a new globally unique candidate version, model/proposer version, rationale,
+six nonnegative weights summing to one, positive whole-rial pool, dataset version and funding
+instruction reference. Stored snapshots must all belong to the same dataset/instruction and
+the supported `AllocationWeightProfile.Baseline.Version`; duplicate household assessments are
+rejected. Historical formula versions outside this baseline require a separate version resolver.
+The simulated pool is a research scenario supplied by the operator, not an authorized budget.
+
+The persisted report is generated from stored assessment data, never accepted from the client.
+It reports arithmetic changes only, not fairness or efficacy certification. `ModelVersion` may
+identify a manual research proposal; the route does not imply that an AI model generated it.
+Each proposal has exactly one final review. The creator cannot review their own proposal;
+a second administrator is required. A unique database index resolves concurrent reviews.
+Corrections require a new candidate version and proposal, preserving the earlier decision.
+
+All responses explicitly return `active: false`. APPROVED means review accepted, not allocation
+activated. There is no activation route, wallet write, retroactive recalculation or frontend
+review screen in this increment. Stage review and a controlled pilot remain separate work.
