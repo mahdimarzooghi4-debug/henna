@@ -5,6 +5,7 @@ using Hana.Infrastructure.Seller;
 using Hana.Infrastructure.Catalog;
 using Hana.Infrastructure.Geography;
 using Hana.Infrastructure.CreditLearning;
+using Hana.Infrastructure.Commerce;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
@@ -78,6 +79,13 @@ if (!string.IsNullOrWhiteSpace(learningConnectionString))
     builder.Services.AddScoped<AllocationLearningRecorder>();
     builder.Services.AddScoped<AllocationProposalService>();
     if (hasIdentityDb) builder.Services.AddScoped<AllocationTrainingWorkflow>();
+}
+var commerceConnectionString = builder.Configuration.GetConnectionString("CommerceDb");
+if (hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString))
+{
+    builder.Services.AddDbContext<HanaCommerceDbContext>(options => options.UseNpgsql(commerceConnectionString,
+        pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "commerce")));
+    builder.Services.AddScoped<CommerceService>();
 }
 if (hasIdentityDb)
 {
@@ -362,6 +370,7 @@ app.MapSellerApplicationStatus(hasIdentityDb);
 app.MapSellerApplicationAmendments(hasIdentityDb);
 app.MapSellerAccess(hasIdentityDb);
 app.MapAdminSellerApplications(hasIdentityDb);
+app.MapCommerce(hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString));
 app.MapAllocationLearningProposals(hasIdentityDb && !string.IsNullOrWhiteSpace(learningConnectionString));
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
@@ -404,6 +413,15 @@ if (args.Contains("--apply-learning-migrations", StringComparer.Ordinal))
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<HanaAllocationLearningDbContext>()
         .Database.MigrateAsync();
+    return;
+}
+
+if (args.Contains("--apply-commerce-migrations", StringComparer.Ordinal))
+{
+    if (!hasIdentityDb || string.IsNullOrWhiteSpace(commerceConnectionString))
+        throw new InvalidOperationException("IdentityDb and CommerceDb are required.");
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<HanaCommerceDbContext>().Database.MigrateAsync();
     return;
 }
 
