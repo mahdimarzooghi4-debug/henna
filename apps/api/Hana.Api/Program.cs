@@ -86,6 +86,10 @@ if (hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString))
     builder.Services.AddDbContext<HanaCommerceDbContext>(options => options.UseNpgsql(commerceConnectionString,
         pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "commerce")));
     builder.Services.AddScoped<CommerceService>();
+    if (Guid.TryParse(builder.Configuration["Commerce:AutomationAccountId"], out var automationAccount) && automationAccount != Guid.Empty)
+        builder.Services.AddHostedService(services => new CommerceAutomation(
+            services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<IClock>(),
+            services.GetRequiredService<ILogger<CommerceAutomation>>(), automationAccount));
 }
 if (hasIdentityDb)
 {

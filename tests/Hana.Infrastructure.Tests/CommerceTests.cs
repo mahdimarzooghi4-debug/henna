@@ -18,6 +18,8 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace Hana.Infrastructure.Tests;
 public sealed class CommerceTests
 {
@@ -82,6 +84,13 @@ public sealed class CommerceTests
   identity.AuthSessions.Add(new(){Id=Guid.NewGuid(),AccountId=account,TokenDigest=digest,IssuedAtUtc=DateTimeOffset.UtcNow.AddMinutes(-1),ExpiresAtUtc=DateTimeOffset.UtcNow.AddHours(1)});
  }await identity.SaveChangesAsync();
  using var factory=new WebApplicationFactory<Program>().WithWebHostBuilder(b=>{
+  b.ConfigureServices(services=>{
+   services.RemoveAll<HanaIdentityDbContext>();services.AddScoped(_=>new HanaIdentityDbContext(new DbContextOptionsBuilder<HanaIdentityDbContext>().UseNpgsql(connection).Options));
+   services.RemoveAll<HanaCatalogDbContext>();services.AddScoped(_=>new HanaCatalogDbContext(new DbContextOptionsBuilder<HanaCatalogDbContext>().UseNpgsql(connection).Options));
+   services.RemoveAll<HanaSellerDbContext>();services.AddScoped(_=>new HanaSellerDbContext(new DbContextOptionsBuilder<HanaSellerDbContext>().UseNpgsql(connection).Options));
+   services.RemoveAll<HanaGeographyDbContext>();services.AddScoped(_=>new HanaGeographyDbContext(new DbContextOptionsBuilder<HanaGeographyDbContext>().UseNpgsql(connection).Options));
+   services.RemoveAll<HanaCommerceDbContext>();services.AddScoped(_=>Context(connection));
+  });
   b.UseEnvironment("Development");b.ConfigureAppConfiguration((_,config)=>config.AddInMemoryCollection(new Dictionary<string,string?>{["ConnectionStrings:IdentityDb"]=connection,["ConnectionStrings:CommerceDb"]=connection}));
  });
  using var anonymous=factory.CreateClient();using var customer=factory.CreateClient();using var other=factory.CreateClient();using var operatorClient=factory.CreateClient();using var storeClient=factory.CreateClient();
