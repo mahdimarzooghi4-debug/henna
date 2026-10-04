@@ -26,6 +26,19 @@ try {
   await page.route(/\/api\/admin\/allocation-proposals(?:\/|\?|$)/, async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     assert.equal(request.headers().authorization, undefined);
+    if (path.includes("/research/")) {
+      if (path.endsWith("/assessments")) return route.fulfill(json({ active: false, items: [{ id, datasetVersion: "ui-dataset", sourceInstructionReference: "ui-source", health: 3, hardship: 0, age: 0, size: 0, care: 0, education: 0 }] }));
+      if (path.endsWith("/labels") && request.method() === "POST") {
+        assert.equal(request.postDataJSON().needScore, .8);
+        return route.fulfill(json({ id, active: false }));
+      }
+      if (path.endsWith("/labels")) return route.fulfill(json({ active: false, items: Array.from({ length: 40 }, (_, i) => ({ id: `label-${i}`, snapshotId: id, needScore: .8, partition: i < 30 ? 1 : 2 })) }));
+      if (path.endsWith("/train")) {
+        assert.equal(request.postDataJSON().labelIds.length, 40);
+        assert.equal(request.postDataJSON().poolRial, 1000);
+        return route.fulfill(json({ id, proposalId: id, status: "PROPOSED", active: false }));
+      }
+    }
     if (mode === "forbidden") return route.fulfill(json({ message: "این صفحه فقط برای مدیر مجاز است." }, 403));
     if (mode === "empty") return route.fulfill(json({ items: [], active: false }));
     if (path.endsWith("/review")) {
@@ -54,6 +67,20 @@ try {
   await page.getByRole("alert").filter({ hasText: "این صفحه فقط برای مدیر مجاز است." }).waitFor();
   assert.equal(await page.getByRole("heading", { name: "ضرایب پیشنهادی" }).count(), 0);
   mode = "empty"; await page.reload(); await page.getByText("هنوز پیشنهادی ثبت نشده است.").waitFor();
+  mode = "normal";
+  await page.goto(base + "/admin/allocation-training");
+  await page.getByLabel("نسخه معیار ارزیابی").fill("reviewed-rubric-v1");
+  await page.getByLabel("ارزیابی خانوار").selectOption(id);
+  await page.getByLabel("امتیاز نیاز از صفر تا یک").fill("0.8");
+  await page.getByRole("button", { name: "ثبت امتیاز", exact: true }).click();
+  await page.getByText("امتیاز ثبت شد و قابل بازنویسی نیست.").waitFor();
+  await page.getByRole("button", { name: "انتخاب همه موارد نمایش‌داده‌شده" }).click();
+  await page.getByLabel("مبلغ شبیه‌سازی به ریال").fill("1000");
+  await page.getByRole("button", { name: "شروع آموزش آزمایشی" }).click();
+  await page.getByText("آموزش انجام شد؛ پیشنهاد برای بررسی انسانی ثبت شد.").waitFor();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  assert.equal((await fetch(base + "/api/admin/allocation-proposals/research/assessments")).status, 401);
+  assert.equal((await fetch(base + "/api/admin/allocation-proposals/research/train", { method: "POST", headers: { Origin: "https://untrusted.test" } })).status, 403);
   assert.deepEqual(errors, []);
   console.log("Allocation review UI: authentication gateway, CSRF, reports, review reason, refresh, access denial and mobile reflow passed");
 } finally {

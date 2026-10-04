@@ -53,6 +53,7 @@ export default function AllocationProposalsPage() {
   return <main className={styles.page}>
     <header><Link href="/">حنا</Link><Link href="/auth">ورود به حنا</Link></header>
     <h1>بررسی پیشنهادهای تخصیص</h1>
+    <Link href="/admin/allocation-training">ثبت امتیاز نیاز و آموزش آزمایشی</Link>
     <p className={styles.intro}>گزارش پیشنهاد و نتیجه آموزش را بررسی کنید و دلیل تصمیم خود را ثبت کنید.</p>
     <aside className={styles.note}>این بخش آزمایشی است. تأیید پیشنهاد به معنی فعال‌شدن آن روی اعتبار خانوارها نیست.</aside>
     {error && <div role="alert" className={styles.error}>{error}<button onClick={() => setRefresh(r => r + 1)} disabled={busy}>تلاش دوباره</button></div>}

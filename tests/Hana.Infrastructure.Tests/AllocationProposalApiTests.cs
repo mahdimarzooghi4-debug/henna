@@ -72,6 +72,28 @@ public sealed class AllocationProposalApiTests
         const string url = "/api/v1/admin/allocation-proposals";
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(url)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.GetAsync(url)).StatusCode);
+        var research = url + "/research";
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(research + "/assessments")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.GetAsync(research + "/assessments")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.GetAsync(research + "/assessments?page=0")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await creatorClient.GetAsync(research + "/assessments")).StatusCode);
+        var rubric = "rubric-" + Guid.NewGuid();
+        var label = new { snapshotId = snapshots[0], needScore = .8m, rubricVersion = rubric, partition = 1 };
+        Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.PostAsJsonAsync(research + "/labels", label)).StatusCode);
+        var labeled = await creatorClient.PostAsJsonAsync(research + "/labels", label);
+        Assert.Equal(HttpStatusCode.OK, labeled.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await creatorClient.PostAsJsonAsync(research + "/labels", label)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(research + "/labels",
+            new { snapshotId = snapshots[1], needScore = 2m, rubricVersion = rubric, partition = 1 })).StatusCode);
+        using var labelsJson = JsonDocument.Parse(await (await creatorClient.GetAsync(research + "/labels?rubricVersion=" + rubric)).Content.ReadAsStringAsync());
+        Assert.Single(labelsJson.RootElement.GetProperty("items").EnumerateArray());
+        Assert.False(labelsJson.RootElement.GetProperty("active").GetBoolean());
+        var storedLabel = await learning.NeedLabels.AsNoTracking().SingleAsync(x => x.SnapshotId == snapshots[0] && x.RubricVersion == rubric);
+        Assert.Equal(creator, storedLabel.ReviewerAccountId);
+        Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(research + "/train",
+            new { labelIds = new[] { storedLabel.Id }, poolRial = 1000, cutoffUtc = DateTimeOffset.UtcNow })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.PostAsJsonAsync(research + "/train",
+            new { labelIds = new[] { storedLabel.Id }, poolRial = 1000, cutoffUtc = DateTimeOffset.UtcNow })).StatusCode);
         var version = "candidate-" + Guid.NewGuid();
         object Payload(string v, string d) => new {
             candidateVersion = v, modelVersion = "manual-research-v1", rationale = "CI offline comparison",

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Npgsql;
 using Hana.Domain.Credit;
 using Hana.Infrastructure.CreditLearning;
 using Hana.Infrastructure.Identity;
@@ -33,9 +34,50 @@ internal static class AllocationLearningProposalEndpoints
                 http.Items["AllocationReviewerAccount"] = account.Value;
                 return await next(context);
             }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { return Results.Conflict(); }
+            catch (UnauthorizedAccessException) { return Results.StatusCode(403); }
             catch (AllocationProposalConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
+        });
+
+        routes.MapGet("/research/assessments", async (int? page, IServiceProvider services, CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var items = await db.Assessments.AsNoTracking().OrderByDescending(x => x.AssessedAtUtc)
+                .ThenBy(x => x.Id).Skip((p - 1) * 20).Take(20).Select(x => new {
+                    x.Id, x.DatasetVersion, x.SourceInstructionReference, x.FormulaVersion,
+                    x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education, x.AssessedAtUtc
+                }).ToListAsync(ct);
+            return Results.Ok(new { items, page = p, active = false });
+        });
+        routes.MapGet("/research/labels", async (string rubricVersion, IServiceProvider services, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(rubricVersion) || rubricVersion.Length > 120) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var items = await db.NeedLabels.AsNoTracking().Where(x => x.RubricVersion == rubricVersion)
+                .OrderByDescending(x => x.ReviewedAtUtc).ThenBy(x => x.Id).Take(501)
+                .Select(x => new { x.Id, x.SnapshotId, x.NeedScore, x.Partition, x.ReviewedAtUtc }).ToListAsync(ct);
+            return Results.Ok(new { items = items.Take(500), truncated = items.Count > 500, active = false });
+        });
+        routes.MapPost("/research/labels", async (NeedLabelRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var id = await services.GetRequiredService<AllocationTrainingWorkflow>().ReviewNeedAsync(
+                (Guid)http.Items["AllocationReviewerAccount"]!, input.SnapshotId, input.NeedScore,
+                input.RubricVersion, (LearningPartition)input.Partition, ct);
+            return Results.Ok(new { id, active = false });
+        });
+        routes.MapPost("/research/train", async (TrainAllocationRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.LabelIds is null) return Results.BadRequest();
+            var run = await services.GetRequiredService<AllocationTrainingWorkflow>().TrainAsync(
+                (Guid)http.Items["AllocationReviewerAccount"]!, input.LabelIds, input.PoolRial,
+                input.CutoffUtc, ct);
+            return Results.Ok(new { run.Id, run.Status, run.ProposalId, run.RecordedAtUtc, active = false });
         });
 
         routes.MapPost("", async (SubmitProposalRequest input, HttpContext http,
@@ -105,3 +147,6 @@ internal sealed record SubmitProposalRequest(string CandidateVersion, string Mod
     ProposalWeights? Weights, Guid[]? SnapshotIds, long PoolRial, string DatasetVersion,
     string SourceInstructionReference);
 internal sealed record ReviewProposalRequest(string Decision, string Reason);
+
+internal sealed record NeedLabelRequest(Guid SnapshotId, decimal NeedScore, string RubricVersion, int Partition);
+internal sealed record TrainAllocationRequest(Guid[]? LabelIds, long PoolRial, DateTimeOffset CutoffUtc);

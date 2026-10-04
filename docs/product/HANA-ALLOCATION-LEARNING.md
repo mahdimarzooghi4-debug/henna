@@ -176,3 +176,10 @@ The review page has no label-ingestion or training controls yet; those internal 
 their own reviewed administrative HTTP contracts. This page is a functional addition using existing
 brand styles, not a claimed reproduction of an unseen Figma screen. Browser tests use CI fixtures
 to verify review interactions, access denial, empty state and mobile reflow against real Next UI.
+
+
+## Administrative reviewed labels and experimental training
+
+The `/admin/allocation-training` page uses server-only cookie-to-bearer gateways and the same live session/ADMIN checks as proposal review. Routes under `/api/v1/admin/allocation-proposals/research` list paginated stored assessment features (without household identifiers), append reviewed labels, list up to 500 labels for an exact rubric version, and run the existing audited training workflow. The server chooses the training cutoff in the web gateway; the API validates UTC and rejects future cutoffs. Review identity and review timestamp come from the authenticated server context. Duplicate labels return conflict. No production assessment ingestion or synthetic seeding was added.
+
+Operators select actual persisted labels, with at least 30 training and 10 independent validation households, one dataset/source/baseline/rubric. These are engineering minimums, not evidence of statistical adequacy. Improving candidates stay pending review; non-improvement creates only a training audit. No coefficient activation, payments, or wallet mutation occurs. Training remains bounded and synchronous; a timeout can occur after a committed run, so investigate the recorded proposal before retrying. Production queueing, idempotent job submission and rollout remain future work.

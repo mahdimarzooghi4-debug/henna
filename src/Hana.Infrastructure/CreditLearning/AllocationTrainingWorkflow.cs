@@ -31,7 +31,7 @@ public sealed class AllocationTrainingRunRecord
     public DateTimeOffset RecordedAtUtc { get; set; }
 }
 
-/// <summary>Internal, authorized workflow. No HTTP training route or live activation.</summary>
+/// <summary>Authorized experimental workflow. No live activation.</summary>
 public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext db,
     RoleAuthorizationService roles, IClock clock, AllocationProposalService proposals)
 {
