@@ -1,7 +1,7 @@
 # Henna allocation learning — foundation
 
-Status: offline evaluation and internal PostgreSQL recording infrastructure; no trained AI,
-provider integration, public research ingestion/export endpoint, live event producer, pilot activation
+Status: experimental offline supervised learner, evaluation and internal PostgreSQL recording;
+no production-trained model, public research ingestion/export endpoint, live event producer, pilot activation
 or production deployment yet.
 
 The Domain simulator compares a versioned baseline with proposed six-dimension weights.
@@ -10,8 +10,8 @@ in one funding pool governed by one source instruction. Units are rials. These p
 must never be posted to a wallet; settlement rounding and eligibility remain separate.
 It does not alter the existing allocation calculator or historic allocations.
 
-The Application proposal-provider interface is the boundary for a future statistical model.
-There is deliberately no provider implementation or model credential at this stage.
+The Application proposal-provider interface now has an offline experimental statistical
+implementation. It needs independently reviewed labels; no external model credential is required.
 Any provider output is an untrusted draft, not an approved coefficient version.
 
 ## Data and evaluation to add before training
@@ -38,7 +38,7 @@ Human approval of a coefficient does not override the funding source's instructi
 
 Start with a simple statistical model when adequate reviewed data exists. A language model
 may explain reports, but must not infer diagnoses, replace eligibility review, or decide
-payments. No model is claimed to be trained by this foundation.
+payments. No production model is claimed to be trained by this foundation.
 
 ## Internal recording
 
@@ -100,3 +100,34 @@ Corrections require a new candidate version and proposal, preserving the earlier
 All responses explicitly return `active: false`. APPROVED means review accepted, not allocation
 activated. There is no activation route, wallet write, retroactive recalculation or frontend
 review screen in this increment. Stage review and a controlled pilot remain separate work.
+
+## Experimental supervised weight learner
+
+`ExperimentalAllocationProposalProvider` fits the six weights to independently reviewed
+need scores in [0,1] using constrained least-squares coordinate search. It is a small supervised
+learning implementation, not an LLM. Targets are reviewed need labels under one scoring rubric,
+not purchase volume, unspent credit or the existing formula's own outputs.
+
+Caller-supplied Training and Validation partitions must use entirely different pseudonymous
+household keys. At least 30 training and 10 validation examples are required (engineering guard,
+not evidence of adequate real-world sample size). Review identities, UTC review times and rubric
+versions are required. These supplied identifiers do not prove review authorization: a trusted
+label ingestion/audit workflow must verify them before production training.
+
+Fit starts from the versioned baseline; steps transfer 0.01 between weights, keeping the sum at
+one and each weight nonnegative. Each weight may move at most 0.05 from baseline. Search is
+bounded to 200 iterations. Validation labels never choose the search steps. A candidate is
+returned only if held-out mean-squared error improves by at least 1%; otherwise training reports
+no acceptable candidate. This threshold is experimental, not a validated business approval rule.
+
+The output contains training and validation errors, sample counts, rubric, UTC cutoff and a
+SHA-256 fingerprint covering reviewed inputs, partition, baseline and model version. Keeping
+the same inputs and cutoff reproduces the fit. The provider also returns dataset version and
+checks that label features match the supplied assessment cases. Geography remains fixed; only
+household weights are learned. Held-out performance does not prove fairness or causal impact.
+
+Synthetic tests demonstrate fitting, repeatability, validation separation and fail-closed
+handling. They are not training on actual Henna beneficiaries. The provider is not registered
+for live training and has no HTTP training endpoint yet; it does not automatically submit or
+activate a proposal. Trusted label persistence, training-run audit, representative/time-separated
+evaluation, fairness checks and the link to the administrative proposal queue remain future work.

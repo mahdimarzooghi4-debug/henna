@@ -10,8 +10,10 @@ public interface IAllocationProposalProvider
 }
 
 public sealed record AllocationResearchRequest(string DatasetVersion,
-    AllocationWeightProfile Baseline, IReadOnlyList<AllocationLearningCase> Cases);
+    AllocationWeightProfile Baseline, IReadOnlyList<AllocationLearningCase> Cases,
+    IReadOnlyList<ReviewedNeedExample>? ReviewedExamples = null);
 
 /// <summary>Untrusted draft requiring validation, offline evaluation and human review.</summary>
 public sealed record AllocationModelProposal(string ModelVersion,
-    AllocationWeightProfile Candidate, string Rationale);
+    AllocationWeightProfile Candidate, string Rationale,
+    AllocationLearningMetrics? LearningMetrics = null, string? DatasetVersion = null);
