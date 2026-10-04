@@ -1,13 +1,13 @@
 namespace Hana.Infrastructure.Commerce;
 public sealed record Offer(Guid Id,Guid SellerId,Guid ProductId,Guid CategoryId,long PriceRial,int Stock,int Version,bool Published);
 public sealed record CartItem(Guid ProductId,int Quantity);
-public sealed record Cart(Guid Id,Guid BuyerId,List<CartItem> Items);
+public sealed record Cart(Guid Id,Guid BuyerId,List<CartItem> Items,int Version=0);
 public sealed record BuyerAddress(Guid Id,Guid BuyerId,Guid CityId,string Text,decimal Latitude,decimal Longitude);
 public sealed record QuoteItem(Guid OfferId,Guid ProductId,int Quantity,long UnitPriceRial,int OfferVersion);
 public sealed record Quote(Guid Id,Guid BuyerId,Guid SellerId,Guid AddressId,string PurchaseType,
     string FulfillmentMode,List<QuoteItem> Items,List<CartItem> Unavailable,long ItemsTotalRial,
     DateTimeOffset ExpiresAtUtc,bool Used);
-public sealed record OrderItem(Guid Id,Guid OfferId,Guid ProductId,int Quantity,long UnitPriceRial,long CashRial,long CreditRial,int RefundedQuantity);
+public sealed record OrderItem(Guid Id,Guid OfferId,Guid ProductId,int Quantity,long UnitPriceRial,long CashRial,long CreditRial,int RefundedQuantity,string? ProductName=null);
 public sealed record Order(Guid Id,Guid BuyerId,Guid SellerId,string PurchaseType,string FulfillmentMode,
     BuyerAddress Address,List<OrderItem> Items,long TotalRial,long CashPaidRial,long CreditPaidRial,
     Guid? CreditGrantId,string State,string RefundState,int Version,DateTimeOffset CreatedAtUtc,

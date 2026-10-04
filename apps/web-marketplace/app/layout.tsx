@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import "@fontsource/vazirmatn/400.css";
+import "@fontsource/vazirmatn/700.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

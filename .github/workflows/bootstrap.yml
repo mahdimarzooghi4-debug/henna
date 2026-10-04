@@ -322,6 +322,8 @@ jobs:
         run: npm run web:typecheck
       - name: Test administrative allocation report validation
         run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs tests/web-allocation-assessment.mjs tests/web-allocation-training-runs.mjs
+      - name: Test buyer commerce DTOs and safe return destinations
+        run: node --experimental-strip-types --test tests/web-buyer-commerce.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
@@ -384,6 +386,8 @@ jobs:
           done
           cat /tmp/hana-web.log
           exit 1
+      - name: Test buyer commerce cookie gateway over isolated HTTPS
+        run: node tests/web-buyer-commerce-gateway.mjs
       - name: Test isolated web cookie gateway (CI-only mock upstream)
         run: node tests/web-auth-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
@@ -412,6 +416,8 @@ jobs:
           set -euo pipefail
           npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.55.1
           npx playwright install --with-deps chromium
+      - name: Browser test buyer cart quote and order lifecycle (CI-only API doubles)
+        run: node tests/web-buyer-commerce-browser.mjs
       - name: Browser test approved buyer login and seller form across two tabs
         run: node tests/web-frontend-browser-smoke.mjs
       - name: Browser test administrative allocation proposal review

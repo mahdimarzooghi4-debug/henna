@@ -122,9 +122,11 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   await Put(offer.Id,actor,"OFFER",offer,ct);return offer;
  }
  private async Task<object> SetCart(Guid actor,JsonElement x,CancellationToken ct) {
-  var productId=Id(x,"productId");if(!await catalog.Products.AnyAsync(p=>p.Id==productId&&p.State==PublicationStates.Published,ct))throw new CommerceMissing();
-  var cart=await Owned<Cart>(actor,"CART",ct)??new(Guid.NewGuid(),actor,[]);var quantity=Count(x,"quantity",0);
-  cart.Items.RemoveAll(i=>i.ProductId==productId);if(quantity>0)cart.Items.Add(new(productId,quantity));if(cart.Items.Count>100)throw new ArgumentException("Cart limit.");await Put(cart.Id,actor,"CART",cart,ct);return cart;
+  var productId=Id(x,"productId");var quantity=Count(x,"quantity",0);
+  if(quantity>0&&!await catalog.Products.AnyAsync(p=>p.Id==productId&&p.State==PublicationStates.Published&&p.Kind==CatalogProductKinds.Good,ct))throw new CommerceMissing();
+  var cart=await Owned<Cart>(actor,"CART",ct)??new(Guid.NewGuid(),actor,[]);
+  if(x.TryGetProperty("expectedVersion",out _)&&Count(x,"expectedVersion",0,int.MaxValue)!=cart.Version)throw new CommerceConflict("CART_VERSION_CHANGED");
+  cart.Items.RemoveAll(i=>i.ProductId==productId);if(quantity>0)cart.Items.Add(new(productId,quantity));if(cart.Items.Count>100)throw new ArgumentException("Cart limit.");cart=cart with{Version=checked(cart.Version+1)};await Put(cart.Id,actor,"CART",cart,ct);return cart;
  }
  public Task<object> ComparisonAsync(Guid actor,CancellationToken ct=default)=>CompareCart(actor,ct);
  private async Task<object> CompareCart(Guid actor,CancellationToken ct) {
@@ -132,7 +134,8 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   foreach(var seller in offers.Where(o=>o.Published).Select(o=>o.SellerId).Distinct()) {
    if(!active.Contains(seller))continue;
    var available=new List<QuoteItem>();var missing=new List<CartItem>();foreach(var item in cart.Items){var offer=offers.SingleOrDefault(o=>o.SellerId==seller&&o.ProductId==item.ProductId&&o.Published&&o.Stock>=item.Quantity);if(offer==null)missing.Add(item);else available.Add(new(offer.Id,offer.ProductId,item.Quantity,offer.PriceRial,offer.Version));}
-   if(available.Count>0)result.Add(new{sellerId=seller,available,unavailable=missing,itemsTotalRial=available.Aggregate(0L,(n,i)=>checked(n+checked(i.UnitPriceRial*i.Quantity)))});
+   var store=await sellers.RegistrationDrafts.AsNoTracking().SingleAsync(s=>s.AccountId==seller,ct);
+   if(available.Count>0)result.Add(new{sellerId=seller,storeName=store.BusinessName??store.StoreName,available,unavailable=missing,itemsTotalRial=available.Aggregate(0L,(n,i)=>checked(n+checked(i.UnitPriceRial*i.Quantity)))});
   }return result;
  }
  private async Task<object> SaveAddress(Guid actor,JsonElement x,CancellationToken ct) {
@@ -175,16 +178,23 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var q=await Get<Quote>(Id(x,"quoteId"),"QUOTE",ct);if(q.BuyerId!=actor)throw new CommerceForbidden();if(q.Used||q.ExpiresAtUtc<=clock.UtcNow)throw new CommerceConflict("QUOTE_EXPIRED_OR_USED");await Seller(q.SellerId,ct);
   var disposition=Text(x,"unavailableDisposition");if(disposition is not("KEEP" or "REMOVE"))throw new ArgumentException("Explicit cart disposition.");
   if(q.Unavailable.Count>0&&(!x.TryGetProperty("confirmUnavailable",out var confirmation)||confirmation.ValueKind!=JsonValueKind.True))throw new CommerceConflict("PARTIAL_BASKET_CONFIRMATION_REQUIRED");
-  var address=await Get<BuyerAddress>(q.AddressId,"ADDRESS",ct);var actual=new List<(QuoteItem Item,Offer Offer)>();foreach(var item in q.Items){var offer=await Get<Offer>(item.OfferId,"OFFER",ct);if(!offer.Published||offer.Version!=item.OfferVersion||offer.PriceRial!=item.UnitPriceRial||offer.Stock<item.Quantity)throw new CommerceConflict("QUOTE_CHANGED");actual.Add((item,offer));}
+  var address=await Get<BuyerAddress>(q.AddressId,"ADDRESS",ct);
+  var store=await sellers.RegistrationDrafts.AsNoTracking().SingleAsync(s=>s.AccountId==q.SellerId,ct);if(store.Pickup!=true||store.ActivityCityId!=address.CityId)throw new CommerceConflict("PICKUP_COVERAGE_UNAVAILABLE");
+  var productNames=new Dictionary<Guid,string>();var actual=new List<(QuoteItem Item,Offer Offer)>();foreach(var item in q.Items){
+   var offer=await Get<Offer>(item.OfferId,"OFFER",ct);if(!offer.Published||offer.SellerId!=q.SellerId||offer.ProductId!=item.ProductId||offer.Version!=item.OfferVersion||offer.PriceRial!=item.UnitPriceRial||offer.Stock<item.Quantity)throw new CommerceConflict("QUOTE_CHANGED");
+   var product=await catalog.Products.AsNoTracking().SingleOrDefaultAsync(p=>p.Id==item.ProductId&&p.State==PublicationStates.Published&&p.Kind==CatalogProductKinds.Good,ct)??throw new CommerceConflict("PRODUCT_NOT_PUBLISHED");
+   if(!await catalog.Categories.AnyAsync(c=>c.Id==product.CategoryId&&c.State==PublicationStates.Published,ct)||product.CategoryId!=offer.CategoryId)throw new CommerceConflict("CATEGORY_NOT_PUBLISHED");
+   productNames[item.ProductId]=product.Name;actual.Add((item,offer));
+  }
   CreditGrant? grant=null;long credit=0;
   if(x.TryGetProperty("creditGrantId",out var creditId)&&creditId.ValueKind!=JsonValueKind.Null){grant=await Get<CreditGrant>(creditId.GetGuid(),"CREDIT",ct);if(grant.AccountId!=actor)throw new CommerceForbidden();if(q.PurchaseType!="PERSONAL"||grant.ExpiresAtUtc<=clock.UtcNow||actual.Any(i=>!grant.CategoryIds.Contains(i.Offer.CategoryId)))throw new CommerceConflict("CREDIT_NOT_ELIGIBLE");credit=Math.Min(grant.AvailableRial,q.ItemsTotalRial);}
   var cash=q.ItemsTotalRial-credit;var wallet=await Wallet(actor,ct);if(wallet.Wallet.BalanceRial<cash)throw new CommerceConflict("PAYMENT_REQUIRED_PROVIDER_UNCONFIGURED");
   await SetWallet(actor,wallet.Wallet.BalanceRial-cash,ct);if(grant!=null)await Put(grant.Id,actor,"CREDIT",grant with{AvailableRial=grant.AvailableRial-credit},ct);
-  var items=new List<OrderItem>();long remaining=credit;foreach(var(a,o)in actual){var value=checked(a.UnitPriceRial*a.Quantity);var part=Math.Min(remaining,value);remaining-=part;items.Add(new(Guid.NewGuid(),o.Id,o.ProductId,a.Quantity,a.UnitPriceRial,value-part,part,0));await Put(o.Id,o.SellerId,"OFFER",o with{Stock=o.Stock-a.Quantity,Version=checked(o.Version+1)},ct);}
+  var items=new List<OrderItem>();long remaining=credit;foreach(var(a,o)in actual){var value=checked(a.UnitPriceRial*a.Quantity);var part=Math.Min(remaining,value);remaining-=part;items.Add(new(Guid.NewGuid(),o.Id,o.ProductId,a.Quantity,a.UnitPriceRial,value-part,part,0,productNames[a.ProductId]));await Put(o.Id,o.SellerId,"OFFER",o with{Stock=o.Stock-a.Quantity,Version=checked(o.Version+1)},ct);}
   var order=new Order(Guid.NewGuid(),actor,q.SellerId,q.PurchaseType,q.FulfillmentMode,address,items,q.ItemsTotalRial,cash,credit,grant?.Id,"PAID","NONE",1,clock.UtcNow,null,null);
   Transfer(order.Id,"BUYER_CASH:"+actor,"ORDER_CASH:"+order.Id,cash,"CASH");Transfer(order.Id,"HOUSEHOLD_CREDIT:"+grant?.Id,"ORDER_CREDIT:"+order.Id,credit,"SUPPORT");
   await Put(order.Id,actor,"ORDER",order,ct);await Put(q.Id,actor,"QUOTE",q with{Used=true},ct);
-  var cart=await Owned<Cart>(actor,"CART",ct);if(cart!=null){foreach(var item in q.Items){var current=cart.Items.Find(i=>i.ProductId==item.ProductId);if(current!=null){cart.Items.Remove(current);if(current.Quantity>item.Quantity)cart.Items.Add(current with{Quantity=current.Quantity-item.Quantity});}}if(disposition=="REMOVE")cart.Items.RemoveAll(i=>q.Unavailable.Any(u=>u.ProductId==i.ProductId));await Put(cart.Id,actor,"CART",cart,ct);}return order;
+  var cart=await Owned<Cart>(actor,"CART",ct);if(cart!=null){foreach(var item in q.Items){var current=cart.Items.Find(i=>i.ProductId==item.ProductId);if(current!=null){cart.Items.Remove(current);if(current.Quantity>item.Quantity)cart.Items.Add(current with{Quantity=current.Quantity-item.Quantity});}}if(disposition=="REMOVE")cart.Items.RemoveAll(i=>q.Unavailable.Any(u=>u.ProductId==i.ProductId));await Put(cart.Id,actor,"CART",cart with{Version=checked(cart.Version+1)},ct);}return order;
  }
  private static void Version(Order o,JsonElement x) {if(o.Version!=Count(x,"expectedVersion",1,int.MaxValue))throw new CommerceConflict("ORDER_VERSION_CHANGED");}
  private async Task Refund(Order o,long cash,long credit,CancellationToken ct) {
@@ -313,7 +323,10 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(page is <1 or >10000)throw new ArgumentException("Page.");var active=await ActiveSellers(ct);
   var query=db.Documents.AsNoTracking().Where(d=>d.Kind=="OFFER"&&active.Contains(d.OwnerId)&&EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));
   if(productId!=null){var selector=JsonSerializer.Serialize(new{ProductId=productId});query=query.Where(d=>EF.Functions.JsonContains(d.Body,selector));}
-  var rows=await query.OrderBy(d=>d.Id).Skip((page-1)*20).Take(20).ToListAsync(ct);return new{items=rows.Select(d=>JsonSerializer.Deserialize<Offer>(d.Body)),page,pageSize=20};
+  var rows=await query.OrderBy(d=>d.Id).Skip((page-1)*20).Take(20).ToListAsync(ct);
+  var offers=rows.Select(d=>JsonSerializer.Deserialize<Offer>(d.Body)!).ToList();var sellerIds=offers.Select(o=>o.SellerId).Distinct().ToArray();
+  var stores=await sellers.RegistrationDrafts.AsNoTracking().Where(s=>sellerIds.Contains(s.AccountId)).ToDictionaryAsync(s=>s.AccountId,s=>s.BusinessName??s.StoreName,ct);
+  return new{items=offers.Select(o=>new{o.Id,o.SellerId,o.ProductId,o.CategoryId,o.PriceRial,o.Stock,o.Version,o.Published,StoreName=stores[o.SellerId]}),page,pageSize=20};
  }
  public async Task<CommerceContent?> PublicContent(string slug,CancellationToken ct) {
   if(slug.Length>100)return null;

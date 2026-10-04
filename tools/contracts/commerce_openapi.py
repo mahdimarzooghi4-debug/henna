@@ -33,13 +33,15 @@ for name,parameters in records:
             t,n=part.strip().split(' ',1);n=n.split('=')[0].strip()
             fields[n[0].lower()+n[1:] if camel else n]=cstype(t,camel)
         S[('Public' if camel else '')+name]=obj(fields)
-comparison=obj({'sellerId':uuid,'available':arr(ref('QuoteItem')),'unavailable':arr(ref('CartItem')),'itemsTotalRial':integer()})
+S['PublicOffer']['properties']['storeName']=text(200)
+S['PublicOffer']['required'].append('storeName')
+comparison=obj({'storeName':text(200),'sellerId':uuid,'available':arr(ref('QuoteItem')),'unavailable':arr(ref('CartItem')),'itemsTotalRial':integer()})
 commands={}
 def command(action,fields,response,optional=(),permission='Authenticated owner'):
     S[action+'Input']=obj(fields,optional)
     commands[action]=(response,permission)
 command('SAVE_OFFER',{'offerId':uuid,'productId':uuid,'priceRial':integer(1),'stock':integer(0,1000000),'expectedVersion':integer(0,2147483647)},ref('Offer'),permission='Active SELLER')
-command('SET_CART_ITEM',{'productId':uuid,'quantity':integer(0,999)},ref('Cart'))
+command('SET_CART_ITEM',{'productId':uuid,'quantity':integer(0,999),'expectedVersion':integer(0,2147483647)},ref('Cart'),('expectedVersion',))
 command('COMPARE_CART',{},arr(comparison))
 command('SAVE_ADDRESS',{'addressId':uuid,'cityId':uuid,'text':text(1000),'latitude':{'type':'number','minimum':-90,'maximum':90},'longitude':{'type':'number','minimum':-180,'maximum':180}},ref('BuyerAddress'))
 command('CREATE_QUOTE',{'sellerId':uuid,'addressId':uuid,'purchaseType':enum('PERSONAL','LEGAL'),'fulfillmentMode':enum('PICKUP')},ref('Quote'))

@@ -1,5 +1,7 @@
 "use client";
 
+import type { AuthReturnTo } from "../../lib/auth-return";
+
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
@@ -20,7 +22,7 @@ const challengeIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function AuthForm({ returnTo }: {
-  returnTo: typeof sellerRegistrationPath | null;
+  returnTo: AuthReturnTo | null;
 }) {
   const [stage, setStage] = useState<Stage>("checking");
   const [phone, setPhone] = useState("");
@@ -72,9 +74,9 @@ export function AuthForm({ returnTo }: {
         setStage("session-unavailable");
         return;
       }
-      if (returnTo === sellerRegistrationPath) {
+      if (returnTo) {
         // Only the existing compile-time allowlisted destination is valid.
-        window.location.replace(sellerRegistrationPath);
+        window.location.replace(returnTo);
         return;
       }
       setStage("authenticated");
@@ -197,8 +199,8 @@ export function AuthForm({ returnTo }: {
           setCode("");
           setChallengeId("");
           setStatus("idle");
-          if (returnTo === sellerRegistrationPath)
-            window.location.replace(sellerRegistrationPath);
+          if (returnTo)
+            window.location.replace(returnTo);
           return;
         }
       }

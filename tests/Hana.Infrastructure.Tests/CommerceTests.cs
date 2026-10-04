@@ -58,6 +58,8 @@ public sealed class CommerceTests
  var offerId=Guid.NewGuid();await Command(seller,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=5,expectedVersion=0});
  await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(buyer,"SAVE_OFFER",new{}));
  var addressId=Guid.NewGuid();await Command(buyer,"SAVE_ADDRESS",new{addressId,cityId=city,text="CI only",latitude=35m,longitude=51m});await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=2});
+ var staleCart=await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=9,expectedVersion=0}));Assert.Equal("CART_VERSION_CHANGED",staleCart.Message);
+ Assert.Equal(2,JsonSerializer.Deserialize<Cart>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Kind=="CART"&&d.OwnerId==buyer)).Body)!.Items[0].Quantity);
  var households=new Dictionary<Guid,Guid>{{buyer,Guid.NewGuid()},{stranger,Guid.NewGuid()}};
  foreach(var pair in households)await Command(admin,"LINK_HOUSEHOLD",new{accountId=pair.Key,householdKey=pair.Value,evidenceReference="CI verified household mapping"});
  var program=await Command(admin,"CREATE_PROGRAM",new{name="CI funded source",fundingReference="approved-ci-instruction",fundedRial=10000,expiresAtUtc=clock.UtcNow.AddDays(10),categoryIds=new[]{category}});
@@ -65,8 +67,15 @@ public sealed class CommerceTests
  var creditId=allocation.GetProperty("grants")[0].GetProperty("Id").GetGuid();
  var q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});
  var key=Guid.NewGuid();var input=new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=creditId,unavailableDisposition="KEEP",confirmUnavailable=true};
+ var publishedProduct=await catalog.Products.SingleAsync(p=>p.Id==product);publishedProduct.State=PublicationStates.Draft;await catalog.SaveChangesAsync();
+ var unpublishedConflict=await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"PLACE_ORDER",input,key));Assert.Equal("PRODUCT_NOT_PUBLISHED",unpublishedConflict.Message);
+ Assert.Equal(10000,JsonSerializer.Deserialize<CreditGrant>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==creditId)).Body)!.AvailableRial);
+ await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=0});
+ publishedProduct.State=PublicationStates.Published;await catalog.SaveChangesAsync();
+ await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=2});
  var order=await Command(buyer,"PLACE_ORDER",input,key);var retry=await Command(buyer,"PLACE_ORDER",input,key);Assert.Equal(order.GetProperty("Id").GetGuid(),retry.GetProperty("Id").GetGuid());
  await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"PLACE_ORDER",new{quoteId=input.quoteId,creditGrantId=creditId,unavailableDisposition="REMOVE"},key));
+ Assert.Equal("CI product",order.GetProperty("Items")[0].GetProperty("ProductName").GetString());
  var orderId=order.GetProperty("Id").GetGuid();await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(stranger,"CANCEL_ORDER",new{orderId,expectedVersion=1}));
  var cancelKey=Guid.NewGuid();await Command(buyer,"CANCEL_ORDER",new{orderId,expectedVersion=1},cancelKey);await Command(buyer,"CANCEL_ORDER",new{orderId,expectedVersion=1},cancelKey);
  var credit=JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==creditId)).Body)!;Assert.Equal(10000,credit.AvailableRial);

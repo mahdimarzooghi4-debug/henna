@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BuyerProductPurchase } from "./buyer-product-purchase";
 import { useEffect, useState } from "react";
 import {
   parseBuyerProduct, validBuyerProductId, type BuyerProduct,
@@ -94,7 +95,7 @@ export function BuyerProductDetail({ id, backHref }: {
       <p className="buyer-detail-eyebrow">جزئیات کاتالوگ عمومی حنا</p>
       <h1>جزئیات کالا یا خدمت</h1>
       <p className="buyer-detail-intro">
-        فقط اطلاعات منتشرشده از API حنا؛ خرید در این مرحله فعال نیست.
+        مشخصات کالا و پیشنهادهای فروشندگان را بررسی کنید.
       </p>
 
       {current.status === "loading" ? (
@@ -130,9 +131,7 @@ export function BuyerProductDetail({ id, backHref }: {
             {current.product.description !== null &&
               <p className="buyer-detail-description">{current.product.description}</p>}
           </article>
-          <p className="buyer-detail-disclosure">
-            قیمت، موجودی، تصویر، فروشنده، شهر و دکمهٔ خرید هنوز در قرارداد عمومی وجود ندارند.
-          </p>
+          {current.product.kind === "GOOD" ? <BuyerProductPurchase key={id} productId={id}/> : <p className="buyer-detail-disclosure">خرید خدمات در این مسیر فعال نیست.</p>}
         </>
       )}
       <Link href={backHref} className="buyer-detail-button buyer-detail-button--back">
