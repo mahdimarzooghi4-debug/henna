@@ -8,7 +8,7 @@ const product={id:A,categoryId:A,name:"کالای آزمایشی خریدار",k
 const cart={id:A,version:1,items:[{productId:B,quantity:1}]};
 const qi={offerId:A,productId:A,quantity:2,unitPriceRial:1000,offerVersion:1};
 const quote={id:QUOTE,sellerId:SELLER,purchaseType:"PERSONAL",fulfillmentMode:"PICKUP",items:[qi],unavailable:[{productId:B,quantity:1}],itemsTotalRial:2000,expiresAtUtc:new Date(Date.now()+600000).toISOString(),used:false};
-let order=null,firstAttempt=null,orderAttempts=0,web,browser,logs="";
+let pagedHistory=false,historyPages=[],order=null,firstAttempt=null,orderAttempts=0,web,browser,logs="";
 const json=(body,status=200)=>({status,contentType:"application/json",headers:{"Cache-Control":"no-store"},body:JSON.stringify(body)});
 async function main(){
  web=spawn("npm",["run","start","--workspace","@hana/web-marketplace","--","-p","3022","-H","127.0.0.1"],{detached:true,stdio:["ignore","pipe","pipe"],env:{...process.env,NEXT_TELEMETRY_DISABLED:"1"}});web.stdout.on("data",b=>logs+=b);web.stderr.on("data",b=>logs+=b);
@@ -19,6 +19,7 @@ async function main(){
  await context.route("**/api/buyer/commerce/**",async route=>{
   const r=route.request(),url=new URL(r.url()),path=url.pathname.replace("/api/buyer/commerce/","");
   if(r.method()==="GET"){
+   if(path === "orders" && pagedHistory) { const requested=Number(url.searchParams.get("page"));historyPages.push(requested);return route.fulfill(json(requested === 1 ? Array.from({length:20},(_,i)=>({...order,id:`60000000-0000-4000-8000-${String(i+100).padStart(12,"0")}`})) : [])); }
    const data={cart,comparison:[{sellerId:SELLER,storeName:"فروشگاه آزمایشی",available:[qi],unavailable:quote.unavailable,itemsTotalRial:2000}],addresses:[{id:ADDRESS,cityId:A,text:"نشانی آزمایشی مشتری",latitude:35,longitude:51}],credits:[{id:GRANT,availableRial:10000,expiresAtUtc:new Date(Date.now()+86400000).toISOString(),categoryIds:[A]}],wallet:{balanceRial:0},orders:order?[order]:[],["orders/"+ORDER]:order,offers:[{id:A,sellerId:SELLER,productId:A,priceRial:1000,stock:10,version:1,storeName:"فروشگاه آزمایشی"}]}[path];
    assert.notEqual(data,undefined,"unexpected buyer read: "+path);return route.fulfill(json(data));
   }
@@ -42,6 +43,8 @@ async function main(){
  await page.clock.install();await page.clock.fastForward(610000);await page.getByText("پیش‌فاکتور منقضی شده؛ پیش‌فاکتور تازه بگیرید.").waitFor();assert.equal(await retry.isEnabled(),true);await retry.click();await page.waitForURL(base+"/orders/"+ORDER);await page.getByRole("heading",{name:"ثبت شده و پرداخت شده"}).waitFor();assert.equal(orderAttempts,2);
  await page.getByRole("button",{name:"لغو سفارش و بازگشت مبلغ"}).click();await page.getByRole("heading",{name:"لغو شده"}).waitFor();await page.getByText("مبلغ سفارش به منشأ پرداخت برگشت داده شده است.").waitFor();assert.equal(await page.getByRole("button",{name:"لغو سفارش و بازگشت مبلغ"}).count(),0);
  order={...order,state:"READY_FOR_PICKUP",refundState:"NONE",version:3};await page.reload();await page.getByRole("heading",{name:"آماده دریافت حضوری"}).waitFor();const pickup=page.getByRole("button",{name:"تأیید دریافت حضوری"});assert.equal(await pickup.isDisabled(),true);await page.getByLabel("سفارش را از فروشگاه تحویل گرفته‌ام").check();await pickup.click();await page.getByRole("heading",{name:"دریافت شده"}).waitFor();assert.equal(await page.getByRole("button",{name:"لغو سفارش و بازگشت مبلغ"}).count(),0);
+ pagedHistory=true;await page.goto(base+"/orders");await page.getByRole("button",{name:"صفحه بعد",exact:true}).waitFor();assert.equal(await page.getByRole("link",{name:"جزئیات سفارش",exact:true}).count(),20);assert.equal(await page.getByRole("button",{name:"صفحه قبل",exact:true}).isDisabled(),true);
+ await page.getByRole("button",{name:"صفحه بعد",exact:true}).click();await page.getByText("سفارش دیگری در این صفحه نیست.").waitFor();assert.equal(await page.getByRole("button",{name:"صفحه بعد",exact:true}).isDisabled(),true);await page.getByRole("button",{name:"صفحه قبل",exact:true}).click();await page.getByRole("button",{name:"صفحه بعد",exact:true}).waitFor();assert.equal(await page.getByRole("link",{name:"جزئیات سفارش",exact:true}).count(),20);assert.deepEqual(historyPages,[1,2,1]);
  await page.setViewportSize({width:390,height:970});await page.goto(base+"/cart");await page.getByRole("link",{name:"قلم ناموجود آزمایشی",exact:true}).waitFor();await page.evaluate(()=>document.fonts.ready);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.equal(await page.evaluate(()=>[...document.fonts].some(f=>f.family.replaceAll('"','')==="Vazirmatn"&&f.status==="loaded")),true);
  const logo=page.getByRole("img",{name:"حنا",exact:true});await logo.waitFor();const box=await logo.boundingBox();assert.equal(Math.round(box.width),145);assert.equal(Math.round(box.height),48);assert.equal(await logo.evaluate(i=>i.naturalWidth>0),true);assert.equal(requests.some(u=>u.includes("figma.com")),false);

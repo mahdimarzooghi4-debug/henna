@@ -20,7 +20,12 @@ export async function forwardBuyerCommerce(request: NextRequest, segments: strin
     if (segments[0] === "orders" && commerceId(segments[1]) && (method === "GET" && segments.length === 2 || method === "POST" && segments.length === 3 && ["cancel", "pickup-confirmation"].includes(segments[2]))) upstreamPath = "/orders/" + segments.slice(1).join("/");
   }
   if (!upstreamPath) return fail(404);
-  if (request.nextUrl.searchParams.size && !publicRead) return fail(400);
+  let requestedPage = 1;
+  if (request.nextUrl.searchParams.size && !publicRead) {
+    const value = request.nextUrl.searchParams.get("page");
+    if (method !== "GET" || path !== "orders" || request.nextUrl.searchParams.size !== 1 || !value || !/^[1-9][0-9]{0,4}$/.test(value) || Number(value) > 10000) return fail(400);
+    requestedPage = Number(value); upstreamPath += "?page=" + requestedPage;
+  }
   if (method === "POST" && !isSameOrigin(request)) return fail(403);
   const token = publicRead ? null : request.cookies.get(sessionCookieName)?.value;
   if (!publicRead && (!token || !accessTokenPattern.test(token))) return fail(401);
@@ -40,7 +45,7 @@ export async function forwardBuyerCommerce(request: NextRequest, segments: strin
     }
     if (r.status !== 200 || !r.headers.get("content-type")?.includes("application/json")) return fail(503);
     const x: unknown = JSON.parse(await boundedText(r, 512000));
-    const result = publicRead ? parseOffers(x, request.nextUrl.searchParams.get("productId")!) : parseCommerce(path, method, x);
+    const result = publicRead ? parseOffers(x, request.nextUrl.searchParams.get("productId")!) : parseCommerce(path, method, x, requestedPage);
     if (result === null) return fail(503);
     return NextResponse.json(result, { headers: noStore });
   } catch { return fail(503); }

@@ -35,3 +35,9 @@ test("buyer login returns accept implemented paths and reject free redirects", (
  for (const path of ["/cart", "/checkout", "/orders", "/orders/" + ID, "/seller/register"]) assert.equal(safeAuthReturnTo(path), path);
  for (const path of ["https://evil.test/cart", "//evil.test", "/cart?next=x", "/cart#x", "/orders/invalid", "/orders/" + ID + "/cancel", "%2Fcart", ["/cart"]]) assert.equal(safeAuthReturnTo(path), null);
 });
+
+test("order pages must match the requested bounded page", () => {
+ assert.deepEqual(parseCommerce("orders", "GET", {items:[],page:2,pageSize:20}, 2), []);
+ assert.equal(parseCommerce("orders", "GET", {items:[],page:1,pageSize:20}, 2), null);
+ for (const invalid of [0, -1, 1.5, 10001]) assert.equal(parseCommerce("orders", "GET", {items:[],page:invalid,pageSize:20}, invalid), null);
+});

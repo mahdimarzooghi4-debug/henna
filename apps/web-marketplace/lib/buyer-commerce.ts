@@ -40,11 +40,11 @@ const order = (x: unknown): BuyerOrder => {
   if (!items.length || totalRial !== cashPaidRial + creditPaidRial || totalRial !== items.reduce((n, i) => n + i.unitPriceRial * i.quantity, 0)) throw Error();
   return { id: id(r.Id), sellerId: id(r.SellerId), state: r.State as BuyerOrder["state"], refundState: text(r.RefundState, 30), version: number(r.Version, 1), totalRial, cashPaidRial, creditPaidRial, createdAtUtc: time(r.CreatedAtUtc), items };
 };
-const page = <T>(x: unknown, parse: (x: unknown) => T): T[] => { const r = row(x); if (r.page !== 1 || r.pageSize !== 20) throw Error(); return list(r.items, parse, 20); };
+const page = <T>(x: unknown, parse: (x: unknown) => T, expectedPage = 1): T[] => { const r = row(x); if (!Number.isInteger(expectedPage) || expectedPage < 1 || expectedPage > 10000 || r.page !== expectedPage || r.pageSize !== 20) throw Error(); return list(r.items, parse, 20); };
 export function parseOffers(x: unknown, productId: string): BuyerOffer[] | null {
   return attempt(() => page(x, v => { const r = row(v); if (r.published !== true || r.productId !== productId) throw Error(); return { id: id(r.id), sellerId: id(r.sellerId), productId: id(r.productId), priceRial: number(r.priceRial, 1), stock: number(r.stock, 0, 1000000), version: number(r.version, 1), storeName: text(r.storeName, 200) }; }));
 }
-export function parseCommerce(path: string, method: "GET" | "POST", x: unknown): unknown | null {
+export function parseCommerce(path: string, method: "GET" | "POST", x: unknown, expectedPage = 1): unknown | null {
   return attempt(() => {
     if (path === "cart") {
       const carts = page(x, cart); if (carts.length > 1) throw Error(); return carts[0] ?? { id: null, version: 0, items: [] };
@@ -59,7 +59,7 @@ export function parseCommerce(path: string, method: "GET" | "POST", x: unknown):
     if (path === "credits") return page(x, credit);
     if (path === "wallet") { const wallets = page(x, v => number(row(v).BalanceRial)); if (wallets.length > 1) throw Error(); return { balanceRial: wallets[0] ?? 0 }; }
     if (path === "quotes") return quote(x);
-    if (path === "orders") return method === "GET" ? page(x, order) : order(x);
+    if (path === "orders") return method === "GET" ? page(x, order, expectedPage) : order(x);
     if (/^orders\//.test(path)) return order(x);
     throw Error();
   });

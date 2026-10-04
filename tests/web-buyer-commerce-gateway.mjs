@@ -24,6 +24,7 @@ async function main() {
   if (mode === "conflict") {res.statusCode=409;return res.end(JSON.stringify({error:"CART_VERSION_CHANGED",privateDetail:"SECRET"}));}
   if (mode === "broken") return res.end(JSON.stringify({items:[{Id:"invalid"}],page:1,pageSize:20}));
   if (mode === "large") return res.end(JSON.stringify({value:"x".repeat(513000)}));
+  if (req.url.startsWith("/api/v1/orders?page=")) return res.end(JSON.stringify({items:[],page:Number(new URL(req.url,"https://fixture.test").searchParams.get("page")),pageSize:20}));
   const cart = {Id:ID,BuyerId:"SECRET",Items:[{ProductId:ID,Quantity:2}],Version:2};
   res.end(JSON.stringify(req.method === "GET" ? {items:[cart],page:1,pageSize:20} : cart));
  });
@@ -38,6 +39,8 @@ async function main() {
  assert.equal((await post({Origin:"https://evil.test"})).status,403);assert.equal(calls.length,0);
  assert.equal((await post({"Idempotency-Key":"invalid"})).status,400);assert.equal(calls.length,0);
  for (const unknown of ["admin", "constructor", "toString", "__proto__"]) assert.equal((await get(unknown)).status,404,unknown);assert.equal((await get("cart?page=2")).status,400);assert.equal(calls.length,0);
+ for (const query of ["page=0", "page=-1", "page=01", "page=1.5", "page=10001", "page=2&page=3", "page=2&actor=x"]) { const before=calls.length; assert.equal((await get("orders?"+query)).status,400); assert.equal(calls.length,before); }
+ const secondPage=await get("orders?page=2");assert.equal(secondPage.status,200);assert.deepEqual(await secondPage.json(),[]);assert.equal(calls.at(-1).url,"/api/v1/orders?page=2");
  const publicOffers=await get("offers?productId="+ID);assert.equal(publicOffers.status,200);assert.equal(JSON.stringify(await publicOffers.json()).includes("SECRET"),false);
  assert.equal((await get("offers?productId="+ID+"&productId="+ID)).status,400);
  const own=await get("cart");assert.equal(own.status,200);assert.deepEqual(await own.json(),{id:ID,version:2,items:[{productId:ID,quantity:2}]});assert.equal(own.headers.get("cache-control"),"no-store");
