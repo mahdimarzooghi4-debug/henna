@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCookieName } from "./server-auth";
 import { parseAssessmentInput } from "./allocation-assessment";
+import { parseTrainingRuns, parseTrainingRunDetail } from "./allocation-training-runs";
 import { proposalId } from "./allocation-proposals";
 
-export async function forwardResearch(request: NextRequest, operation: "assessments" | "labels" | "train") {
+export async function forwardResearch(request: NextRequest, operation: "assessments" | "labels" | "train" | "runs", id?: string) {
   const fail = (message: string, status: number) => NextResponse.json({ message }, { status, headers: noStore });
   const write = request.method === "POST";
+  if (operation === "runs" && write || id !== undefined && (operation !== "runs" || !proposalId(id))) return fail("درخواست معتبر نیست.",400);
   if (write && !isSameOrigin(request)) return fail("درخواست معتبر نیست.", 403);
   const token = request.cookies.get(sessionCookieName)?.value;
   if (!token || !accessTokenPattern.test(token)) return fail("ابتدا وارد شوید.", 401);
@@ -31,7 +33,9 @@ export async function forwardResearch(request: NextRequest, operation: "assessme
         body = JSON.stringify({ labelIds: input.labelIds, poolRial: input.poolRial, cutoffUtc: new Date().toISOString() });
       }
     } catch { return fail("درخواست معتبر نیست.", 400); }
-  } else if (operation === "assessments") {
+  } else if (id) {
+    query = `/${id}`;
+  } else if (operation === "assessments" || operation === "runs") {
     const page = request.nextUrl.searchParams.get("page") ?? "1";
     if (!/^\d{1,5}$/.test(page) || +page < 1 || +page > 10000) return fail("صفحه معتبر نیست.", 400);
     query = `?page=${+page}`;
@@ -46,11 +50,12 @@ export async function forwardResearch(request: NextRequest, operation: "assessme
     const response = await fetch(target, { method: write ? "POST" : "GET", body, cache: "no-store",
       headers: { Authorization: `Bearer ${token}`, ...(write ? { "Content-Type": "application/json" } : {}) }, signal: AbortSignal.timeout(30000) });
     if (!response.ok) {
-      const messages: Record<number, string> = { 400: "داده‌ها یا تقسیم آموزش و ارزیابی معتبر نیستند.", 401: "دوباره وارد شوید.", 403: "دسترسی مدیر لازم است.", 409: "این ارزیابی، امتیاز یا پیشنهاد قبلاً ثبت شده است؛ داده قبلی بازنویسی نمی‌شود." };
+      const messages: Record<number, string> = { 400: "داده‌ها یا تقسیم آموزش و ارزیابی معتبر نیستند.", 401: "دوباره وارد شوید.", 403: "دسترسی مدیر لازم است.", 404: "سابقه اجرا پیدا نشد.", 409: "این ارزیابی، امتیاز یا پیشنهاد قبلاً ثبت شده است؛ داده قبلی بازنویسی نمی‌شود." };
       return fail(messages[response.status] ?? "اجرای درخواست ممکن نشد.", messages[response.status] ? response.status : 503);
     }
     const payload = await response.json();
-    if (!payload || payload.active !== false || (!write && !Array.isArray(payload.items)) || (write && !proposalId(payload.id))) return fail("پاسخ معتبر نیست.", 503);
+    if (!payload || payload.active !== false || (!write && !id && !Array.isArray(payload.items)) || (write && !proposalId(payload.id))) return fail("پاسخ معتبر نیست.", 503);
+    if (operation === "runs" && !(id ? parseTrainingRunDetail(payload) : parseTrainingRuns(payload))) return fail("گزارش معتبر نیست.", 503);
     return NextResponse.json(payload, { headers: noStore });
   } catch { return fail("اجرای درخواست ممکن نشد؛ پیش از تکرار، نتیجه ثبت‌شده را بررسی کنید.", 503); }
 }

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { parseProposalDetail, parseProposalList, type ProposalDetail, type ProposalItem } from "../../../lib/allocation-proposals";
+import { parseProposalDetail, parseProposalList, proposalId, type ProposalDetail, type ProposalItem } from "../../../lib/allocation-proposals";
 import styles from "./page.module.css";
 
 const labels: Record<string, string> = { PENDING_REVIEW: "در انتظار بررسی", APPROVED: "تأییدشده", REJECTED: "ردشده" };
@@ -20,6 +20,10 @@ export default function AllocationProposalsPage() {
   const [listLoading, setListLoading] = useState(true), [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState(""), [reason, setReason] = useState(""), [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0), [notice, setNotice] = useState("");
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("proposal");
+    if (id && proposalId(id)) setSelected(id);
+  }, []);
   useEffect(() => {
     const controller = new AbortController(); setListLoading(true); setError("");
     fetch(`/api/admin/allocation-proposals?page=${page}`, { cache: "no-store", signal: controller.signal })

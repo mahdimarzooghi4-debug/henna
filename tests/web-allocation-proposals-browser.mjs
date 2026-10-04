@@ -26,6 +26,11 @@ try {
   await page.route(/\/api\/admin\/allocation-proposals(?:\/|\?|$)/, async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     assert.equal(request.headers().authorization, undefined);
+    if (path.includes("/research/runs")) {
+      const run = { id, status: "PROPOSED", datasetVersion: "ui-dataset", modelVersion: "ui-model", proposalId: id, recordedAtUtc: "2026-10-04T00:00:00Z" };
+      if (path.endsWith(id)) return route.fulfill(json({ ...run, active: false, cutoffUtc: "2026-10-03T00:00:00Z", poolRial:1000, sourceInstructionReference:"ui-source",rubricVersion:"ui-rubric",trainingCount:30,validationCount:10,learningMetrics:{BaselineValidationMse:.01,CandidateValidationMse:.001} }));
+      return route.fulfill(json({ active:false,items:[run] }));
+    }
     if (path.includes("/research/")) {
       if (path.endsWith("/assessments") && request.method() === "POST") {
         const input = request.postDataJSON();
@@ -101,6 +106,13 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   assert.equal((await fetch(base + "/api/admin/allocation-proposals/research/assessments")).status, 401);
   assert.equal((await fetch(base + "/api/admin/allocation-proposals/research/train", { method: "POST", headers: { Origin: "https://untrusted.test" } })).status, 403);
+  await page.goto(base + "/admin/allocation-training-runs");
+  await page.getByRole("button", { name: /پیشنهاد ثبت‌شده/ }).click();
+  await page.getByText("معیار: ui-rubric").waitFor();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByRole("link", { name:"بررسی پیشنهاد این اجرا" }).click();
+  await page.getByRole("heading", { name:"ضرایب پیشنهادی" }).waitFor();
+  assert.equal((await fetch(base + "/api/admin/allocation-proposals/research/runs")).status,401);
   assert.deepEqual(errors, []);
   console.log("Allocation review UI: authentication gateway, CSRF, reports, review reason, refresh, access denial and mobile reflow passed");
 } finally {

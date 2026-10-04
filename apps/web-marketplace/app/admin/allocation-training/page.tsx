@@ -39,6 +39,7 @@ export default function AllocationTrainingPage() {
   return <main className={styles.page}>
     <header><Link href="/admin/allocation-proposals">بررسی پیشنهادها</Link><Link href="/auth">ورود</Link></header>
     <h1>آموزش آزمایشی تخصیص</h1>
+    <Link href="/admin/allocation-training-runs">پیگیری سوابق و نتیجه آموزش</Link>
     <Link href="/admin/allocation-assessments">ثبت ارزیابی مستند خانوار</Link>
     <aside className={styles.note}>امتیاز نیاز را طبق معیار مصوب، مستقل از مبلغ خرید ثبت کنید. حداقل ۳۰ خانوار برای آموزش و ۱۰ خانوار متفاوت برای ارزیابی لازم است. ضرایب پس از آموزش فعال نمی‌شوند.</aside>
     {error && <p role="alert" className={styles.error}>{error}</p>}{notice && <p role="status">{notice}</p>}

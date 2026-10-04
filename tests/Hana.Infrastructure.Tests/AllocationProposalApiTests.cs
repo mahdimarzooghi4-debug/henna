@@ -77,6 +77,26 @@ public sealed class AllocationProposalApiTests
         Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.GetAsync(research + "/assessments")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.GetAsync(research + "/assessments?page=0")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await creatorClient.GetAsync(research + "/assessments")).StatusCode);
+        var runId = Guid.NewGuid();
+        learning.TrainingRuns.Add(new() { Id = runId, RequestedByAccountId = creator,
+            Status = "NO_IMPROVEMENT", DatasetVersion = dataset, ModelVersion = "audit-api-test",
+            CutoffUtc = now.AddMinutes(-1), RecordedAtUtc = now,
+            InputsJson = JsonSerializer.Serialize(new { poolRial = 1000L, sourceInstructionReference = source,
+                examples = Enumerable.Range(0,40).Select(i => new { Partition = i < 30 ? 1 : 2, RubricVersion = "audit-rubric" }) }) });
+        await learning.SaveChangesAsync();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(research + "/runs")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.GetAsync(research + $"/runs/{runId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await creatorClient.GetAsync(research + $"/runs/{Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.GetAsync(research + "/runs?page=0")).StatusCode);
+        var runDetail = await creatorClient.GetAsync(research + $"/runs/{runId}");
+        Assert.Equal(HttpStatusCode.OK, runDetail.StatusCode);
+        Assert.Contains("no-store", runDetail.Headers.CacheControl!.ToString());
+        using var runJson = JsonDocument.Parse(await runDetail.Content.ReadAsStringAsync());
+        Assert.Equal(30, runJson.RootElement.GetProperty("trainingCount").GetInt32());
+        Assert.Equal(10, runJson.RootElement.GetProperty("validationCount").GetInt32());
+        Assert.Equal("NO_IMPROVEMENT", runJson.RootElement.GetProperty("status").GetString());
+        Assert.False(runJson.RootElement.GetProperty("active").GetBoolean());
+        Assert.False(runJson.RootElement.TryGetProperty("inputsJson", out _));
         var capturedId = Guid.NewGuid();
         var householdKey = Guid.NewGuid();
         object Capture(Guid snapshotId, DateTimeOffset assessed) => new {

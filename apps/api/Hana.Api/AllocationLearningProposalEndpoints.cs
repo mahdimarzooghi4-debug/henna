@@ -93,6 +93,35 @@ internal static class AllocationLearningProposalEndpoints
                 input.RubricVersion, (LearningPartition)input.Partition, ct);
             return Results.Ok(new { id, active = false });
         });
+        routes.MapGet("/research/runs", async (int? page, IServiceProvider services, CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var items = await db.TrainingRuns.AsNoTracking().OrderByDescending(x => x.RecordedAtUtc)
+                .ThenBy(x => x.Id).Skip((p - 1) * 20).Take(20).Select(x => new {
+                    x.Id, x.Status, x.DatasetVersion, x.ModelVersion, x.ProposalId, x.RecordedAtUtc
+                }).ToListAsync(ct);
+            return Results.Ok(new { items, page = p, active = false });
+        });
+        routes.MapGet("/research/runs/{id:guid}", async (Guid id, IServiceProvider services, CancellationToken ct) =>
+        {
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var run = await db.TrainingRuns.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+            if (run is null) return Results.NotFound();
+            using var inputs = JsonDocument.Parse(run.InputsJson);
+            using var metrics = run.MetricsJson is { } json ? JsonDocument.Parse(json) : null;
+            var examples = inputs.RootElement.GetProperty("examples").EnumerateArray().ToArray();
+            return Results.Ok(new { run.Id, run.Status, run.DatasetVersion, run.ModelVersion, run.ProposalId,
+                run.RecordedAtUtc, run.CutoffUtc,
+                poolRial = inputs.RootElement.GetProperty("poolRial").GetInt64(),
+                sourceInstructionReference = inputs.RootElement.GetProperty("sourceInstructionReference").GetString(),
+                rubricVersion = examples[0].GetProperty("RubricVersion").GetString(),
+                trainingCount = examples.Count(x => x.GetProperty("Partition").GetInt32() == 1),
+                validationCount = examples.Count(x => x.GetProperty("Partition").GetInt32() == 2),
+                learningMetrics = metrics?.RootElement.Clone(), active = false });
+        });
+
         routes.MapPost("/research/train", async (TrainAllocationRequest input, HttpContext http,
             IServiceProvider services, CancellationToken ct) =>
         {
