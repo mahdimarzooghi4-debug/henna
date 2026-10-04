@@ -23,8 +23,8 @@ const catalog = new MobileCatalogClient(
 );
 
 /** Approved Figma buyer mobile frames 476:4 (empty), 478:22 (API-backed). */
-export function BuyerBrowseScreen({ onLogin, onCart, active=true, link }: {
-  active?:boolean; onLogin: () => void; onCart: (productId?:string)=>void; link: BuyerLinkEvent;
+export function BuyerBrowseScreen({ onLogin, onOrders, onCart, active=true, link }: {
+  onOrders:()=>void; active?:boolean; onLogin: () => void; onCart: (productId?:string)=>void; link: BuyerLinkEvent;
 }) {
   const [detailId, setDetailId] = useState<string | null>(
     link.route.kind === "detail" ? link.route.id : null,
@@ -94,6 +94,7 @@ export function BuyerBrowseScreen({ onLogin, onCart, active=true, link }: {
           </View>
 
           <View style={styles.content}>
+            <Pressable style={styles.headerLink} accessibilityRole="button" accessibilityLabel="سفارش‌های من" onPress={onOrders}><Text style={styles.headerLinkText}>سفارش‌های من</Text></Pressable>
             <View style={styles.intro}>
               <Text style={styles.eyebrow}>مرور کاتالوگ حنا</Text>
               <Text style={styles.title} accessibilityRole="header">

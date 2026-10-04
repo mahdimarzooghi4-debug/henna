@@ -20,6 +20,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { Vazirmatn_400Regular, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
 import { MobileCommerceClient } from "./src/mobile-commerce";
+import { BuyerOrdersScreen } from "./src/buyer-orders-screen";
 import { BuyerCheckoutScreen } from "./src/buyer-checkout-screen";
 import { BuyerCartScreen } from "./src/buyer-cart-screen";
 import { colors, space } from "./src/theme";
@@ -507,10 +508,11 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<"browse" | "auth" | "cart" | "checkout">("browse");
+  const [screen, setScreen] = useState<"browse" | "auth" | "cart" | "checkout" | "orders">("browse");
   const [fontsLoaded,fontError] = useFonts({Vazirmatn_400Regular,Vazirmatn_700Bold});
   const [selectedProduct,setSelectedProduct] = useState<string|null>(null);
-  const authReturn = useRef<"browse"|"cart"|"checkout">("browse");
+  const [selectedOrder,setSelectedOrder]=useState<string|null>(null);
+  const authReturn = useRef<"browse"|"cart"|"checkout"|"orders">("browse");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
   // link must not first fetch page 1 and briefly paint unrelated content.
   const [link, setLink] = useState<BuyerLinkEvent | null>(null);
@@ -546,9 +548,11 @@ export default function App() {
         <>
           <View style={{flex:1,display:screen === "browse" ? "flex" : "none"}}><BuyerBrowseScreen link={link} active={screen === "browse"}
             onLogin={() => {authReturn.current="browse";setScreen("auth");}}
+            onOrders={()=>{setSelectedOrder(null);setScreen("orders");}}
             onCart={(id) => {setSelectedProduct(id??null);setScreen("cart");}} /></View>
           {screen === "cart" && <BuyerCartScreen api={commerce} onCheckout={()=>setScreen("checkout")} selectedProduct={selectedProduct} onBack={() => setScreen("browse")} onLogin={() => {authReturn.current="cart";setScreen("auth");}} />}
-          {screen === "checkout" && <BuyerCheckoutScreen api={commerce} onBack={()=>setScreen("cart")} onLogin={()=>{authReturn.current="checkout";setScreen("auth");}} />}
+          {screen === "checkout" && <BuyerCheckoutScreen onOrder={(id)=>{setSelectedOrder(id);setScreen("orders");}} api={commerce} onBack={()=>setScreen("cart")} onLogin={()=>{authReturn.current="checkout";setScreen("auth");}} />}
+          {screen === "orders" && <BuyerOrdersScreen api={commerce} selectedId={selectedOrder} onBack={()=>setScreen("browse")} onLogin={()=>{authReturn.current="orders";setScreen("auth");}} />}
           {screen === "auth" && <ConsumerAuthScreen onBrowse={() => setScreen(authReturn.current)} />}
         </>}
 
