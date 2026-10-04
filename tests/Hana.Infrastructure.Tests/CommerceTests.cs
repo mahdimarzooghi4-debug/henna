@@ -12,6 +12,12 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Xunit;
 using Npgsql;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 namespace Hana.Infrastructure.Tests;
 public sealed class CommerceTests
 {
@@ -70,6 +76,35 @@ public sealed class CommerceTests
  clock.UtcNow=clock.UtcNow.AddHours(2);await Command(admin,"ASSESS_RETURN_SLA",new{});
  var late=JsonSerializer.Deserialize<Incident>((await db.Documents.SingleAsync(d=>d.Id==incidentId)).Body)!;Assert.True(late.PenaltyApplied);Assert.Null(late.CollectedAtUtc);
  Assert.True(await db.Journal.AnyAsync(j=>j.ActorId==buyer&&j.Event=="PLACE_ORDER"));
+ // Exercise shipping HTTP authorization and independent DB contexts for the last-stock race.
+ var tokens=new Dictionary<Guid,string>();foreach(var account in new[]{admin,seller,buyer,stranger}) {
+  var token=SessionTokenCodec.Generate();SessionTokenCodec.TryComputeDigest(token,out var digest);tokens[account]=token;
+  identity.AuthSessions.Add(new(){Id=Guid.NewGuid(),AccountId=account,TokenDigest=digest,IssuedAtUtc=DateTimeOffset.UtcNow.AddMinutes(-1),ExpiresAtUtc=DateTimeOffset.UtcNow.AddHours(1)});
+ }await identity.SaveChangesAsync();
+ using var factory=new WebApplicationFactory<Program>().WithWebHostBuilder(b=>{
+  b.UseEnvironment("Development");b.ConfigureAppConfiguration((_,config)=>config.AddInMemoryCollection(new Dictionary<string,string?>{["ConnectionStrings:IdentityDb"]=connection,["ConnectionStrings:CommerceDb"]=connection}));
+ });
+ using var anonymous=factory.CreateClient();using var customer=factory.CreateClient();using var other=factory.CreateClient();using var operatorClient=factory.CreateClient();using var storeClient=factory.CreateClient();
+ customer.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[buyer]);other.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[stranger]);operatorClient.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[admin]);storeClient.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[seller]);
+ async Task<HttpResponseMessage> Post(HttpClient client,string action,object body,Guid? commandId=null){using var request=new HttpRequestMessage(HttpMethod.Post,"/api/v1/commerce/commands/"+action){Content=JsonContent.Create(body)};request.Headers.Add("Idempotency-Key",(commandId??Guid.NewGuid()).ToString());return await client.SendAsync(request);}
+ Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/commerce/resources/ORDER")).StatusCode);
+ Assert.Equal(HttpStatusCode.Forbidden,(await Post(customer,"CREATE_PROGRAM",new{})).StatusCode);
+ Assert.Equal(HttpStatusCode.NotFound,(await other.GetAsync("/api/v1/commerce/resources/ORDER?id="+orderId)).StatusCode);
+ var currentOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
+ Assert.Equal(HttpStatusCode.OK,(await Post(storeClient,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=1,expectedVersion=currentOffer.Version})).StatusCode);
+ var p2=await Post(operatorClient,"CREATE_PROGRAM",new{name="Race CI",fundingReference="race-approved",fundedRial=4000,expiresAtUtc=DateTimeOffset.UtcNow.AddDays(1),categoryIds=new[]{category}});Assert.Equal(HttpStatusCode.OK,p2.StatusCode);
+ var program2=(await p2.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("Id").GetGuid();
+ var allocationResponse=await Post(operatorClient,"ALLOCATE_CREDIT",new{programId=program2,poolRial=4000,beneficiaries=new[]{buyer,stranger}.Select(a=>new{accountId=a,geographicFactor=1m,scores=new{health=1,hardship=1,age=1,size=1,care=1,education=1}})});
+ Assert.Equal(HttpStatusCode.OK,allocationResponse.StatusCode);var grants=(await allocationResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("grants").EnumerateArray().ToDictionary(g=>g.GetProperty("AccountId").GetGuid(),g=>g.GetProperty("Id").GetGuid());
+ var quotes=new Dictionary<Guid,Guid>();foreach(var pair in new[]{(buyer,customer),(stranger,other)}) {
+  var address=Guid.NewGuid();Assert.Equal(HttpStatusCode.OK,(await Post(pair.Item2,"SAVE_ADDRESS",new{addressId=address,cityId=city,text="Race CI",latitude=35,longitude=51})).StatusCode);
+  Assert.Equal(HttpStatusCode.OK,(await Post(pair.Item2,"SET_CART_ITEM",new{productId=product,quantity=1})).StatusCode);
+  var qr=await Post(pair.Item2,"CREATE_QUOTE",new{sellerId=seller,addressId=address,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});Assert.Equal(HttpStatusCode.OK,qr.StatusCode);quotes[pair.Item1]=(await qr.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("Id").GetGuid();
+ }
+ var race=await Task.WhenAll(Post(customer,"PLACE_ORDER",new{quoteId=quotes[buyer],creditGrantId=grants[buyer],unavailableDisposition="KEEP"}),Post(other,"PLACE_ORDER",new{quoteId=quotes[stranger],creditGrantId=grants[stranger],unavailableDisposition="KEEP"}));
+ Assert.Single(race,r=>r.StatusCode==HttpStatusCode.OK);Assert.Single(race,r=>r.StatusCode==HttpStatusCode.Conflict);
+ db.ChangeTracker.Clear();Assert.Equal(0,JsonSerializer.Deserialize<Offer>((await db.Documents.SingleAsync(d=>d.Id==offerId)).Body)!.Stock);
+
  }
  private static HanaCommerceDbContext Context(string connection)=>new(new DbContextOptionsBuilder<HanaCommerceDbContext>().UseNpgsql(connection,p=>p.MigrationsHistoryTable("__EFMigrationsHistory","commerce")).Options);
  private sealed class Clock:IClock {public DateTimeOffset UtcNow{get;set;}}

@@ -18,7 +18,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  {
   db.ChangeTracker.Clear();
   if(actor==Guid.Empty || command==Guid.Empty || input.ValueKind!=JsonValueKind.Object) throw new ArgumentException("Command required.");
-  var privileged=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","SET_FEE_POLICY","BUILD_SETTLEMENTS","REPLY_TICKET"};
+  var privileged=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","SET_FEE_POLICY","BUILD_SETTLEMENTS","REPLY_TICKET","SAVE_CONTENT","PUBLISH_CONTENT","CREATE_ORGANIZATION","GRANT_ORGANIZATION_MEMBER","REVOKE_ORGANIZATION_MEMBER"};
   if(privileged.Contains(action))await Admin(actor,ct);
   if(new[]{"SAVE_OFFER","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   transactionActor=actor;transactionCommand=command;
@@ -39,8 +39,15 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    "CONFIRM_RETURN"=>await ConfirmReturn(actor,input,ct), "VERIFY_UNAVAILABILITY"=>await VerifyUnavailable(actor,input,ct),
    "ASSESS_RETURN_SLA"=>await AssessReturns(actor,ct), "SET_FEE_POLICY"=>await SetFee(actor,input,ct),
    "BUILD_SETTLEMENTS"=>await BuildSettlements(actor,ct), "REQUEST_WITHDRAWAL"=>await Withdraw(actor,input,ct), "CANCEL_WITHDRAWAL"=>await CancelWithdrawal(actor,input,ct),
+   "CREATE_ORGANIZATION"=>await CreateOrganization(actor,input,ct), "GRANT_ORGANIZATION_MEMBER"=>await GrantMembership(actor,input,ct), "REVOKE_ORGANIZATION_MEMBER"=>await RevokeMembership(actor,input,ct),
+   "SAVE_CONTENT"=>await SaveContent(actor,input,ct), "PUBLISH_CONTENT"=>await PublishContent(actor,input,ct), "READ_NOTIFICATION"=>await MarkNotification(actor,input,ct),
    "OPEN_TICKET"=>await OpenTicket(actor,input,ct), "REPLY_TICKET"=>await ReplyTicket(actor,input,ct),
    _=>throw new ArgumentException("Unknown command.") };
+  if(result is Order changed) {
+   var receiver=action=="SELLER_ORDER_STATE"?changed.BuyerId:changed.SellerId;
+   await Notify(receiver,action,changed.Id,ct);
+  }
+  if(result is SupportTicket ticket && action=="REPLY_TICKET")await Notify(ticket.AccountId,action,ticket.Id,ct);
   var json=JsonSerializer.Serialize(result);
   db.Receipts.Add(new(){ActorId=actor,CommandId=command,Fingerprint=fingerprint,ResultJson=json,CreatedAtUtc=clock.UtcNow});
   // Transactional outbox/audit event. Delivery integrations consume it later; not an SMS sent flag.
@@ -107,12 +114,13 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private async Task<object> CreateProgram(Guid actor,JsonElement x,CancellationToken ct) {
   await Admin(actor,ct);var expiry=Utc(x,"expiresAtUtc");if(expiry<=clock.UtcNow)throw new ArgumentException("Expiry.");var categories=x.GetProperty("categoryIds").EnumerateArray().Select(p=>p.GetGuid()).Distinct().ToList();if(categories.Count is <1 or >100)throw new ArgumentException("Categories.");
   if(await catalog.Categories.CountAsync(c=>categories.Contains(c.Id)&&c.State==PublicationStates.Published,ct)!=categories.Count)throw new ArgumentException("Categories.");
-  var p=new CreditProgram(Guid.NewGuid(),Text(x,"name",120),Text(x,"fundingReference"),Money(x,"fundedRial"),Money(x,"fundedRial"),expiry,categories);await Put(p.Id,actor,"PROGRAM",p,ct);return p;
+  Guid? organization=null;if(x.TryGetProperty("organizationId",out var org)&&org.ValueKind!=JsonValueKind.Null){organization=org.GetGuid();await Get<CommerceOrganization>(organization.Value,"ORGANIZATION",ct);}
+  var p=new CreditProgram(Guid.NewGuid(),Text(x,"name",120),Text(x,"fundingReference"),Money(x,"fundedRial"),Money(x,"fundedRial"),expiry,categories,organization);await Put(p.Id,actor,"PROGRAM",p,ct);return p;
  }
  private async Task<object> Allocate(Guid actor,JsonElement x,CancellationToken ct) {
   await Admin(actor,ct);var program=await Get<CreditProgram>(Id(x,"programId"),"PROGRAM",ct);if(program.ExpiresAtUtc<=clock.UtcNow)throw new CommerceConflict("PROGRAM_EXPIRED");
   var beneficiaries=x.GetProperty("beneficiaries").EnumerateArray().ToArray();if(beneficiaries.Length is <1 or >500)throw new ArgumentException("Beneficiaries.");var pool=Money(x,"poolRial");if(pool>program.UnallocatedRial)throw new CommerceConflict("PROGRAM_FUNDS_INSUFFICIENT");
-  var weights=new List<(Guid Account,decimal Weight)>();foreach(var b in beneficiaries){var account=Id(b,"accountId");if(!await identity.Accounts.AnyAsync(a=>a.Id==account,ct))throw new CommerceMissing();var s=b.GetProperty("scores");var scores=new HouseholdNeedScores(Count(s,"health",0,3),Count(s,"hardship",0,3),Count(s,"age",0,3),Count(s,"size",0,3),Count(s,"care",0,3),Count(s,"education",0,3));var g=b.GetProperty("geographicFactor").GetDecimal();if(g<=0)throw new ArgumentException("Geography.");weights.Add((account,NeedsBasedAllocationV1.CalculateHouseholdFactor(scores)*g));}
+  var weights=new List<(Guid Account,decimal Weight)>();foreach(var b in beneficiaries){var account=Id(b,"accountId");if(program.OrganizationId is Guid orgId && !(await All<OrganizationMembership>("MEMBERSHIP",ct)).Any(m=>m.OrganizationId==orgId&&m.AccountId==account&&m.Role=="BENEFICIARY"))throw new CommerceForbidden();if(!await identity.Accounts.AnyAsync(a=>a.Id==account,ct))throw new CommerceMissing();var s=b.GetProperty("scores");var scores=new HouseholdNeedScores(Count(s,"health",0,3),Count(s,"hardship",0,3),Count(s,"age",0,3),Count(s,"size",0,3),Count(s,"care",0,3),Count(s,"education",0,3));var g=b.GetProperty("geographicFactor").GetDecimal();if(g<=0)throw new ArgumentException("Geography.");weights.Add((account,NeedsBasedAllocationV1.CalculateHouseholdFactor(scores)*g));}
   if(weights.Select(w=>w.Account).Distinct().Count()!=weights.Count)throw new ArgumentException("Duplicate beneficiary.");var sum=weights.Sum(w=>w.Weight);long assigned=0;var grants=new List<CreditGrant>();
   foreach(var w in weights){var amount=checked((long)decimal.Floor(pool*w.Weight/sum));assigned=checked(assigned+amount);var grant=new CreditGrant(Guid.NewGuid(),w.Account,program.Id,amount,amount,program.ExpiresAtUtc,program.CategoryIds);await Put(grant.Id,w.Account,"CREDIT",grant,ct);Transfer(grant.Id,"PROGRAM_AVAILABLE:"+program.Id,"HOUSEHOLD_CREDIT:"+grant.Id,amount,"SUPPORT");grants.Add(grant);}
   var owner=(await db.Documents.SingleAsync(d=>d.Id==program.Id,ct)).OwnerId;await Put(program.Id,owner,"PROGRAM",program with{UnallocatedRial=program.UnallocatedRial-assigned},ct);
@@ -218,19 +226,59 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  }
  private async Task<object> OpenTicket(Guid actor,JsonElement x,CancellationToken ct) {var t=new SupportTicket(Guid.NewGuid(),actor,Text(x,"subject",120),Text(x,"message",2000),"OPEN",clock.UtcNow,null);await Put(t.Id,actor,"TICKET",t,ct);return t;}
  private async Task<object> ReplyTicket(Guid actor,JsonElement x,CancellationToken ct) {await Admin(actor,ct);var t=await Get<SupportTicket>(Id(x,"ticketId"),"TICKET",ct);t=t with{State="ANSWERED",Reply=Text(x,"reply",2000)};await Put(t.Id,t.AccountId,"TICKET",t,ct);return t;}
+ private async Task<object> CreateOrganization(Guid actor,JsonElement x,CancellationToken ct) {
+  await Admin(actor,ct);var organization=new CommerceOrganization(Guid.NewGuid(),Text(x,"name",200),Text(x,"registrationReference"));await Put(organization.Id,actor,"ORGANIZATION",organization,ct);return organization;
+ }
+ private async Task<object> GrantMembership(Guid actor,JsonElement x,CancellationToken ct) {
+  await Admin(actor,ct);var orgId=Id(x,"organizationId");await Get<CommerceOrganization>(orgId,"ORGANIZATION",ct);var account=Id(x,"accountId");if(!await identity.Accounts.AnyAsync(a=>a.Id==account,ct))throw new CommerceMissing();
+  var role=Text(x,"role");if(role is not("MANAGER" or "BENEFICIARY"))throw new ArgumentException("Organization role.");var old=(await All<OrganizationMembership>("MEMBERSHIP",ct)).SingleOrDefault(m=>m.OrganizationId==orgId&&m.AccountId==account&&m.Role==role);
+  var m=new OrganizationMembership(old?.Id??Guid.NewGuid(),orgId,account,role);await Put(m.Id,account,"MEMBERSHIP",m,ct);return m;
+ }
+ private async Task<object> RevokeMembership(Guid actor,JsonElement x,CancellationToken ct) {
+  await Admin(actor,ct);var m=await Get<OrganizationMembership>(Id(x,"membershipId"),"MEMBERSHIP",ct);m=m with{Role="REVOKED"};await Put(m.Id,m.AccountId,"MEMBERSHIP",m,ct);return m;
+ }
+ private async Task Notify(Guid receiver,string code,Guid resource,CancellationToken ct) {
+  var n=new CommerceNotification(Guid.NewGuid(),receiver,code,resource,clock.UtcNow,false);await Put(n.Id,receiver,"NOTIFICATION",n,ct);
+ }
+ private async Task<object> MarkNotification(Guid actor,JsonElement x,CancellationToken ct) {
+  var n=await Get<CommerceNotification>(Id(x,"notificationId"),"NOTIFICATION",ct);if(n.AccountId!=actor)throw new CommerceForbidden();n=n with{Read=true};await Put(n.Id,actor,"NOTIFICATION",n,ct);return n;
+ }
+ private async Task<object> SaveContent(Guid actor,JsonElement x,CancellationToken ct) {
+  await Admin(actor,ct);var slug=Text(x,"slug",100);if(!System.Text.RegularExpressions.Regex.IsMatch(slug,"^[a-z0-9]+(?:-[a-z0-9]+)*$"))throw new ArgumentException("Slug.");
+  var old=(await All<CommerceContent>("CONTENT",ct)).SingleOrDefault(c=>c.Slug==slug);
+  if(Count(x,"expectedVersion",0,int.MaxValue)!=(old?.Version??0))throw new CommerceConflict("CONTENT_VERSION_CHANGED");
+  var c=new CommerceContent(old?.Id??Guid.NewGuid(),slug,Text(x,"title",200),Text(x,"text",10000),false,checked((old?.Version??0)+1));await Put(c.Id,Guid.Empty,"CONTENT",c,ct);return c;
+ }
+ private async Task<object> PublishContent(Guid actor,JsonElement x,CancellationToken ct) {
+  await Admin(actor,ct);var c=await Get<CommerceContent>(Id(x,"contentId"),"CONTENT",ct);if(Count(x,"expectedVersion",1,int.MaxValue)!=c.Version)throw new CommerceConflict("CONTENT_VERSION_CHANGED");
+  c=c with{Published=x.GetProperty("published").GetBoolean(),Version=checked(c.Version+1)};await Put(c.Id,Guid.Empty,"CONTENT",c,ct);return c;
+ }
+ public async Task<CommerceContent?> PublicContent(string slug,CancellationToken ct) {
+  if(slug.Length>100)return null;
+  var rows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="CONTENT"&&EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{Slug=slug,Published=true}))).Take(1).ToListAsync(ct);
+  return rows.Count==0?null:JsonSerializer.Deserialize<CommerceContent>(rows[0].Body);
+ }
  public async Task<object> ReadAsync(Guid actor,string kind,Guid? id,int page,CancellationToken ct=default) {
   if(page is <1 or >10000)throw new ArgumentException("Page.");
-  var allowed=new[]{"OFFER","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
+  var allowed=new[]{"OFFER","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
   var admin=await roles.HasRoleAsync(actor,HanaRoles.Admin,ct);
   var query=db.Documents.AsNoTracking().Where(d=>d.Kind==kind);
   if(id!=null)query=query.Where(d=>d.Id==id);
+  var memberships=await db.Documents.AsNoTracking().Where(d=>d.Kind=="MEMBERSHIP"&&d.OwnerId==actor).ToListAsync(ct);
+  var organizations=memberships.Select(d=>JsonSerializer.Deserialize<OrganizationMembership>(d.Body)!).Where(m=>m.Role=="MANAGER").Select(m=>m.OrganizationId).ToArray();
   if(!admin&&kind!="OFFER") {
    if(kind=="ORDER"||kind=="INCIDENT")query=query.Where(d=>d.OwnerId==actor||EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{SellerId=actor})));
+   else if(kind=="ORGANIZATION")query=query.Where(d=>d.OwnerId==actor||organizations.Contains(d.Id));
+   else if(kind=="PROGRAM") {
+    var scoped=query.Where(d=>d.OwnerId==actor);
+    foreach(var organization in organizations) {var selector=JsonSerializer.Serialize(new{OrganizationId=organization});scoped=scoped.Union(query.Where(d=>EF.Functions.JsonContains(d.Body,selector)));}
+    query=scoped;
+   }
    else query=query.Where(d=>d.OwnerId==actor);
   }
   var rows=await query.OrderBy(d=>d.Id).Skip(id==null?(page-1)*20:0).Take(id==null?20:1).ToListAsync(ct);
   var result=new List<JsonElement>();foreach(var d in rows){var body=JsonSerializer.Deserialize<JsonElement>(d.Body);
-   bool visible=admin||d.OwnerId==actor||kind=="OFFER"||kind=="ORDER"&&body.GetProperty("SellerId").GetGuid()==actor||kind=="INCIDENT"&&body.GetProperty("SellerId").GetGuid()==actor;
+   bool visible=admin||kind=="PROGRAM"&&organizations.Contains(body.GetProperty("OrganizationId").ValueKind==JsonValueKind.Null?Guid.Empty:body.GetProperty("OrganizationId").GetGuid())||kind=="ORGANIZATION"&&organizations.Contains(d.Id)||d.OwnerId==actor||kind=="OFFER"||kind=="ORDER"&&body.GetProperty("SellerId").GetGuid()==actor||kind=="INCIDENT"&&body.GetProperty("SellerId").GetGuid()==actor;
    if(visible)result.Add(body);
   }
   if(id!=null&&result.Count==0)throw new CommerceMissing();return new{items=result,page,pageSize=20};

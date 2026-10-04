@@ -14,7 +14,7 @@ public sealed record Order(Guid Id,Guid BuyerId,Guid SellerId,string PurchaseTyp
     DateTimeOffset? ReceivedAtUtc,DateTimeOffset? HandoffAtUtc);
 public sealed record CashWallet(Guid AccountId,long BalanceRial);
 public sealed record CreditGrant(Guid Id,Guid AccountId,Guid ProgramId,long GrantedRial,long AvailableRial,DateTimeOffset ExpiresAtUtc,List<Guid> CategoryIds);
-public sealed record CreditProgram(Guid Id,string Name,string FundingReference,long FundedRial,long UnallocatedRial,DateTimeOffset ExpiresAtUtc,List<Guid> CategoryIds);
+public sealed record CreditProgram(Guid Id,string Name,string FundingReference,long FundedRial,long UnallocatedRial,DateTimeOffset ExpiresAtUtc,List<Guid> CategoryIds,Guid? OrganizationId=null);
 public sealed record Incident(Guid Id,Guid OrderId,Guid OrderItemId,Guid BuyerId,Guid SellerId,string Type,int Quantity,string EvidenceReference,
     string State,DateTimeOffset ReportedAtUtc,DateTimeOffset? ApprovedAtUtc,DateTimeOffset? ReturnDueAtUtc,
     DateTimeOffset? FirstContactAtUtc,DateTimeOffset? DoorVisitAtUtc,DateTimeOffset? CollectedAtUtc,bool PenaltyApplied,long RefundRial);
@@ -25,3 +25,7 @@ public sealed record SupportTicket(Guid Id,Guid AccountId,string Subject,string 
 public sealed class CommerceConflict(string code) : Exception(code);
 public sealed class CommerceForbidden : Exception;
 public sealed class CommerceMissing : Exception;
+public sealed record CommerceNotification(Guid Id,Guid AccountId,string Code,Guid ResourceId,DateTimeOffset CreatedAtUtc,bool Read);
+public sealed record CommerceContent(Guid Id,string Slug,string Title,string Text,bool Published,int Version);
+public sealed record CommerceOrganization(Guid Id,string Name,string RegistrationReference);
+public sealed record OrganizationMembership(Guid Id,Guid OrganizationId,Guid AccountId,string Role);

@@ -6,6 +6,10 @@ namespace Hana.Api;
 internal static class CommerceEndpoints
 {
  internal static void MapCommerce(this WebApplication app,bool configured) {
+ app.MapGet("/api/v1/content/{slug}",async(string slug,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
+  http.Response.Headers.CacheControl="no-store";if(!configured)return Results.StatusCode(503);
+  try {var content=await services.GetRequiredService<CommerceService>().PublicContent(slug,ct);return content==null?Results.NotFound():Results.Ok(content);}catch(Exception)when(!ct.IsCancellationRequested){return Results.StatusCode(503);}
+ });
  var group=app.MapGroup("/api/v1/commerce").WithTags("Commerce");
  group.AddEndpointFilter(async(context,next)=>{
  var http=context.HttpContext;http.Response.Headers.CacheControl="no-store";
@@ -22,7 +26,7 @@ internal static class CommerceEndpoints
  group.MapPost("/commands/{action}",async(string action,JsonElement input,HttpContext http,CommerceService service,CancellationToken ct)=>{
  if(!Guid.TryParse(http.Request.Headers["Idempotency-Key"].ToString(),out var key)||key==Guid.Empty)return Results.BadRequest(new{error="IDEMPOTENCY_KEY_REQUIRED"});
  return Results.Ok(await service.ExecuteAsync((Guid)http.Items["CommerceActor"]!,key,action,input,ct));
- });
+ }).WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(65536));
  group.MapGet("/resources/{kind}",async(string kind,Guid? id,int? page,HttpContext http,CommerceService service,CancellationToken ct)=>Results.Ok(await service.ReadAsync((Guid)http.Items["CommerceActor"]!,kind,id,page??1,ct)));
  }
 }
