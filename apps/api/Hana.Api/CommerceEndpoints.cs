@@ -18,7 +18,7 @@ internal static class CommerceEndpoints
  if(!configured)return Results.StatusCode(503);
  try {var actor=await http.RequestServices.GetRequiredService<AuthSessionService>().ResolveAccountAsync(header[7..],http.RequestAborted);if(actor==null)return Results.Unauthorized();http.Items["CommerceActor"]=actor.Value;return await next(context);}
  catch(CommerceForbidden){return Results.StatusCode(403);}catch(CommerceMissing){return Results.NotFound();}
- catch(CommerceConflict e){return Results.Conflict(new{error=e.Message});}
+ catch(CommerceConflict e){return e.Message=="COMMAND_RATE_LIMITED"?Results.Json(new{error=e.Message},statusCode:429):Results.Conflict(new{error=e.Message});}
  catch(Exception e) when(e is ArgumentException or InvalidOperationException or KeyNotFoundException or FormatException or OverflowException){return Results.BadRequest(new{error="INVALID_COMMERCE_INPUT"});}
  catch(DbUpdateConcurrencyException){return Results.Conflict(new{error="RESOURCE_CHANGED"});}
  catch(Exception) when(!http.RequestAborted.IsCancellationRequested){return Results.StatusCode(503);}

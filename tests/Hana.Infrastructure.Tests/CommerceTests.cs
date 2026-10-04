@@ -78,6 +78,16 @@ public sealed class CommerceTests
  clock.UtcNow=clock.UtcNow.AddHours(2);await Command(admin,"ASSESS_RETURN_SLA",new{});
  var late=JsonSerializer.Deserialize<Incident>((await db.Documents.SingleAsync(d=>d.Id==incidentId)).Body)!;Assert.True(late.PenaltyApplied);Assert.Null(late.CollectedAtUtc);
  Assert.True(await db.Journal.AnyAsync(j=>j.ActorId==buyer&&j.Event=="PLACE_ORDER"));
+ // Content moderation and permission revocation must not be bypassed by cached results.
+ var content=await Command(admin,"SAVE_CONTENT",new{slug="ci-policy",title="Policy",text="CI text",expectedVersion=0});
+ Assert.Null(await service.PublicContent("ci-policy",default));
+ await Command(admin,"PUBLISH_CONTENT",new{contentId=content.GetProperty("Id").GetGuid(),expectedVersion=1,published=true});Assert.NotNull(await service.PublicContent("ci-policy",default));
+ await Command(admin,"SET_STAFF_PERMISSION",new{accountId=stranger,permission="FINANCE",active=true});
+ var feeKey=Guid.NewGuid();var feeInput=new{version="ci-fee-v1",fixedInvoiceFeeRial=0,approvalReference="ci-approved-policy"};await Command(stranger,"SET_FEE_POLICY",feeInput,feeKey);
+ await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(stranger,"REPLY_TICKET",new{}));
+ await Command(admin,"SET_STAFF_PERMISSION",new{accountId=stranger,permission="FINANCE",active=false});
+ await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(stranger,"SET_FEE_POLICY",feeInput,feeKey));
+
  // Exercise shipping HTTP authorization and independent DB contexts for the last-stock race.
  var tokens=new Dictionary<Guid,string>();foreach(var account in new[]{admin,seller,buyer,stranger}) {
   var token=SessionTokenCodec.Generate();SessionTokenCodec.TryComputeDigest(token,out var digest);tokens[account]=token;

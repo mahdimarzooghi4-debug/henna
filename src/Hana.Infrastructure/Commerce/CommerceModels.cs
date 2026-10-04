@@ -29,3 +29,4 @@ public sealed record CommerceNotification(Guid Id,Guid AccountId,string Code,Gui
 public sealed record CommerceContent(Guid Id,string Slug,string Title,string Text,bool Published,int Version);
 public sealed record CommerceOrganization(Guid Id,string Name,string RegistrationReference);
 public sealed record OrganizationMembership(Guid Id,Guid OrganizationId,Guid AccountId,string Role);
+public sealed record CommerceStaffPermission(Guid Id,Guid AccountId,string Permission,bool Active);

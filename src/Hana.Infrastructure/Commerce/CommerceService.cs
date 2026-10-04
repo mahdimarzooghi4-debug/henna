@@ -19,7 +19,11 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   db.ChangeTracker.Clear();
   if(actor==Guid.Empty || command==Guid.Empty || input.ValueKind!=JsonValueKind.Object) throw new ArgumentException("Command required.");
   var privileged=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","SET_FEE_POLICY","BUILD_SETTLEMENTS","REPLY_TICKET","SAVE_CONTENT","PUBLISH_CONTENT","CREATE_ORGANIZATION","GRANT_ORGANIZATION_MEMBER","REVOKE_ORGANIZATION_MEMBER"};
-  if(privileged.Contains(action))await Admin(actor,ct);
+  var finance=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","SET_FEE_POLICY","BUILD_SETTLEMENTS"};
+  var support=new[]{"DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","REPLY_TICKET"};
+  if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
+  else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
+  else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
   if(new[]{"SAVE_OFFER","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   transactionActor=actor;transactionCommand=command;
   // Pilot correctness boundary: serialize commerce mutations across API processes. Never an in-memory lock.
@@ -28,6 +32,8 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var fingerprint=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(action+Canonical(input))));
   var prior=await db.Receipts.SingleOrDefaultAsync(x=>x.ActorId==actor && x.CommandId==command,ct);
   if(prior!=null) { if(prior.Fingerprint!=fingerprint) throw new CommerceConflict("IDEMPOTENCY_PAYLOAD_CHANGED"); return JsonSerializer.Deserialize<JsonElement>(prior.ResultJson); }
+  if(await db.Receipts.CountAsync(r=>r.ActorId==actor&&r.CreatedAtUtc>clock.UtcNow.AddMinutes(-1),ct)>=120)
+   throw new CommerceConflict("COMMAND_RATE_LIMITED");
   object result=action switch {
    "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct), "COMPARE_CART"=>await CompareCart(actor,ct),
    "SAVE_ADDRESS"=>await SaveAddress(actor,input,ct), "CREATE_QUOTE"=>await CreateQuote(actor,input,ct),
@@ -39,6 +45,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    "CONFIRM_RETURN"=>await ConfirmReturn(actor,input,ct), "VERIFY_UNAVAILABILITY"=>await VerifyUnavailable(actor,input,ct),
    "ASSESS_RETURN_SLA"=>await AssessReturns(actor,ct), "SET_FEE_POLICY"=>await SetFee(actor,input,ct),
    "BUILD_SETTLEMENTS"=>await BuildSettlements(actor,ct), "REQUEST_WITHDRAWAL"=>await Withdraw(actor,input,ct), "CANCEL_WITHDRAWAL"=>await CancelWithdrawal(actor,input,ct),
+   "SET_STAFF_PERMISSION"=>await SetPermission(actor,input,ct),
    "CREATE_ORGANIZATION"=>await CreateOrganization(actor,input,ct), "GRANT_ORGANIZATION_MEMBER"=>await GrantMembership(actor,input,ct), "REVOKE_ORGANIZATION_MEMBER"=>await RevokeMembership(actor,input,ct),
    "SAVE_CONTENT"=>await SaveContent(actor,input,ct), "PUBLISH_CONTENT"=>await PublishContent(actor,input,ct), "READ_NOTIFICATION"=>await MarkNotification(actor,input,ct),
    "OPEN_TICKET"=>await OpenTicket(actor,input,ct), "REPLY_TICKET"=>await ReplyTicket(actor,input,ct),
@@ -68,6 +75,16 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private static int Count(JsonElement x,string key,int min=1,int max=999) { if(!x.TryGetProperty(key,out var p)||!p.TryGetInt32(out var n)||n<min||n>max) throw new ArgumentException(key);return n; }
  private static DateTimeOffset Utc(JsonElement x,string key) { if(!x.TryGetProperty(key,out var p)||!p.TryGetDateTimeOffset(out var n)||n.Offset!=TimeSpan.Zero) throw new ArgumentException(key);return n; }
  private async Task Admin(Guid actor,CancellationToken ct) { if(!await roles.HasRoleAsync(actor,HanaRoles.Admin,ct)) throw new CommerceForbidden(); }
+ private async Task<bool> HasPermission(Guid actor,string permission,CancellationToken ct) {
+  if(await roles.HasRoleAsync(actor,HanaRoles.Admin,ct))return true;
+  var selector=JsonSerializer.Serialize(new{Permission=permission,Active=true});
+  return await db.Documents.AsNoTracking().AnyAsync(d=>d.Kind=="PERMISSION"&&d.OwnerId==actor&&EF.Functions.JsonContains(d.Body,selector),ct);
+ }
+ private async Task Permission(Guid actor,string permission,CancellationToken ct) {if(!await HasPermission(actor,permission,ct))throw new CommerceForbidden();}
+ private async Task<object> SetPermission(Guid actor,JsonElement x,CancellationToken ct) {
+  await Admin(actor,ct);var target=Id(x,"accountId");if(!await identity.Accounts.AnyAsync(a=>a.Id==target,ct))throw new CommerceMissing();var permission=Text(x,"permission");if(permission is not("FINANCE" or "SUPPORT"))throw new ArgumentException("Permission.");
+  var active=x.GetProperty("active").GetBoolean();var prior=(await All<CommerceStaffPermission>("PERMISSION",ct)).SingleOrDefault(p=>p.AccountId==target&&p.Permission==permission);var p=new CommerceStaffPermission(prior?.Id??Guid.NewGuid(),target,permission,active);await Put(p.Id,target,"PERMISSION",p,ct);return p;
+ }
  private async Task Seller(Guid actor,CancellationToken ct) { if(!await roles.HasRoleAsync(actor,HanaRoles.Seller,ct)||!await sellers.SellerActivations.AnyAsync(x=>x.ApplicationAccountId==actor,ct)) throw new CommerceForbidden(); }
  private async Task<T> Get<T>(Guid id,string kind,CancellationToken ct) { var d=await db.Documents.SingleOrDefaultAsync(x=>x.Id==id&&x.Kind==kind,ct)??throw new CommerceMissing();return JsonSerializer.Deserialize<T>(d.Body)!; }
  private async Task<T?> Owned<T>(Guid owner,string kind,CancellationToken ct) where T:class {var d=await db.Documents.SingleOrDefaultAsync(x=>x.OwnerId==owner&&x.Kind==kind,ct);return d==null?null:JsonSerializer.Deserialize<T>(d.Body);}
@@ -112,13 +129,13 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var q=new Quote(Guid.NewGuid(),actor,seller,address.Id,purchase,mode,items,missing,total,clock.UtcNow.AddMinutes(5),false);await Put(q.Id,actor,"QUOTE",q,ct);return q;
  }
  private async Task<object> CreateProgram(Guid actor,JsonElement x,CancellationToken ct) {
-  await Admin(actor,ct);var expiry=Utc(x,"expiresAtUtc");if(expiry<=clock.UtcNow)throw new ArgumentException("Expiry.");var categories=x.GetProperty("categoryIds").EnumerateArray().Select(p=>p.GetGuid()).Distinct().ToList();if(categories.Count is <1 or >100)throw new ArgumentException("Categories.");
+  await Permission(actor,"FINANCE",ct);var expiry=Utc(x,"expiresAtUtc");if(expiry<=clock.UtcNow)throw new ArgumentException("Expiry.");var categories=x.GetProperty("categoryIds").EnumerateArray().Select(p=>p.GetGuid()).Distinct().ToList();if(categories.Count is <1 or >100)throw new ArgumentException("Categories.");
   if(await catalog.Categories.CountAsync(c=>categories.Contains(c.Id)&&c.State==PublicationStates.Published,ct)!=categories.Count)throw new ArgumentException("Categories.");
   Guid? organization=null;if(x.TryGetProperty("organizationId",out var org)&&org.ValueKind!=JsonValueKind.Null){organization=org.GetGuid();await Get<CommerceOrganization>(organization.Value,"ORGANIZATION",ct);}
   var p=new CreditProgram(Guid.NewGuid(),Text(x,"name",120),Text(x,"fundingReference"),Money(x,"fundedRial"),Money(x,"fundedRial"),expiry,categories,organization);await Put(p.Id,actor,"PROGRAM",p,ct);return p;
  }
  private async Task<object> Allocate(Guid actor,JsonElement x,CancellationToken ct) {
-  await Admin(actor,ct);var program=await Get<CreditProgram>(Id(x,"programId"),"PROGRAM",ct);if(program.ExpiresAtUtc<=clock.UtcNow)throw new CommerceConflict("PROGRAM_EXPIRED");
+  await Permission(actor,"FINANCE",ct);var program=await Get<CreditProgram>(Id(x,"programId"),"PROGRAM",ct);if(program.ExpiresAtUtc<=clock.UtcNow)throw new CommerceConflict("PROGRAM_EXPIRED");
   var beneficiaries=x.GetProperty("beneficiaries").EnumerateArray().ToArray();if(beneficiaries.Length is <1 or >500)throw new ArgumentException("Beneficiaries.");var pool=Money(x,"poolRial");if(pool>program.UnallocatedRial)throw new CommerceConflict("PROGRAM_FUNDS_INSUFFICIENT");
   var weights=new List<(Guid Account,decimal Weight)>();foreach(var b in beneficiaries){var account=Id(b,"accountId");if(program.OrganizationId is Guid orgId && !(await All<OrganizationMembership>("MEMBERSHIP",ct)).Any(m=>m.OrganizationId==orgId&&m.AccountId==account&&m.Role=="BENEFICIARY"))throw new CommerceForbidden();if(!await identity.Accounts.AnyAsync(a=>a.Id==account,ct))throw new CommerceMissing();var s=b.GetProperty("scores");var scores=new HouseholdNeedScores(Count(s,"health",0,3),Count(s,"hardship",0,3),Count(s,"age",0,3),Count(s,"size",0,3),Count(s,"care",0,3),Count(s,"education",0,3));var g=b.GetProperty("geographicFactor").GetDecimal();if(g<=0)throw new ArgumentException("Geography.");weights.Add((account,NeedsBasedAllocationV1.CalculateHouseholdFactor(scores)*g));}
   if(weights.Select(w=>w.Account).Distinct().Count()!=weights.Count)throw new ArgumentException("Duplicate beneficiary.");var sum=weights.Sum(w=>w.Weight);long assigned=0;var grants=new List<CreditGrant>();
@@ -169,7 +186,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   await Put(incident.Id,actor,"INCIDENT",incident,ct);return incident;
  }
  private async Task<object> DecideIncident(Guid actor,JsonElement x,CancellationToken ct) {
-  await Admin(actor,ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.State!="UNDER_REVIEW")throw new CommerceConflict("INCIDENT_ALREADY_DECIDED");var decision=Text(x,"decision");var reason=Text(x,"reason",1000);
+  await Permission(actor,"SUPPORT",ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.State!="UNDER_REVIEW")throw new CommerceConflict("INCIDENT_ALREADY_DECIDED");var decision=Text(x,"decision");var reason=Text(x,"reason",1000);
   if(decision=="REJECT"){i=i with{State="REJECTED"};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return new{incident=i,reason};}
   if(decision!="APPROVE")throw new ArgumentException("Decision.");var o=await Get<Order>(i.OrderId,"ORDER",ct);var item=o.Items.Single(t=>t.Id==i.OrderItemId);
   if(i.Quantity>item.Quantity-item.RefundedQuantity)throw new CommerceConflict("REFUND_LIMIT_EXCEEDED");
@@ -195,19 +212,19 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   i=i with{State="COLLECTED",CollectedAtUtc=clock.UtcNow,PenaltyApplied=clock.UtcNow>i.ReturnDueAtUtc};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return i;
  }
  private async Task<object> VerifyUnavailable(Guid actor,JsonElement x,CancellationToken ct) {
-  await Admin(actor,ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.State!="AWAITING_RETURN"||i.FirstContactAtUtc==null||i.DoorVisitAtUtc==null||i.DoorVisitAtUtc>i.ReturnDueAtUtc)throw new CommerceConflict("TIMELY_CALL_AND_DOOR_EVIDENCE_REQUIRED");
+  await Permission(actor,"SUPPORT",ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.State!="AWAITING_RETURN"||i.FirstContactAtUtc==null||i.DoorVisitAtUtc==null||i.DoorVisitAtUtc>i.ReturnDueAtUtc)throw new CommerceConflict("TIMELY_CALL_AND_DOOR_EVIDENCE_REQUIRED");
   if((await All<Settlement>("SETTLEMENT",ct)).Any(s=>s.OrderId==i.OrderId))throw new CommerceConflict("SETTLEMENT_ALREADY_PREPARED");
   var reason=Text(x,"reason",1000);i=i with{State="CUSTOMER_UNAVAILABLE_VERIFIED",PenaltyApplied=false};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return new{incident=i,reason};
  }
  private async Task<object> AssessReturns(Guid actor,CancellationToken ct) {
-  await Admin(actor,ct);var incidents=await All<Incident>("INCIDENT",ct);int assessed=0;foreach(var i in incidents.Where(i=>i.State=="AWAITING_RETURN"&&i.ReturnDueAtUtc<clock.UtcNow&&!i.PenaltyApplied)){await Put(i.Id,i.BuyerId,"INCIDENT",i with{PenaltyApplied=true},ct);assessed++;}return new{assessed};
+  await Permission(actor,"SUPPORT",ct);var incidents=await All<Incident>("INCIDENT",ct);int assessed=0;foreach(var i in incidents.Where(i=>i.State=="AWAITING_RETURN"&&i.ReturnDueAtUtc<clock.UtcNow&&!i.PenaltyApplied)){await Put(i.Id,i.BuyerId,"INCIDENT",i with{PenaltyApplied=true},ct);assessed++;}return new{assessed};
  }
  private async Task<object> SetFee(Guid actor,JsonElement x,CancellationToken ct) {
-  await Admin(actor,ct);var fee=new FeePolicy(Guid.NewGuid(),Text(x,"version",120),Money(x,"fixedInvoiceFeeRial",true),Text(x,"approvalReference"));
+  await Permission(actor,"FINANCE",ct);var fee=new FeePolicy(Guid.NewGuid(),Text(x,"version",120),Money(x,"fixedInvoiceFeeRial",true),Text(x,"approvalReference"));
   var old=await Owned<FeePolicy>(Guid.Empty,"FEE",ct);if(old!=null)fee=fee with{Id=old.Id};await Put(fee.Id,Guid.Empty,"FEE",fee,ct);return fee;
  }
  private async Task<object> BuildSettlements(Guid actor,CancellationToken ct) {
-  await Admin(actor,ct);var fee=await Owned<FeePolicy>(Guid.Empty,"FEE",ct)??throw new CommerceConflict("FEE_POLICY_UNCONFIGURED");var orders=await All<Order>("ORDER",ct);var incidents=await All<Incident>("INCIDENT",ct);var existing=await All<Settlement>("SETTLEMENT",ct);var result=new List<Settlement>();
+  await Permission(actor,"FINANCE",ct);var fee=await Owned<FeePolicy>(Guid.Empty,"FEE",ct)??throw new CommerceConflict("FEE_POLICY_UNCONFIGURED");var orders=await All<Order>("ORDER",ct);var incidents=await All<Incident>("INCIDENT",ct);var existing=await All<Settlement>("SETTLEMENT",ct);var result=new List<Settlement>();
   // Only prior Iran calendar days. No bank transfer or PAID status is fabricated.
   var iran=TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran");var day=DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.UtcNow,iran).DateTime);
   foreach(var o in orders.Where(o=>o.State=="COLLECTED"&&o.ReceivedAtUtc!=null&&o.ReceivedAtUtc.Value.AddHours(1)<clock.UtcNow&&DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(o.ReceivedAtUtc.Value,iran).DateTime)<day&&!existing.Any(s=>s.OrderId==o.Id))){
@@ -225,7 +242,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var w=await Get<Withdrawal>(Id(x,"withdrawalId"),"WITHDRAWAL",ct);if(w.BuyerId!=actor)throw new CommerceForbidden();if(w.State!="OWNERSHIP_VERIFICATION_PENDING")throw new CommerceConflict("WITHDRAWAL_STATE_INVALID");var wallet=await Wallet(actor,ct);await SetWallet(actor,checked(wallet.Wallet.BalanceRial+w.AmountRial),ct);w=w with{State="CANCELLED"};await Put(w.Id,actor,"WITHDRAWAL",w,ct);return w;
  }
  private async Task<object> OpenTicket(Guid actor,JsonElement x,CancellationToken ct) {var t=new SupportTicket(Guid.NewGuid(),actor,Text(x,"subject",120),Text(x,"message",2000),"OPEN",clock.UtcNow,null);await Put(t.Id,actor,"TICKET",t,ct);return t;}
- private async Task<object> ReplyTicket(Guid actor,JsonElement x,CancellationToken ct) {await Admin(actor,ct);var t=await Get<SupportTicket>(Id(x,"ticketId"),"TICKET",ct);t=t with{State="ANSWERED",Reply=Text(x,"reply",2000)};await Put(t.Id,t.AccountId,"TICKET",t,ct);return t;}
+ private async Task<object> ReplyTicket(Guid actor,JsonElement x,CancellationToken ct) {await Permission(actor,"SUPPORT",ct);var t=await Get<SupportTicket>(Id(x,"ticketId"),"TICKET",ct);t=t with{State="ANSWERED",Reply=Text(x,"reply",2000)};await Put(t.Id,t.AccountId,"TICKET",t,ct);return t;}
  private async Task<object> CreateOrganization(Guid actor,JsonElement x,CancellationToken ct) {
   await Admin(actor,ct);var organization=new CommerceOrganization(Guid.NewGuid(),Text(x,"name",200),Text(x,"registrationReference"));await Put(organization.Id,actor,"ORGANIZATION",organization,ct);return organization;
  }
@@ -260,8 +277,18 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  }
  public async Task<object> ReadAsync(Guid actor,string kind,Guid? id,int page,CancellationToken ct=default) {
   if(page is <1 or >10000)throw new ArgumentException("Page.");
-  var allowed=new[]{"OFFER","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
+  if(kind=="AUDIT") {
+   await Admin(actor,ct);return new{items=await db.Journal.AsNoTracking().OrderByDescending(j=>j.CreatedAtUtc).ThenBy(j=>j.Id).Skip((page-1)*20).Take(20).Select(j=>new{j.Id,j.ActorId,j.CommandId,j.ResourceId,j.Event,j.CreatedAtUtc}).ToListAsync(ct),page};
+  }
+  if(kind=="SUMMARY") {
+   await Admin(actor,ct);var orders=await All<Order>("ORDER",ct);var cases=await All<Incident>("INCIDENT",ct);var settlements=await All<Settlement>("SETTLEMENT",ct);
+   return new{orders=orders.Count,cancelled=orders.Count(o=>o.State=="CANCELLED"),collected=orders.Count(o=>o.State=="COLLECTED"),openIncidents=cases.Count(i=>i.State is "UNDER_REVIEW" or "AWAITING_RETURN"),preparedSettlements=settlements.Count,grossRial=orders.Where(o=>o.State!="CANCELLED").Aggregate(0L,(n,o)=>checked(n+o.TotalRial))};
+  }
+  var allowed=new[]{"OFFER","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
   var admin=await roles.HasRoleAsync(actor,HanaRoles.Admin,ct);
+  var supportAccess=new[]{"ORDER","INCIDENT","TICKET"}.Contains(kind)&&await HasPermission(actor,"SUPPORT",ct);
+  var financeAccess=new[]{"PROGRAM","CREDIT","SETTLEMENT","WITHDRAWAL"}.Contains(kind)&&await HasPermission(actor,"FINANCE",ct);
+  admin=admin||supportAccess||financeAccess;
   var query=db.Documents.AsNoTracking().Where(d=>d.Kind==kind);
   if(id!=null)query=query.Where(d=>d.Id==id);
   var memberships=await db.Documents.AsNoTracking().Where(d=>d.Kind=="MEMBERSHIP"&&d.OwnerId==actor).ToListAsync(ct);
