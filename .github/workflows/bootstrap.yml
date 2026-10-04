@@ -35,6 +35,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Verify commerce contract matches shipping commands
+        run: python tools/contracts/commerce_openapi.py --check
       - name: Restore .NET solution
         run: dotnet restore Hana.slnx
       - name: Build .NET solution
