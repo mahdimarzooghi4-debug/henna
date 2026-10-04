@@ -73,6 +73,8 @@ internal static class AllocationLearningProposalEndpoints
             var proposal = await db.Proposals.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
             if (proposal is null) return Results.NotFound();
             var review = await db.Reviews.AsNoTracking().SingleOrDefaultAsync(x => x.ProposalId == id, ct);
+            var training = await db.TrainingRuns.AsNoTracking().SingleOrDefaultAsync(x => x.ProposalId == id, ct);
+            using var metrics = training?.MetricsJson is { } json ? JsonDocument.Parse(json) : null;
             using var weights = JsonDocument.Parse(proposal.WeightsJson);
             using var report = JsonDocument.Parse(proposal.SimulationJson);
             using var snapshots = JsonDocument.Parse(proposal.SnapshotIdsJson);
@@ -82,6 +84,7 @@ internal static class AllocationLearningProposalEndpoints
                 proposal.PoolRial, proposal.CreatedByAccountId, proposal.CreatedAtUtc,
                 weights = weights.RootElement.Clone(), simulation = report.RootElement.Clone(),
                 snapshotIds = snapshots.RootElement.Clone(), review,
+                trainingRunId = training?.Id, learningMetrics = metrics?.RootElement.Clone(),
                 status = review?.Decision ?? "PENDING_REVIEW", active = false });
         });
 

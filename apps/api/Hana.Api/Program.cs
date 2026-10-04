@@ -77,6 +77,7 @@ if (!string.IsNullOrWhiteSpace(learningConnectionString))
             postgres.MigrationsHistoryTable("__EFMigrationsHistory", "allocation_learning")));
     builder.Services.AddScoped<AllocationLearningRecorder>();
     builder.Services.AddScoped<AllocationProposalService>();
+    if (hasIdentityDb) builder.Services.AddScoped<AllocationTrainingWorkflow>();
 }
 if (hasIdentityDb)
 {

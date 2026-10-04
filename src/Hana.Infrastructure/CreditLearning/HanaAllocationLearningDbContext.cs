@@ -44,6 +44,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
     public DbSet<AllocationOutcomeRecord> Outcomes => Set<AllocationOutcomeRecord>();
     public DbSet<AllocationProposalRecord> Proposals => Set<AllocationProposalRecord>();
     public DbSet<AllocationProposalReviewRecord> Reviews => Set<AllocationProposalReviewRecord>();
+    public DbSet<ReviewedNeedLabelRecord> NeedLabels => Set<ReviewedNeedLabelRecord>();
+    public DbSet<AllocationTrainingRunRecord> TrainingRuns => Set<AllocationTrainingRunRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -103,6 +105,34 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.Decision).HasMaxLength(16).IsRequired();
             e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => x.ProposalId).IsUnique();
+            e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<ReviewedNeedLabelRecord>(e =>
+        {
+            e.ToTable("need_labels", t => t.HasCheckConstraint("ck_need_label",
+                "\"NeedScore\" BETWEEN 0 AND 1 AND \"Partition\" IN (1, 2)"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.NeedScore).HasColumnType("numeric");
+            e.Property(x => x.RubricVersion).HasMaxLength(120).IsRequired();
+            e.HasIndex(x => new { x.SnapshotId, x.RubricVersion }).IsUnique();
+            e.HasOne<AllocationAssessmentRecord>().WithMany().HasForeignKey(x => x.SnapshotId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationTrainingRunRecord>(e =>
+        {
+            e.ToTable("training_runs", t => t.HasCheckConstraint("ck_training_run",
+                "(\"Status\" = 'PROPOSED' AND \"ProposalId\" IS NOT NULL AND \"MetricsJson\" IS NOT NULL) OR (\"Status\" = 'NO_IMPROVEMENT' AND \"ProposalId\" IS NULL)"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Status).HasMaxLength(24).IsRequired();
+            e.Property(x => x.DatasetVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ModelVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.InputsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.MetricsJson).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.RecordedAtUtc, x.Id });
             e.HasIndex(x => x.ProposalId).IsUnique();
             e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
                 .OnDelete(DeleteBehavior.Restrict);

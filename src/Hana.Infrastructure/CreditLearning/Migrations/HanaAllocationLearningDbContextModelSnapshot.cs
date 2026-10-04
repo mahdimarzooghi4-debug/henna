@@ -103,5 +103,42 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
                 t.HasCheckConstraint("ck_review_decision", "\"Decision\" IN ('APPROVED', 'REJECTED')");
             });
         });
+
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.ReviewedNeedLabelRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("SnapshotId").HasColumnType("uuid");
+            e.Property<Guid>("ReviewerAccountId").HasColumnType("uuid");
+            e.Property<decimal>("NeedScore").HasColumnType("numeric");
+            e.Property<string>("RubricVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<int>("Partition").HasColumnType("integer");
+            e.Property<DateTimeOffset>("ReviewedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("SnapshotId", "RubricVersion").IsUnique();
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationAssessmentRecord", null)
+                .WithMany().HasForeignKey("SnapshotId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.ToTable("need_labels", "allocation_learning", t =>
+                t.HasCheckConstraint("ck_need_label", "\"NeedScore\" BETWEEN 0 AND 1 AND \"Partition\" IN (1, 2)"));
+        });
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationTrainingRunRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("RequestedByAccountId").HasColumnType("uuid");
+            e.Property<Guid?>("ProposalId").HasColumnType("uuid");
+            e.Property<string>("Status").IsRequired().HasMaxLength(24).HasColumnType("character varying(24)");
+            e.Property<string>("DatasetVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("ModelVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("InputsJson").IsRequired().HasColumnType("jsonb");
+            e.Property<string?>("MetricsJson").HasColumnType("jsonb");
+            e.Property<DateTimeOffset>("CutoffUtc").HasColumnType("timestamp with time zone");
+            e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("ProposalId").IsUnique();
+            e.HasIndex("RecordedAtUtc", "Id");
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
+                .WithMany().HasForeignKey("ProposalId").OnDelete(DeleteBehavior.Restrict);
+            e.ToTable("training_runs", "allocation_learning", t =>
+                t.HasCheckConstraint("ck_training_run", "(\"Status\" = 'PROPOSED' AND \"ProposalId\" IS NOT NULL AND \"MetricsJson\" IS NOT NULL) OR (\"Status\" = 'NO_IMPROVEMENT' AND \"ProposalId\" IS NULL)"));
+        });
     }
 }

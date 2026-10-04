@@ -128,6 +128,34 @@ household weights are learned. Held-out performance does not prove fairness or c
 
 Synthetic tests demonstrate fitting, repeatability, validation separation and fail-closed
 handling. They are not training on actual Henna beneficiaries. The provider is not registered
-for live training and has no HTTP training endpoint yet; it does not automatically submit or
-activate a proposal. Trusted label persistence, training-run audit, representative/time-separated
-evaluation, fairness checks and the link to the administrative proposal queue remain future work.
+for HTTP training and has no training endpoint yet. The internal workflow below now submits
+successful candidates to the proposal queue. Representative/time-separated evaluation, fairness
+checks and pilot activation remain future work.
+
+## Reviewed labels and completed training-run audit
+
+The internal `AllocationTrainingWorkflow` connects persisted reviewed labels to the learner
+and proposal queue. It is registered when both databases are configured. There is no HTTP label
+or training route yet; internal callers must resolve an active session before supplying an actor.
+The workflow checks that the supplied actor currently has a server-side ADMIN assignment.
+
+`ReviewNeedAsync` records a 0–1 reviewed need label, reviewer identity, rubric, training/validation
+partition and server timestamp against an existing assessment. It cannot rewrite a label;
+one snapshot/rubric pair is unique. A correction uses a new rubric version. The reviewer must
+establish the label independently under a documented rubric; code cannot establish that a
+human judgment was unbiased or prevent a reviewer copying an existing formula's output.
+
+`TrainAsync` consumes 40–500 distinct label IDs from one dataset, supported baseline and funding
+instruction. It reconstructs features from stored assessments, rejects labels beyond a supplied
+past UTC cutoff and relies on the learner to reject household overlap or mixed rubrics. A completed
+run freezes labels, features, review identities, model/baseline versions, pool and input references.
+Successful training creates a PENDING_REVIEW proposal plus metrics and a linked PROPOSED audit
+in one database transaction. If evaluation reports no improvement, only a NO_IMPROVEMENT audit
+is stored. Invalid inputs or infrastructure errors abort without a completed run; they are not
+recorded as successful training. Exact repeat of a successful candidate version conflicts with
+the existing proposal instead of silently inserting a duplicate.
+
+Proposal detail includes the associated training-run ID and numeric learning metrics for
+administrators. Review approval remains inactive. Tests exercise both successful and no-improvement
+training on explicitly synthetic labels, PostgreSQL persistence, authorization and audit immutability.
+No real Henna household labels have been collected or trained in this increment.
