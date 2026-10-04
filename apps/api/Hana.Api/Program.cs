@@ -4,6 +4,7 @@ using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
 using Hana.Infrastructure.Catalog;
 using Hana.Infrastructure.Geography;
+using Hana.Infrastructure.CreditLearning;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
@@ -67,6 +68,15 @@ catch (FormatException)
 // while database readiness will correctly fail closed.
 var identityConnectionString = builder.Configuration.GetConnectionString("IdentityDb");
 var hasIdentityDb = !string.IsNullOrWhiteSpace(identityConnectionString);
+// Research storage is opt-in and has no public write/export endpoint.
+var learningConnectionString = builder.Configuration.GetConnectionString("AllocationLearningDb");
+if (!string.IsNullOrWhiteSpace(learningConnectionString))
+{
+    builder.Services.AddDbContext<HanaAllocationLearningDbContext>(options =>
+        options.UseNpgsql(learningConnectionString, postgres =>
+            postgres.MigrationsHistoryTable("__EFMigrationsHistory", "allocation_learning")));
+    builder.Services.AddScoped<AllocationLearningRecorder>();
+}
 if (hasIdentityDb)
 {
     builder.Services.AddDbContext<HanaIdentityDbContext>(
@@ -384,6 +394,16 @@ if (args.Any(value => value.StartsWith(
 
 // Migration is an explicit one-off operator action, never a side effect of
 // starting ordinary API replicas. Store the real password only in env/secrets.
+if (args.Contains("--apply-learning-migrations", StringComparer.Ordinal))
+{
+    if (string.IsNullOrWhiteSpace(learningConnectionString))
+        throw new InvalidOperationException("AllocationLearningDb connection string is required.");
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<HanaAllocationLearningDbContext>()
+        .Database.MigrateAsync();
+    return;
+}
+
 if (args.Contains("--apply-migrations", StringComparer.Ordinal))
 {
     if (!hasIdentityDb)
