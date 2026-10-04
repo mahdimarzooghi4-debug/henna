@@ -90,7 +90,8 @@ internal static class AllocationLearningProposalEndpoints
         {
             var found = await services.GetRequiredService<AllocationProposalService>().ReviewAsync(id,
                 (Guid)http.Items["AllocationReviewerAccount"]!, input.Decision, input.Reason, ct);
-            return found ? Results.Ok(new { id, status = input.Decision, active = false }) : Results.NotFound();
+            if (!found) return Results.NotFound();
+            return Results.Ok(new { id, status = input.Decision, active = false });
         });
     }
 }
