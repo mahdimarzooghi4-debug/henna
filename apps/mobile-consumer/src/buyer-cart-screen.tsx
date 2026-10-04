@@ -9,7 +9,7 @@ import * as Crypto from "expo-crypto";
 const logo=require("../assets/hana-cart-logo.png");
 const rtl={textAlign:"right",writingDirection:"rtl",fontFamily:"Vazirmatn_400Regular"} as const;
 /** Draft Figma 715:35 translated into native layout with real reference-cart controls. */
-export function BuyerCartScreen({api,onBack,onLogin,selectedProduct}:{api:MobileCommerceClient;onBack:()=>void;onLogin:()=>void;selectedProduct:string|null}) {
+export function BuyerCartScreen({api,onBack,onLogin,onCheckout,selectedProduct}:{api:MobileCommerceClient;onBack:()=>void;onLogin:()=>void;onCheckout:()=>void;selectedProduct:string|null}) {
  const [state,setState]=useState(initialNativeCartState);
  const [controller]=useState(()=>new NativeCartController(api,new MobileCatalogClient(process.env.EXPO_PUBLIC_HANA_API_BASE_URL,fetch,__DEV__),Crypto.randomUUID,setState));
  useEffect(()=>{controller.start();const app=AppState.addEventListener("change",s=>{if(s==="active")void controller.refresh();});return()=>{app.remove();controller.stop();};},[controller]);
@@ -19,6 +19,7 @@ export function BuyerCartScreen({api,onBack,onLogin,selectedProduct}:{api:Mobile
  return <SafeAreaView style={styles.safe} edges={["top","bottom"]}><ScrollView contentContainerStyle={{flexGrow:1}}><View style={styles.header}><Image source={logo} style={styles.logo} resizeMode="contain" accessibilityLabel="حنا"/>{action("بازگشت",onBack,disabled)}</View><View style={styles.content}>
  <Text style={styles.eyebrow}>خرید از حنا</Text><Text style={styles.title} accessibilityRole="header">سبد مرجع خرید</Text><Text style={styles.text}>کالاها را برای مقایسهٔ پیشنهادها نگه دارید.</Text>
  <View style={styles.notice}><Text style={[styles.text,{color:colors.teal}]}>این سبد قیمت قطعی، پوشش یا موجودی را تضمین نمی‌کند و هنوز سفارش یا رزروی نمی‌سازد.</Text></View>
+ {action("مقایسه فروشگاه‌ها و ادامه خرید",onCheckout,disabled)}
  {state.error?<View style={styles.card}><Text accessibilityRole="alert" style={styles.text}>{state.error.message}</Text>{state.error.status===401?action("ورود برای مشاهده سبد",onLogin):action("تلاش دوباره",()=>void controller.refresh(),state.busy)}</View>:!state.cart?<Text accessibilityLiveRegion="polite" style={styles.text}>در حال دریافت سبد…</Text>:<View style={styles.card}><Text style={styles.cardTitle}>اقلام سبد مرجع</Text>
  {state.cart.items.length===0&&<Text style={styles.text}>سبد خرید خالی است.</Text>}
  {state.cart.items.map(i=><View key={i.productId} style={styles.item}><Text style={styles.itemTitle}>{state.names[i.productId]}</Text><Text style={styles.text}>تعداد درخواستی: {new Intl.NumberFormat("fa-IR").format(i.quantity)}</Text><View style={styles.quantity}>{action("افزایش تعداد",()=>void controller.set(i.productId,i.quantity+1),disabled||i.quantity>=999,"+")}<Text style={styles.text}>{new Intl.NumberFormat("fa-IR").format(i.quantity)}</Text>{action("کاهش تعداد",()=>void controller.set(i.productId,i.quantity-1),disabled||i.quantity<=1,"−")}</View>{action("حذف از سبد",()=>void controller.set(i.productId,0),disabled)}</View>)}
@@ -26,7 +27,7 @@ export function BuyerCartScreen({api,onBack,onLogin,selectedProduct}:{api:Mobile
  {action("افزودن کالای دیگر",onBack,disabled)}
  </View>}
  {state.message!==""&&<Text accessibilityLiveRegion="polite" style={styles.text}>{state.message}</Text>}{state.intent&&action("بررسی نتیجه درخواست قبلی",()=>void controller.retry(),state.busy)}
- <Text style={styles.text}>مقایسه فروشگاه و ثبت سفارش در اپ هنوز فعال نشده است. اقلام این سبد در حساب وب شما نیز قابل مشاهده‌اند.</Text>
+ <Text style={styles.text}>برای خرید، یک فروشگاه را مقایسه و انتخاب کنید؛ اقلام این سبد در حساب وب شما نیز قابل مشاهده‌اند.</Text>
  {action("بازگشت به فهرست کالاها",onBack,disabled)}
  </View></ScrollView></SafeAreaView>;
 }

@@ -134,6 +134,11 @@ def main():
     tap_label("سبد خرید")
     wait_screen("سبد مرجع خرید", "پاسخ سرور تأیید نشد")
     print("HANA_NATIVE_CART_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
+    tap_label("مقایسه فروشگاه‌ها و ادامه خرید")
+    wait_screen("مقایسهٔ پیشنهادها", "پاسخ سرور تأیید نشد")
+    print("HANA_NATIVE_CHECKOUT_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("سبد مرجع خرید")
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
     print("PASS: installed Android native OS URI dispatch, cold/warm detail,"

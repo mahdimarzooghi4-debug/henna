@@ -454,6 +454,8 @@ jobs:
         run: npm run mobile:typecheck
       - name: Test mobile OTP and SecureStore session semantics (CI-only mocked API/store)
         run: node --experimental-strip-types --test tests/mobile-auth-smoke.mjs
+      - name: Test native checkout partial basket and original-intent recovery
+        run: node --experimental-strip-types --test tests/mobile-checkout-controller-smoke.mjs
       - name: Test native reference cart mutations and stale rendering
         run: node --experimental-strip-types --test tests/mobile-cart-controller-smoke.mjs
       - name: Test native buyer commerce transport (CI-only API/store doubles)
