@@ -22,7 +22,8 @@ try {
     body: JSON.stringify({ decision: "APPROVED", reason: "test" }) })).status, 403);
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage(); const errors = [];
-  page.on("pageerror", e => errors.push(e.message));
+  page.on("pageerror", e => { errors.push(e.message); console.log("Page error:", e.message); });
+  page.on("requestfailed", request => console.log("Failed request:", request.url(), request.failure()?.errorText));
   await page.route("**/api/admin/allocation-proposals**", async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     assert.equal(request.headers().authorization, undefined);
@@ -41,7 +42,8 @@ try {
   });
   await page.goto(base + "/admin/allocation-proposals");
   await page.getByRole("button", { name: /candidate-ui-test/ }).click();
-  await page.getByRole("heading", { name: "ضرایب پیشنهادی" }).waitFor();
+  try { await page.getByRole("heading", { name: "ضرایب پیشنهادی" }).waitFor(); }
+  catch (error) { console.log("Review page state:", await page.locator("main").innerText()); throw error; }
   assert.equal(await page.getByRole("button", { name: "تأیید پیشنهاد", exact: true }).isEnabled(), false);
   await page.getByLabel("دلیل تصمیم").fill("بررسی گزارش و تأیید آزمایشی");
   await page.getByRole("button", { name: "تأیید پیشنهاد", exact: true }).click();
