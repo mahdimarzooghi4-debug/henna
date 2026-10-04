@@ -63,6 +63,12 @@ internal static class CommerceEndpoints
    var view=path.StartsWith("/me/",StringComparison.Ordinal)||path=="/carts/current"||path=="/orders"?"BUYER":path.StartsWith("/seller/",StringComparison.Ordinal)?"SELLER":null;
    rest.MapGet(path,(int? page,HttpContext http,IServiceProvider services,CancellationToken ct)=>services.GetRequiredService<CommerceService>().ReadAsync((Guid)http.Items["CommerceActor"]!,resourceKind,null,page??1,ct,view));
  }
+ rest.MapGet("/evidence/{id:guid}",async(Guid id,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
+  var e=await services.GetRequiredService<CommerceService>().EvidenceAsync((Guid)http.Items["CommerceActor"]!,id,ct);
+  http.Response.Headers["X-Content-Type-Options"]="nosniff";http.Response.Headers["Content-Security-Policy"]="default-src 'none'; sandbox";
+  return Results.File(Convert.FromBase64String(e.ContentBase64),e.ContentType,fileDownloadName:id+".image");
+ });
+
  rest.MapGet("/orders/{id:guid}",async(Guid id,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
   var result=await services.GetRequiredService<CommerceService>().ReadAsync((Guid)http.Items["CommerceActor"]!,"ORDER",id,1,ct);
   return Results.Ok(JsonSerializer.SerializeToElement(result).GetProperty("items")[0]);

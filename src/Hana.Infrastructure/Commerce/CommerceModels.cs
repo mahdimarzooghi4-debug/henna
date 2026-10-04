@@ -13,7 +13,7 @@ public sealed record Order(Guid Id,Guid BuyerId,Guid SellerId,string PurchaseTyp
     Guid? CreditGrantId,string State,string RefundState,int Version,DateTimeOffset CreatedAtUtc,
     DateTimeOffset? ReceivedAtUtc,DateTimeOffset? HandoffAtUtc);
 public sealed record CashWallet(Guid AccountId,long BalanceRial);
-public sealed record CreditGrant(Guid Id,Guid AccountId,Guid ProgramId,long GrantedRial,long AvailableRial,DateTimeOffset ExpiresAtUtc,List<Guid> CategoryIds);
+public sealed record CreditGrant(Guid Id,Guid AccountId,Guid ProgramId,long GrantedRial,long AvailableRial,DateTimeOffset ExpiresAtUtc,List<Guid> CategoryIds,Guid? HouseholdKey=null);
 public sealed record CreditProgram(Guid Id,string Name,string FundingReference,long FundedRial,long UnallocatedRial,DateTimeOffset ExpiresAtUtc,List<Guid> CategoryIds,Guid? OrganizationId=null);
 public sealed record Incident(Guid Id,Guid OrderId,Guid OrderItemId,Guid BuyerId,Guid SellerId,string Type,int Quantity,string EvidenceReference,
     string State,DateTimeOffset ReportedAtUtc,DateTimeOffset? ApprovedAtUtc,DateTimeOffset? ReturnDueAtUtc,
@@ -30,3 +30,5 @@ public sealed record CommerceContent(Guid Id,string Slug,string Title,string Tex
 public sealed record CommerceOrganization(Guid Id,string Name,string RegistrationReference);
 public sealed record OrganizationMembership(Guid Id,Guid OrganizationId,Guid AccountId,string Role);
 public sealed record CommerceStaffPermission(Guid Id,Guid AccountId,string Permission,bool Active);
+public sealed record CommerceHouseholdLink(Guid Id,Guid AccountId,Guid HouseholdKey,string EvidenceReference);
+public sealed record CommerceEvidence(Guid Id,Guid AccountId,string ContentType,string ContentBase64,string Sha256,DateTimeOffset CreatedAtUtc);

@@ -58,8 +58,10 @@ public sealed class CommerceTests
  var offerId=Guid.NewGuid();await Command(seller,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=5,expectedVersion=0});
  await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(buyer,"SAVE_OFFER",new{}));
  var addressId=Guid.NewGuid();await Command(buyer,"SAVE_ADDRESS",new{addressId,cityId=city,text="CI only",latitude=35m,longitude=51m});await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=2});
+ var households=new Dictionary<Guid,Guid>{{buyer,Guid.NewGuid()},{stranger,Guid.NewGuid()}};
+ foreach(var pair in households)await Command(admin,"LINK_HOUSEHOLD",new{accountId=pair.Key,householdKey=pair.Value,evidenceReference="CI verified household mapping"});
  var program=await Command(admin,"CREATE_PROGRAM",new{name="CI funded source",fundingReference="approved-ci-instruction",fundedRial=10000,expiresAtUtc=clock.UtcNow.AddDays(10),categoryIds=new[]{category}});
- var allocation=await Command(admin,"ALLOCATE_CREDIT",new{programId=program.GetProperty("Id").GetGuid(),poolRial=10000,beneficiaries=new[]{new{accountId=buyer,geographicFactor=1m,scores=new{health=1,hardship=1,age=1,size=1,care=1,education=1}}}});
+ var allocation=await Command(admin,"ALLOCATE_CREDIT",new{programId=program.GetProperty("Id").GetGuid(),poolRial=10000,beneficiaries=new[]{new{accountId=buyer,householdKey=households[buyer],geographicFactor=1m,scores=new{health=1,hardship=1,age=1,size=1,care=1,education=1}}}});
  var creditId=allocation.GetProperty("grants")[0].GetProperty("Id").GetGuid();
  var q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});
  var key=Guid.NewGuid();var input=new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=creditId,unavailableDisposition="KEEP",confirmUnavailable=true};
@@ -72,7 +74,10 @@ public sealed class CommerceTests
  await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=1});q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});order=await Command(buyer,"PLACE_ORDER",new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=creditId,unavailableDisposition="KEEP"});orderId=order.GetProperty("Id").GetGuid();
  await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=1,state="PREPARING"});await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=2,state="READY_FOR_PICKUP"});await Command(buyer,"CONFIRM_PICKUP",new{orderId,expectedVersion=3});
  await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"CANCEL_ORDER",new{orderId,expectedVersion=4}));
- var incident=await Command(buyer,"REPORT_INCIDENT",new{orderId,orderItemId=order.GetProperty("Items")[0].GetProperty("Id").GetGuid(),type="DAMAGED_ITEM",quantity=1,evidenceReference="ci-photo"});var incidentId=incident.GetProperty("Id").GetGuid();
+ var image=await Command(buyer,"SAVE_EVIDENCE",new{contentType="image/png",contentBase64="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII="});
+ var evidenceId=image.GetProperty("evidenceId").GetGuid();
+ await Assert.ThrowsAsync<CommerceMissing>(()=>service.EvidenceAsync(stranger,evidenceId,default));
+ var incident=await Command(buyer,"REPORT_INCIDENT",new{orderId,orderItemId=order.GetProperty("Items")[0].GetProperty("Id").GetGuid(),type="DAMAGED_ITEM",quantity=1,evidenceId});var incidentId=incident.GetProperty("Id").GetGuid();
  await Command(admin,"DECIDE_INCIDENT",new{incidentId,decision="APPROVE",reason="CI reviewed evidence"});
  var stored=JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==creditId)).Body)!;Assert.Equal(10000,stored.AvailableRial);
  clock.UtcNow=clock.UtcNow.AddHours(2);await Command(admin,"ASSESS_RETURN_SLA",new{});
@@ -116,7 +121,7 @@ public sealed class CommerceTests
  Assert.Equal(HttpStatusCode.OK,(await Post(storeClient,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=1,expectedVersion=currentOffer.Version})).StatusCode);
  var p2=await Post(operatorClient,"CREATE_PROGRAM",new{name="Race CI",fundingReference="race-approved",fundedRial=4000,expiresAtUtc=DateTimeOffset.UtcNow.AddDays(1),categoryIds=new[]{category}});Assert.Equal(HttpStatusCode.OK,p2.StatusCode);
  var program2=(await p2.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("Id").GetGuid();
- var allocationResponse=await Post(operatorClient,"ALLOCATE_CREDIT",new{programId=program2,poolRial=4000,beneficiaries=new[]{buyer,stranger}.Select(a=>new{accountId=a,geographicFactor=1m,scores=new{health=1,hardship=1,age=1,size=1,care=1,education=1}})});
+ var allocationResponse=await Post(operatorClient,"ALLOCATE_CREDIT",new{programId=program2,poolRial=4000,beneficiaries=new[]{buyer,stranger}.Select(a=>new{accountId=a,householdKey=households[a],geographicFactor=1m,scores=new{health=1,hardship=1,age=1,size=1,care=1,education=1}})});
  Assert.Equal(HttpStatusCode.OK,allocationResponse.StatusCode);var grants=(await allocationResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("grants").EnumerateArray().ToDictionary(g=>g.GetProperty("AccountId").GetGuid(),g=>g.GetProperty("Id").GetGuid());
  var quotes=new Dictionary<Guid,Guid>();foreach(var pair in new[]{(buyer,customer),(stranger,other)}) {
   var address=Guid.NewGuid();Assert.Equal(HttpStatusCode.OK,(await Post(pair.Item2,"SAVE_ADDRESS",new{addressId=address,cityId=city,text="Race CI",latitude=35,longitude=51})).StatusCode);
