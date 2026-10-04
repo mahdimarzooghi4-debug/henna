@@ -7,7 +7,17 @@
     "userInterfaceStyle": "light",
     "version": "0.1.0",
     "newArchEnabled": true,
-    "plugins": ["expo-secure-store"],
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "برای انتخاب عکس مدرک مشکل سفارش، اجازه دسترسی به عکس انتخاب‌شده را بدهید.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": false
     },

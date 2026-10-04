@@ -42,7 +42,7 @@ internal static class CommerceEndpoints
  foreach(var (path,action) in new (string,string)[]{
   ("/carts/current/items","SET_CART_ITEM"),("/quotes","CREATE_QUOTE"),("/orders","PLACE_ORDER"),
   ("/me/addresses","SAVE_ADDRESS"),("/seller/offers","SAVE_OFFER"),("/me/withdrawals","REQUEST_WITHDRAWAL"),
-  ("/support/tickets","OPEN_TICKET")}) {
+  ("/me/evidence","SAVE_EVIDENCE"),("/support/tickets","OPEN_TICKET")}) {
    var commandAction=action;
    rest.MapPost(path,(JsonElement input,HttpContext http,IServiceProvider services,CancellationToken ct)=>SendCommand(http,services,commandAction,input,ct));
  }
@@ -63,7 +63,7 @@ internal static class CommerceEndpoints
  }
  foreach(var (path,kind) in new (string,string)[]{("/carts/current","CART"),("/orders","ORDER"),("/seller/orders","ORDER"),("/seller/offers","OFFER"),
   ("/me/addresses","ADDRESS"),("/me/credits","CREDIT"),("/me/wallet","WALLET"),("/me/withdrawals","WITHDRAWAL"),
-  ("/me/notifications","NOTIFICATION"),("/support/tickets","TICKET"),("/support/incidents","INCIDENT"),("/seller/settlements","SETTLEMENT")}) {
+  ("/me/incidents","INCIDENT"),("/me/notifications","NOTIFICATION"),("/support/tickets","TICKET"),("/support/incidents","INCIDENT"),("/seller/settlements","SETTLEMENT")}) {
    var resourceKind=kind;
    var view=path.StartsWith("/me/",StringComparison.Ordinal)||path=="/carts/current"||path=="/orders"?"BUYER":path.StartsWith("/seller/",StringComparison.Ordinal)?"SELLER":null;
    rest.MapGet(path,(int? page,HttpContext http,IServiceProvider services,CancellationToken ct)=>services.GetRequiredService<CommerceService>().ReadAsync((Guid)http.Items["CommerceActor"]!,resourceKind,null,page??1,ct,view));

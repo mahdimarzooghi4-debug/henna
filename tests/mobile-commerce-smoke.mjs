@@ -47,3 +47,13 @@ test("malformed money, redirected responses and wrong page never become empty su
  const redirected=setup(()=>{const r=json({items:[],page:1,pageSize:20});Object.defineProperty(r,"redirected",{value:true});return r;});await assert.rejects(redirected.client.cart(),e=>e.status===503);
  const oversized=setup(()=>new Response("x".repeat(512001),{headers:{"Content-Type":"application/json"}}));await assert.rejects(oversized.client.cart(),e=>e.status===503);
 });
+test("incident transport uses owner routes only and never allows staff decisions or generic commands",async()=>{
+ const raw={Id:ID,OrderId:ID,OrderItemId:ID,Type:"DAMAGED_ITEM",Quantity:1,State:"UNDER_REVIEW",ReportedAtUtc:"2026-10-04T20:00:00Z",ReturnDueAtUtc:null,CollectedAtUtc:null,RefundRial:0,BuyerId:"PRIVATE",EvidenceReference:"PRIVATE"};
+ const s=setup(url=>url.includes("me/evidence")?json({evidenceId:ID,sha256:"A".repeat(64),contentType:"image/jpeg",size:12}):url.includes("me/incidents")?json({items:[raw],page:2,pageSize:20}):json(raw));
+ assert.equal((await s.client.incidents(2))[0].state,"UNDER_REVIEW");assert.equal(s.calls[0].url,"https://api.henna.test/api/v1/me/incidents?page=2");
+ const evidence=mobileCommerceIntent("evidence",{contentType:"image/jpeg",contentBase64:"PHOTO"},ID);assert.equal((await s.client.post(evidence)).evidenceId,ID);assert.equal(s.calls[1].url,"https://api.henna.test/api/v1/me/evidence");
+ await s.client.post(mobileCommerceIntent(`orders/${ID}/incidents`,{orderItemId:ID,type:"DAMAGED_ITEM",quantity:1,evidenceId:ID},ID));
+ await s.client.post(mobileCommerceIntent(`item-returns/${ID}/confirm-collection`,{},ID));
+ for(const path of [`support/incidents/${ID}/decision`,`seller/item-returns/${ID}/contact`,`commerce/commands/SAVE_EVIDENCE`,`me/incidents?accountId=${ID}`])assert.throws(()=>mobileCommerceIntent(path,{},ID),e=>e.status===404);
+ assert.equal(s.calls.length,4);assert.equal(JSON.stringify(await s.client.incidents(2)).includes("PRIVATE"),false);
+});

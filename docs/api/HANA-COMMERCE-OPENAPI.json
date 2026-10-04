@@ -3193,6 +3193,117 @@
         }
       }
     },
+    "/api/v1/me/evidence": {
+      "post": {
+        "description": "Authenticated owner; alias of SAVE_EVIDENCE. A supplied body ID must match the route ID.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "evidenceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[A-F0-9]{64}$"
+                    },
+                    "contentType": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "size": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 12,
+                      "maximum": 40000
+                    }
+                  },
+                  "required": [
+                    "evidenceId",
+                    "sha256",
+                    "contentType",
+                    "size"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "contentType": {
+                    "type": "string",
+                    "enum": [
+                      "image/png",
+                      "image/jpeg",
+                      "image/webp"
+                    ]
+                  },
+                  "contentBase64": {
+                    "type": "string",
+                    "maxLength": 55000,
+                    "contentEncoding": "base64",
+                    "description": "Decoded image 12..40000 bytes; file signature checked."
+                  }
+                },
+                "required": [
+                  "contentType",
+                  "contentBase64"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/support/tickets": {
       "post": {
         "description": "Authenticated owner; alias of OPEN_TICKET. A supplied body ID must match the route ID.",
@@ -4644,6 +4755,82 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/CashWallet"
+                      }
+                    },
+                    "page": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 1
+                    },
+                    "pageSize": {
+                      "const": 20
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/me/incidents": {
+      "get": {
+        "description": "Scoped before pagination. /me and /orders show the buyer; /seller requires active SELLER.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Incident"
                       }
                     },
                     "page": {

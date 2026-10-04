@@ -458,6 +458,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-checkout-controller-smoke.mjs
       - name: Native order history and lifecycle controller
         run: node --experimental-strip-types --test tests/mobile-orders-controller-smoke.mjs
+      - name: Native incident photo and return lifecycle
+        run: node --experimental-strip-types --test tests/mobile-incidents-smoke.mjs
       - name: Test native reference cart mutations and stale rendering
         run: node --experimental-strip-types --test tests/mobile-cart-controller-smoke.mjs
       - name: Test native buyer commerce transport (CI-only API/store doubles)

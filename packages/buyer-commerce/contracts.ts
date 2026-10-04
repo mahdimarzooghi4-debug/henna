@@ -18,6 +18,10 @@ export type BuyerAddress = { id: string; cityId: string; text: string; latitude:
 export type BuyerCredit = { id: string; availableRial: number; expiresAtUtc: string; categoryIds: string[] };
 export type BuyerQuote = { id: string; sellerId: string; purchaseType: "PERSONAL" | "LEGAL"; fulfillmentMode: "PICKUP"; items: QuoteItem[]; unavailable: CartItem[]; itemsTotalRial: number; expiresAtUtc: string; used: boolean };
 export type BuyerOrder = { id: string; sellerId: string; state: "PAID" | "PREPARING" | "READY_FOR_PICKUP" | "COLLECTED" | "CANCELLED"; refundState: string; version: number; totalRial: number; cashPaidRial: number; creditPaidRial: number; createdAtUtc: string; items: { productId: string; productName: string | null; quantity: number; unitPriceRial: number }[] };
+export type BuyerIncidentOrder = BuyerOrder & {receivedAtUtc:string|null;incidentItems:{id:string;productId:string;productName:string|null;quantity:number;refundedQuantity:number}[]};
+export type BuyerIncident = {id:string;orderId:string;orderItemId:string;type:"DAMAGED_ITEM"|"MISSING_ITEM";quantity:number;state:"UNDER_REVIEW"|"REJECTED"|"AWAITING_RETURN"|"RESOLVED"|"COLLECTED"|"CUSTOMER_UNAVAILABLE_VERIFIED";reportedAtUtc:string;returnDueAtUtc:string|null;collectedAtUtc:string|null;refundRial:number};
+export type BuyerEvidence = {evidenceId:string;sha256:string;contentType:string;size:number};
+const incident = (x:unknown):BuyerIncident=>{const r=row(x);if(!["DAMAGED_ITEM","MISSING_ITEM"].includes(r.Type as string)||!["UNDER_REVIEW","REJECTED","AWAITING_RETURN","RESOLVED","COLLECTED","CUSTOMER_UNAVAILABLE_VERIFIED"].includes(r.State as string))throw Error();return {id:id(r.Id),orderId:id(r.OrderId),orderItemId:id(r.OrderItemId),type:r.Type as BuyerIncident["type"],quantity:number(r.Quantity,1,999),state:r.State as BuyerIncident["state"],reportedAtUtc:time(r.ReportedAtUtc),returnDueAtUtc:r.ReturnDueAtUtc===null?null:time(r.ReturnDueAtUtc),collectedAtUtc:r.CollectedAtUtc===null?null:time(r.CollectedAtUtc),refundRial:number(r.RefundRial)};};
 const item = (x: unknown): CartItem => { const r = row(x); return { productId: id(r.ProductId), quantity: number(r.Quantity, 1, 999) }; };
 const quoteItem = (x: unknown): QuoteItem => { const r = row(x); return { offerId: id(r.OfferId), productId: id(r.ProductId), quantity: number(r.Quantity, 1, 999), unitPriceRial: number(r.UnitPriceRial, 1), offerVersion: number(r.OfferVersion, 1) }; };
 const cart = (x: unknown): BuyerCart => { const r = row(x); return { id: id(r.Id), version: number(r.Version), items: list(r.Items, item, 100) }; };
@@ -46,6 +50,10 @@ export function parseOffers(x: unknown, productId: string): BuyerOffer[] | null 
 }
 export function parseCommerce(path: string, method: "GET" | "POST", x: unknown, expectedPage = 1): unknown | null {
   return attempt(() => {
+    if (/^incident-order\//.test(path)) {const r=row(x),parsed=order(x);return {...parsed,receivedAtUtc:r.ReceivedAtUtc===null?null:time(r.ReceivedAtUtc),incidentItems:list(r.Items,v=>{const p=row(v);return{id:id(p.Id),productId:id(p.ProductId),productName:p.ProductName===null||p.ProductName===undefined?null:text(p.ProductName,200),quantity:number(p.Quantity,1,999),refundedQuantity:number(p.RefundedQuantity,0,number(p.Quantity,1,999))};},100)};}
+    if (path === "incidents") return page(x,incident,expectedPage);
+    if (/^orders\/[^/]+\/incidents$/.test(path)||/^item-returns\/[^/]+\/confirm-collection$/.test(path)) return incident(x);
+    if (path === "evidence") {const r=row(x);if(typeof r.sha256!=="string"||!/^[0-9a-f]{64}$/i.test(r.sha256)||!["image/png","image/jpeg","image/webp"].includes(r.contentType as string))throw Error();return{evidenceId:id(r.evidenceId),sha256:r.sha256,contentType:r.contentType,size:number(r.size,12,40000)};}
     if (path === "cart") {
       const carts = page(x, cart); if (carts.length > 1) throw Error(); return carts[0] ?? { id: null, version: 0, items: [] };
     }
@@ -75,6 +83,10 @@ export const commerceMessages: Record<string, string> = {
   PARTIAL_BASKET_CONFIRMATION_REQUIRED: "خرید اقلام موجود را با بررسی اقلام ناموجود تأیید کنید.",
   CANCEL_CUTOFF_PASSED: "پس از دریافت سفارش، لغو مستقیم امکان‌پذیر نیست.",
   ORDER_VERSION_CHANGED: "وضعیت سفارش تغییر کرده است؛ دوباره دریافت کنید.",
+  INCIDENT_WINDOW_EXPIRED: "مهلت یک‌ساعته گزارش مشکل پس از دریافت سفارش تمام شده است.",
+  INCIDENT_QUANTITY_EXCEEDED: "تعداد گزارش از مقدار قابل بررسی بیشتر است؛ وضعیت تازه را دریافت کنید.",
+  RETURN_STATE_INVALID: "این مرجوعی اکنون قابل تأیید نیست؛ وضعیت تازه را دریافت کنید.",
+  ORDER_TRANSITION_INVALID: "این تغییر در وضعیت فعلی سفارش ممکن نیست.",
   COMMAND_RATE_LIMITED: "تعداد درخواست‌ها زیاد است؛ کمی بعد تلاش کنید.",
 };
 export class BuyerCommerceError extends Error { status: number; code: string; constructor(status: number, code = "") { super((Object.prototype.hasOwnProperty.call(commerceMessages, code) ? commerceMessages[code] : undefined) ?? (status === 401 ? "برای ادامه وارد حساب خود شوید." : status === 403 ? "اجازه این عملیات را ندارید." : status === 404 ? "اطلاعات موردنظر پیدا نشد." : status === 400 ? "اطلاعات واردشده معتبر نیست." : "پاسخ سرور تأیید نشد؛ دوباره تلاش کنید.")); this.status = status; this.code = code; } }

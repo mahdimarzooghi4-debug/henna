@@ -125,6 +125,16 @@ public sealed class CommerceTests
  Assert.Equal(HttpStatusCode.OK,(await anonymous.GetAsync("/api/v1/content/ci-policy")).StatusCode);
  var publicOffers=await anonymous.GetAsync("/api/v1/offers?productId="+product);Assert.Equal(HttpStatusCode.OK,publicOffers.StatusCode);Assert.Single((await publicOffers.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
  Assert.Equal(HttpStatusCode.BadRequest,(await anonymous.GetAsync("/api/v1/offers?page=0")).StatusCode);
+ Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/me/incidents")).StatusCode);
+ var buyerIncidents=await customer.GetAsync("/api/v1/me/incidents?page=1");Assert.Equal(HttpStatusCode.OK,buyerIncidents.StatusCode);
+ Assert.Single((await buyerIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+ foreach(var client in new[]{other,operatorClient,storeClient}) {var ownIncidents=await client.GetAsync("/api/v1/me/incidents");Assert.Equal(HttpStatusCode.OK,ownIncidents.StatusCode);Assert.Empty((await ownIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());}
+ var photoKey=Guid.NewGuid();var photoBody=new{contentType="image/png",contentBase64="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII="};
+ async Task<HttpResponseMessage> UploadPhoto(object body) {using var request=new HttpRequestMessage(HttpMethod.Post,"/api/v1/me/evidence"){Content=JsonContent.Create(body)};request.Headers.Add("Idempotency-Key",photoKey.ToString());return await customer.SendAsync(request);}
+ var photoResponse=await UploadPhoto(photoBody);Assert.Equal(HttpStatusCode.OK,photoResponse.StatusCode);var savedPhoto=(await photoResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("evidenceId").GetGuid();
+ var repeatedPhoto=await UploadPhoto(photoBody);Assert.Equal(HttpStatusCode.OK,repeatedPhoto.StatusCode);Assert.Equal(savedPhoto,(await repeatedPhoto.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("evidenceId").GetGuid());
+ Assert.Equal(HttpStatusCode.Conflict,(await UploadPhoto(new{contentType="image/jpeg",contentBase64=photoBody.contentBase64})).StatusCode);
+ Assert.Equal(HttpStatusCode.NotFound,(await other.GetAsync("/api/v1/evidence/"+savedPhoto)).StatusCode);
  var ownCredits=await customer.GetAsync("/api/v1/me/credits");Assert.Equal(HttpStatusCode.OK,ownCredits.StatusCode);
  Assert.Equal(HttpStatusCode.Forbidden,(await Post(customer,"CREATE_PROGRAM",new{})).StatusCode);
  Assert.Equal(HttpStatusCode.NotFound,(await other.GetAsync("/api/v1/commerce/resources/ORDER?id="+orderId)).StatusCode);

@@ -1,16 +1,18 @@
 import { safeApiBaseUrl } from "./api-base.ts";
 import type { TokenStore } from "./mobile-auth.ts";
-import { BuyerCommerceError, commerceId, commerceMessages, parseCommerce, parseOffers, type BuyerCart, type BuyerOrder, type BuyerOffer } from "../../../packages/buyer-commerce/contracts.ts";
+import { BuyerCommerceError, commerceId, commerceMessages, parseCommerce, parseOffers, type BuyerCart, type BuyerOrder, type BuyerOffer, type BuyerIncident, type BuyerIncidentOrder } from "../../../packages/buyer-commerce/contracts.ts";
 
 export type MobileCommerceIntent = Readonly<{ path: string; body: string; key: string }>;
 function utf8Size(value: string) { let bytes = 0; for (const c of value) { const n = c.codePointAt(0)!; bytes += n <= 0x7f ? 1 : n <= 0x7ff ? 2 : n <= 0xffff ? 3 : 4; } return bytes; }
-const reads: Record<string, string> = { cart: "/carts/current", comparison: "/carts/current/comparison", addresses: "/me/addresses", credits: "/me/credits", wallet: "/me/wallet", orders: "/orders" };
-const writes: Record<string, string> = { "cart-items": "/carts/current/items", addresses: "/me/addresses", quotes: "/quotes", orders: "/orders" };
+const reads: Record<string, string> = { cart: "/carts/current", comparison: "/carts/current/comparison", addresses: "/me/addresses", credits: "/me/credits", wallet: "/me/wallet", orders: "/orders", incidents:"/me/incidents" };
+const writes: Record<string, string> = { "cart-items": "/carts/current/items", addresses: "/me/addresses", quotes: "/quotes", orders: "/orders", evidence:"/me/evidence" };
 function target(path: string, method: "GET" | "POST") {
   const allowed = method === "GET" ? reads : writes;
   if (Object.prototype.hasOwnProperty.call(allowed, path)) return allowed[path];
   const parts = path.split("/");
-  if (parts[0] === "orders" && commerceId(parts[1]) && (method === "GET" && parts.length === 2 || method === "POST" && parts.length === 3 && ["cancel", "pickup-confirmation"].includes(parts[2]))) return "/orders/" + parts.slice(1).join("/");
+  if (parts[0] === "orders" && commerceId(parts[1]) && (method === "GET" && parts.length === 2 || method === "POST" && parts.length === 3 && ["cancel", "pickup-confirmation", "incidents"].includes(parts[2]))) return "/orders/" + parts.slice(1).join("/");
+  if(method==="GET"&&parts[0]==="incident-order"&&parts.length===2&&commerceId(parts[1]))return "/orders/"+parts[1];
+  if(method==="POST"&&parts[0]==="item-returns"&&parts.length===3&&commerceId(parts[1])&&parts[2]==="confirm-collection")return "/item-returns/"+parts[1]+"/confirm-collection";
   throw new BuyerCommerceError(404);
 }
 /** Supply an OS-generated UUID once; retain this frozen object after an ambiguous response. */
@@ -71,6 +73,8 @@ export class MobileCommerceClient {
     if (!Number.isInteger(page) || page < 1 || page > 10000) throw new BuyerCommerceError(400);
     return this.send("orders", "/orders?page=" + page, "GET", undefined, page) as Promise<BuyerOrder[]>;
   }
+  incidentOrder(id:string):Promise<BuyerIncidentOrder>{return this.read("incident-order/"+id);}
+  incidents(page=1):Promise<BuyerIncident[]>{if(!Number.isInteger(page)||page<1||page>10000)throw new BuyerCommerceError(400);return this.send("incidents","/me/incidents?page="+page,"GET",undefined,page) as Promise<BuyerIncident[]>;}
   offers(productId: string): Promise<BuyerOffer[]> {
     if (!commerceId(productId)) throw new BuyerCommerceError(400);
     return this.send("offers", "/offers?productId=" + productId + "&page=1", "GET", undefined, 1, productId) as Promise<BuyerOffer[]>;

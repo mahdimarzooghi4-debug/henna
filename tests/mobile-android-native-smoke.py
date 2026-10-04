@@ -146,6 +146,11 @@ def main():
     print("HANA_NATIVE_ORDERS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
+    tap_label("گزارش‌ها و مرجوعی‌های من")
+    wait_screen("گزارش‌ها و مرجوعی‌های من", "پاسخ سرور تأیید نشد")
+    print("HANA_NATIVE_INCIDENTS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("کالاها را در حنا مرور کنید", TERM)
     print("PASS: installed Android native OS URI dispatch, cold/warm detail,"
           " Back to saved browse, invalid URI isolation and cold browse")
 
