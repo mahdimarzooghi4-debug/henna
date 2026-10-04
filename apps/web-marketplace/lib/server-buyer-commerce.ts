@@ -15,7 +15,8 @@ export async function forwardBuyerCommerce(request: NextRequest, segments: strin
     const product = request.nextUrl.searchParams.get("productId"); if (!commerceId(product) || request.nextUrl.searchParams.size !== 1) return fail(400);
     upstreamPath = "/offers?productId=" + encodeURIComponent(product) + "&page=1";
   } else {
-    upstreamPath = (method === "GET" ? getPaths : postPaths)[path];
+    const allowed = method === "GET" ? getPaths : postPaths;
+    upstreamPath = Object.hasOwn(allowed, path) ? allowed[path] : undefined;
     if (segments[0] === "orders" && commerceId(segments[1]) && (method === "GET" && segments.length === 2 || method === "POST" && segments.length === 3 && ["cancel", "pickup-confirmation"].includes(segments[2]))) upstreamPath = "/orders/" + segments.slice(1).join("/");
   }
   if (!upstreamPath) return fail(404);
@@ -34,7 +35,7 @@ export async function forwardBuyerCommerce(request: NextRequest, segments: strin
     const r = await fetch(target, { method, body, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15000), headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(key ? { "Content-Type": "application/json", "Idempotency-Key": key } : {}) } });
     if (!r.ok) {
       const status = [400,401,403,404,409,429].includes(r.status) ? r.status : 503;
-      let code = ""; if (r.headers.get("content-type")?.includes("application/json")) { try { const x: unknown = JSON.parse(await boundedText(r, 4096)); if (x && typeof x === "object" && "error" in x && typeof x.error === "string" && x.error in commerceMessages) code = x.error; } catch { /* Do not forward arbitrary error data. */ } }
+      let code = ""; if (r.headers.get("content-type")?.includes("application/json")) { try { const x: unknown = JSON.parse(await boundedText(r, 4096)); if (x && typeof x === "object" && "error" in x && typeof x.error === "string" && Object.hasOwn(commerceMessages, x.error)) code = x.error; } catch { /* Do not forward arbitrary error data. */ } }
       return fail(status, code);
     }
     if (r.status !== 200 || !r.headers.get("content-type")?.includes("application/json")) return fail(503);

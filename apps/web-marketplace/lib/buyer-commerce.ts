@@ -77,7 +77,7 @@ export const commerceMessages: Record<string, string> = {
   ORDER_VERSION_CHANGED: "وضعیت سفارش تغییر کرده است؛ دوباره دریافت کنید.",
   COMMAND_RATE_LIMITED: "تعداد درخواست‌ها زیاد است؛ کمی بعد تلاش کنید.",
 };
-export class BuyerCommerceError extends Error { status: number; code: string; constructor(status: number, code = "") { super(commerceMessages[code] ?? (status === 401 ? "برای ادامه وارد حساب خود شوید." : status === 403 ? "اجازه این عملیات را ندارید." : status === 404 ? "اطلاعات موردنظر پیدا نشد." : status === 400 ? "اطلاعات واردشده معتبر نیست." : "پاسخ سرور تأیید نشد؛ دوباره تلاش کنید.")); this.status = status; this.code = code; } }
+export class BuyerCommerceError extends Error { status: number; code: string; constructor(status: number, code = "") { super((Object.hasOwn(commerceMessages, code) ? commerceMessages[code] : undefined) ?? (status === 401 ? "برای ادامه وارد حساب خود شوید." : status === 403 ? "اجازه این عملیات را ندارید." : status === 404 ? "اطلاعات موردنظر پیدا نشد." : status === 400 ? "اطلاعات واردشده معتبر نیست." : "پاسخ سرور تأیید نشد؛ دوباره تلاش کنید.")); this.status = status; this.code = code; } }
 export async function buyerGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   try {
     const r = await fetch("/api/buyer/commerce/" + path, { cache: "no-store", credentials: path.startsWith("offers?") ? "omit" : "same-origin", redirect: "error", signal, headers: { Accept: "application/json" } });

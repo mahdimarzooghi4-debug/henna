@@ -37,7 +37,7 @@ async function main() {
  assert.equal((await fetch(base+"/api/buyer/commerce/cart")).status,401);assert.equal(calls.length,0);
  assert.equal((await post({Origin:"https://evil.test"})).status,403);assert.equal(calls.length,0);
  assert.equal((await post({"Idempotency-Key":"invalid"})).status,400);assert.equal(calls.length,0);
- assert.equal((await get("admin")).status,404);assert.equal((await get("cart?page=2")).status,400);assert.equal(calls.length,0);
+ for (const unknown of ["admin", "constructor", "toString", "__proto__"]) assert.equal((await get(unknown)).status,404,unknown);assert.equal((await get("cart?page=2")).status,400);assert.equal(calls.length,0);
  const publicOffers=await get("offers?productId="+ID);assert.equal(publicOffers.status,200);assert.equal(JSON.stringify(await publicOffers.json()).includes("SECRET"),false);
  assert.equal((await get("offers?productId="+ID+"&productId="+ID)).status,400);
  const own=await get("cart");assert.equal(own.status,200);assert.deepEqual(await own.json(),{id:ID,version:2,items:[{productId:ID,quantity:2}]});assert.equal(own.headers.get("cache-control"),"no-store");
