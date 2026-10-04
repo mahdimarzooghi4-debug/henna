@@ -54,8 +54,9 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
     private void ValidateWrites()
     {
         ChangeTracker.DetectChanges();
-        if (ChangeTracker.Entries().Any(e=> e.Entity is CommerceJournal or CommerceCommandReceipt && e.State is EntityState.Modified or EntityState.Deleted))
+        if (ChangeTracker.Entries().Any(e=> (e.Entity is CommerceJournal or CommerceCommandReceipt) && (e.State is EntityState.Modified or EntityState.Deleted)))
             throw new InvalidOperationException("Commerce journal and receipts are append-only.");
     }
+    public override int SaveChanges(bool acceptAllChangesOnSuccess) { ValidateWrites();return base.SaveChanges(acceptAllChangesOnSuccess); }
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess,CancellationToken ct=default) { ValidateWrites();return base.SaveChangesAsync(acceptAllChangesOnSuccess,ct); }
 }

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 namespace Hana.Infrastructure.Commerce.Migrations;
 [DbContext(typeof(HanaCommerceDbContext))]
-public sealed class HanaCommerceDbContextModelSnapshot : Microsoft.EntityFrameworkCore.Migrations.ModelSnapshot
+public sealed class HanaCommerceDbContextModelSnapshot : ModelSnapshot
 {
  protected override void BuildModel(ModelBuilder b) {
  b.HasDefaultSchema("commerce");b.HasAnnotation("ProductVersion","10.0.0");b.HasAnnotation("Relational:MaxIdentifierLength",63);b.UseIdentityByDefaultColumns();

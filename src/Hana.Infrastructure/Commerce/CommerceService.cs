@@ -11,14 +11,16 @@ using Hana.Infrastructure.Seller;
 using Microsoft.EntityFrameworkCore;
 namespace Hana.Infrastructure.Commerce;
 public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContext catalog,HanaSellerDbContext sellers,
- HanaGeographyDbContext geography,RoleAuthorizationService roles,IClock clock)
+ HanaGeographyDbContext geography,HanaIdentityDbContext identity,RoleAuthorizationService roles,IClock clock)
 {
+ private Guid transactionActor,transactionCommand;
  public async Task<JsonElement> ExecuteAsync(Guid actor,Guid command,string action,JsonElement input,CancellationToken ct=default)
  {
   if(actor==Guid.Empty || command==Guid.Empty || input.ValueKind!=JsonValueKind.Object) throw new ArgumentException("Command required.");
   var privileged=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","SET_FEE_POLICY","BUILD_SETTLEMENTS","REPLY_TICKET"};
   if(privileged.Contains(action))await Admin(actor,ct);
   if(new[]{"SAVE_OFFER","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
+  transactionActor=actor;transactionCommand=command;
   // Pilot correctness boundary: serialize commerce mutations across API processes. Never an in-memory lock.
   await using var tx=await db.Database.BeginTransactionAsync(ct);
   await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(48710261004)",ct);
@@ -26,7 +28,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var prior=await db.Receipts.SingleOrDefaultAsync(x=>x.ActorId==actor && x.CommandId==command,ct);
   if(prior!=null) { if(prior.Fingerprint!=fingerprint) throw new CommerceConflict("IDEMPOTENCY_PAYLOAD_CHANGED"); return JsonSerializer.Deserialize<JsonElement>(prior.ResultJson); }
   object result=action switch {
-   "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct),
+   "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct), "COMPARE_CART"=>await CompareCart(actor,ct),
    "SAVE_ADDRESS"=>await SaveAddress(actor,input,ct), "CREATE_QUOTE"=>await CreateQuote(actor,input,ct),
    "PLACE_ORDER"=>await PlaceOrder(actor,input,ct), "CANCEL_ORDER"=>await Cancel(actor,input,ct),
    "SELLER_ORDER_STATE"=>await SellerState(actor,input,ct), "CONFIRM_PICKUP"=>await ConfirmPickup(actor,input,ct),
@@ -43,6 +45,10 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   // Transactional outbox/audit event. Delivery integrations consume it later; not an SMS sent flag.
   db.Journal.Add(new(){Id=Guid.NewGuid(),ActorId=actor,CommandId=command,ResourceId=command,Event=action,Body=json,CreatedAtUtc=clock.UtcNow});
   await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);return JsonSerializer.Deserialize<JsonElement>(json);
+ }
+ private void Transfer(Guid resource,string debit,string credit,long amount,string fundKind) {
+  if(amount==0)return;if(amount<0)throw new ArgumentException("Negative journal amount.");
+  db.Journal.Add(new(){Id=Guid.NewGuid(),ActorId=transactionActor,CommandId=transactionCommand,ResourceId=resource,Event="MONEY_TRANSFER",Body=JsonSerializer.Serialize(new{debitAccount=debit,creditAccount=credit,amountRial=amount,currency="IRR",fundKind}),CreatedAtUtc=clock.UtcNow});
  }
  private static string Canonical(JsonElement x)=>x.ValueKind switch {
   JsonValueKind.Object=>"{"+string.Join(",",x.EnumerateObject().OrderBy(p=>p.Name,StringComparer.Ordinal).Select(p=>JsonSerializer.Serialize(p.Name)+":"+Canonical(p.Value)))+"}",
@@ -72,6 +78,14 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var cart=await Owned<Cart>(actor,"CART",ct)??new(Guid.NewGuid(),actor,[]);var quantity=Count(x,"quantity",0);
   cart.Items.RemoveAll(i=>i.ProductId==productId);if(quantity>0)cart.Items.Add(new(productId,quantity));if(cart.Items.Count>100)throw new ArgumentException("Cart limit.");await Put(cart.Id,actor,"CART",cart,ct);return cart;
  }
+ private async Task<object> CompareCart(Guid actor,CancellationToken ct) {
+  var cart=await Owned<Cart>(actor,"CART",ct)??new(Guid.NewGuid(),actor,[]);var offers=await All<Offer>("OFFER",ct);var result=new List<object>();
+  foreach(var seller in offers.Where(o=>o.Published).Select(o=>o.SellerId).Distinct()) {
+   if(!await roles.HasRoleAsync(seller,HanaRoles.Seller,ct))continue;
+   var available=new List<QuoteItem>();var missing=new List<CartItem>();foreach(var item in cart.Items){var offer=offers.SingleOrDefault(o=>o.SellerId==seller&&o.ProductId==item.ProductId&&o.Published&&o.Stock>=item.Quantity);if(offer==null)missing.Add(item);else available.Add(new(offer.Id,offer.ProductId,item.Quantity,offer.PriceRial,offer.Version));}
+   if(available.Count>0)result.Add(new{sellerId=seller,available,unavailable=missing,itemsTotalRial=available.Aggregate(0L,(n,i)=>checked(n+checked(i.UnitPriceRial*i.Quantity)))});
+  }return result;
+ }
  private async Task<object> SaveAddress(Guid actor,JsonElement x,CancellationToken ct) {
   var cityId=Id(x,"cityId");if(!await geography.Cities.AnyAsync(c=>c.Id==cityId,ct))throw new CommerceMissing();
   if(!x.TryGetProperty("latitude",out var lat)||!lat.TryGetDecimal(out var latitude)||latitude is < -90 or >90||!x.TryGetProperty("longitude",out var lon)||!lon.TryGetDecimal(out var longitude)||longitude is < -180 or >180)throw new ArgumentException("Coordinates.");
@@ -94,9 +108,9 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private async Task<object> Allocate(Guid actor,JsonElement x,CancellationToken ct) {
   await Admin(actor,ct);var program=await Get<CreditProgram>(Id(x,"programId"),"PROGRAM",ct);if(program.ExpiresAtUtc<=clock.UtcNow)throw new CommerceConflict("PROGRAM_EXPIRED");
   var beneficiaries=x.GetProperty("beneficiaries").EnumerateArray().ToArray();if(beneficiaries.Length is <1 or >500)throw new ArgumentException("Beneficiaries.");var pool=Money(x,"poolRial");if(pool>program.UnallocatedRial)throw new CommerceConflict("PROGRAM_FUNDS_INSUFFICIENT");
-  var weights=new List<(Guid Account,decimal Weight)>();foreach(var b in beneficiaries){var account=Id(b,"accountId");var s=b.GetProperty("scores");var scores=new HouseholdNeedScores(Count(s,"health",0,3),Count(s,"hardship",0,3),Count(s,"age",0,3),Count(s,"size",0,3),Count(s,"care",0,3),Count(s,"education",0,3));var g=b.GetProperty("geographicFactor").GetDecimal();if(g<=0)throw new ArgumentException("Geography.");weights.Add((account,NeedsBasedAllocationV1.CalculateHouseholdFactor(scores)*g));}
+  var weights=new List<(Guid Account,decimal Weight)>();foreach(var b in beneficiaries){var account=Id(b,"accountId");if(!await identity.Accounts.AnyAsync(a=>a.Id==account,ct))throw new CommerceMissing();var s=b.GetProperty("scores");var scores=new HouseholdNeedScores(Count(s,"health",0,3),Count(s,"hardship",0,3),Count(s,"age",0,3),Count(s,"size",0,3),Count(s,"care",0,3),Count(s,"education",0,3));var g=b.GetProperty("geographicFactor").GetDecimal();if(g<=0)throw new ArgumentException("Geography.");weights.Add((account,NeedsBasedAllocationV1.CalculateHouseholdFactor(scores)*g));}
   if(weights.Select(w=>w.Account).Distinct().Count()!=weights.Count)throw new ArgumentException("Duplicate beneficiary.");var sum=weights.Sum(w=>w.Weight);long assigned=0;var grants=new List<CreditGrant>();
-  foreach(var w in weights){var amount=checked((long)decimal.Floor(pool*w.Weight/sum));assigned=checked(assigned+amount);var grant=new CreditGrant(Guid.NewGuid(),w.Account,program.Id,amount,amount,program.ExpiresAtUtc,program.CategoryIds);await Put(grant.Id,w.Account,"CREDIT",grant,ct);grants.Add(grant);}
+  foreach(var w in weights){var amount=checked((long)decimal.Floor(pool*w.Weight/sum));assigned=checked(assigned+amount);var grant=new CreditGrant(Guid.NewGuid(),w.Account,program.Id,amount,amount,program.ExpiresAtUtc,program.CategoryIds);await Put(grant.Id,w.Account,"CREDIT",grant,ct);Transfer(grant.Id,"PROGRAM_AVAILABLE:"+program.Id,"HOUSEHOLD_CREDIT:"+grant.Id,amount,"SUPPORT");grants.Add(grant);}
   var owner=(await db.Documents.SingleAsync(d=>d.Id==program.Id,ct)).OwnerId;await Put(program.Id,owner,"PROGRAM",program with{UnallocatedRial=program.UnallocatedRial-assigned},ct);
   return new{grants,unallocatedRial=pool-assigned,formulaVersion=AllocationWeightProfile.Baseline.Version};
  }
@@ -113,11 +127,13 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   await SetWallet(actor,wallet.Wallet.BalanceRial-cash,ct);if(grant!=null)await Put(grant.Id,actor,"CREDIT",grant with{AvailableRial=grant.AvailableRial-credit},ct);
   var items=new List<OrderItem>();long remaining=credit;foreach(var(a,o)in actual){var value=checked(a.UnitPriceRial*a.Quantity);var part=Math.Min(remaining,value);remaining-=part;items.Add(new(Guid.NewGuid(),o.Id,o.ProductId,a.Quantity,a.UnitPriceRial,value-part,part,0));await Put(o.Id,o.SellerId,"OFFER",o with{Stock=o.Stock-a.Quantity,Version=checked(o.Version+1)},ct);}
   var order=new Order(Guid.NewGuid(),actor,q.SellerId,q.PurchaseType,q.FulfillmentMode,address,items,q.ItemsTotalRial,cash,credit,grant?.Id,"PAID","NONE",1,clock.UtcNow,null,null);
+  Transfer(order.Id,"BUYER_CASH:"+actor,"ORDER_CASH:"+order.Id,cash,"CASH");Transfer(order.Id,"HOUSEHOLD_CREDIT:"+grant?.Id,"ORDER_CREDIT:"+order.Id,credit,"SUPPORT");
   await Put(order.Id,actor,"ORDER",order,ct);await Put(q.Id,actor,"QUOTE",q with{Used=true},ct);
   var cart=await Owned<Cart>(actor,"CART",ct);if(cart!=null){foreach(var item in q.Items){var current=cart.Items.Find(i=>i.ProductId==item.ProductId);if(current!=null){cart.Items.Remove(current);if(current.Quantity>item.Quantity)cart.Items.Add(current with{Quantity=current.Quantity-item.Quantity});}}if(disposition=="REMOVE")cart.Items.RemoveAll(i=>q.Unavailable.Any(u=>u.ProductId==i.ProductId));await Put(cart.Id,actor,"CART",cart,ct);}return order;
  }
  private static void Version(Order o,JsonElement x) {if(o.Version!=Count(x,"expectedVersion",1,int.MaxValue))throw new CommerceConflict("ORDER_VERSION_CHANGED");}
  private async Task Refund(Order o,long cash,long credit,CancellationToken ct) {
+  Transfer(o.Id,"ORDER_CASH:"+o.Id,"BUYER_CASH:"+o.BuyerId,cash,"CASH");Transfer(o.Id,"ORDER_CREDIT:"+o.Id,"HOUSEHOLD_CREDIT:"+o.CreditGrantId,credit,"SUPPORT");
   var wallet=await Wallet(o.BuyerId,ct);await SetWallet(o.BuyerId,checked(wallet.Wallet.BalanceRial+cash),ct);
   if(credit>0&&o.CreditGrantId is Guid grantId){var g=await Get<CreditGrant>(grantId,"CREDIT",ct);await Put(g.Id,o.BuyerId,"CREDIT",g with{AvailableRial=checked(g.AvailableRial+credit)},ct);}
  }
