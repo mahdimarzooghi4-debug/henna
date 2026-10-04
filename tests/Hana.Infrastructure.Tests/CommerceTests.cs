@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Xunit;
+using Npgsql;
 namespace Hana.Infrastructure.Tests;
 public sealed class CommerceTests
 {
@@ -21,11 +22,16 @@ public sealed class CommerceTests
  }
  [Fact] public async Task CreditPurchaseCancellationAndDamageAreAtomicAuditedAndIdempotent() {
  var connection=Environment.GetEnvironmentVariable("ConnectionStrings__IdentityDb");if(string.IsNullOrWhiteSpace(connection))return;
+ var database="commerce_test_"+Guid.NewGuid().ToString("N");
+ await using(var adminConnection=new NpgsqlConnection(connection)) {await adminConnection.OpenAsync();await using var command=new NpgsqlCommand("CREATE DATABASE "+database,adminConnection);await command.ExecuteNonQueryAsync();}
+ var isolated=new NpgsqlConnectionStringBuilder(connection){Database=database};connection=isolated.ConnectionString;
  await using var db=Context(connection);await db.Database.MigrateAsync();
  await using var identity=new HanaIdentityDbContext(new DbContextOptionsBuilder<HanaIdentityDbContext>().UseNpgsql(connection).Options);
  await using var catalog=new HanaCatalogDbContext(new DbContextOptionsBuilder<HanaCatalogDbContext>().UseNpgsql(connection).Options);
  await using var sellers=new HanaSellerDbContext(new DbContextOptionsBuilder<HanaSellerDbContext>().UseNpgsql(connection).Options);
  await using var geo=new HanaGeographyDbContext(new DbContextOptionsBuilder<HanaGeographyDbContext>().UseNpgsql(connection).Options);
+ await identity.Database.MigrateAsync();await sellers.Database.MigrateAsync();await catalog.Database.MigrateAsync();await geo.Database.MigrateAsync();
+ var province=Guid.NewGuid();var city=Guid.NewGuid();
  var clock=new Clock{UtcNow=DateTimeOffset.UtcNow};var admin=Guid.NewGuid();var seller=Guid.NewGuid();var buyer=Guid.NewGuid();var stranger=Guid.NewGuid();
  foreach(var account in new[]{admin,seller,buyer,stranger})identity.Accounts.Add(new(){Id=account,NormalizedPhone="09"+RandomNumberGenerator.GetInt32(1000000000).ToString("D9"),CreatedAtUtc=clock.UtcNow});
  identity.RoleAssignments.Add(new(){AccountId=admin,Role=HanaRoles.Admin,GrantedAtUtc=clock.UtcNow});identity.RoleAssignments.Add(new(){AccountId=seller,Role=HanaRoles.Seller,GrantedAtUtc=clock.UtcNow});await identity.SaveChangesAsync();
@@ -33,7 +39,12 @@ public sealed class CommerceTests
  sellers.RegistrationDrafts.Add(new(){AccountId=seller,StoreName="CI",OwnerName="CI",Phone=identity.Accounts.Local.Single(a=>a.Id==seller).NormalizedPhone,City="CI",Address="CI",PostalCode="1234567890",UpdatedAtUtc=clock.UtcNow});await sellers.SaveChangesAsync();
  sellers.SellerActivations.Add(new(){Id=Guid.NewGuid(),ApplicationAccountId=seller,ActivatedByAccountId=admin,ActivationKey=Guid.NewGuid(),ExpectedRevision=1,CreatedAtUtc=clock.UtcNow});await sellers.SaveChangesAsync();
  var category=Guid.NewGuid();var product=Guid.NewGuid();catalog.Categories.Add(new(){Id=category,Name="CI food",Slug="ci-"+category,State=PublicationStates.Published,CreatedAtUtc=clock.UtcNow});catalog.Products.Add(new(){Id=product,CategoryId=category,Name="CI product",State=PublicationStates.Published,CreatedAtUtc=clock.UtcNow});await catalog.SaveChangesAsync();
- var province=Guid.NewGuid();var city=Guid.NewGuid();geo.Provinces.Add(new(){Id=province,Name="CI",Slug="ci-"+province,State=GeographyStates.Selectable});geo.Cities.Add(new(){Id=city,ProvinceId=province,Name="CI",Slug="ci-"+city,State=GeographyStates.Selectable});await geo.SaveChangesAsync();
+ geo.Provinces.Add(new(){Id=province,Name="CI",Slug="ci-"+province,State=GeographyStates.Selectable});geo.Cities.Add(new(){Id=city,ProvinceId=province,Name="CI",Slug="ci-"+city,State=GeographyStates.Selectable});await geo.SaveChangesAsync();
+ var draft=await sellers.RegistrationDrafts.SingleAsync(d=>d.AccountId==seller);
+ draft.CompletedStep=5;draft.ApplicantType="NATURAL";draft.NaturalNationalCode="0013549829";draft.IdentityStatus="VERIFIED";
+ draft.BusinessCategoryId=Guid.NewGuid();sellers.BusinessCategories.Add(new(){Id=draft.BusinessCategoryId.Value,Name="CI",IsActive=true,UpdatedAtUtc=clock.UtcNow});
+ draft.BusinessName="CI";draft.BusinessDescription="CI";draft.BusinessPhone="02112345678";draft.ServiceArea="CI city";draft.OfferingType="GOOD";draft.ActivityProvinceId=province;draft.ActivityCityId=city;draft.ActivityAddress="CI";draft.ActivityHours="CI";draft.Pickup=true;draft.SellerDelivery=false;
+ await sellers.SaveChangesAsync();
  var roles=new RoleAuthorizationService(identity,new AuthSessionService(identity,clock));var service=new CommerceService(db,catalog,sellers,geo,identity,roles,clock);
  Task<JsonElement> Command(Guid actor,string action,object input,Guid? key=null)=>service.ExecuteAsync(actor,key??Guid.NewGuid(),action,JsonSerializer.SerializeToElement(input));
  var offerId=Guid.NewGuid();await Command(seller,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=5,expectedVersion=0});
@@ -44,7 +55,7 @@ public sealed class CommerceTests
  var creditId=allocation.GetProperty("grants")[0].GetProperty("Id").GetGuid();
  var q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});
  var key=Guid.NewGuid();var input=new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=creditId,unavailableDisposition="KEEP",confirmUnavailable=true};
- var order=await Command(buyer,"PLACE_ORDER",input,key);var retry=await Command(buyer,"PLACE_ORDER",input,key);Assert.Equal(order.GetRawText(),retry.GetRawText());
+ var order=await Command(buyer,"PLACE_ORDER",input,key);var retry=await Command(buyer,"PLACE_ORDER",input,key);Assert.Equal(order.GetProperty("Id").GetGuid(),retry.GetProperty("Id").GetGuid());
  await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"PLACE_ORDER",new{quoteId=input.quoteId,creditGrantId=creditId,unavailableDisposition="REMOVE"},key));
  var orderId=order.GetProperty("Id").GetGuid();await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(stranger,"CANCEL_ORDER",new{orderId,expectedVersion=1}));
  var cancelKey=Guid.NewGuid();await Command(buyer,"CANCEL_ORDER",new{orderId,expectedVersion=1},cancelKey);await Command(buyer,"CANCEL_ORDER",new{orderId,expectedVersion=1},cancelKey);

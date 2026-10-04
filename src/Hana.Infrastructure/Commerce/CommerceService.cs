@@ -16,6 +16,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private Guid transactionActor,transactionCommand;
  public async Task<JsonElement> ExecuteAsync(Guid actor,Guid command,string action,JsonElement input,CancellationToken ct=default)
  {
+  db.ChangeTracker.Clear();
   if(actor==Guid.Empty || command==Guid.Empty || input.ValueKind!=JsonValueKind.Object) throw new ArgumentException("Command required.");
   var privileged=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","SET_FEE_POLICY","BUILD_SETTLEMENTS","REPLY_TICKET"};
   if(privileged.Contains(action))await Admin(actor,ct);
@@ -43,7 +44,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var json=JsonSerializer.Serialize(result);
   db.Receipts.Add(new(){ActorId=actor,CommandId=command,Fingerprint=fingerprint,ResultJson=json,CreatedAtUtc=clock.UtcNow});
   // Transactional outbox/audit event. Delivery integrations consume it later; not an SMS sent flag.
-  db.Journal.Add(new(){Id=Guid.NewGuid(),ActorId=actor,CommandId=command,ResourceId=command,Event=action,Body=json,CreatedAtUtc=clock.UtcNow});
+  db.Journal.Add(new(){Id=Guid.NewGuid(),ActorId=actor,CommandId=command,ResourceId=command,Event=action,Body=JsonSerializer.Serialize(new{input,result}),CreatedAtUtc=clock.UtcNow});
   await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);return JsonSerializer.Deserialize<JsonElement>(json);
  }
  private void Transfer(Guid resource,string debit,string credit,long amount,string fundKind) {
@@ -67,6 +68,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private async Task<List<T>> All<T>(string kind,CancellationToken ct) {var rows=await db.Documents.Where(x=>x.Kind==kind).OrderBy(x=>x.Id).ToListAsync(ct);return rows.Select(x=>JsonSerializer.Deserialize<T>(x.Body)!).ToList();}
  private async Task<object> SaveOffer(Guid actor,JsonElement x,CancellationToken ct) {
   await Seller(actor,ct);var product=await catalog.Products.AsNoTracking().SingleOrDefaultAsync(p=>p.Id==Id(x,"productId")&&p.State==PublicationStates.Published&&p.Kind==CatalogProductKinds.Good,ct)??throw new CommerceConflict("PRODUCT_NOT_PUBLISHED");
+  if(!await catalog.Categories.AnyAsync(c=>c.Id==product.CategoryId&&c.State==PublicationStates.Published,ct))throw new CommerceConflict("CATEGORY_NOT_PUBLISHED");
   var offerId=Id(x,"offerId");var old=(await All<Offer>("OFFER",ct)).SingleOrDefault(o=>o.SellerId==actor&&o.ProductId==product.Id);
   if(old!=null&&(old.Id!=offerId||old.Version!=Count(x,"expectedVersion",0,int.MaxValue)))throw new CommerceConflict("OFFER_VERSION_CHANGED");
   if(old==null&&Count(x,"expectedVersion",0,int.MaxValue)!=0)throw new CommerceConflict("OFFER_VERSION_CHANGED");
@@ -87,12 +89,14 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   }return result;
  }
  private async Task<object> SaveAddress(Guid actor,JsonElement x,CancellationToken ct) {
-  var cityId=Id(x,"cityId");if(!await geography.Cities.AnyAsync(c=>c.Id==cityId,ct))throw new CommerceMissing();
+  var cityId=Id(x,"cityId");if(!await geography.Cities.AnyAsync(c=>c.Id==cityId&&c.State==GeographyStates.Selectable,ct))throw new CommerceMissing();
   if(!x.TryGetProperty("latitude",out var lat)||!lat.TryGetDecimal(out var latitude)||latitude is < -90 or >90||!x.TryGetProperty("longitude",out var lon)||!lon.TryGetDecimal(out var longitude)||longitude is < -180 or >180)throw new ArgumentException("Coordinates.");
   var id=Id(x,"addressId");var a=new BuyerAddress(id,actor,cityId,Text(x,"text",1000),latitude,longitude);await Put(id,actor,"ADDRESS",a,ct);return a;
  }
  private async Task<object> CreateQuote(Guid actor,JsonElement x,CancellationToken ct) {
   var seller=Id(x,"sellerId");await Seller(seller,ct);var address=await Get<BuyerAddress>(Id(x,"addressId"),"ADDRESS",ct);if(address.BuyerId!=actor)throw new CommerceForbidden();
+  var store=await sellers.RegistrationDrafts.AsNoTracking().SingleAsync(s=>s.AccountId==seller,ct);
+  if(store.Pickup!=true||store.ActivityCityId!=address.CityId)throw new CommerceConflict("PICKUP_COVERAGE_UNAVAILABLE");
   var purchase=Text(x,"purchaseType");if(purchase is not("PERSONAL" or "LEGAL"))throw new ArgumentException("Purchase type.");
   var mode=Text(x,"fulfillmentMode");if(mode!="PICKUP")throw new CommerceConflict("DELIVERY_INTEGRATION_UNCONFIGURED");
   var cart=await Owned<Cart>(actor,"CART",ct)??throw new CommerceConflict("CART_EMPTY");var offers=(await All<Offer>("OFFER",ct)).Where(o=>o.SellerId==seller&&o.Published).ToList();var items=new List<QuoteItem>();var missing=new List<CartItem>();
@@ -184,6 +188,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  }
  private async Task<object> VerifyUnavailable(Guid actor,JsonElement x,CancellationToken ct) {
   await Admin(actor,ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.State!="AWAITING_RETURN"||i.FirstContactAtUtc==null||i.DoorVisitAtUtc==null||i.DoorVisitAtUtc>i.ReturnDueAtUtc)throw new CommerceConflict("TIMELY_CALL_AND_DOOR_EVIDENCE_REQUIRED");
+  if((await All<Settlement>("SETTLEMENT",ct)).Any(s=>s.OrderId==i.OrderId))throw new CommerceConflict("SETTLEMENT_ALREADY_PREPARED");
   var reason=Text(x,"reason",1000);i=i with{State="CUSTOMER_UNAVAILABLE_VERIFIED",PenaltyApplied=false};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return new{incident=i,reason};
  }
  private async Task<object> AssessReturns(Guid actor,CancellationToken ct) {
