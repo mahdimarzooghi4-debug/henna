@@ -1,0 +1,49 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { MobileCommerceClient, mobileCommerceIntent } from "../apps/mobile-consumer/src/mobile-commerce.ts";
+const ID="60000000-0000-4000-8000-000000000001", token="hn1_"+Buffer.alloc(32,8).toString("base64url");
+const cart={Id:ID,BuyerId:"PRIVATE",Version:2,Items:[{ProductId:ID,Quantity:2}]};
+const json=(x,status=200)=>new Response(JSON.stringify(x),{status,headers:{"Content-Type":"application/json"}});
+function setup(handler, initial=token) {
+ let current=initial, removed=0; const calls=[];
+ const store={read:async()=>current,write:async t=>{current=t;},remove:async()=>{current=null;removed++;}};
+ const client=new MobileCommerceClient("https://api.henna.test",store,async(url,options)=>{calls.push({url,options});return handler(url,options,store);});
+ return {client,calls,store,current:()=>current,removed:()=>removed};
+}
+test("native buyer cart uses SecureStore bearer and strips private aggregate fields",async()=>{
+ const s=setup(()=>json({items:[cart],page:1,pageSize:20}));
+ assert.deepEqual(await s.client.cart(),{id:ID,version:2,items:[{productId:ID,quantity:2}]});
+ assert.equal(s.calls[0].options.headers.Authorization,"Bearer "+token);assert.equal(s.calls[0].options.credentials,"omit");assert.equal(s.calls[0].options.redirect,"error");assert.equal(s.current(),token);
+});
+test("public offers never read native credentials",async()=>{
+ const client=new MobileCommerceClient("https://api.henna.test",{read:async()=>{throw Error("must not read");},write:async()=>{},remove:async()=>{}},async(url,o)=>{assert.equal(o.headers.Authorization,undefined);return json({items:[],page:1,pageSize:20});});
+ assert.deepEqual(await client.offers(ID),[]);
+});
+test("outage keeps SecureStore, 401 removes only the rejected current session",async()=>{
+ const s=setup(()=>json({},503));await assert.rejects(s.client.cart(),e=>e.status===503);assert.equal(s.current(),token);assert.equal(s.removed(),0);
+ const expired=setup(()=>json({},401));await assert.rejects(expired.client.cart(),e=>e.status===401);assert.equal(expired.current(),null);
+ const changed=setup(async(url,o,store)=>{await store.write("hn1_"+Buffer.alloc(32,9).toString("base64url"));return json({},401);});await assert.rejects(changed.client.cart(),e=>e.status===401);assert.equal(changed.removed(),0);
+});
+test("guest, corrupt keychain and unavailable keychain fail closed",async()=>{
+ const guest=setup(()=>{throw Error("no fetch");},null);await assert.rejects(guest.client.cart(),e=>e.status===401);assert.equal(guest.calls.length,0);
+ const corrupt=setup(()=>{throw Error("no fetch");},"invalid");await assert.rejects(corrupt.client.cart(),e=>e.status===401);assert.equal(corrupt.removed(),1);
+ const client=new MobileCommerceClient("https://api.henna.test",{read:async()=>{throw Error();},write:async()=>{},remove:async()=>{}},async()=>{throw Error("no fetch");});await assert.rejects(client.cart(),e=>e.status===503);
+});
+test("same frozen command can recover an ambiguous response without changing payload or key",async()=>{
+ let attempt=0;const s=setup(()=>++attempt===1?json({},503):json(cart));
+ const intent=mobileCommerceIntent("cart-items",{productId:ID,quantity:2,expectedVersion:1},ID);assert.equal(Object.isFrozen(intent),true);
+ await assert.rejects(s.client.post(intent),e=>e.status===503);await s.client.post(intent);
+ assert.equal(s.calls[0].options.body,s.calls[1].options.body);assert.equal(s.calls[0].options.headers["Idempotency-Key"],ID);assert.equal(s.calls[1].options.headers["Idempotency-Key"],ID);
+});
+test("only buyer routes and bounded page values reach the API",async()=>{
+ const s=setup(url=>json({items:[],page:Number(new URL(url).searchParams.get("page")),pageSize:20}));
+ for(const path of ["constructor","__proto__","admin","orders/"+ID+"/cancel?x=1"])assert.throws(()=>s.client.read(path),e=>e.status===404);
+ for(const p of [0,1.5,10001])assert.throws(()=>s.client.orders(p),e=>e.status===400);
+ assert.equal(s.calls.length,0);assert.deepEqual(await s.client.orders(2),[]);assert.equal(s.calls[0].url,"https://api.henna.test/api/v1/orders?page=2");
+});
+test("malformed money, redirected responses and wrong page never become empty success",async()=>{
+ const s=setup(()=>json({items:[{BalanceRial:9007199254740992}],page:1,pageSize:20}));await assert.rejects(s.client.read("wallet"),e=>e.status===503);
+ const page=setup(()=>json({items:[],page:1,pageSize:20}));await assert.rejects(page.client.orders(2),e=>e.status===503);
+ const redirected=setup(()=>{const r=json({items:[],page:1,pageSize:20});Object.defineProperty(r,"redirected",{value:true});return r;});await assert.rejects(redirected.client.cart(),e=>e.status===503);
+ const oversized=setup(()=>new Response("x".repeat(512001),{headers:{"Content-Type":"application/json"}}));await assert.rejects(oversized.client.cart(),e=>e.status===503);
+});

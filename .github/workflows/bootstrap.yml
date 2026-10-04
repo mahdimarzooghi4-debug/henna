@@ -454,6 +454,8 @@ jobs:
         run: npm run mobile:typecheck
       - name: Test mobile OTP and SecureStore session semantics (CI-only mocked API/store)
         run: node --experimental-strip-types --test tests/mobile-auth-smoke.mjs
+      - name: Test native buyer commerce transport (CI-only API/store doubles)
+        run: node --experimental-strip-types --test tests/mobile-commerce-smoke.mjs
       - name: Test Expo OTP field feedback and six-digit submission guard
         run: node --experimental-strip-types --test tests/mobile-otp-entry-smoke.mjs
       - name: Test Expo foreground session revalidation and SecureStore fail closed
