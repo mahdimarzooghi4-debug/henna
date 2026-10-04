@@ -16,7 +16,7 @@ public sealed class CommerceAutomation(IServiceScopeFactory scopes,IClock clock,
    try {
     using var scope=scopes.CreateScope();var service=scope.ServiceProvider.GetRequiredService<CommerceService>();
     var minute=clock.UtcNow.ToString("yyyyMMddHHmm",System.Globalization.CultureInfo.InvariantCulture);
-    foreach(var action in new[]{"ASSESS_RETURN_SLA","BUILD_SETTLEMENTS"}) {
+    foreach(var action in new[]{"ASSESS_RETURN_SLA","ASSESS_WITHDRAWAL_SLA","BUILD_SETTLEMENTS"}) {
      var key=new Guid(SHA256.HashData(Encoding.UTF8.GetBytes("commerce-automation:"+action+":"+minute))[..16]);
      await service.ExecuteAsync(account,key,action,JsonSerializer.SerializeToElement(new{}),stoppingToken);
     }

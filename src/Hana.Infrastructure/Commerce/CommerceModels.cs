@@ -20,7 +20,7 @@ public sealed record Incident(Guid Id,Guid OrderId,Guid OrderItemId,Guid BuyerId
     DateTimeOffset? FirstContactAtUtc,DateTimeOffset? DoorVisitAtUtc,DateTimeOffset? CollectedAtUtc,bool PenaltyApplied,long RefundRial);
 public sealed record Settlement(Guid Id,Guid OrderId,Guid SellerId,long GrossRial,long RefundRial,long PenaltyRial,long FixedFeeRial,string FeeVersion,long NetRial,string State,DateTimeOffset CreatedAtUtc);
 public sealed record FeePolicy(Guid Id,string Version,long FixedInvoiceFeeRial,string ApprovalReference);
-public sealed record Withdrawal(Guid Id,Guid BuyerId,long AmountRial,string IbanVerificationRequestReference,string State,DateTimeOffset RequestedAtUtc,DateTimeOffset DueAtUtc);
+public sealed record Withdrawal(Guid Id,Guid BuyerId,long AmountRial,string IbanVerificationRequestReference,string State,DateTimeOffset RequestedAtUtc,DateTimeOffset DueAtUtc,bool SlaEscalated=false);
 public sealed record SupportTicket(Guid Id,Guid AccountId,string Subject,string Message,string State,DateTimeOffset CreatedAtUtc,string? Reply);
 public sealed class CommerceConflict(string code) : Exception(code);
 public sealed class CommerceForbidden : Exception;

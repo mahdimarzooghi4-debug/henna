@@ -131,6 +131,22 @@ public sealed class CommerceTests
  var race=await Task.WhenAll(Post(customer,"PLACE_ORDER",new{quoteId=quotes[buyer],creditGrantId=grants[buyer],unavailableDisposition="KEEP"}),Post(other,"PLACE_ORDER",new{quoteId=quotes[stranger],creditGrantId=grants[stranger],unavailableDisposition="KEEP"}));
  Assert.Single(race,r=>r.StatusCode==HttpStatusCode.OK);Assert.Single(race,r=>r.StatusCode==HttpStatusCode.Conflict);
  db.ChangeTracker.Clear();Assert.Equal(0,JsonSerializer.Deserialize<Offer>((await db.Documents.SingleAsync(d=>d.Id==offerId)).Body)!.Stock);
+ // Only the isolated fixture seeds provider-confirmed cash; production has no cash-mint endpoint.
+ db.ChangeTracker.Clear();var walletDoc=await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer);walletDoc.Body=JsonSerializer.Serialize(new CashWallet(buyer,100));walletDoc.Revision++;await db.SaveChangesAsync();
+ var tinyProgram=await Command(admin,"CREATE_PROGRAM",new{name="Rounding CI",fundingReference="rounding-approved",fundedRial=1,expiresAtUtc=clock.UtcNow.AddDays(1),categoryIds=new[]{category}});
+ var tinyAllocation=await Command(admin,"ALLOCATE_CREDIT",new{programId=tinyProgram.GetProperty("Id").GetGuid(),poolRial=1,beneficiaries=new[]{new{accountId=buyer,householdKey=households[buyer],geographicFactor=1m,scores=new{health=0,hardship=0,age=0,size=0,care=0,education=0}}}});var tinyCredit=tinyAllocation.GetProperty("grants")[0].GetProperty("Id").GetGuid();
+ currentOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
+ await Command(seller,"SAVE_OFFER",new{offerId,productId=product,priceRial=1,stock=3,expectedVersion=currentOffer.Version});await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=3});
+ q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});order=await Command(buyer,"PLACE_ORDER",new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=tinyCredit,unavailableDisposition="KEEP"});orderId=order.GetProperty("Id").GetGuid();
+ await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=1,state="PREPARING"});await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=2,state="READY_FOR_PICKUP"});await Command(buyer,"CONFIRM_PICKUP",new{orderId,expectedVersion=3});
+ for(var n=0;n<3;n++) {
+  var issue=await Command(buyer,"REPORT_INCIDENT",new{orderId,orderItemId=order.GetProperty("Items")[0].GetProperty("Id").GetGuid(),type="MISSING_ITEM",quantity=1,evidenceId});
+  await Command(admin,"DECIDE_INCIDENT",new{incidentId=issue.GetProperty("Id").GetGuid(),decision="APPROVE",reason="CI verified shortage"});
+ }
+ db.ChangeTracker.Clear();Assert.Equal(100,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);Assert.Equal(1,JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==tinyCredit)).Body)!.AvailableRial);
+ var withdrawal=await Command(buyer,"REQUEST_WITHDRAWAL",new{amountRial=70,ibanVerificationRequestReference="ci-ownership-check-request"});var releaseKey=Guid.NewGuid();var release=new{withdrawalId=withdrawal.GetProperty("Id").GetGuid()};await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);
+ db.ChangeTracker.Clear();Assert.Equal(100,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);
+
 
  }
  private static HanaCommerceDbContext Context(string connection)=>new(new DbContextOptionsBuilder<HanaCommerceDbContext>().UseNpgsql(connection,p=>p.MigrationsHistoryTable("__EFMigrationsHistory","commerce")).Options);

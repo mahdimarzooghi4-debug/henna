@@ -19,7 +19,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   db.ChangeTracker.Clear();
   if(actor==Guid.Empty || command==Guid.Empty || input.ValueKind!=JsonValueKind.Object) throw new ArgumentException("Command required.");
   var privileged=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","SET_FEE_POLICY","BUILD_SETTLEMENTS","REPLY_TICKET","SAVE_CONTENT","PUBLISH_CONTENT","CREATE_ORGANIZATION","GRANT_ORGANIZATION_MEMBER","REVOKE_ORGANIZATION_MEMBER"};
-  var finance=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","LINK_HOUSEHOLD","SET_FEE_POLICY","BUILD_SETTLEMENTS"};
+  var finance=new[]{"CREATE_PROGRAM","ALLOCATE_CREDIT","LINK_HOUSEHOLD","SET_FEE_POLICY","BUILD_SETTLEMENTS","ASSESS_WITHDRAWAL_SLA"};
   var support=new[]{"DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","REPLY_TICKET"};
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
@@ -47,6 +47,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    "REPORT_INCIDENT"=>await ReportIncident(actor,input,ct), "DECIDE_INCIDENT"=>await DecideIncident(actor,input,ct),
    "RETURN_CONTACT"=>await ReturnContact(actor,input,ct), "RETURN_VISIT"=>await ReturnVisit(actor,input,ct),
    "CONFIRM_RETURN"=>await ConfirmReturn(actor,input,ct), "VERIFY_UNAVAILABILITY"=>await VerifyUnavailable(actor,input,ct),
+   "ASSESS_WITHDRAWAL_SLA"=>await AssessWithdrawals(actor,ct),
    "ASSESS_RETURN_SLA"=>await AssessReturns(actor,ct), "SET_FEE_POLICY"=>await SetFee(actor,input,ct),
    "BUILD_SETTLEMENTS"=>await BuildSettlements(actor,ct), "REQUEST_WITHDRAWAL"=>await Withdraw(actor,input,ct), "CANCEL_WITHDRAWAL"=>await CancelWithdrawal(actor,input,ct),
    "SAVE_EVIDENCE"=>await SaveEvidence(actor,input,ct),
@@ -264,6 +265,12 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   // Ownership verification connector is unconfigured: accept a request but hold funds pending verification.
   var amount=Money(x,"amountRial");var reference=Text(x,"ibanVerificationRequestReference");var wallet=await Wallet(actor,ct);if(wallet.Wallet.BalanceRial<amount)throw new CommerceConflict("WALLET_FUNDS_INSUFFICIENT");await SetWallet(actor,wallet.Wallet.BalanceRial-amount,ct);
   var w=new Withdrawal(Guid.NewGuid(),actor,amount,reference,"OWNERSHIP_VERIFICATION_PENDING",clock.UtcNow,clock.UtcNow.AddHours(72));Transfer(w.Id,"BUYER_CASH:"+actor,"WITHDRAWAL_HOLD:"+w.Id,amount,"CASH");await Put(w.Id,actor,"WITHDRAWAL",w,ct);return w;
+ }
+ private async Task<object> AssessWithdrawals(Guid actor,CancellationToken ct) {
+  await Permission(actor,"FINANCE",ct);var withdrawals=await All<Withdrawal>("WITHDRAWAL",ct);int count=0;
+  foreach(var w in withdrawals.Where(w=>w.State=="OWNERSHIP_VERIFICATION_PENDING"&&!w.SlaEscalated&&w.DueAtUtc<clock.UtcNow)) {
+   await Put(w.Id,w.BuyerId,"WITHDRAWAL",w with{SlaEscalated=true},ct);await Notify(w.BuyerId,"WITHDRAWAL_SLA_BREACHED",w.Id,ct);count++;
+  }return new{escalated=count};
  }
  private async Task<object> CancelWithdrawal(Guid actor,JsonElement x,CancellationToken ct) {
   var w=await Get<Withdrawal>(Id(x,"withdrawalId"),"WITHDRAWAL",ct);if(w.BuyerId!=actor)throw new CommerceForbidden();if(w.State!="OWNERSHIP_VERIFICATION_PENDING")throw new CommerceConflict("WITHDRAWAL_STATE_INVALID");var wallet=await Wallet(actor,ct);await SetWallet(actor,checked(wallet.Wallet.BalanceRial+w.AmountRial),ct);Transfer(w.Id,"WITHDRAWAL_HOLD:"+w.Id,"BUYER_CASH:"+actor,w.AmountRial,"CASH");w=w with{State="CANCELLED"};await Put(w.Id,actor,"WITHDRAWAL",w,ct);return w;
