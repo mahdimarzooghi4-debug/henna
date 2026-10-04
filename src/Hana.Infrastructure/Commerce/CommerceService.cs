@@ -33,6 +33,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
   else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
+  if(new[]{"SAVE_OFFER","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   var fingerprint=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(action+Canonical(input))));
   var prior=await db.Receipts.SingleOrDefaultAsync(x=>x.ActorId==actor && x.CommandId==command,ct);
   if(prior!=null) { if(prior.Fingerprint!=fingerprint) throw new CommerceConflict("IDEMPOTENCY_PAYLOAD_CHANGED"); return JsonSerializer.Deserialize<JsonElement>(prior.ResultJson); }
@@ -127,9 +128,9 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  }
  public Task<object> ComparisonAsync(Guid actor,CancellationToken ct=default)=>CompareCart(actor,ct);
  private async Task<object> CompareCart(Guid actor,CancellationToken ct) {
-  var cart=await Owned<Cart>(actor,"CART",ct)??new(Guid.NewGuid(),actor,[]);var offers=await All<Offer>("OFFER",ct);var result=new List<object>();
+  var cart=await Owned<Cart>(actor,"CART",ct)??new(Guid.NewGuid(),actor,[]);var offers=await All<Offer>("OFFER",ct);var active=await ActiveSellers(ct);var result=new List<object>();
   foreach(var seller in offers.Where(o=>o.Published).Select(o=>o.SellerId).Distinct()) {
-   if(!await roles.HasRoleAsync(seller,HanaRoles.Seller,ct))continue;
+   if(!active.Contains(seller))continue;
    var available=new List<QuoteItem>();var missing=new List<CartItem>();foreach(var item in cart.Items){var offer=offers.SingleOrDefault(o=>o.SellerId==seller&&o.ProductId==item.ProductId&&o.Published&&o.Stock>=item.Quantity);if(offer==null)missing.Add(item);else available.Add(new(offer.Id,offer.ProductId,item.Quantity,offer.PriceRial,offer.Version));}
    if(available.Count>0)result.Add(new{sellerId=seller,available,unavailable=missing,itemsTotalRial=available.Aggregate(0L,(n,i)=>checked(n+checked(i.UnitPriceRial*i.Quantity)))});
   }return result;
@@ -304,6 +305,16 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   await Admin(actor,ct);var c=await Get<CommerceContent>(Id(x,"contentId"),"CONTENT",ct);if(Count(x,"expectedVersion",1,int.MaxValue)!=c.Version)throw new CommerceConflict("CONTENT_VERSION_CHANGED");
   c=c with{Published=x.GetProperty("published").GetBoolean(),Version=checked(c.Version+1)};await Put(c.Id,Guid.Empty,"CONTENT",c,ct);return c;
  }
+ private async Task<Guid[]> ActiveSellers(CancellationToken ct) {
+  var assigned=await identity.RoleAssignments.AsNoTracking().Where(r=>r.Role==HanaRoles.Seller).Select(r=>r.AccountId).ToArrayAsync(ct);
+  return await sellers.SellerActivations.AsNoTracking().Where(s=>assigned.Contains(s.ApplicationAccountId)).Select(s=>s.ApplicationAccountId).ToArrayAsync(ct);
+ }
+ public async Task<object> PublicOffers(Guid? productId,int page,CancellationToken ct) {
+  if(page is <1 or >10000)throw new ArgumentException("Page.");var active=await ActiveSellers(ct);
+  var query=db.Documents.AsNoTracking().Where(d=>d.Kind=="OFFER"&&active.Contains(d.OwnerId)&&EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));
+  if(productId!=null){var selector=JsonSerializer.Serialize(new{ProductId=productId});query=query.Where(d=>EF.Functions.JsonContains(d.Body,selector));}
+  var rows=await query.OrderBy(d=>d.Id).Skip((page-1)*20).Take(20).ToListAsync(ct);return new{items=rows.Select(d=>JsonSerializer.Deserialize<Offer>(d.Body)),page,pageSize=20};
+ }
  public async Task<CommerceContent?> PublicContent(string slug,CancellationToken ct) {
   if(slug.Length>100)return null;
   var rows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="CONTENT"&&EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{Slug=slug,Published=true}))).Take(1).ToListAsync(ct);
@@ -324,6 +335,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var financeAccess=new[]{"PROGRAM","CREDIT","SETTLEMENT","WITHDRAWAL","FEE_VERSION"}.Contains(kind)&&await HasPermission(actor,"FINANCE",ct);
   admin=admin||supportAccess||financeAccess;
   var query=db.Documents.AsNoTracking().Where(d=>d.Kind==kind);
+  if(kind=="OFFER") {var active=await ActiveSellers(ct);query=query.Where(d=>active.Contains(d.OwnerId)&&EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));}
   if(id!=null)query=query.Where(d=>d.Id==id);
   if(view=="BUYER")query=query.Where(d=>d.OwnerId==actor);
   if(view=="SELLER") {await Seller(actor,ct);query=kind=="ORDER"?query.Where(d=>EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{SellerId=actor}))):query.Where(d=>d.OwnerId==actor);}

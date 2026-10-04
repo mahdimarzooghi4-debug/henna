@@ -10,6 +10,11 @@ internal static class CommerceEndpoints
   http.Response.Headers.CacheControl="no-store";if(!configured)return Results.StatusCode(503);
   try {var content=await services.GetRequiredService<CommerceService>().PublicContent(slug,ct);return content==null?Results.NotFound():Results.Ok(content);}catch(Exception)when(!ct.IsCancellationRequested){return Results.StatusCode(503);}
  });
+ app.MapGet("/api/v1/offers",async(Guid? productId,int? page,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
+  http.Response.Headers.CacheControl="no-store";if(!configured)return Results.StatusCode(503);
+  try{return Results.Ok(await services.GetRequiredService<CommerceService>().PublicOffers(productId,page??1,ct));}
+  catch(ArgumentException){return Results.BadRequest();}catch(Exception)when(!ct.IsCancellationRequested){return Results.StatusCode(503);}
+ });
  var group=app.MapGroup("/api/v1/commerce").WithTags("Commerce");
  Func<EndpointFilterInvocationContext,EndpointFilterDelegate,ValueTask<object?>> guard=async(context,next)=>{
  var http=context.HttpContext;http.Response.Headers.CacheControl="no-store";
@@ -29,7 +34,7 @@ internal static class CommerceEndpoints
  return Results.Ok(await services.GetRequiredService<CommerceService>().ExecuteAsync((Guid)http.Items["CommerceActor"]!,key,action,input,ct));
  }).WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(65536));
  group.MapGet("/resources/{kind}",async(string kind,Guid? id,int? page,HttpContext http,IServiceProvider services,CancellationToken ct)=>Results.Ok(await services.GetRequiredService<CommerceService>().ReadAsync((Guid)http.Items["CommerceActor"]!,kind,id,page??1,ct)));
- var rest=app.MapGroup("/api/v1").WithTags("InternalCommerce");rest.AddEndpointFilter(guard);
+ var rest=app.MapGroup("/api/v1").WithTags("InternalCommerce").WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(65536));rest.AddEndpointFilter(guard);
  async Task<IResult> SendCommand(HttpContext http,IServiceProvider services,string action,JsonElement input,CancellationToken ct) {
   if(!Guid.TryParse(http.Request.Headers["Idempotency-Key"].ToString(),out var key)||key==Guid.Empty)return Results.BadRequest(new{error="IDEMPOTENCY_KEY_REQUIRED"});
   return Results.Ok(await services.GetRequiredService<CommerceService>().ExecuteAsync((Guid)http.Items["CommerceActor"]!,key,action,input,ct));

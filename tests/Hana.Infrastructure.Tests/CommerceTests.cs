@@ -114,6 +114,8 @@ public sealed class CommerceTests
  Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/commerce/resources/ORDER")).StatusCode);
  Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/orders")).StatusCode);
  Assert.Equal(HttpStatusCode.OK,(await anonymous.GetAsync("/api/v1/content/ci-policy")).StatusCode);
+ var publicOffers=await anonymous.GetAsync("/api/v1/offers?productId="+product);Assert.Equal(HttpStatusCode.OK,publicOffers.StatusCode);Assert.Single((await publicOffers.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+ Assert.Equal(HttpStatusCode.BadRequest,(await anonymous.GetAsync("/api/v1/offers?page=0")).StatusCode);
  var ownCredits=await customer.GetAsync("/api/v1/me/credits");Assert.Equal(HttpStatusCode.OK,ownCredits.StatusCode);
  Assert.Equal(HttpStatusCode.Forbidden,(await Post(customer,"CREATE_PROGRAM",new{})).StatusCode);
  Assert.Equal(HttpStatusCode.NotFound,(await other.GetAsync("/api/v1/commerce/resources/ORDER?id="+orderId)).StatusCode);
@@ -147,6 +149,13 @@ public sealed class CommerceTests
  var withdrawal=await Command(buyer,"REQUEST_WITHDRAWAL",new{amountRial=70,ibanVerificationRequestReference="ci-ownership-check-request"});var releaseKey=Guid.NewGuid();var release=new{withdrawalId=withdrawal.GetProperty("Id").GetGuid()};await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);
  db.ChangeTracker.Clear();Assert.Equal(100,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);
 
+ // Public offers must disappear when the seller loses activation; cached mutation replay must also fail.
+ var savedOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
+ var offerKey=Guid.NewGuid();var offerPayload=new{offerId,productId=product,priceRial=1,stock=0,expectedVersion=savedOffer.Version};
+ await Command(seller,"SAVE_OFFER",offerPayload,offerKey);
+ sellers.SellerActivations.Remove(await sellers.SellerActivations.SingleAsync(s=>s.ApplicationAccountId==seller));await sellers.SaveChangesAsync();
+ Assert.Empty(JsonSerializer.SerializeToElement(await service.PublicOffers(product,1,CancellationToken.None)).GetProperty("items").EnumerateArray());
+ await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(seller,"SAVE_OFFER",offerPayload,offerKey));
 
  }
  private static HanaCommerceDbContext Context(string connection)=>new(new DbContextOptionsBuilder<HanaCommerceDbContext>().UseNpgsql(connection,p=>p.MigrationsHistoryTable("__EFMigrationsHistory","commerce")).Options);
