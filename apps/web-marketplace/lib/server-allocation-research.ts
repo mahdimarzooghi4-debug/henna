@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCookieName } from "./server-auth";
+import { parseAssessmentInput } from "./allocation-assessment";
 import { proposalId } from "./allocation-proposals";
 
 export async function forwardResearch(request: NextRequest, operation: "assessments" | "labels" | "train") {
@@ -13,7 +14,11 @@ export async function forwardResearch(request: NextRequest, operation: "assessme
     if (!request.headers.get("content-type")?.startsWith("application/json")) return fail("درخواست معتبر نیست.", 400);
     try {
       const input = await request.json();
-      if (operation === "labels") {
+      if (operation === "assessments") {
+        const assessment = parseAssessmentInput(input);
+        if (!assessment) return fail("شناسه‌ها، امتیازها، تاریخ و مرجع سند معتبر لازم است.", 400);
+        body = JSON.stringify(assessment);
+      } else if (operation === "labels") {
         if (!proposalId(input.snapshotId) || typeof input.needScore !== "number" || !Number.isFinite(input.needScore) ||
           input.needScore < 0 || input.needScore > 1 || typeof input.rubricVersion !== "string" ||
           !input.rubricVersion.trim() || input.rubricVersion.length > 120 || ![1, 2].includes(input.partition)) return fail("امتیاز و معیار معتبر لازم است.", 400);
@@ -41,7 +46,7 @@ export async function forwardResearch(request: NextRequest, operation: "assessme
     const response = await fetch(target, { method: write ? "POST" : "GET", body, cache: "no-store",
       headers: { Authorization: `Bearer ${token}`, ...(write ? { "Content-Type": "application/json" } : {}) }, signal: AbortSignal.timeout(30000) });
     if (!response.ok) {
-      const messages: Record<number, string> = { 400: "داده‌ها یا تقسیم آموزش و ارزیابی معتبر نیستند.", 401: "دوباره وارد شوید.", 403: "دسترسی مدیر لازم است.", 409: "این امتیاز یا پیشنهاد قبلاً ثبت شده است." };
+      const messages: Record<number, string> = { 400: "داده‌ها یا تقسیم آموزش و ارزیابی معتبر نیستند.", 401: "دوباره وارد شوید.", 403: "دسترسی مدیر لازم است.", 409: "این ارزیابی، امتیاز یا پیشنهاد قبلاً ثبت شده است؛ داده قبلی بازنویسی نمی‌شود." };
       return fail(messages[response.status] ?? "اجرای درخواست ممکن نشد.", messages[response.status] ? response.status : 503);
     }
     const payload = await response.json();

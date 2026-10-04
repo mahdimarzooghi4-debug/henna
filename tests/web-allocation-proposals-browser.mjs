@@ -27,6 +27,12 @@ try {
     const request = route.request(), path = new URL(request.url()).pathname;
     assert.equal(request.headers().authorization, undefined);
     if (path.includes("/research/")) {
+      if (path.endsWith("/assessments") && request.method() === "POST") {
+        const input = request.postDataJSON();
+        assert.equal(input.householdKey, id); assert.equal(input.scores.health, 3);
+        assert.equal(input.evidenceReference, "approved-document-ui");
+        return route.fulfill(json({ id: input.snapshotId, active: false }, 201));
+      }
       if (path.endsWith("/assessments")) return route.fulfill(json({ active: false, items: [{ id, datasetVersion: "ui-dataset", sourceInstructionReference: "ui-source", health: 3, hardship: 0, age: 0, size: 0, care: 0, education: 0 }] }));
       if (path.endsWith("/labels") && request.method() === "POST") {
         assert.equal(request.postDataJSON().needScore, .8);
@@ -68,6 +74,20 @@ try {
   assert.equal(await page.getByRole("heading", { name: "ضرایب پیشنهادی" }).count(), 0);
   mode = "empty"; await page.reload(); await page.getByText("هنوز پیشنهادی ثبت نشده است.").waitFor();
   mode = "normal";
+  await page.goto(base + "/admin/allocation-assessments");
+  await page.getByLabel("شناسه ثابت خانوار (UUID)").fill(id);
+  await page.getByLabel("نسخه مجموعه ارزیابی").fill("ui-dataset");
+  await page.getByLabel("مرجع دستور تأمین مالی").fill("ui-source");
+  await page.getByLabel("مرجع سند ارزیابی").fill("approved-document-ui");
+  await page.getByLabel("تاریخ و ساعت ارزیابی").fill("2026-10-01T10:00");
+  await page.getByLabel("ضریب جغرافیایی مصوب").fill("1.1");
+  await page.getByLabel("مبلغ تخصیص ثبت‌شده به ریال").fill("1000");
+  for (const name of ["سلامت و درمان", "فشار معیشتی", "سن و وابستگی", "اندازه خانوار", "مراقبت و حمایت", "تحصیلات"]) await page.getByLabel(name, { exact: true }).selectOption(name === "سلامت و درمان" ? "3" : "0");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "ثبت ارزیابی مستند", exact: true }).click();
+  await page.getByText("ارزیابی ثبت شد و در صفحه آموزش قابل انتخاب است.").waitFor();
+  assert.equal(await page.getByLabel("شناسه ثابت خانوار (UUID)").isDisabled(), true);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.goto(base + "/admin/allocation-training");
   await page.getByLabel("نسخه معیار ارزیابی").fill("reviewed-rubric-v1");
   await page.getByLabel("ارزیابی خانوار").selectOption(id);

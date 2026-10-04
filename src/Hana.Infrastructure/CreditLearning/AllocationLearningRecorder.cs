@@ -9,13 +9,18 @@ public sealed class AllocationLearningRecorder(HanaAllocationLearningDbContext d
 {
     public async Task RecordAssessmentAsync(Guid snapshotId, AllocationLearningCase assessment,
         string formulaVersion, string datasetVersion, string sourceInstructionReference,
-        long allocatedRial, DateTimeOffset assessedAtUtc, CancellationToken cancellationToken = default)
+        long allocatedRial, DateTimeOffset assessedAtUtc, CancellationToken cancellationToken = default,
+        Guid? recordedByAccountId = null, string? evidenceReference = null)
     {
         ArgumentNullException.ThrowIfNull(assessment);
         ArgumentNullException.ThrowIfNull(assessment.Scores);
         foreach (var value in new[] { formulaVersion, datasetVersion, sourceInstructionReference })
             if (string.IsNullOrWhiteSpace(value) || value.Length > 120)
                 throw new ArgumentException("Version and source references require 1–120 characters.");
+        if ((recordedByAccountId is null) != (evidenceReference is null) ||
+            recordedByAccountId == Guid.Empty || (evidenceReference is not null &&
+                (string.IsNullOrWhiteSpace(evidenceReference) || evidenceReference.Length > 240)))
+            throw new ArgumentException("Attributed snapshots require both recorder and evidence reference.");
         var now = clock.UtcNow;
         if (snapshotId == Guid.Empty || assessment.HouseholdKey == Guid.Empty ||
             assessment.GeographicFactor <= 0m || allocatedRial < 0 ||
@@ -24,6 +29,7 @@ public sealed class AllocationLearningRecorder(HanaAllocationLearningDbContext d
         var scores = assessment.Scores;
         db.Assessments.Add(new AllocationAssessmentRecord {
             Id = snapshotId, HouseholdKey = assessment.HouseholdKey,
+            RecordedByAccountId = recordedByAccountId, EvidenceReference = evidenceReference?.Trim(),
             FormulaVersion = formulaVersion, DatasetVersion = datasetVersion,
             SourceInstructionReference = sourceInstructionReference,
             GeographicFactor = assessment.GeographicFactor, AllocatedRial = allocatedRial,

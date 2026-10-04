@@ -77,6 +77,33 @@ public sealed class AllocationProposalApiTests
         Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.GetAsync(research + "/assessments")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.GetAsync(research + "/assessments?page=0")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await creatorClient.GetAsync(research + "/assessments")).StatusCode);
+        var capturedId = Guid.NewGuid();
+        var householdKey = Guid.NewGuid();
+        object Capture(Guid snapshotId, DateTimeOffset assessed) => new {
+            snapshotId, householdKey, datasetVersion = dataset, sourceInstructionReference = source,
+            evidenceReference = "approved-record-" + capturedId,
+            geographicFactor = 1.1m, allocatedRial = 700L, assessedAtUtc = assessed,
+            scores = new { health = 1, hardship = 2, age = 0, size = 1, care = 0, education = 3 },
+            recordedByAccountId = ordinary // Cannot override server identity.
+        };
+        var captureUrl = research + "/assessments";
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddDays(-1)))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddDays(-1)))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(captureUrl, Capture(Guid.NewGuid(), now.AddDays(1)))).StatusCode);
+        var captured = await creatorClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddDays(-1)));
+        Assert.Equal(HttpStatusCode.Created, captured.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await creatorClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddDays(-1)))).StatusCode);
+        var storedAssessment = await learning.Assessments.AsNoTracking().SingleAsync(x => x.Id == capturedId);
+        Assert.Equal(creator, storedAssessment.RecordedByAccountId);
+        Assert.Equal(householdKey, storedAssessment.HouseholdKey);
+        Assert.Equal("approved-record-" + capturedId, storedAssessment.EvidenceReference);
+        Assert.Equal(AllocationWeightProfile.Baseline.Version, storedAssessment.FormulaVersion);
+        Assert.Equal(700L, storedAssessment.AllocatedRial);
+        Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(captureUrl, new {
+            snapshotId = Guid.NewGuid(), householdKey, datasetVersion = dataset, sourceInstructionReference = source,
+            evidenceReference = "missing-scores", geographicFactor = 1m, allocatedRial = 0L,
+            assessedAtUtc = now.AddDays(-1), scores = new { health = 0 }
+        })).StatusCode);
         var rubric = "rubric-" + Guid.NewGuid();
         var label = new { snapshotId = snapshots[0], needScore = .8m, rubricVersion = rubric, partition = 1 };
         Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.PostAsJsonAsync(research + "/labels", label)).StatusCode);

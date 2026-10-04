@@ -314,7 +314,7 @@ jobs:
       - name: Typecheck web
         run: npm run web:typecheck
       - name: Test administrative allocation report validation
-        run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs
+        run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs tests/web-allocation-assessment.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo

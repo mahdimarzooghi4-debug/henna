@@ -6,6 +6,8 @@ public sealed class AllocationAssessmentRecord
 {
     public Guid Id { get; set; }
     public Guid HouseholdKey { get; set; }
+    public Guid? RecordedByAccountId { get; set; }
+    public string? EvidenceReference { get; set; }
     public string FormulaVersion { get; set; } = "";
     public string DatasetVersion { get; set; } = "";
     public string SourceInstructionReference { get; set; } = "";
@@ -55,10 +57,12 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.ToTable("assessments", t =>
             {
                 t.HasCheckConstraint("ck_assessment_scores", "\"Health\" BETWEEN 0 AND 3 AND \"Hardship\" BETWEEN 0 AND 3 AND \"Age\" BETWEEN 0 AND 3 AND \"Size\" BETWEEN 0 AND 3 AND \"Care\" BETWEEN 0 AND 3 AND \"Education\" BETWEEN 0 AND 3");
+                t.HasCheckConstraint("ck_assessment_provenance", "(\"RecordedByAccountId\" IS NULL AND \"EvidenceReference\" IS NULL) OR (\"RecordedByAccountId\" IS NOT NULL AND \"RecordedByAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND \"EvidenceReference\" IS NOT NULL AND length(btrim(\"EvidenceReference\")) > 0)");
                 t.HasCheckConstraint("ck_assessment_amount", "\"AllocatedRial\" >= 0 AND \"GeographicFactor\" > 0");
             });
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.EvidenceReference).HasMaxLength(240);
             e.Property(x => x.FormulaVersion).HasMaxLength(120).IsRequired();
             e.Property(x => x.DatasetVersion).HasMaxLength(120).IsRequired();
             e.Property(x => x.SourceInstructionReference).HasMaxLength(120).IsRequired();

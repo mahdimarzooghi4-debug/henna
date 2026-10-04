@@ -41,6 +41,28 @@ internal static class AllocationLearningProposalEndpoints
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
 
+        routes.MapPost("/research/assessments", async (CaptureAssessmentRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.Scores is null || string.IsNullOrWhiteSpace(input.EvidenceReference) ||
+                input.GeographicFactor is null || input.AllocatedRial is null || input.AssessedAtUtc is null ||
+                input.Scores.Health is null || input.Scores.Hardship is null || input.Scores.Age is null ||
+                input.Scores.Size is null || input.Scores.Care is null || input.Scores.Education is null)
+                return Results.BadRequest();
+            var s = input.Scores;
+            var scores = new HouseholdNeedScores(s.Health.Value, s.Hardship.Value, s.Age.Value,
+                s.Size.Value, s.Care.Value, s.Education.Value);
+            // The documented baseline is fixed here. Input is an attributed external snapshot,
+            // not a payment authorization or an automatically verified household profile.
+            await services.GetRequiredService<AllocationLearningRecorder>().RecordAssessmentAsync(
+                input.SnapshotId, new(input.HouseholdKey, scores, input.GeographicFactor.Value),
+                AllocationWeightProfile.Baseline.Version, input.DatasetVersion, input.SourceInstructionReference,
+                input.AllocatedRial.Value, input.AssessedAtUtc.Value, ct,
+                (Guid)http.Items["AllocationReviewerAccount"]!, input.EvidenceReference);
+            return Results.Created("/api/v1/admin/allocation-proposals/research/assessments",
+                new { id = input.SnapshotId, active = false });
+        });
+
         routes.MapGet("/research/assessments", async (int? page, IServiceProvider services, CancellationToken ct) =>
         {
             var p = page ?? 1;
@@ -49,7 +71,8 @@ internal static class AllocationLearningProposalEndpoints
             var items = await db.Assessments.AsNoTracking().OrderByDescending(x => x.AssessedAtUtc)
                 .ThenBy(x => x.Id).Skip((p - 1) * 20).Take(20).Select(x => new {
                     x.Id, x.DatasetVersion, x.SourceInstructionReference, x.FormulaVersion,
-                    x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education, x.AssessedAtUtc
+                    x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education, x.AssessedAtUtc,
+                    x.EvidenceReference, x.RecordedByAccountId
                 }).ToListAsync(ct);
             return Results.Ok(new { items, page = p, active = false });
         });
@@ -150,3 +173,8 @@ internal sealed record ReviewProposalRequest(string Decision, string Reason);
 
 internal sealed record NeedLabelRequest(Guid SnapshotId, decimal NeedScore, string RubricVersion, int Partition);
 internal sealed record TrainAllocationRequest(Guid[]? LabelIds, long PoolRial, DateTimeOffset CutoffUtc);
+
+internal sealed record AssessmentScores(int? Health, int? Hardship, int? Age, int? Size, int? Care, int? Education);
+internal sealed record CaptureAssessmentRequest(Guid SnapshotId, Guid HouseholdKey, AssessmentScores? Scores,
+    decimal? GeographicFactor, long? AllocatedRial, DateTimeOffset? AssessedAtUtc,
+    string DatasetVersion, string SourceInstructionReference, string EvidenceReference);

@@ -17,6 +17,8 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
         {
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
             e.Property<Guid>("HouseholdKey").HasColumnType("uuid");
+            e.Property<Guid?>("RecordedByAccountId").HasColumnType("uuid");
+            e.Property<string>("EvidenceReference").HasMaxLength(240).HasColumnType("character varying(240)");
             e.Property<string>("FormulaVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
             e.Property<string>("DatasetVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
             e.Property<string>("SourceInstructionReference").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
@@ -35,6 +37,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.ToTable("assessments", "allocation_learning", t =>
             {
                 t.HasCheckConstraint("ck_assessment_scores", "\"Health\" BETWEEN 0 AND 3 AND \"Hardship\" BETWEEN 0 AND 3 AND \"Age\" BETWEEN 0 AND 3 AND \"Size\" BETWEEN 0 AND 3 AND \"Care\" BETWEEN 0 AND 3 AND \"Education\" BETWEEN 0 AND 3");
+                t.HasCheckConstraint("ck_assessment_provenance", "(\"RecordedByAccountId\" IS NULL AND \"EvidenceReference\" IS NULL) OR (\"RecordedByAccountId\" IS NOT NULL AND \"RecordedByAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND \"EvidenceReference\" IS NOT NULL AND length(btrim(\"EvidenceReference\")) > 0)");
                 t.HasCheckConstraint("ck_assessment_amount", "\"AllocatedRial\" >= 0 AND \"GeographicFactor\" > 0");
             });
         });
