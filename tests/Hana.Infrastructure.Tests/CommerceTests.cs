@@ -149,6 +149,18 @@ public sealed class CommerceTests
  var withdrawal=await Command(buyer,"REQUEST_WITHDRAWAL",new{amountRial=70,ibanVerificationRequestReference="ci-ownership-check-request"});var releaseKey=Guid.NewGuid();var release=new{withdrawalId=withdrawal.GetProperty("Id").GetGuid()};await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);
  db.ChangeTracker.Clear();Assert.Equal(100,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);
 
+ // Timed jobs escalate once without pretending to transfer funds, and settlement preparation does not fabricate payment.
+ withdrawal=await Command(buyer,"REQUEST_WITHDRAWAL",new{amountRial=70,ibanVerificationRequestReference="ci-pending-verification"});
+ var lateWithdrawalId=withdrawal.GetProperty("Id").GetGuid();clock.UtcNow=clock.UtcNow.AddHours(73);
+ Assert.Equal(1,(await Command(admin,"ASSESS_WITHDRAWAL_SLA",new{})).GetProperty("escalated").GetInt32());
+ Assert.Equal(0,(await Command(admin,"ASSESS_WITHDRAWAL_SLA",new{})).GetProperty("escalated").GetInt32());
+ var overdue=JsonSerializer.Deserialize<Withdrawal>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==lateWithdrawalId)).Body)!;
+ Assert.True(overdue.SlaEscalated);Assert.Equal("OWNERSHIP_VERIFICATION_PENDING",overdue.State);
+ var afterWindow=await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"REPORT_INCIDENT",new{orderId,orderItemId=order.GetProperty("Items")[0].GetProperty("Id").GetGuid(),type="MISSING_ITEM",quantity=1,evidenceId}));Assert.Equal("INCIDENT_WINDOW_EXPIRED",afterWindow.Message);
+ var settlementRun=await Command(admin,"BUILD_SETTLEMENTS",new{});Assert.NotEmpty(settlementRun.EnumerateArray());
+ Assert.All(settlementRun.EnumerateArray(),s=>Assert.Contains(s.GetProperty("State").GetString(),new[]{"READY_FOR_BANK_TRANSFER","FINANCE_REVIEW_REQUIRED"}));
+ Assert.Empty((await Command(admin,"BUILD_SETTLEMENTS",new{})).EnumerateArray());
+
  // Public offers must disappear when the seller loses activation; cached mutation replay must also fail.
  var savedOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
  var offerKey=Guid.NewGuid();var offerPayload=new{offerId,productId=product,priceRial=1,stock=0,expectedVersion=savedOffer.Version};
