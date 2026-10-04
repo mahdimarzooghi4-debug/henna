@@ -107,6 +107,9 @@ public sealed class CommerceTests
  customer.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[buyer]);other.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[stranger]);operatorClient.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[admin]);storeClient.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[seller]);
  async Task<HttpResponseMessage> Post(HttpClient client,string action,object body,Guid? commandId=null){using var request=new HttpRequestMessage(HttpMethod.Post,"/api/v1/commerce/commands/"+action){Content=JsonContent.Create(body)};request.Headers.Add("Idempotency-Key",(commandId??Guid.NewGuid()).ToString());return await client.SendAsync(request);}
  Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/commerce/resources/ORDER")).StatusCode);
+ Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/orders")).StatusCode);
+ Assert.Equal(HttpStatusCode.OK,(await anonymous.GetAsync("/api/v1/content/ci-policy")).StatusCode);
+ var ownCredits=await customer.GetAsync("/api/v1/me/credits");Assert.Equal(HttpStatusCode.OK,ownCredits.StatusCode);
  Assert.Equal(HttpStatusCode.Forbidden,(await Post(customer,"CREATE_PROGRAM",new{})).StatusCode);
  Assert.Equal(HttpStatusCode.NotFound,(await other.GetAsync("/api/v1/commerce/resources/ORDER?id="+orderId)).StatusCode);
  var currentOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
