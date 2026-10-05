@@ -90,7 +90,7 @@ internal static class SellerAccessEndpoints
                         pricing = commerceConfigured &&
                             activation.OfferingType is "GOOD" or "BOTH",
                         settlements = commerceConfigured,
-                        reports = false
+                        reports = commerceConfigured
                     }
                 });
             }
