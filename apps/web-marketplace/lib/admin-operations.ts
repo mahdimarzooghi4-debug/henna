@@ -27,6 +27,28 @@ export type AdminSummary = {
   preparedSettlements: number;
   grossRial: number;
 };
+export type AdminIntegrityViolation = {
+  code: string;
+  resourceKind: string;
+  resourceId: string;
+};
+export type AdminIntegrity = {
+  healthy: boolean;
+  checkedAtUtc: string;
+  violationCount: number;
+  truncated: boolean;
+  violations: AdminIntegrityViolation[];
+  counts: {
+    wallets: number;
+    credits: number;
+    programs: number;
+    orders: number;
+    incidents: number;
+    settlements: number;
+    withdrawals: number;
+    evidence: number;
+  };
+};
 export type AdminAudit = {
   id: string;
   actorId: string;
@@ -132,6 +154,41 @@ export function parseAdminSummary(value: unknown): AdminSummary | null {
     openIncidents: x.openIncidents,
     preparedSettlements: x.preparedSettlements,
     grossRial: x.grossRial,
+  };
+}
+
+export function parseAdminIntegrity(value: unknown): AdminIntegrity | null {
+  const x=row(value), counts=row(x?.counts);
+  if(!x || typeof x.healthy!=="boolean" || !utc(x.checkedAtUtc) ||
+     !int(x.violationCount) || typeof x.truncated!=="boolean" ||
+     !Array.isArray(x.violations) || x.violations.length>200 || !counts)
+    return null;
+  const violations:AdminIntegrityViolation[]=[];
+  for(const raw of x.violations){
+    const item=row(raw);
+    if(!item || !text(item.code,80) || !text(item.resourceKind,40) ||
+       !adminOperationId(item.resourceId)) return null;
+    violations.push({
+      code:item.code, resourceKind:item.resourceKind, resourceId:item.resourceId,
+    });
+  }
+  if((x.violationCount as number)<violations.length ||
+     (x.truncated === false && x.violationCount !== violations.length) ||
+     (x.healthy !== ((x.violationCount as number)===0))) return null;
+  const names=["wallets","credits","programs","orders","incidents",
+    "settlements","withdrawals","evidence"] as const;
+  for(const name of names) if(!int(counts[name])) return null;
+  return {
+    healthy:x.healthy,checkedAtUtc:x.checkedAtUtc,
+    violationCount:x.violationCount,truncated:x.truncated,violations,
+    counts:{
+      wallets:counts.wallets as number, credits:counts.credits as number,
+      programs:counts.programs as number, orders:counts.orders as number,
+      incidents:counts.incidents as number,
+      settlements:counts.settlements as number,
+      withdrawals:counts.withdrawals as number,
+      evidence:counts.evidence as number,
+    },
   };
 }
 
