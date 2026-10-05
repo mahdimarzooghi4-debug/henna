@@ -53,6 +53,7 @@ internal static class CommerceEndpoints
   ("/seller/item-returns/{id:guid}/visit","RETURN_VISIT","incidentId"),("/item-returns/{id:guid}/confirm-collection","CONFIRM_RETURN","incidentId"),
   ("/support/item-returns/{id:guid}/unavailability-decision","VERIFY_UNAVAILABILITY","incidentId"),
   ("/me/withdrawals/{id:guid}/cancel","CANCEL_WITHDRAWAL","withdrawalId"),("/me/notifications/{id:guid}/read","READ_NOTIFICATION","notificationId"),
+  ("/me/evidence/{id:guid}/discard","DELETE_EVIDENCE","evidenceId"),
   ("/support/tickets/{id:guid}/reply","REPLY_TICKET","ticketId")}) {
    var commandAction=action;var resourceKey=keyName;
    rest.MapPost(path,(Guid id,JsonElement input,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
