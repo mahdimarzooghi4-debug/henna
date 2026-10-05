@@ -88,6 +88,37 @@ export type AdminSettlement = {
   createdAtUtc: string;
 };
 
+export type AdminProgram = {
+  id: string;
+  name: string;
+  fundedRial: number;
+  unallocatedRial: number;
+  expiresAtUtc: string;
+  categoryIds: string[];
+  organizationId: string | null;
+};
+export type AdminCredit = {
+  id: string;
+  accountId: string;
+  programId: string;
+  grantedRial: number;
+  availableRial: number;
+  expiresAtUtc: string;
+  categoryIds: string[];
+  householdKey: string | null;
+};
+export type AdminHousehold = {
+  id: string;
+  accountId: string;
+  householdKey: string;
+  evidenceReference: string;
+};
+export type AdminAllocation = {
+  grants: AdminCredit[];
+  unallocatedRial: number;
+  formulaVersion: string;
+};
+
 export function parseAdminSummary(value: unknown): AdminSummary | null {
   const x = row(value);
   if (!x || !int(x.orders) || !int(x.cancelled) || !int(x.collected) ||
@@ -177,6 +208,47 @@ const parseSettlement = (value: unknown): AdminSettlement | null => {
       state:x.State, createdAtUtc:x.CreatedAtUtc } : null;
 };
 
+const ids = (value: unknown, max: number): string[] | null => {
+  if (!Array.isArray(value) || value.length > max) return null;
+  const result:string[]=[];
+  for (const item of value) {
+    if (!adminOperationId(item)) return null;
+    result.push(item);
+  }
+  return result;
+};
+const parseProgram = (value: unknown): AdminProgram | null => {
+  const x=row(value), categoryIds=ids(x?.CategoryIds,100);
+  const organizationId=x?.OrganizationId;
+  return x && adminOperationId(x.Id) && text(x.Name,120) &&
+    int(x.FundedRial,1) && int(x.UnallocatedRial) && x.UnallocatedRial<=x.FundedRial &&
+    utc(x.ExpiresAtUtc) && categoryIds && categoryIds.length>0 &&
+    (organizationId===null || adminOperationId(organizationId))
+    ? {id:x.Id,name:x.Name,fundedRial:x.FundedRial,
+      unallocatedRial:x.UnallocatedRial,expiresAtUtc:x.ExpiresAtUtc,
+      categoryIds,organizationId:organizationId as string|null}:null;
+};
+const parseCredit = (value: unknown): AdminCredit | null => {
+  const x=row(value), categoryIds=ids(x?.CategoryIds,100);
+  const householdKey=x?.HouseholdKey;
+  return x && adminOperationId(x.Id) && adminOperationId(x.AccountId) &&
+    adminOperationId(x.ProgramId) && int(x.GrantedRial,1) &&
+    int(x.AvailableRial) && x.AvailableRial<=x.GrantedRial &&
+    utc(x.ExpiresAtUtc) && categoryIds &&
+    (householdKey===null || adminOperationId(householdKey))
+    ? {id:x.Id,accountId:x.AccountId,programId:x.ProgramId,
+      grantedRial:x.GrantedRial,availableRial:x.AvailableRial,
+      expiresAtUtc:x.ExpiresAtUtc,categoryIds,
+      householdKey:householdKey as string|null}:null;
+};
+const parseHousehold = (value: unknown): AdminHousehold | null => {
+  const x=row(value);
+  return x && adminOperationId(x.Id) && adminOperationId(x.AccountId) &&
+    adminOperationId(x.HouseholdKey) && text(x.EvidenceReference,1000)
+    ? {id:x.Id,accountId:x.AccountId,householdKey:x.HouseholdKey,
+      evidenceReference:x.EvidenceReference}:null;
+};
+
 const parsers = {
   audit: parseAudit,
   permissions: parsePermission,
@@ -186,6 +258,9 @@ const parsers = {
   "fee-policies": parseFee,
   withdrawals: parseWithdrawal,
   settlements: parseSettlement,
+  programs: parseProgram,
+  credits: parseCredit,
+  households: parseHousehold,
 } as const;
 
 export type AdminResourceKind = keyof typeof parsers;
@@ -213,6 +288,21 @@ export function parseAdminCommandResponse(
   value:unknown,
 ): unknown | null {
   if(action==="SET_STAFF_PERMISSION") return parsePermission(value);
+  if(action==="CREATE_PROGRAM") return parseProgram(value);
+  if(action==="LINK_HOUSEHOLD") return parseHousehold(value);
+  if(action==="ALLOCATE_CREDIT"){
+    const x=row(value);
+    if(!x || !Array.isArray(x.grants) || x.grants.length>500 ||
+        !int(x.unallocatedRial) || !text(x.formulaVersion,120)) return null;
+    const grants:AdminCredit[]=[];
+    for(const raw of x.grants){
+      const grant=parseCredit(raw);
+      if(!grant)return null;
+      grants.push(grant);
+    }
+    return {grants,unallocatedRial:x.unallocatedRial,
+      formulaVersion:x.formulaVersion} satisfies AdminAllocation;
+  }
   if(action==="SAVE_CONTENT"||action==="PUBLISH_CONTENT") return parseContent(value);
   if(action==="CREATE_ORGANIZATION") return parseOrganization(value);
   if(action==="GRANT_ORGANIZATION_MEMBER"||action==="REVOKE_ORGANIZATION_MEMBER")
