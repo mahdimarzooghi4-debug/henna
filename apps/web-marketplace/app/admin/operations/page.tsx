@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   adminOperationId,
   adminOperationIntent,
@@ -402,7 +402,7 @@ export default function AdminOperationsPage(){
 }
 
 function Resource<T>({state,empty,children}:{
-  state:Load<T>;empty:string;children:(item:T)=>React.ReactNode;
+  state:Load<T>;empty:string;children:(item:T)=>ReactNode;
 }){
   if(state.kind==="loading")return <p className="form-status">در حال دریافت…</p>;
   if(state.kind==="error")return <p className="form-status form-status--error" role="alert">{state.message}</p>;
