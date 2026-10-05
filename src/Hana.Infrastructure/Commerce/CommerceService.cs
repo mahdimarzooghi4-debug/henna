@@ -484,6 +484,134 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    financeReviewRequired=settlements.Count(x=>x.State=="FINANCE_REVIEW_REQUIRED")
   };
  }
+ public async Task<object> IntegrityAsync(Guid actor,CancellationToken ct=default) {
+  await Admin(actor,ct);
+  var wallets=await All<CashWallet>("WALLET",ct);
+  var credits=await All<CreditGrant>("CREDIT",ct);
+  var programs=await All<CreditProgram>("PROGRAM",ct);
+  var orders=await All<Order>("ORDER",ct);
+  var incidents=await All<Incident>("INCIDENT",ct);
+  var settlements=await All<Settlement>("SETTLEMENT",ct);
+  var withdrawals=await All<Withdrawal>("WITHDRAWAL",ct);
+  var evidence=await All<CommerceEvidence>("EVIDENCE",ct);
+  var households=await All<CommerceHouseholdLink>("HOUSEHOLD",ct);
+  var violations=new List<object>();
+  void Bad(string code,string kind,Guid id) {
+   if(violations.Count<200)violations.Add(new{code,resourceKind=kind,resourceId=id});
+  }
+
+  foreach(var wallet in wallets)
+   if(wallet.BalanceRial<0)Bad("WALLET_NEGATIVE","WALLET",wallet.AccountId);
+
+  var programsById=programs.ToDictionary(x=>x.Id);
+  foreach(var program in programs) {
+   if(program.FundedRial<=0||program.UnallocatedRial<0||
+      program.UnallocatedRial>program.FundedRial)
+    Bad("PROGRAM_BALANCE_INVALID","PROGRAM",program.Id);
+   var granted=credits.Where(x=>x.ProgramId==program.Id)
+    .Aggregate(0m,(sum,x)=>sum+x.GrantedRial);
+   if(granted+program.UnallocatedRial!=program.FundedRial)
+    Bad("PROGRAM_ALLOCATION_MISMATCH","PROGRAM",program.Id);
+  }
+  var householdKeys=households
+   .Select(x=>(x.AccountId,x.HouseholdKey)).ToHashSet();
+  foreach(var credit in credits) {
+   if(credit.GrantedRial<=0||credit.AvailableRial<0||
+      credit.AvailableRial>credit.GrantedRial)
+    Bad("CREDIT_BALANCE_INVALID","CREDIT",credit.Id);
+   if(!programsById.TryGetValue(credit.ProgramId,out var program))
+    Bad("CREDIT_PROGRAM_MISSING","CREDIT",credit.Id);
+   else if(credit.CategoryIds.Except(program.CategoryIds).Any())
+    Bad("CREDIT_CATEGORY_OUTSIDE_PROGRAM","CREDIT",credit.Id);
+   if(credit.HouseholdKey is Guid householdKey &&
+      !householdKeys.Contains((credit.AccountId,householdKey)))
+    Bad("CREDIT_HOUSEHOLD_LINK_MISSING","CREDIT",credit.Id);
+  }
+
+  var ordersById=orders.ToDictionary(x=>x.Id);
+  foreach(var order in orders) {
+   decimal itemTotal=0,cash=0,credit=0;
+   foreach(var item in order.Items) {
+    if(item.Quantity<=0||item.UnitPriceRial<=0||
+       item.RefundedQuantity<0||item.RefundedQuantity>item.Quantity||
+       item.CashRial<0||item.CreditRial<0) {
+     Bad("ORDER_ITEM_INVALID","ORDER",order.Id);continue;
+    }
+    var line=(decimal)item.UnitPriceRial*item.Quantity;
+    itemTotal+=line;cash+=item.CashRial;credit+=item.CreditRial;
+    if(item.CashRial+item.CreditRial!=line)
+     Bad("ORDER_ITEM_FUNDING_MISMATCH","ORDER",order.Id);
+   }
+   if(order.TotalRial<0||order.CashPaidRial<0||order.CreditPaidRial<0||
+      itemTotal!=order.TotalRial||
+      order.CashPaidRial+order.CreditPaidRial!=order.TotalRial||
+      cash!=order.CashPaidRial||credit!=order.CreditPaidRial)
+    Bad("ORDER_TOTAL_MISMATCH","ORDER",order.Id);
+  }
+
+  var evidenceById=evidence.ToDictionary(x=>x.Id);
+  foreach(var incident in incidents) {
+   if(!ordersById.TryGetValue(incident.OrderId,out var order)) {
+    Bad("INCIDENT_ORDER_MISSING","INCIDENT",incident.Id);continue;
+   }
+   var item=order.Items.SingleOrDefault(x=>x.Id==incident.OrderItemId);
+   if(item is null)Bad("INCIDENT_ITEM_MISSING","INCIDENT",incident.Id);
+   else if(incident.Quantity<=0||incident.Quantity>item.Quantity||
+      incident.RefundRial<0||
+      incident.RefundRial>(decimal)item.UnitPriceRial*incident.Quantity)
+    Bad("INCIDENT_AMOUNT_INVALID","INCIDENT",incident.Id);
+   if(order.BuyerId!=incident.BuyerId||order.SellerId!=incident.SellerId)
+    Bad("INCIDENT_PARTY_MISMATCH","INCIDENT",incident.Id);
+   if(!Guid.TryParse(incident.EvidenceReference,out var evidenceId)||
+      !evidenceById.TryGetValue(evidenceId,out var proof)||
+      proof.AccountId!=incident.BuyerId)
+    Bad("INCIDENT_EVIDENCE_INVALID","INCIDENT",incident.Id);
+  }
+
+  foreach(var group in settlements.GroupBy(x=>x.OrderId))
+   if(group.Count()>1)
+    foreach(var duplicate in group)Bad("SETTLEMENT_DUPLICATE_ORDER","SETTLEMENT",duplicate.Id);
+  foreach(var settlement in settlements) {
+   if(!ordersById.TryGetValue(settlement.OrderId,out var order)) {
+    Bad("SETTLEMENT_ORDER_MISSING","SETTLEMENT",settlement.Id);continue;
+   }
+   var cases=incidents.Where(x=>x.OrderId==order.Id).ToList();
+   var refund=cases.Aggregate(0m,(sum,x)=>sum+x.RefundRial);
+   var penalty=cases.Where(x=>x.PenaltyApplied)
+    .Aggregate(0m,(sum,x)=>sum+x.RefundRial);
+   var net=(decimal)settlement.GrossRial-settlement.RefundRial-
+    settlement.PenaltyRial-settlement.FixedFeeRial;
+   if(settlement.SellerId!=order.SellerId||
+      settlement.GrossRial!=order.TotalRial||
+      settlement.RefundRial!=refund||settlement.PenaltyRial!=penalty||
+      settlement.FixedFeeRial<0||settlement.NetRial!=net||
+      settlement.State!=(settlement.NetRial<0
+       ?"FINANCE_REVIEW_REQUIRED":"READY_FOR_BANK_TRANSFER"))
+    Bad("SETTLEMENT_FORMULA_MISMATCH","SETTLEMENT",settlement.Id);
+  }
+
+  foreach(var withdrawal in withdrawals)
+   if(withdrawal.AmountRial<=0||withdrawal.DueAtUtc<withdrawal.RequestedAtUtc)
+    Bad("WITHDRAWAL_INVALID","WITHDRAWAL",withdrawal.Id);
+
+  var oldOrphanEvidence=evidence.Where(proof=>
+   proof.CreatedAtUtc<clock.UtcNow.AddHours(-2)&&
+   !incidents.Any(i=>i.EvidenceReference==proof.Id.ToString())).ToList();
+  foreach(var proof in oldOrphanEvidence)
+   Bad("ORPHAN_EVIDENCE_STALE","EVIDENCE",proof.Id);
+
+  return new{
+   healthy=violations.Count==0,
+   checkedAtUtc=clock.UtcNow,
+   truncated=violations.Count>=200,
+   violations,
+   counts=new{
+    wallets=wallets.Count,credits=credits.Count,programs=programs.Count,
+    orders=orders.Count,incidents=incidents.Count,settlements=settlements.Count,
+    withdrawals=withdrawals.Count,evidence=evidence.Count
+   }
+  };
+ }
  public async Task<CommerceContent?> PublicContent(string slug,CancellationToken ct) {
   if(slug.Length>100)return null;
   var rows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="CONTENT"&&EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{Slug=slug,Published=true}))).Take(1).ToListAsync(ct);
@@ -498,6 +626,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    await Admin(actor,ct);var orders=await All<Order>("ORDER",ct);var cases=await All<Incident>("INCIDENT",ct);var settlements=await All<Settlement>("SETTLEMENT",ct);
    return new{orders=orders.Count,cancelled=orders.Count(o=>o.State=="CANCELLED"),collected=orders.Count(o=>o.State=="COLLECTED"),openIncidents=cases.Count(i=>i.State is "UNDER_REVIEW" or "AWAITING_RETURN"),preparedSettlements=settlements.Count,grossRial=orders.Where(o=>o.State!="CANCELLED").Aggregate(0L,(n,o)=>checked(n+o.TotalRial))};
   }
+  if(kind=="INTEGRITY")return await IntegrityAsync(actor,ct);
   var allowed=new[]{"OFFER","SERVICE_LISTING","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION","FEE_VERSION","HOUSEHOLD"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
   if(view=="SUPPORT")await Permission(actor,"SUPPORT",ct);
   var admin=await roles.HasRoleAsync(actor,HanaRoles.Admin,ct);
