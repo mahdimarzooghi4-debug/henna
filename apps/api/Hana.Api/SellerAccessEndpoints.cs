@@ -8,7 +8,8 @@ internal static class SellerAccessEndpoints
 {
     internal static void MapSellerAccess(
         this WebApplication app,
-        bool hasDatabase)
+        bool hasDatabase,
+        bool commerceConfigured)
     {
         app.MapGet("/api/v1/seller/access", async (
             HttpContext context,
@@ -81,7 +82,7 @@ internal static class SellerAccessEndpoints
                     capabilities = new
                     {
                         dashboard = true,
-                        orders = true,
+                        orders = commerceConfigured,
                         listings = false,
                         inventory = false,
                         pricing = false,
