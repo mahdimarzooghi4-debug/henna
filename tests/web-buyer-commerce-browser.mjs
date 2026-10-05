@@ -42,14 +42,15 @@ async function main(){
  await page.getByRole("link",{name:"مشاهده سبد خرید"}).click();await page.waitForURL(base+"/cart");await page.getByRole("link",{name:product.name,exact:true}).waitFor();const article=page.locator("article").filter({has:page.getByRole("link",{name:product.name,exact:true})});await article.getByRole("button",{name:"افزایش تعداد"}).click();await page.getByText("سبد به‌روز شد.").waitFor();assert.equal(cart.items.find(i=>i.productId===A).quantity,2);
  await page.getByRole("link",{name:"مقایسه فروشگاه‌ها و ادامه خرید"}).click();await page.waitForURL(base+"/checkout");
  await page.getByText("ثبت نشانی جدید",{exact:true}).click();
+ assert.equal(requests.some(u=>u.startsWith("https://tile.openstreetmap.org/")),false);
  await page.getByRole("button",{name:"باز کردن نقشه"}).click();
  const map=page.getByRole("application",{name:"انتخاب موقعیت نشانی خریدار روی نقشه"});
  await map.waitFor();const mapBox=await map.boundingBox();assert.ok(mapBox);
- await page.mouse.click(mapBox.x+mapBox.width*.68,mapBox.y+mapBox.height*.42);
+ await map.click({position:{x:mapBox.width*.68,y:mapBox.height*.42}});
  const lat=page.getByLabel("عرض جغرافیایی"),lon=page.getByLabel("طول جغرافیایی");
+ await page.getByText("مختصات از روی نقشه انتخاب شد",{exact:false}).waitFor();
  assert.notEqual(await lat.inputValue(),"");assert.notEqual(await lon.inputValue(),"");
  assert.equal(requests.some(u=>u.startsWith("https://tile.openstreetmap.org/")),true);
- await page.getByText("مختصات از روی نقشه انتخاب شد",{exact:false}).waitFor();
  await page.getByText("ثبت نشانی جدید",{exact:true}).click();
  await page.getByRole("button",{name:"انتخاب این فروشگاه"}).click();await page.getByRole("button",{name:"دریافت پیش‌فاکتور"}).click();await page.getByRole("heading",{name:"بازبینی و ثبت سفارش"}).waitFor();
  await page.getByLabel("اعتبار حمایتی",{exact:true}).selectOption(GRANT);const submit=page.getByRole("button",{name:"ثبت سفارش و کسر مبلغ"});assert.equal(await submit.isDisabled(),true);await page.getByLabel("در سبد بمانند").check();await page.getByLabel("خرید فقط اقلام موجود را تأیید می‌کنم").check();assert.equal(await submit.isEnabled(),true);await submit.click();const retry=page.getByRole("button",{name:"بررسی نتیجه درخواست قبلی"});await retry.waitFor();assert.equal(orderAttempts,1);assert.equal(await page.getByLabel("اعتبار حمایتی",{exact:true}).isDisabled(),true);
