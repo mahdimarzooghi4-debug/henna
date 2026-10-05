@@ -90,3 +90,23 @@ test("address recovery validates coordinates and bounded text",()=>{
     }),
   }));
 });
+
+test("buyer support retry survives reload but rejects changed ticket text",()=>{
+  install();
+  const ticket={path:"tickets",body:JSON.stringify({
+    subject:"پیگیری سفارش",message:"شرح ثابت",
+  }),key:KEY};
+  persistWebCommerceIntent("support",ticket);
+  assert.deepEqual(restoreWebCommerceIntent("support"),ticket);
+  assert.throws(()=>persistWebCommerceIntent("support",{
+    ...ticket,key:KEY2,body:JSON.stringify({
+      subject:"پیگیری سفارش",message:"شرح تغییرکرده",
+    }),
+  }));
+  assert.equal(clearWebCommerceIntent(KEY),true);
+
+  const read={path:`notifications/${PRODUCT}/read`,
+    body:JSON.stringify({}),key:KEY2};
+  persistWebCommerceIntent("support",read);
+  assert.deepEqual(restoreWebCommerceIntent("support"),read);
+});
