@@ -16,6 +16,7 @@ import {
   type StaffIntent,
   type StaffNotification,
   type StaffOffer,
+  type StaffReport,
   type StaffSettlement,
   type StaffTicket,
 } from "../../lib/staff-commerce";
@@ -71,15 +72,22 @@ async function publicProduct(
 export function SellerBusinessOperations({
   offerManagementEnabled,
   settlementsEnabled,
+  reportsEnabled,
 }: {
   offerManagementEnabled: boolean;
   settlementsEnabled: boolean;
+  reportsEnabled: boolean;
 }) {
   const [activated, setActivated] = useState(false);
   const [offersPage, setOffersPage] = useState(1);
   const [settlementsPage, setSettlementsPage] = useState(1);
   const [notificationsPage, setNotificationsPage] = useState(1);
   const [ticketsPage, setTicketsPage] = useState(1);
+  const [report, setReport] = useState<
+    { kind: "idle" } | { kind: "loading" } |
+    { kind: "ready"; value: StaffReport } |
+    { kind: "error"; message: string }
+  >({ kind: "idle" });
   const [offers, setOffers] = useState<Load<StaffOffer>>({ kind: "idle" });
   const [settlements, setSettlements] =
     useState<Load<StaffSettlement>>({ kind: "idle" });
@@ -108,6 +116,18 @@ export function SellerBusinessOperations({
     stock: number;
     expectedVersion: number;
   } | null>(null);
+
+  const loadReport = useCallback(async (signal?: AbortSignal) => {
+    if (!reportsEnabled) return;
+    setReport({ kind: "loading" });
+    try {
+      const value = await staffGet<StaffReport>("seller", "report", signal);
+      setReport({ kind: "ready", value });
+    } catch (error) {
+      if (!signal?.aborted)
+        setReport({ kind: "error", message: failure(error) });
+    }
+  }, [reportsEnabled]);
 
   const loadOffers = useCallback(async (page: number, signal?: AbortSignal) => {
     if (!offerManagementEnabled) return;
@@ -195,6 +215,7 @@ export function SellerBusinessOperations({
     if (!activated) return;
     const controller = new AbortController();
     void Promise.all([
+      loadReport(controller.signal),
       loadOffers(offersPage, controller.signal),
       loadSettlements(settlementsPage, controller.signal),
       loadNotifications(notificationsPage, controller.signal),
@@ -202,8 +223,8 @@ export function SellerBusinessOperations({
     ]);
     return () => controller.abort();
   }, [
-    activated, loadOffers, loadNotifications, loadSettlements, loadTickets,
-    notificationsPage, offersPage, settlementsPage, ticketsPage,
+    activated, loadOffers, loadNotifications, loadReport, loadSettlements,
+    loadTickets, notificationsPage, offersPage, settlementsPage, ticketsPage,
   ]);
 
   const mutate = useCallback(async <T,>(
@@ -366,6 +387,48 @@ export function SellerBusinessOperations({
   return (
     <section className="seller-business-ops" aria-label="عملیات تکمیلی فروشگاه">
       {notice && <p className="form-status" role="status">{notice}</p>}
+
+      {reportsEnabled && (
+        <section id="seller-reports" className="seller-commerce__section">
+          <div className="seller-commerce__section-title">
+            <div>
+              <h3>گزارش عملیاتی فروشگاه</h3>
+              <p>
+                این گزارش از read-model سرور ساخته می‌شود و پرداخت بانکی را
+                انجام‌شده فرض نمی‌کند.
+              </p>
+            </div>
+          </div>
+          {report.kind === "loading" &&
+            <p className="form-status">در حال دریافت گزارش…</p>}
+          {report.kind === "error" &&
+            <p className="form-status form-status--error">{report.message}</p>}
+          {report.kind === "ready" && (
+            <>
+              <div className="seller-report-grid">
+                <article><span>کل سفارش</span><strong>{report.value.orders}</strong></article>
+                <article><span>پرداخت‌شده</span><strong>{report.value.paid}</strong></article>
+                <article><span>آماده‌سازی</span><strong>{report.value.preparing}</strong></article>
+                <article><span>آماده دریافت</span><strong>{report.value.readyForPickup}</strong></article>
+                <article><span>تحویل‌شده</span><strong>{report.value.collected}</strong></article>
+                <article><span>لغوشده</span><strong>{report.value.cancelled}</strong></article>
+                <article><span>فروش ناخالص فعال</span><strong>{staffRial(report.value.grossRial)}</strong></article>
+                <article><span>پرونده باز</span><strong>{report.value.openIncidents}</strong></article>
+                <article><span>بازپرداخت پرونده‌ها</span><strong>{staffRial(report.value.incidentRefundRial)}</strong></article>
+                <article><span>تسویه آماده</span><strong>{report.value.preparedSettlements}</strong></article>
+                <article><span>خالص آماده تسویه</span><strong>{staffRial(report.value.settlementNetRial)}</strong></article>
+                <article><span>نیازمند بررسی مالی</span><strong>{report.value.financeReviewRequired}</strong></article>
+              </div>
+              <dl className="seller-commerce__facts seller-report-breakdown">
+                <div><dt>ناخالص تسویه‌ها</dt><dd>{staffRial(report.value.settlementGrossRial)}</dd></div>
+                <div><dt>بازپرداخت تسویه‌ها</dt><dd>{staffRial(report.value.settlementRefundRial)}</dd></div>
+                <div><dt>جریمه‌ها</dt><dd>{staffRial(report.value.settlementPenaltyRial)}</dd></div>
+                <div><dt>کارمزدها</dt><dd>{staffRial(report.value.settlementFeeRial)}</dd></div>
+              </dl>
+            </>
+          )}
+        </section>
+      )}
 
       {offerManagementEnabled && (
         <section id="seller-offers" className="seller-commerce__section">
