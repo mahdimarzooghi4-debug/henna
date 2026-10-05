@@ -9,6 +9,7 @@ import {
 
 const KEY="81000000-0000-4000-8000-000000000001";
 const KEY2="81000000-0000-4000-8000-000000000002";
+const KEY3="81000000-0000-4000-8000-000000000007";
 const PRODUCT="81000000-0000-4000-8000-000000000003";
 const ORDER="81000000-0000-4000-8000-000000000004";
 const ITEM="81000000-0000-4000-8000-000000000005";
@@ -93,7 +94,12 @@ test("evidence recovery stores no base64 and advances only from the known prior 
   assert.equal(raw.includes(EVIDENCE),true);
   assert.equal((await f.store.restore("incidents")).intent.key,KEY2);
 
-  assert.equal(await f.store.clear(KEY2),true);
+  const cleanup=mobileCommerceIntent(`evidence/${EVIDENCE}/discard`,{},KEY3);
+  await f.store.advance(KEY2,"incidents",cleanup,context);
+  const cleanupRestored=await f.store.restore("incidents");
+  assert.equal(cleanupRestored.intent.path,`evidence/${EVIDENCE}/discard`);
+  assert.equal(cleanupRestored.intent.key,KEY3);
+  assert.equal(await f.store.clear(KEY3),true);
   assert.equal(f.files.has(PHOTO),false);
 });
 
