@@ -206,7 +206,7 @@ Snapshots remain append-only. The browser retains one snapshot UUID across retri
 
 ## Henna-owned AI boundary
 
-ADR-042 is normative for this subsystem. The learner code, versioning, training and
+ADR-048 is normative for this subsystem. The learner code, versioning, training and
 candidate weights belong to Henna and run locally inside Henna processes. CreditLearning
 source code may not contain HTTP/gRPC model clients, model-provider SDKs or direct network
 model URLs. CI enforces this with `tools/ci/guard_henna_ai_local_only.py`.
