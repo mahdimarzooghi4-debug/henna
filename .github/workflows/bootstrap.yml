@@ -486,6 +486,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-checkout-controller-smoke.mjs
       - name: Test durable mobile commerce intent recovery and photo cleanup
         run: node --experimental-strip-types --test tests/mobile-pending-commerce.mjs
+      - name: Test native buyer notifications and support controller
+        run: node --experimental-strip-types --test tests/mobile-buyer-support-controller-smoke.mjs
       - name: Native order history and lifecycle controller
         run: node --experimental-strip-types --test tests/mobile-orders-controller-smoke.mjs
       - name: Native incident photo and return lifecycle
