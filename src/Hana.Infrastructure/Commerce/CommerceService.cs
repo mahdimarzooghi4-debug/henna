@@ -541,12 +541,12 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
     }
     var line=(decimal)item.UnitPriceRial*item.Quantity;
     itemTotal+=line;cash+=item.CashRial;credit+=item.CreditRial;
-    if(item.CashRial+item.CreditRial!=line)
+    if((decimal)item.CashRial+item.CreditRial!=line)
      Bad("ORDER_ITEM_FUNDING_MISMATCH","ORDER",order.Id);
    }
    if(order.TotalRial<0||order.CashPaidRial<0||order.CreditPaidRial<0||
       itemTotal!=order.TotalRial||
-      order.CashPaidRial+order.CreditPaidRial!=order.TotalRial||
+      (decimal)order.CashPaidRial+order.CreditPaidRial!=order.TotalRial||
       cash!=order.CashPaidRial||credit!=order.CreditPaidRial)
     Bad("ORDER_TOTAL_MISMATCH","ORDER",order.Id);
   }
@@ -556,7 +556,9 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    if(!ordersById.TryGetValue(incident.OrderId,out var order)) {
     Bad("INCIDENT_ORDER_MISSING","INCIDENT",incident.Id);continue;
    }
-   var item=order.Items.SingleOrDefault(x=>x.Id==incident.OrderItemId);
+   var matchingItems=order.Items.Where(x=>x.Id==incident.OrderItemId).ToList();
+   var item=matchingItems.FirstOrDefault();
+   if(matchingItems.Count>1)Bad("ORDER_ITEM_ID_DUPLICATE","ORDER",order.Id);
    if(item is null)Bad("INCIDENT_ITEM_MISSING","INCIDENT",incident.Id);
    else if(incident.Quantity<=0||incident.Quantity>item.Quantity||
       incident.RefundRial<0||
