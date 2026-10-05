@@ -185,6 +185,39 @@ export function SupportCommerceView() {
     }
   }, [load, page, unavailabilityReasons]);
 
+  const assessReturnSla = useCallback(async () => {
+    const path = "return-sla";
+    const intent = staffIntent(intents.current[path] ?? null, path, {});
+    intents.current[path] = intent;
+    setBusyPath(path);
+    setNotice(null);
+    try {
+      const response = await staffPost<{ assessed: number }>(
+        "support", intent);
+      intents.current[path] = null;
+      setUncertain(current => ({ ...current, [path]: false }));
+      setNotice(
+        "SLA مرجوعی ارزیابی شد؛ " +
+        new Intl.NumberFormat("fa-IR").format(response.assessed) +
+        " پروندهٔ معوق علامت‌گذاری شد. این عملیات انتقال بانکی انجام نمی‌دهد.");
+      await load(page);
+    } catch (error) {
+      if (error instanceof StaffCommerceError && error.status === 503) {
+        setUncertain(current => ({ ...current, [path]: true }));
+        setNotice(
+          "نتیجه ارزیابی SLA هنوز قطعی نیست؛ همان ارزیابی با همان کلید برای تکرار امن حفظ شده است.");
+      } else {
+        intents.current[path] = null;
+        setUncertain(current => ({ ...current, [path]: false }));
+        setNotice(message(error));
+        if (error instanceof StaffCommerceError && error.status === 409)
+          await load(page);
+      }
+    } finally {
+      setBusyPath(null);
+    }
+  }, [load, page]);
+
   if (state.kind === "denied") {
     return (
       <main className="support-panel support-panel--gate">
@@ -210,11 +243,22 @@ export function SupportCommerceView() {
             تصمیم نهایی و بازپرداخت توسط backend تراکنشی حنا اعمال می‌شود.
           </p>
         </div>
-        <button type="button" className="seller-commerce__refresh"
-          disabled={busyPath !== null}
-          onClick={() => void load(page)}>
-          تازه‌سازی
-        </button>
+        <div className="support-panel__header-actions">
+          <button type="button" className="seller-commerce__refresh"
+            disabled={busyPath !== null}
+            onClick={() => void assessReturnSla()}>
+            {busyPath === "return-sla"
+              ? "در حال ارزیابی…"
+              : uncertain["return-sla"]
+                ? "تکرار امن ارزیابی SLA"
+                : "ارزیابی SLA مرجوعی"}
+          </button>
+          <button type="button" className="seller-commerce__refresh"
+            disabled={busyPath !== null}
+            onClick={() => void load(page)}>
+            تازه‌سازی
+          </button>
+        </div>
       </header>
 
       {notice && <p className="form-status support-panel__notice" role="status">
