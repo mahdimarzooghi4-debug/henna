@@ -266,6 +266,81 @@ const parsers = {
 } as const;
 
 export type AdminResourceKind = keyof typeof parsers;
+
+function clientToBackendShape(
+  kind: AdminResourceKind,
+  value: unknown,
+): Record<string, unknown> | null {
+  const x=row(value);
+  if(!x)return null;
+  switch(kind){
+    case "audit": return {
+      Id:x.id,ActorId:x.actorId,CommandId:x.commandId,ResourceId:x.resourceId,
+      Event:x.event,CreatedAtUtc:x.createdAtUtc,
+    };
+    case "permissions": return {
+      Id:x.id,AccountId:x.accountId,Permission:x.permission,Active:x.active,
+    };
+    case "content": return {
+      Id:x.id,Slug:x.slug,Title:x.title,Text:x.text,
+      Published:x.published,Version:x.version,
+    };
+    case "organizations": return {
+      Id:x.id,Name:x.name,RegistrationReference:x.registrationReference,
+    };
+    case "memberships": return {
+      Id:x.id,OrganizationId:x.organizationId,AccountId:x.accountId,Role:x.role,
+    };
+    case "fee-policies": return {
+      Id:x.id,Version:x.version,FixedInvoiceFeeRial:x.fixedInvoiceFeeRial,
+      ApprovalReference:x.approvalReference,
+    };
+    case "withdrawals": return {
+      Id:x.id,BuyerId:x.buyerId,AmountRial:x.amountRial,
+      IbanVerificationRequestReference:x.ibanVerificationRequestReference,
+      State:x.state,RequestedAtUtc:x.requestedAtUtc,DueAtUtc:x.dueAtUtc,
+      SlaEscalated:x.slaEscalated,
+    };
+    case "settlements": return {
+      Id:x.id,OrderId:x.orderId,SellerId:x.sellerId,GrossRial:x.grossRial,
+      RefundRial:x.refundRial,PenaltyRial:x.penaltyRial,
+      FixedFeeRial:x.fixedFeeRial,FeeVersion:x.feeVersion,NetRial:x.netRial,
+      State:x.state,CreatedAtUtc:x.createdAtUtc,
+    };
+    case "programs": return {
+      Id:x.id,Name:x.name,FundedRial:x.fundedRial,
+      UnallocatedRial:x.unallocatedRial,ExpiresAtUtc:x.expiresAtUtc,
+      CategoryIds:x.categoryIds,OrganizationId:x.organizationId,
+    };
+    case "credits": return {
+      Id:x.id,AccountId:x.accountId,ProgramId:x.programId,
+      GrantedRial:x.grantedRial,AvailableRial:x.availableRial,
+      ExpiresAtUtc:x.expiresAtUtc,CategoryIds:x.categoryIds,
+      HouseholdKey:x.householdKey,
+    };
+    case "households": return {
+      Id:x.id,AccountId:x.accountId,HouseholdKey:x.householdKey,
+      EvidenceReference:x.evidenceReference,
+    };
+  }
+}
+
+export function parseAdminClientResourceList(
+  kind: AdminResourceKind,
+  value: unknown,
+): unknown[] | null {
+  if(!Array.isArray(value)||value.length>20)return null;
+  const result:unknown[]=[];
+  for(const item of value){
+    const normalized=clientToBackendShape(kind,item);
+    if(!normalized)return null;
+    const parsed=parsers[kind](normalized as never);
+    if(!parsed)return null;
+    result.push(parsed);
+  }
+  return result;
+}
+
 export function parseAdminResourcePage(
   kind: AdminResourceKind,
   value: unknown,
