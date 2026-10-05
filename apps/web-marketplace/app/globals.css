@@ -1967,3 +1967,125 @@ a { color: inherit; }
     grid-template-columns: 1fr;
   }
 }
+
+
+.seller-business-ops {
+  display: grid;
+  gap: 24px;
+  margin-top: 24px;
+}
+.seller-offer-search,
+.seller-offer-new,
+.seller-ticket-form {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+  margin-top: 14px;
+}
+.seller-offer-search {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.seller-offer-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.seller-offer-result {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 150px;
+  padding: 10px 12px;
+  border: 1px solid #d9d2ca;
+  border-radius: 10px;
+  background: white;
+  color: #1c3f3a;
+  text-align: right;
+  cursor: pointer;
+}
+.seller-offer-result--selected {
+  border-color: var(--hana-teal);
+  background: #eaf4f2;
+}
+.seller-offer-result small {
+  color: var(--hana-muted);
+}
+.seller-offer-new {
+  grid-template-columns: minmax(160px, 1fr) repeat(2, minmax(130px, .65fr)) auto;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f7f3ed;
+}
+.seller-offer-new .primary-button {
+  width: auto;
+}
+.seller-offer-card {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(120px, .7fr) minmax(100px, .5fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #e8e2db;
+  border-radius: 12px;
+  background: #fcfbf9;
+}
+.seller-offer-card p {
+  margin: 4px 0 0;
+  color: var(--hana-muted);
+  font-size: 12px;
+}
+.seller-settlement-card,
+.seller-notification-card,
+.seller-ticket-card {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid #e8e2db;
+  border-radius: 12px;
+  background: #fcfbf9;
+}
+.seller-notification-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.seller-notification-card p,
+.seller-ticket-card p {
+  margin: 4px 0 0;
+  color: var(--hana-muted);
+}
+.seller-ticket-form {
+  grid-template-columns: minmax(180px, .6fr) minmax(0, 1.4fr) auto;
+}
+.seller-ticket-form .primary-button {
+  width: auto;
+}
+.seller-ticket-card__reply {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #eaf4f2;
+  color: #15584e;
+}
+@media (max-width: 860px) {
+  .seller-offer-new,
+  .seller-offer-card,
+  .seller-ticket-form {
+    grid-template-columns: 1fr;
+  }
+  .seller-offer-new .primary-button,
+  .seller-ticket-form .primary-button {
+    width: 100%;
+  }
+}
+@media (max-width: 620px) {
+  .seller-offer-search {
+    grid-template-columns: 1fr;
+  }
+  .seller-notification-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
