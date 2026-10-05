@@ -111,11 +111,17 @@ paths['/api/v1/orders/{id}']={'get':operation('get',ref('Order'),'Buyer, current
 paths['/api/v1/carts/current/comparison']={'get':operation('get',arr(comparison),'Current cart availability; not a price/stock reservation.')}
 paths['/api/v1/offers']={'get':operation('get',envelope('PublicOffer'),'Published offers belonging to currently activated sellers.',parameters=[{'name':'productId','in':'query','schema':uuid},page],public=True)}
 paths['/api/v1/content/{slug}']={'get':operation('get',ref('PublicCommerceContent'),'Only explicitly published content.',parameters=[{'name':'slug','in':'path','required':True,'schema':text(100)}],public=True)}
+paths['/api/v1/organization/dashboard']={'get':operation('get',ref('OrganizationDashboard'),'Organization manager only. No beneficiary identities, funding references or unrelated organization data are returned.')}
 paths['/api/v1/evidence/{id}']={'get':operation('get',{},'Private evidence download; owner, current SUPPORT or active seller of the referenced incident. no-store, attachment, nosniff, CSP sandbox.',parameters=[{'name':'id','in':'path','required':True,'schema':uuid}])}
 paths['/api/v1/evidence/{id}']['get']['responses']['200']['content']={mime:{'schema':{'type':'string','format':'binary'}} for mime in ('image/png','image/jpeg','image/webp')}
 # Resources expose heterogeneous aggregates; summary and audit have distinct envelopes.
 S['OperationalSummary']=obj({k:integer() for k in ('orders','cancelled','collected','openIncidents','preparedSettlements','grossRial')})
 S['AuditPage']=obj({'items':arr(obj({'id':uuid,'actorId':uuid,'commandId':uuid,'resourceId':uuid,'event':text(64),'createdAtUtc':utc})),'page':integer(1)})
+S['OrganizationDashboard']=obj({
+ 'organizations':arr(obj({'id':uuid,'name':text(200),'managerCount':integer(),'beneficiaryCount':integer(),'programCount':integer()})),
+ 'programs':arr(obj({'id':uuid,'organizationId':uuid,'name':text(120),'fundedRial':integer(),'unallocatedRial':integer(),'expiresAtUtc':utc,'categoryCount':integer(1,100)})),
+ 'unreadNotifications':integer(),'openTickets':integer()
+})
 paths['/api/v1/commerce/resources/{kind}']={'get':operation('get',{'anyOf':[envelope(n) for n in resource_models.values()]+[ref('OperationalSummary'),ref('AuditPage')]},'Kind-specific scoped aggregates; AUDIT and SUMMARY require ADMIN.',parameters=[{'name':'kind','in':'path','required':True,'schema':enum(*resource_models,'AUDIT','SUMMARY')},{'name':'id','in':'query','schema':uuid},page])}
 spec={'openapi':'3.1.0','info':{'title':'Henna internal pilot commerce API','version':'2026-10-04','description':'Backend contract only; SMS, PSP and logistics excluded. Command and stored resource records retain PascalCase; public typed records use camelCase. Runtime OpenAPI can remain generic for JsonElement endpoints.'},'paths':paths,'components':{'securitySchemes':{'session':{'type':'http','scheme':'bearer','description':'Current server-backed opaque session; not a user-provided account ID.'}},'schemas':S}}
 output=json.dumps(spec,ensure_ascii=False,indent=2)+'\n'
