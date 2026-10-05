@@ -4,7 +4,7 @@ import {
 } from "./mobile-commerce.ts";
 
 export type PendingCommerceScope =
-  "cart" | "checkout" | "orders" | "incidents";
+  "cart" | "checkout" | "orders" | "incidents" | "support";
 
 export type PendingIncidentContext = {
   orderId: string;
@@ -48,7 +48,7 @@ type StoredPending = {
 };
 
 const scopes = new Set<PendingCommerceScope>([
-  "cart", "checkout", "orders", "incidents",
+  "cart", "checkout", "orders", "incidents", "support",
 ]);
 
 function allowed(scope: PendingCommerceScope, path: string) {
@@ -57,6 +57,9 @@ function allowed(scope: PendingCommerceScope, path: string) {
     return ["addresses", "quotes", "orders"].includes(path);
   if (scope === "orders")
     return /^orders\/[0-9a-f-]+\/(cancel|pickup-confirmation)$/i.test(path);
+  if (scope === "support")
+    return path === "tickets" ||
+      /^notifications\/[0-9a-f-]+\/read$/i.test(path);
   return path === "evidence" ||
     /^evidence\/[0-9a-f-]+\/discard$/i.test(path) ||
     /^orders\/[0-9a-f-]+\/incidents$/i.test(path) ||
