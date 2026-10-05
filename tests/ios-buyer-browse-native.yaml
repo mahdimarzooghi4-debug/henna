@@ -25,3 +25,34 @@ appId: ${APP_ID}
 - assertVisible: "کالاها را در حنا مرور کنید"
 - assertVisible: "کالای پیوند آزمایشی"
 - assertVisible: "دریافت کالاها تأیید نشد"
+# Public commerce shells must also be reachable in the installed app without
+# inventing a login or server response. Their honest no-API error state is
+# required, matching the Android installed-app gate.
+- tapOn: "سبد خرید"
+- extendedWaitUntil:
+    visible: "سبد مرجع خرید"
+    timeout: 60000
+- assertVisible: "پاسخ سرور تأیید نشد"
+- tapOn: "مقایسه فروشگاه‌ها و ادامه خرید"
+- extendedWaitUntil:
+    visible: "مقایسهٔ پیشنهادها"
+    timeout: 60000
+- assertVisible: "پاسخ سرور تأیید نشد"
+- tapOn: "بازگشت"
+- assertVisible: "سبد مرجع خرید"
+- tapOn: "بازگشت"
+- assertVisible: "کالاها را در حنا مرور کنید"
+- tapOn: "سفارش‌های من"
+- extendedWaitUntil:
+    visible: "سفارش‌های من"
+    timeout: 60000
+- assertVisible: "پاسخ سرور تأیید نشد"
+- tapOn: "بازگشت"
+- assertVisible: "کالاها را در حنا مرور کنید"
+- tapOn: "گزارش‌ها و مرجوعی‌های من"
+- extendedWaitUntil:
+    visible: "گزارش‌ها و مرجوعی‌های من"
+    timeout: 60000
+- assertVisible: "پاسخ سرور تأیید نشد"
+- tapOn: "بازگشت"
+- assertVisible: "کالاها را در حنا مرور کنید"
