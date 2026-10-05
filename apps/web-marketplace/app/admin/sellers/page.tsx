@@ -406,6 +406,13 @@ export default function AdminSellersPage() {
                 <p>{selectedDetail.businessDescription}</p>
                 <h3>نشانی فعالیت</h3>
                 <p>{selectedDetail.activityAddress}</p>
+                <h3>مختصات ثبت‌شده</h3>
+                <p>
+                  {selectedDetail.activityLatitude !== null &&
+                  selectedDetail.activityLongitude !== null
+                    ? `${selectedDetail.activityLatitude.toFixed(6)}، ${selectedDetail.activityLongitude.toFixed(6)}`
+                    : "ثبت نشده"}
+                </p>
                 <h3>ساعات فعالیت و پاسخ‌گویی</h3>
                 <p>{selectedDetail.activityHours} · {selectedDetail.responseHours}</p>
                 <h3>محدوده خدمت</h3>
