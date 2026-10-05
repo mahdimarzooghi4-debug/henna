@@ -219,6 +219,8 @@ jobs:
               # No valid session is ever created by the default disabled SMS provider.
               session_no_bearer=$(curl --silent --output /tmp/hana-session-missing.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/auth/session)
               test "$session_no_bearer" = "401"
+              integrations_no_bearer=$(curl --silent --output /tmp/hana-integrations-missing.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/admin/integrations/status)
+              test "$integrations_no_bearer" = "401"
               session_missing_db_token=$(curl --silent --output /tmp/hana-session-invalid.json --write-out "%{http_code}" -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" http://127.0.0.1:5184/api/v1/auth/session)
               test "$session_missing_db_token" = "401"
               logout_no_bearer=$(curl --silent --output /tmp/hana-logout-missing.json --write-out "%{http_code}" -X DELETE http://127.0.0.1:5184/api/v1/auth/session)
@@ -425,6 +427,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-admin-sellers.mjs
       - name: Test admin operations bounded DTOs and retry intent
         run: node --experimental-strip-types --test tests/web-admin-operations.mjs
+      - name: Test external integration readiness DTO
+        run: node --experimental-strip-types --test tests/web-external-integrations.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
@@ -497,6 +501,8 @@ jobs:
         run: node tests/web-admin-sellers-gateway.mjs
       - name: Test admin operations gateway over isolated HTTPS
         run: node tests/web-admin-operations-gateway.mjs
+      - name: Test external integration readiness gateway
+        run: node tests/web-external-integrations-gateway.mjs
       - name: Test isolated web cookie gateway (CI-only mock upstream)
         run: node tests/web-auth-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
