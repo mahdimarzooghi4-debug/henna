@@ -68,6 +68,9 @@ public sealed class CommerceTests
  var q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});
  var key=Guid.NewGuid();var input=new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=creditId,unavailableDisposition="KEEP",confirmUnavailable=true};
  var publishedProduct=await catalog.Products.SingleAsync(p=>p.Id==product);publishedProduct.State=PublicationStates.Draft;await catalog.SaveChangesAsync();
+ Assert.Empty(JsonSerializer.SerializeToElement(
+  await service.PublicOffers(product,1,CancellationToken.None))
+  .GetProperty("items").EnumerateArray());
  var unpublishedConflict=await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"PLACE_ORDER",input,key));Assert.Equal("PRODUCT_NOT_PUBLISHED",unpublishedConflict.Message);
  Assert.Equal(10000,JsonSerializer.Deserialize<CreditGrant>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==creditId)).Body)!.AvailableRial);
  await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=0});
@@ -144,6 +147,9 @@ public sealed class CommerceTests
  Assert.Equal(HttpStatusCode.Forbidden,(await other.GetAsync("/api/v1/support/incidents?page=1")).StatusCode);
  var grantSupport=await Post(operatorClient,"SET_STAFF_PERMISSION",new{accountId=stranger,permission="SUPPORT",active=true});Assert.Equal(HttpStatusCode.OK,grantSupport.StatusCode);
  var supportIncidents=await other.GetAsync("/api/v1/support/incidents?page=1");Assert.Equal(HttpStatusCode.OK,supportIncidents.StatusCode);Assert.Contains((await supportIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray(),x=>x.GetProperty("Id").GetGuid()==incidentId);
+ var unavailable=await PostPath(other,"/api/v1/support/item-returns/"+incidentId+"/unavailability-decision",new{reason="CI verified timely call and visit"});
+ Assert.Equal(HttpStatusCode.OK,unavailable.StatusCode);
+ Assert.Equal("CUSTOMER_UNAVAILABLE_VERIFIED",(await unavailable.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("incident").GetProperty("State").GetString());
  var sellerIncidents=await storeClient.GetAsync("/api/v1/seller/incidents?page=1");Assert.Equal(HttpStatusCode.OK,sellerIncidents.StatusCode);Assert.Contains((await sellerIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray(),x=>x.GetProperty("Id").GetGuid()==incidentId);
  Assert.Equal(HttpStatusCode.OK,(await other.GetAsync("/api/v1/evidence/"+evidenceId)).StatusCode);
  var currentOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
