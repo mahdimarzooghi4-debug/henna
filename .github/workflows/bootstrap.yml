@@ -324,6 +324,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs tests/web-allocation-assessment.mjs tests/web-allocation-training-runs.mjs
       - name: Test buyer commerce DTOs and safe return destinations
         run: node --experimental-strip-types --test tests/web-buyer-commerce.mjs
+      - name: Test staff commerce DTOs and frozen retry intents
+        run: node --experimental-strip-types --test tests/web-staff-commerce.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
@@ -388,6 +390,8 @@ jobs:
           exit 1
       - name: Test buyer commerce cookie gateway over isolated HTTPS
         run: node tests/web-buyer-commerce-gateway.mjs
+      - name: Test seller and support commerce gateways over isolated HTTPS
+        run: node tests/web-staff-commerce-gateway.mjs
       - name: Test isolated web cookie gateway (CI-only mock upstream)
         run: node tests/web-auth-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
@@ -418,6 +422,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Browser test buyer cart quote and order lifecycle (CI-only API doubles)
         run: node tests/web-buyer-commerce-browser.mjs
+      - name: Browser test seller and support commerce lifecycle
+        run: node tests/web-staff-commerce-browser.mjs
       - name: Browser test approved buyer login and seller form across two tabs
         run: node tests/web-frontend-browser-smoke.mjs
       - name: Browser test administrative allocation proposal review
