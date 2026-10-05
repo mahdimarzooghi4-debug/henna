@@ -109,6 +109,11 @@ internal static class AdminSellerApplicationEndpoints
                             x.Status == "SUBMITTED",
                         cancellationToken);
                 if (application is null) return Results.NotFound();
+                var suspension = await db.SellerSuspensions.AsNoTracking()
+                    .Where(x => x.ApplicationAccountId == applicationId &&
+                        x.RestoredAtUtc == null)
+                    .OrderByDescending(x => x.CreatedAtUtc)
+                    .FirstOrDefaultAsync(cancellationToken);
 
                 return Results.Ok(new
                 {
@@ -155,6 +160,9 @@ internal static class AdminSellerApplicationEndpoints
                     application.ReviewedAtUtc,
                     application.ActivatedAtUtc,
                     application.ActivatedByAccountId,
+                    sellerSuspended = suspension is not null,
+                    suspendedAtUtc = suspension?.CreatedAtUtc,
+                    suspensionReason = suspension?.Reason,
                     application.SubmittedAtUtc
                 });
             }
