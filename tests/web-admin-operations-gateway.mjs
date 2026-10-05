@@ -9,6 +9,9 @@ const temp=mkdtempSync(join(tmpdir(),"henna-admin-ops-"));
 const base="http://127.0.0.1:3033";
 const ID="70000000-0000-4000-8000-000000000001";
 const ACCOUNT="70000000-0000-4000-8000-000000000002";
+const PROGRAM="70000000-0000-4000-8000-000000000003";
+const HOUSEHOLD="70000000-0000-4000-8000-000000000004";
+const CATEGORY="70000000-0000-4000-8000-000000000005";
 const token="hn1_"+Buffer.alloc(32,7).toString("base64url");
 let server,web,logs="",calls=[];
 
@@ -38,6 +41,24 @@ async function main(){
         Id:ID,AccountId:ACCOUNT,Permission:"SUPPORT",Active:true,
         Secret:"never-forward",
       }]}));
+    if(req.url==="/api/v1/commerce/resources/PROGRAM?page=1")
+      return res.end(JSON.stringify({page:1,pageSize:20,items:[{
+        Id:PROGRAM,Name:"CI program",FundingReference:"private-funding",
+        FundedRial:10000,UnallocatedRial:4000,
+        ExpiresAtUtc:"2026-12-05T05:00:00Z",CategoryIds:[CATEGORY],
+        OrganizationId:null,
+      }]}));
+    if(req.url==="/api/v1/commerce/resources/CREDIT?page=1")
+      return res.end(JSON.stringify({page:1,pageSize:20,items:[{
+        Id:ID,AccountId:ACCOUNT,ProgramId:PROGRAM,GrantedRial:6000,
+        AvailableRial:6000,ExpiresAtUtc:"2026-12-05T05:00:00Z",
+        CategoryIds:[CATEGORY],HouseholdKey:HOUSEHOLD,
+      }]}));
+    if(req.url==="/api/v1/commerce/resources/HOUSEHOLD?page=1")
+      return res.end(JSON.stringify({page:1,pageSize:20,items:[{
+        Id:ID,AccountId:ACCOUNT,HouseholdKey:HOUSEHOLD,
+        EvidenceReference:"reviewed-ci",
+      }]}));
     if(req.url==="/api/v1/commerce/commands/SET_STAFF_PERMISSION"&&req.method==="POST"){
       assert.deepEqual(JSON.parse(body),{
         accountId:ACCOUNT,permission:"SUPPORT",active:false,
@@ -45,6 +66,44 @@ async function main(){
       return res.end(JSON.stringify({
         Id:ID,AccountId:ACCOUNT,Permission:"SUPPORT",Active:false,
         Secret:"never-forward",
+      }));
+    }
+    if(req.url==="/api/v1/commerce/commands/LINK_HOUSEHOLD"&&req.method==="POST"){
+      assert.deepEqual(JSON.parse(body),{
+        accountId:ACCOUNT,householdKey:HOUSEHOLD,evidenceReference:"reviewed-ci",
+      });
+      return res.end(JSON.stringify({
+        Id:ID,AccountId:ACCOUNT,HouseholdKey:HOUSEHOLD,
+        EvidenceReference:"reviewed-ci",
+      }));
+    }
+    if(req.url==="/api/v1/commerce/commands/CREATE_PROGRAM"&&req.method==="POST"){
+      assert.deepEqual(JSON.parse(body),{
+        name:"CI program",fundingReference:"source-ci",fundedRial:10000,
+        expiresAtUtc:"2026-12-05T05:00:00.000Z",
+        categoryIds:[CATEGORY],organizationId:null,
+      });
+      return res.end(JSON.stringify({
+        Id:PROGRAM,Name:"CI program",FundingReference:"private-funding",
+        FundedRial:10000,UnallocatedRial:10000,
+        ExpiresAtUtc:"2026-12-05T05:00:00Z",CategoryIds:[CATEGORY],
+        OrganizationId:null,
+      }));
+    }
+    if(req.url==="/api/v1/commerce/commands/ALLOCATE_CREDIT"&&req.method==="POST"){
+      assert.deepEqual(JSON.parse(body),{
+        programId:PROGRAM,poolRial:6000,beneficiaries:[{
+          accountId:ACCOUNT,householdKey:HOUSEHOLD,geographicFactor:1.25,
+          scores:{health:1,hardship:2,age:0,size:3,care:1,education:2},
+        }],
+      });
+      return res.end(JSON.stringify({
+        grants:[{
+          Id:ID,AccountId:ACCOUNT,ProgramId:PROGRAM,GrantedRial:6000,
+          AvailableRial:6000,ExpiresAtUtc:"2026-12-05T05:00:00Z",
+          CategoryIds:[CATEGORY],HouseholdKey:HOUSEHOLD,
+        }],
+        unallocatedRial:0,formulaVersion:"baseline-v1",
       }));
     }
     res.statusCode=404;res.end(JSON.stringify({error:"missing"}));
@@ -83,6 +142,18 @@ async function main(){
   }]);
   assert.equal(JSON.stringify(permissionBody).includes("Secret"),false);
 
+  const programs=await fetch(base+"/api/admin/operations/programs?page=1",{headers:cookie});
+  assert.equal(programs.status,200);
+  const programBody=await programs.json();
+  assert.equal(programBody[0].id,PROGRAM);
+  assert.equal(JSON.stringify(programBody).includes("private-funding"),false);
+  const credits=await fetch(base+"/api/admin/operations/credits?page=1",{headers:cookie});
+  assert.equal(credits.status,200);
+  assert.equal((await credits.json())[0].householdKey,HOUSEHOLD);
+  const households=await fetch(base+"/api/admin/operations/households?page=1",{headers:cookie});
+  assert.equal(households.status,200);
+  assert.equal((await households.json())[0].evidenceReference,"reviewed-ci");
+
   assert.equal((await fetch(base+"/api/admin/operations/audit?page=0",{headers:cookie})).status,400);
   assert.equal((await fetch(base+"/api/admin/operations/constructor",{headers:cookie})).status,404);
 
@@ -111,6 +182,36 @@ async function main(){
     id:ID,accountId:ACCOUNT,permission:"SUPPORT",active:false,
   });
   assert.equal(calls.at(-1).key,ID);
+
+  const command=(action,body)=>fetch(base+"/api/admin/operations/commands/"+action,{
+    method:"POST",headers:{...cookie,Origin:base,
+      "Content-Type":"application/json","Idempotency-Key":ID},
+    body:JSON.stringify(body),
+  });
+  const linked=await command("LINK_HOUSEHOLD",{
+    accountId:ACCOUNT,householdKey:HOUSEHOLD,evidenceReference:"reviewed-ci",
+    ignored:"secret",
+  });
+  assert.equal(linked.status,200);
+  assert.equal((await linked.json()).householdKey,HOUSEHOLD);
+
+  const created=await command("CREATE_PROGRAM",{
+    name:"CI program",fundingReference:"source-ci",fundedRial:10000,
+    expiresAtUtc:"2026-12-05T05:00:00.000Z",
+    categoryIds:[CATEGORY],organizationId:null,ignored:"secret",
+  });
+  assert.equal(created.status,200);
+  assert.equal((await created.json()).id,PROGRAM);
+
+  const allocated=await command("ALLOCATE_CREDIT",{
+    programId:PROGRAM,poolRial:6000,beneficiaries:[{
+      accountId:ACCOUNT,householdKey:HOUSEHOLD,geographicFactor:1.25,
+      scores:{health:1,hardship:2,age:0,size:3,care:1,education:2,ignored:3},
+      ignored:"secret",
+    }],
+  });
+  assert.equal(allocated.status,200);
+  assert.equal((await allocated.json()).grants[0].grantedRial,6000);
 
   console.log("Admin operations BFF: cookie isolation, CSRF, allowlist, bounded DTO and idempotency passed.");
 }
