@@ -123,10 +123,12 @@ function orderFromPath(path: string): string | null {
 }
 
 export class MobilePendingCommerceStore {
-  constructor(
-    private readonly text: PendingTextStore,
-    private readonly photos: PendingPhotoStore,
-  ) {}
+  private readonly text: PendingTextStore;
+  private readonly photos: PendingPhotoStore;
+  constructor(text: PendingTextStore, photos: PendingPhotoStore) {
+    this.text=text;
+    this.photos=photos;
+  }
 
   private async stored(): Promise<StoredPending | null> {
     const raw=await this.text.read();
