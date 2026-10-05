@@ -47,6 +47,45 @@ def hierarchy():
     )
 
 
+def dismiss_pixel_launcher_anr():
+    """Dismiss only the known emulator launcher ANR overlay, never app errors."""
+    try:
+        execute("adb", "shell", "uiautomator", "dump",
+                "/sdcard/hana-system-window.xml", timeout=20)
+        raw = execute("adb", "exec-out", "cat",
+                      "/sdcard/hana-system-window.xml", timeout=20)
+        root = ET.fromstring(raw)
+        values = {
+            value for node in root.iter()
+            for key in ("text", "content-desc")
+            if (value := node.attrib.get(key))
+        }
+        if "Pixel Launcher isn't responding" not in values:
+            return False
+        wait = next(
+            (node for node in root.iter()
+             if node.attrib.get("text") == "Wait" or
+             node.attrib.get("content-desc") == "Wait"),
+            None,
+        )
+        if wait is None:
+            return False
+        bounds = wait.attrib.get("bounds", "")
+        coords = list(map(int, re.findall(r"\d+", bounds)))
+        if len(coords) != 4:
+            return False
+        x1, y1, x2, y2 = coords
+        execute("adb", "shell", "input", "tap",
+                str((x1 + x2) // 2), str((y1 + y2) // 2))
+        print("Dismissed Pixel Launcher ANR overlay; continuing strict app UI checks.",
+              flush=True)
+        time.sleep(2)
+        return True
+    except (subprocess.TimeoutExpired, ET.ParseError, AssertionError,
+            StopIteration):
+        return False
+
+
 def wait_screen(*phrases, timeout=110):
     end = time.monotonic() + timeout
     last = "<no UI hierarchy yet>"
@@ -56,6 +95,9 @@ def wait_screen(*phrases, timeout=110):
             if all(phrase in last for phrase in phrases):
                 print("Observed native UI: " + " / ".join(phrases), flush=True)
                 return last
+            if "Pixel Launcher isn't responding" in last:
+                dismiss_pixel_launcher_anr()
+                continue
         except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
             pass
         time.sleep(2)
