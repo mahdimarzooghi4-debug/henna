@@ -10,6 +10,11 @@ internal static class CommerceEndpoints
   http.Response.Headers.CacheControl="no-store";if(!configured)return Results.StatusCode(503);
   try {var content=await services.GetRequiredService<CommerceService>().PublicContent(slug,ct);return content==null?Results.NotFound():Results.Ok(content);}catch(Exception)when(!ct.IsCancellationRequested){return Results.StatusCode(503);}
  });
+ app.MapGet("/api/v1/service-listings",async(Guid? productId,int? page,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
+  http.Response.Headers.CacheControl="no-store";if(!configured)return Results.StatusCode(503);
+  try{return Results.Ok(await services.GetRequiredService<CommerceService>().PublicServiceListings(productId,page??1,ct));}
+  catch(ArgumentException){return Results.BadRequest();}catch(Exception)when(!ct.IsCancellationRequested){return Results.StatusCode(503);}
+ });
  app.MapGet("/api/v1/offers",async(Guid? productId,int? page,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
   http.Response.Headers.CacheControl="no-store";if(!configured)return Results.StatusCode(503);
   try{return Results.Ok(await services.GetRequiredService<CommerceService>().PublicOffers(productId,page??1,ct));}
@@ -41,7 +46,7 @@ internal static class CommerceEndpoints
  }
  foreach(var (path,action) in new (string,string)[]{
   ("/carts/current/items","SET_CART_ITEM"),("/quotes","CREATE_QUOTE"),("/orders","PLACE_ORDER"),
-  ("/me/addresses","SAVE_ADDRESS"),("/seller/offers","SAVE_OFFER"),("/me/withdrawals","REQUEST_WITHDRAWAL"),
+  ("/me/addresses","SAVE_ADDRESS"),("/seller/offers","SAVE_OFFER"),("/seller/service-listings","SAVE_SERVICE_LISTING"),("/me/withdrawals","REQUEST_WITHDRAWAL"),
   ("/me/evidence","SAVE_EVIDENCE"),("/support/tickets","OPEN_TICKET")}) {
    var commandAction=action;
    rest.MapPost(path,(JsonElement input,HttpContext http,IServiceProvider services,CancellationToken ct)=>SendCommand(http,services,commandAction,input,ct));
@@ -63,7 +68,7 @@ internal static class CommerceEndpoints
     return SendCommand(http,services,commandAction,JsonSerializer.SerializeToElement(node),ct);
    });
  }
- foreach(var (path,kind) in new (string,string)[]{("/carts/current","CART"),("/orders","ORDER"),("/seller/orders","ORDER"),("/seller/incidents","INCIDENT"),("/seller/offers","OFFER"),
+ foreach(var (path,kind) in new (string,string)[]{("/carts/current","CART"),("/orders","ORDER"),("/seller/orders","ORDER"),("/seller/incidents","INCIDENT"),("/seller/offers","OFFER"),("/seller/service-listings","SERVICE_LISTING"),
   ("/me/addresses","ADDRESS"),("/me/credits","CREDIT"),("/me/wallet","WALLET"),("/me/withdrawals","WITHDRAWAL"),
   ("/me/incidents","INCIDENT"),("/me/notifications","NOTIFICATION"),("/me/tickets","TICKET"),("/support/tickets","TICKET"),("/support/incidents","INCIDENT"),("/seller/settlements","SETTLEMENT")}) {
    var resourceKind=kind;
