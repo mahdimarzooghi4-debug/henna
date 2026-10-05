@@ -592,6 +592,8 @@ async function main() {
     activityCityId: null,
     activityCityName: null,
     activityAddress: null,
+    activityLatitude: null,
+    activityLongitude: null,
     activityHours: null,
     sellerDelivery: null,
     pickup: null,
