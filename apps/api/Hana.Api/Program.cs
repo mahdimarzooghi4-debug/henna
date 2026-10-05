@@ -174,10 +174,23 @@ app.MapGet("/health/ready", async (IServiceProvider services,
                 return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
-        var modules = hasCommerceDb
-            ? new[] { "identity", "seller", "catalog", "geography", "commerce" }
-            : new[] { "identity", "seller", "catalog", "geography" };
-        return Results.Ok(new { ready = true, modules });
+        var hasLearningDb = !string.IsNullOrWhiteSpace(learningConnectionString);
+        if (hasLearningDb)
+        {
+            var learningDb = scope.ServiceProvider
+                .GetRequiredService<HanaAllocationLearningDbContext>();
+            if (!await learningDb.Database.CanConnectAsync(cancellationToken) ||
+                (await learningDb.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var modules = new List<string>
+        {
+            "identity", "seller", "catalog", "geography"
+        };
+        if (hasCommerceDb) modules.Add("commerce");
+        if (hasLearningDb) modules.Add("allocation-learning");
+        return Results.Ok(new { ready = true, modules = modules.ToArray() });
     }
     catch
     {
