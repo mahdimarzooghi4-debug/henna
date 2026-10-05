@@ -579,6 +579,179 @@ export function SellerBusinessOperations({
         </section>
       )}
 
+      {serviceListingEnabled && (
+        <section id="seller-service-listings" className="seller-commerce__section">
+          <div className="seller-commerce__section-title">
+            <div>
+              <h3>خدمات و دسترس‌پذیری</h3>
+              <p>
+                فقط SERVICEهای منتشرشده ثبت می‌شوند؛ این بخش موجودی کالایی،
+                ارسال یا رزرو زمان را جعل نمی‌کند.
+              </p>
+            </div>
+            <span>
+              صفحه {new Intl.NumberFormat("fa-IR").format(serviceListingsPage)}
+            </span>
+          </div>
+
+          <form className="seller-offer-search" onSubmit={searchServices}>
+            <label className="field">
+              <span className="field__label">جست‌وجوی خدمت منتشرشده</span>
+              <input className="field__input" maxLength={80}
+                value={serviceSearch}
+                disabled={serviceFrozen || busyPath !== null}
+                onChange={event => setServiceSearch(event.target.value)}
+                placeholder="نام خدمت" />
+            </label>
+            <button type="submit" className="seller-commerce__refresh"
+              disabled={serviceFrozen || busyPath !== null ||
+                !serviceSearch.trim()}>
+              جست‌وجو
+            </button>
+          </form>
+
+          {serviceStatus === "loading" &&
+            <p className="form-status">در حال جست‌وجوی کاتالوگ…</p>}
+          {serviceStatus === "error" &&
+            <p className="form-status form-status--error">
+              نتیجه کاتالوگ خدمت تأیید نشد.
+            </p>}
+          {serviceResults.length > 0 && (
+            <div className="seller-offer-results">
+              {serviceResults.map(product => (
+                <button key={product.id} type="button"
+                  className={selectedService?.id === product.id
+                    ? "seller-offer-result seller-offer-result--selected"
+                    : "seller-offer-result"}
+                  disabled={serviceFrozen || busyPath !== null}
+                  onClick={() => setSelectedService(product)}>
+                  <strong>{product.name}</strong>
+                  <small>خدمت</small>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {selectedService && (
+            <div className="seller-offer-new">
+              <strong>{selectedService.name}</strong>
+              <label className="field">
+                <span className="field__label">قیمت پایه، ریال</span>
+                <input className="field__input" inputMode="numeric"
+                  value={servicePrice}
+                  disabled={serviceFrozen || busyPath !== null}
+                  onChange={event => setServicePrice(event.target.value)}
+                  placeholder="مثلاً 250000" />
+              </label>
+              <label className="field">
+                <span className="field__label">توضیح دسترس‌پذیری</span>
+                <textarea className="field__input support-incident__reason"
+                  maxLength={500}
+                  value={serviceAvailability}
+                  disabled={serviceFrozen || busyPath !== null}
+                  onChange={event => setServiceAvailability(event.target.value)}
+                  placeholder="مثلاً شنبه تا چهارشنبه، هماهنگی زمان پس از ثبت درخواست" />
+              </label>
+              <button type="button" className="primary-button"
+                disabled={busyPath !== null}
+                onClick={() => void createServiceListing()}>
+                {busyPath === "service-listings"
+                  ? "در حال ثبت…"
+                  : serviceFrozen
+                    ? "تکرار امن همان ثبت"
+                    : "ثبت خدمت"}
+              </button>
+            </div>
+          )}
+
+          {serviceListings.kind === "loading" &&
+            <p className="form-status">در حال دریافت خدمات…</p>}
+          {serviceListings.kind === "error" &&
+            <p className="form-status form-status--error">
+              {serviceListings.message}
+            </p>}
+          {serviceListings.kind === "ready" &&
+            serviceListings.items.length === 0 &&
+            <p className="seller-commerce__empty">
+              هنوز خدمتی برای این کسب‌وکار ثبت نشده است.
+            </p>}
+          {serviceListings.kind === "ready" &&
+            serviceListings.items.map(item => {
+              const draft = serviceDrafts[item.id] ?? {
+                price: String(item.priceRial),
+                availability: item.availabilityNote,
+              };
+              return (
+                <article className="seller-offer-card" key={item.id}>
+                  <div>
+                    <strong>
+                      {productNames[item.productId] ??
+                        "در حال دریافت نام خدمت…"}
+                    </strong>
+                    <p>
+                      نسخه {new Intl.NumberFormat("fa-IR").format(item.version)}
+                      {" · "}
+                      {item.published ? "منتشر" : "غیرفعال"}
+                    </p>
+                  </div>
+                  <label className="field">
+                    <span className="field__label">قیمت پایه، ریال</span>
+                    <input className="field__input" inputMode="numeric"
+                      value={draft.price}
+                      disabled={serviceFrozen || busyPath !== null}
+                      onChange={event => setServiceDrafts(current => ({
+                        ...current,
+                        [item.id]: {
+                          ...draft,
+                          price: event.target.value,
+                        },
+                      }))} />
+                  </label>
+                  <label className="field">
+                    <span className="field__label">دسترس‌پذیری</span>
+                    <textarea className="field__input support-incident__reason"
+                      maxLength={500}
+                      value={draft.availability}
+                      disabled={serviceFrozen || busyPath !== null}
+                      onChange={event => setServiceDrafts(current => ({
+                        ...current,
+                        [item.id]: {
+                          ...draft,
+                          availability: event.target.value,
+                        },
+                      }))} />
+                  </label>
+                  <button type="button" className="seller-commerce__refresh"
+                    disabled={busyPath !== null}
+                    onClick={() => void saveExistingService(item)}>
+                    {busyPath === "service-listings"
+                      ? "در حال ثبت…"
+                      : serviceFrozen
+                        ? "تکرار امن"
+                        : "ذخیره"}
+                  </button>
+                </article>
+              );
+            })}
+          <div className="seller-commerce__pager">
+            <button type="button"
+              disabled={serviceListingsPage === 1 ||
+                busyPath !== null || serviceFrozen}
+              onClick={() => setServiceListingsPage(page =>
+                Math.max(1, page - 1))}>
+              صفحه قبل
+            </button>
+            <button type="button"
+              disabled={serviceListings.kind !== "ready" ||
+                serviceListings.items.length < 20 ||
+                busyPath !== null || serviceFrozen}
+              onClick={() => setServiceListingsPage(page => page + 1)}>
+              صفحه بعد
+            </button>
+          </div>
+        </section>
+      )}
+
       {offerManagementEnabled && (
         <section id="seller-offers" className="seller-commerce__section">
           <div className="seller-commerce__section-title">
