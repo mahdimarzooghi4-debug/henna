@@ -141,6 +141,15 @@ export default function AdminSellersPage() {
     }
   }, []);
 
+  const selectApplication = useCallback((id: string) => {
+    if (!adminSellerId(id)) return;
+    setSelected(id);
+    setNotice("");
+    setUncertain(null);
+    setSuspensionReason("");
+    void loadDetail(id);
+  }, [loadDetail]);
+
   useEffect(() => {
     const controller = new AbortController();
     void loadList(page, controller.signal);
@@ -153,22 +162,12 @@ export default function AdminSellersPage() {
       .get("application");
     if (requested && adminSellerId(requested) &&
         list.items.some(item => item.id === requested)) {
-      setSelected(requested);
+      selectApplication(requested);
       return;
     }
     if (list.items.length === 1)
-      setSelected(list.items[0].id);
-  }, [list, selected]);
-
-  useEffect(() => {
-    if (!selected) {
-      setDetail({ kind: "idle" });
-      return;
-    }
-    const controller = new AbortController();
-    void loadDetail(selected, controller.signal);
-    return () => controller.abort();
-  }, [loadDetail, selected]);
+      selectApplication(list.items[0].id);
+  }, [list, selectApplication, selected]);
 
   const mutate = useCallback(async (
     path: string,
@@ -340,12 +339,7 @@ export default function AdminSellersPage() {
                     ? "admin-sellers__item admin-sellers__item--selected"
                     : "admin-sellers__item"}
                   disabled={busyPath !== null}
-                  onClick={() => {
-                    setSelected(item.id);
-                    setNotice("");
-                    setUncertain(null);
-                    setSuspensionReason("");
-                  }}>
+                  onClick={() => selectApplication(item.id)}>
                   <strong>{item.businessName ?? item.storeName}</strong>
                   <span>{reviewLabel[item.reviewStatus]}</span>
                   <small>{adminSellerTime(item.submittedAtUtc)}</small>
