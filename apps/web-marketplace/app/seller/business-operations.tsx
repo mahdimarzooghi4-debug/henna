@@ -188,6 +188,38 @@ export function SellerBusinessOperations({
     }
   }, [offerManagementEnabled, productNames]);
 
+  const loadServiceListings = useCallback(async (
+    page: number,
+    signal?: AbortSignal,
+  ) => {
+    if (!serviceListingEnabled) return;
+    setServiceListings({ kind: "loading" });
+    try {
+      const items = await staffGet<StaffServiceListing[]>(
+        "seller", "service-listings?page=" + page, signal);
+      setServiceListings({ kind: "ready", items });
+      const missing = [...new Set(items.map(item => item.productId))]
+        .filter(productId => !(productId in productNames));
+      if (missing.length) {
+        const resolved = await Promise.all(missing.map(async productId => ({
+          productId,
+          product: await publicProduct(productId, signal),
+        })));
+        if (!signal?.aborted)
+          setProductNames(current => {
+            const next = { ...current };
+            for (const entry of resolved)
+              next[entry.productId] = entry.product?.name ??
+                "خدمت خارج‌شده از کاتالوگ منتشرشده";
+            return next;
+          });
+      }
+    } catch (error) {
+      if (!signal?.aborted)
+        setServiceListings({ kind: "error", message: failure(error) });
+    }
+  }, [serviceListingEnabled, productNames]);
+
   const loadSettlements = useCallback(async (
     page: number,
     signal?: AbortSignal,
@@ -237,14 +269,16 @@ export function SellerBusinessOperations({
     void Promise.all([
       loadReport(controller.signal),
       loadOffers(offersPage, controller.signal),
+      loadServiceListings(serviceListingsPage, controller.signal),
       loadSettlements(settlementsPage, controller.signal),
       loadNotifications(notificationsPage, controller.signal),
       loadTickets(ticketsPage, controller.signal),
     ]);
     return () => controller.abort();
   }, [
-    activated, loadOffers, loadNotifications, loadReport, loadSettlements,
-    loadTickets, notificationsPage, offersPage, settlementsPage, ticketsPage,
+    activated, loadOffers, loadNotifications, loadReport, loadServiceListings,
+    loadSettlements, loadTickets, notificationsPage, offersPage,
+    serviceListingsPage, settlementsPage, ticketsPage,
   ]);
 
   const mutate = useCallback(async <T,>(
@@ -358,6 +392,88 @@ export function SellerBusinessOperations({
     }, "پیشنهاد کالا با قیمت و موجودی واقعی ثبت شد.");
   }
 
+  async function searchServices(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const term = serviceSearch.trim();
+    if (!term || term.length > 80) {
+      setServiceStatus("error");
+      return;
+    }
+    setServiceStatus("loading");
+    try {
+      const response = await fetch(
+        "/api/catalog/products?page=1&pageSize=20&search=" +
+          encodeURIComponent(term),
+        {
+          cache: "no-store",
+          credentials: "omit",
+          redirect: "error",
+          headers: { Accept: "application/json" },
+        },
+      );
+      const parsed = response.ok
+        ? parseBuyerPage(await response.json(), 1)
+        : null;
+      if (!parsed) throw Error();
+      setServiceResults(parsed.items.filter(item => item.kind === "SERVICE"));
+      setServiceStatus("idle");
+    } catch {
+      setServiceResults([]);
+      setServiceStatus("error");
+    }
+  }
+
+  async function saveExistingService(item: StaffServiceListing) {
+    const priceRial = Number(servicePrice || item.priceRial);
+    const availabilityNote = serviceAvailability.trim() ||
+      item.availabilityNote;
+    if (!Number.isSafeInteger(priceRial) || priceRial < 1 ||
+        !availabilityNote || availabilityNote.length > 500) {
+      setNotice("قیمت یا توضیح دسترس‌پذیری خدمت معتبر نیست.");
+      return;
+    }
+    const payload = {
+      listingId: item.id,
+      productId: item.productId,
+      priceRial,
+      availabilityNote,
+      expectedVersion: item.version,
+    };
+    pendingService.current = payload;
+    await mutate<StaffServiceListing>("service-listings", payload, async () => {
+      pendingService.current = null;
+      setServicePrice("");
+      setServiceAvailability("");
+      await loadServiceListings(serviceListingsPage);
+    }, "قیمت و دسترس‌پذیری خدمت از سرور به‌روزرسانی شد.");
+  }
+
+  async function createServiceListing() {
+    if (!selectedService || selectedService.kind !== "SERVICE") return;
+    const priceRial = Number(servicePrice);
+    const availabilityNote = serviceAvailability.trim();
+    if (!Number.isSafeInteger(priceRial) || priceRial < 1 ||
+        !availabilityNote || availabilityNote.length > 500) {
+      setNotice("قیمت یا توضیح دسترس‌پذیری خدمت معتبر نیست.");
+      return;
+    }
+    const payload = pendingService.current ?? {
+      listingId: crypto.randomUUID(),
+      productId: selectedService.id,
+      priceRial,
+      availabilityNote,
+      expectedVersion: 0,
+    };
+    pendingService.current = payload;
+    await mutate<StaffServiceListing>("service-listings", payload, async () => {
+      pendingService.current = null;
+      setSelectedService(null);
+      setServicePrice("");
+      setServiceAvailability("");
+      await loadServiceListings(serviceListingsPage);
+    }, "خدمت با قیمت و دسترس‌پذیری واقعی ثبت شد.");
+  }
+
   async function markRead(item: StaffNotification) {
     const path = `notifications/${item.id}/read`;
     await mutate<StaffNotification>(path, {}, async () => {
@@ -402,6 +518,7 @@ export function SellerBusinessOperations({
   }
 
   const offerFrozen = uncertainPath === "offers";
+  const serviceFrozen = uncertainPath === "service-listings";
   const ticketFrozen = uncertainPath === "tickets";
 
   return (
