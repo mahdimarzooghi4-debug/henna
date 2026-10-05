@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../../components/form-field";
+import { CoordinateMapPicker } from "../../../components/coordinate-map-picker";
+import type { MapPoint } from "../../../../packages/buyer-commerce/map-tiles";
 import { SellerLocationReference } from "./location-reference";
 import {
   hasUnsavedSellerEdits, isLeavingSellerPage, validateSellerDraft,
@@ -87,6 +89,8 @@ export function RegistrationForm() {
   const [activityCityName, setActivityCityName] =
     useState<string | null>(null);
   const [activityAddress, setActivityAddress] = useState("");
+  const [activityLatitude, setActivityLatitude] = useState<number | null>(null);
+  const [activityLongitude, setActivityLongitude] = useState<number | null>(null);
   const [activityHours, setActivityHours] = useState("");
   const [sellerDelivery, setSellerDelivery] = useState(false);
   const [pickup, setPickup] = useState(false);
@@ -161,6 +165,8 @@ export function RegistrationForm() {
       setActivityCityId(result.activityCityId ?? "");
       setActivityCityName(result.activityCityName);
       setActivityAddress(result.activityAddress ?? "");
+      setActivityLatitude(result.activityLatitude);
+      setActivityLongitude(result.activityLongitude);
       setActivityHours(result.activityHours ?? "");
       setSellerDelivery(result.sellerDelivery ?? false);
       setPickup(result.pickup ?? false);
@@ -300,10 +306,15 @@ export function RegistrationForm() {
       businessDescription.trim().length > 0 ||
       businessPhone.trim().length > 0 ||
       offeringType !== null);
+  const activityMapPoint: MapPoint | null =
+    activityLatitude !== null && activityLongitude !== null
+      ? { latitude: activityLatitude, longitude: activityLongitude }
+      : null;
   const hasUnsavedActivityChanges = completedStep === 4 &&
     (activityProvinceId.length > 0 ||
       activityCityId.length > 0 ||
       activityAddress.trim().length > 0 ||
+      activityLatitude !== null || activityLongitude !== null ||
       activityHours.trim().length > 0 ||
       sellerDelivery || pickup ||
       serviceArea.trim().length > 0);
@@ -876,6 +887,8 @@ export function RegistrationForm() {
             provinceId: province.id,
             cityId: city.id,
             address: nextAddress,
+            latitude: activityLatitude,
+            longitude: activityLongitude,
             activityHours: nextHours,
             sellerDelivery,
             pickup,
@@ -899,12 +912,18 @@ export function RegistrationForm() {
           "city" in result && result.city &&
           typeof result.city === "object" &&
           "name" in result.city &&
-          typeof result.city.name === "string") {
+          typeof result.city.name === "string" &&
+          "latitude" in result &&
+          result.latitude === activityLatitude &&
+          "longitude" in result &&
+          result.longitude === activityLongitude) {
           setRevision(result.revision as number);
           setCompletedStep(5);
           setActivityProvinceName(result.province.name);
           setActivityCityName(result.city.name);
           setActivityAddress(nextAddress);
+          setActivityLatitude(activityLatitude);
+          setActivityLongitude(activityLongitude);
           setActivityHours(nextHours);
           setServiceArea(nextServiceArea);
           setRegistrationContactName(
@@ -1620,11 +1639,32 @@ export function RegistrationForm() {
 
                 <div className="seller-activity__map" aria-label="موقعیت روی نقشه">
                   <strong>موقعیت روی نقشه (اختیاری)</strong>
-                  <div className="seller-activity__map-placeholder">
-                    <span aria-hidden="true">⌖</span>
-                    <p>نقشه تعاملی حنا هنوز به قرارداد مختصات متصل نشده است.</p>
-                    <small>در این مرحله هیچ مختصات نمونه یا تخمینی ذخیره نمی‌شود.</small>
-                  </div>
+                  <CoordinateMapPicker
+                    value={activityMapPoint}
+                    disabled={busy || access !== "signedIn"}
+                    label="انتخاب موقعیت محل فعالیت فروشنده روی نقشه"
+                    onChange={(point) => {
+                      setActivityLatitude(point.latitude);
+                      setActivityLongitude(point.longitude);
+                      setActivityFeedback(null);
+                    }}
+                  />
+                  {activityMapPoint && (
+                    <button type="button"
+                      className="commerce-button commerce-button--secondary"
+                      disabled={busy || access !== "signedIn"}
+                      onClick={() => {
+                        setActivityLatitude(null);
+                        setActivityLongitude(null);
+                        setActivityFeedback(null);
+                      }}>
+                      حذف مختصات انتخاب‌شده
+                    </button>
+                  )}
+                  <small>
+                    مختصات فقط نقطهٔ محل فعالیت را ثبت می‌کند؛ پوشش ارسال یا
+                    محدودهٔ سرویس از آن نتیجه‌گیری نمی‌شود.
+                  </small>
                 </div>
 
                 <FormField id="seller-activity-hours"
@@ -1718,6 +1758,14 @@ export function RegistrationForm() {
                   <div>
                     <dt>محدوده پوشش</dt>
                     <dd>{serviceArea}</dd>
+                  </div>
+                  <div>
+                    <dt>مختصات</dt>
+                    <dd>
+                      {activityMapPoint
+                        ? `${activityMapPoint.latitude.toFixed(6)}، ${activityMapPoint.longitude.toFixed(6)}`
+                        : "ثبت نشده"}
+                    </dd>
                   </div>
                 </dl>
                 <p>{activityAddress}</p>
