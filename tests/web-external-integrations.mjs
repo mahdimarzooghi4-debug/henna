@@ -10,6 +10,7 @@ test("external integration readiness is bounded and internally consistent",()=>{
     sellerIdentity:{configured:true,
       requiredForNaturalSellerVerification:true,provider:"x"},
     payment:{configured:false,requiredForExternalPayment:true},
+    ibanOwnership:{configured:false,requiredForWithdrawalOwnership:true},
     logistics:{configured:false,requiredForDelivery:true},
     allExternalReady:false,
     extra:"hidden",
@@ -19,6 +20,7 @@ test("external integration readiness is bounded and internally consistent",()=>{
     sellerIdentity:{configured:true,
       requiredForNaturalSellerVerification:true},
     payment:{configured:false,requiredForExternalPayment:true},
+    ibanOwnership:{configured:false,requiredForWithdrawalOwnership:true},
     logistics:{configured:false,requiredForDelivery:true},
     allExternalReady:false,
   });
@@ -28,6 +30,7 @@ test("external integration readiness is bounded and internally consistent",()=>{
     sellerIdentity:{configured:true,
       requiredForNaturalSellerVerification:true},
     payment:{configured:true,requiredForExternalPayment:true},
+    ibanOwnership:{configured:true,requiredForWithdrawalOwnership:true},
     logistics:{configured:true,requiredForDelivery:true},
     allExternalReady:false,
   }),null);
@@ -36,6 +39,7 @@ test("external integration readiness is bounded and internally consistent",()=>{
     sellerIdentity:{configured:false,
       requiredForNaturalSellerVerification:true},
     payment:{configured:false,requiredForExternalPayment:true},
+    ibanOwnership:{configured:false,requiredForWithdrawalOwnership:true},
     logistics:{configured:false,requiredForDelivery:true},
     allExternalReady:false,
   }),null);
