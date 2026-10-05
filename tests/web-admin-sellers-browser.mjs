@@ -92,7 +92,7 @@ async function main() {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(String(error)));
 
-  await page.route("**/api/admin/seller-applications**", async route => {
+  await page.route(/\/api\/admin\/seller-applications(?:\/[^?]*)?(?:\?.*)?$/, async route => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
