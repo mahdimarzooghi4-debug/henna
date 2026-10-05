@@ -15,6 +15,10 @@ const integer = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number
       value < min || value > max) throw Error();
   return value;
 };
+const signedInteger = (value: unknown): number => {
+  if (typeof value !== "number" || !Number.isSafeInteger(value)) throw Error();
+  return value;
+};
 const text = (value: unknown, max = 1000): string => {
   if (typeof value !== "string" || !value.trim() || value.length > max)
     throw Error();
@@ -194,7 +198,7 @@ const settlement = (value: unknown): StaffSettlement => {
     penaltyRial: integer(data.PenaltyRial),
     fixedFeeRial: integer(data.FixedFeeRial),
     feeVersion: text(data.FeeVersion, 120),
-    netRial: integer(data.NetRial),
+    netRial: signedInteger(data.NetRial),
     state: data.State as StaffSettlement["state"],
     createdAtUtc: time(data.CreatedAtUtc),
   };
