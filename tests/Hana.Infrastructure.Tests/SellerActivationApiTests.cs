@@ -302,6 +302,9 @@ public sealed class SellerActivationApiTests
             Assert.True(body.RootElement.GetProperty(
                 "capabilities").GetProperty(
                     "inventory").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "serviceListings").GetBoolean());
             Assert.True(body.RootElement.GetProperty(
                 "capabilities").GetProperty(
                     "pricing").GetBoolean());
