@@ -378,6 +378,7 @@ app.MapAdminSellerApplications(hasIdentityDb);
 app.MapCommerce(hasCommerceDb);
 app.MapAllocationLearningProposals(hasIdentityDb && !string.IsNullOrWhiteSpace(learningConnectionString));
 app.MapAdminSellerActivation(hasIdentityDb);
+app.MapAdminSellerSuspensions(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 
