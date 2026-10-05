@@ -22,6 +22,7 @@ import { Vazirmatn_400Regular, Vazirmatn_700Bold } from "@expo-google-fonts/vazi
 import { MobileCommerceClient } from "./src/mobile-commerce";
 import { BuyerIncidentsScreen } from "./src/buyer-incidents-screen";
 import { BuyerSupportScreen } from "./src/buyer-support-screen";
+import { BuyerWalletScreen } from "./src/buyer-wallet-screen";
 import { BuyerOrdersScreen } from "./src/buyer-orders-screen";
 import { BuyerCheckoutScreen } from "./src/buyer-checkout-screen";
 import { BuyerCartScreen } from "./src/buyer-cart-screen";
@@ -511,13 +512,13 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<"browse" | "auth" | "cart" | "checkout" | "orders" | "incidents" | "support">("browse");
+  const [screen, setScreen] = useState<"browse" | "auth" | "cart" | "checkout" | "orders" | "incidents" | "support" | "wallet">("browse");
   const [fontsLoaded,fontError] = useFonts({Vazirmatn_400Regular,Vazirmatn_700Bold});
   const [selectedProduct,setSelectedProduct] = useState<string|null>(null);
   const [selectedOrder,setSelectedOrder]=useState<string|null>(null);
   const [incidentOrder,setIncidentOrder]=useState<string|null>(null);
   const incidentReturn=useRef<"browse"|"orders">("browse");
-  const authReturn = useRef<"browse"|"cart"|"checkout"|"orders"|"incidents"|"support">("browse");
+  const authReturn = useRef<"browse"|"cart"|"checkout"|"orders"|"incidents"|"support"|"wallet">("browse");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
   // link must not first fetch page 1 and briefly paint unrelated content.
   const [link, setLink] = useState<BuyerLinkEvent | null>(null);
@@ -581,6 +582,7 @@ export default function App() {
             onIssues={()=>{setIncidentOrder(null);incidentReturn.current="browse";setScreen("incidents");}}
             onOrders={()=>{setSelectedOrder(null);setScreen("orders");}}
             onSupport={()=>setScreen("support")}
+            onWallet={()=>setScreen("wallet")}
             onCart={(id) => {setSelectedProduct(id??null);setScreen("cart");}} /></View>
           {screen === "cart" && <BuyerCartScreen api={commerce} onCheckout={()=>setScreen("checkout")} selectedProduct={selectedProduct} onBack={() => setScreen("browse")} onLogin={() => {authReturn.current="cart";setScreen("auth");}} />}
           {screen === "checkout" && <BuyerCheckoutScreen onOrder={(id)=>{setSelectedOrder(id);setScreen("orders");}} api={commerce} onBack={()=>setScreen("cart")} onLogin={()=>{authReturn.current="checkout";setScreen("auth");}} />}
@@ -589,6 +591,9 @@ export default function App() {
           {screen === "support" && <BuyerSupportScreen api={commerce}
             onBack={()=>setScreen("browse")}
             onLogin={()=>{authReturn.current="support";setScreen("auth");}} />}
+          {screen === "wallet" && <BuyerWalletScreen api={commerce}
+            onBack={()=>setScreen("browse")}
+            onLogin={()=>{authReturn.current="wallet";setScreen("auth");}} />}
           {screen === "auth" && <ConsumerAuthScreen onBrowse={() => setScreen(authReturn.current)} />}
         </>}
 
