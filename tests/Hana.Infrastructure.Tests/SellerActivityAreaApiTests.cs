@@ -187,6 +187,8 @@ public sealed class SellerActivityAreaApiTests
             provinceId,
             cityId,
             address = "خیابان آزمون، پلاک ۱۲",
+            latitude = 35.721234m,
+            longitude = 51.412345m,
             activityHours = "شنبه تا پنجشنبه، ۸ تا ۲۲",
             sellerDelivery = true,
             pickup = true,
