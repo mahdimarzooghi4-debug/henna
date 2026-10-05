@@ -6313,6 +6313,176 @@
           }
         }
       }
+    },
+    "/api/v1/commerce/commands/DELETE_EVIDENCE": {
+      "post": {
+        "description": "Authenticated owner; persisted idempotency, all monetary values in IRR.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "evidenceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "evidenceId",
+                    "deleted"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DELETE_EVIDENCEInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/evidence/{id}/discard": {
+      "post": {
+        "description": "Authenticated owner; alias of DELETE_EVIDENCE. A supplied body ID must match the route ID.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "evidenceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "evidenceId",
+                    "deleted"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "evidenceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9516,6 +9686,18 @@
           "settlementFeeRial",
           "settlementNetRial",
           "financeReviewRequired"
+        ]
+      },
+      "DELETE_EVIDENCEInput": {
+        "type": "object",
+        "properties": {
+          "evidenceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "evidenceId"
         ]
       }
     }
