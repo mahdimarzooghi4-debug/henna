@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCookieName } from "./server-auth";
-import { commerceId, commerceMessages, parseCommerce, parseOffers } from "./buyer-commerce";
+import { commerceId, commerceMessages, parseCommerce, parseOffers, parseServiceListings } from "./buyer-commerce";
 const getPaths: Record<string, string> = { cart: "/carts/current", comparison: "/carts/current/comparison", addresses: "/me/addresses", credits: "/me/credits", wallet: "/me/wallet", orders: "/orders" };
 const postPaths: Record<string, string> = { "cart-items": "/carts/current/items", addresses: "/me/addresses", quotes: "/quotes", orders: "/orders" };
 async function boundedText(response: Request | Response, max: number) {
@@ -10,10 +10,12 @@ async function boundedText(response: Request | Response, max: number) {
 export async function forwardBuyerCommerce(request: NextRequest, segments: string[], method: "GET" | "POST") {
   const fail = (status: number, code = "") => NextResponse.json({ code, message: commerceMessages[code] ?? (status === 401 ? "برای ادامه وارد شوید." : "دریافت یا ثبت اطلاعات تأیید نشد.") }, { status, headers: noStore });
   const path = segments.join("/"); let upstreamPath: string | undefined;
-  const publicRead = method === "GET" && path === "offers";
+  const publicRead = method === "GET" &&
+    (path === "offers" || path === "service-listings");
   if (publicRead) {
     const product = request.nextUrl.searchParams.get("productId"); if (!commerceId(product) || request.nextUrl.searchParams.size !== 1) return fail(400);
-    upstreamPath = "/offers?productId=" + encodeURIComponent(product) + "&page=1";
+    upstreamPath = (path === "offers" ? "/offers" : "/service-listings") +
+      "?productId=" + encodeURIComponent(product) + "&page=1";
   } else {
     const allowed = method === "GET" ? getPaths : postPaths;
     upstreamPath = Object.hasOwn(allowed, path) ? allowed[path] : undefined;
@@ -45,7 +47,11 @@ export async function forwardBuyerCommerce(request: NextRequest, segments: strin
     }
     if (r.status !== 200 || !r.headers.get("content-type")?.includes("application/json")) return fail(503);
     const x: unknown = JSON.parse(await boundedText(r, 512000));
-    const result = publicRead ? parseOffers(x, request.nextUrl.searchParams.get("productId")!) : parseCommerce(path, method, x, requestedPage);
+    const result = publicRead
+      ? path === "offers"
+        ? parseOffers(x, request.nextUrl.searchParams.get("productId")!)
+        : parseServiceListings(x, request.nextUrl.searchParams.get("productId")!)
+      : parseCommerce(path, method, x, requestedPage);
     if (result === null) return fail(503);
     return NextResponse.json(result, { headers: noStore });
   } catch { return fail(503); }
