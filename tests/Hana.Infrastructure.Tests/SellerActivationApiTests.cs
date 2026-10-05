@@ -394,6 +394,25 @@ public sealed class SellerActivationApiTests
         Assert.Equal(HttpStatusCode.Conflict,
             (await Suspend(suspendKey, "changed reason")).StatusCode);
 
+        // Replaying the original activation key must report the CURRENT
+        // suspension boundary, never the historic activation state.
+        var suspendedActivationReplay = await Activate(activationKey);
+        Assert.Equal(HttpStatusCode.OK, suspendedActivationReplay.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await suspendedActivationReplay.Content.ReadAsStringAsync()))
+        {
+            Assert.True(body.RootElement.GetProperty(
+                "sellerActivated").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerSuspended").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerRoleGranted").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerAccessEnabled").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
+        }
+
         identity.ChangeTracker.Clear();
         Assert.False(await identity.RoleAssignments.AsNoTracking()
             .AnyAsync(x =>
@@ -450,6 +469,23 @@ public sealed class SellerActivationApiTests
         }
         Assert.Equal(HttpStatusCode.OK,
             (await Restore(restoreKey)).StatusCode);
+
+        var restoredActivationReplay = await Activate(activationKey);
+        Assert.Equal(HttpStatusCode.OK, restoredActivationReplay.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await restoredActivationReplay.Content.ReadAsStringAsync()))
+        {
+            Assert.True(body.RootElement.GetProperty(
+                "sellerActivated").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerSuspended").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerRoleGranted").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerAccessEnabled").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
+        }
 
         identity.ChangeTracker.Clear();
         seller.ChangeTracker.Clear();
