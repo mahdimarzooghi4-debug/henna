@@ -8,7 +8,7 @@ const ID = "60000000-0000-4000-8000-000000000041";
 let web, browser, logs = "";
 let revision = 7, reviewStatus = "UNDER_REVIEW", activatedAtUtc = null;
 let sellerSuspended = false, suspendedAtUtc = null, suspensionReason = null;
-let reviewAttempts = 0, firstReview = null, detailReads = 0;
+let reviewAttempts = 0, firstReview = null;
 
 function json(data, status = 200) {
   return {
@@ -103,10 +103,8 @@ async function main() {
       return route.fulfill(json({ items: [listItem()], total: 1 }));
     }
     if (path === "/api/admin/seller-applications/" + ID &&
-        request.method() === "GET") {
-      detailReads++;
+        request.method() === "GET")
       return route.fulfill(json(detail()));
-    }
 
     if (path === "/api/admin/seller-applications/" + ID + "/review" &&
         request.method() === "POST") {
@@ -206,12 +204,17 @@ async function main() {
   await page.getByRole("heading", {
     name: "بررسی و فعال‌سازی فروشندگان",
   }).waitFor();
-  await page.locator(`[data-application-id="${ID}"]`).click();
-  await page.waitForResponse(response =>
+  const detailResponsePromise=page.waitForResponse(response =>
     new URL(response.url()).pathname ===
       "/api/admin/seller-applications/" + ID &&
     response.request().method() === "GET");
-  assert.equal(detailReads, 1);
+  await page.locator(`[data-application-id="${ID}"]`).click();
+  const detailResponse=await detailResponsePromise;
+  assert.equal(detailResponse.status(),200);
+  const detailBody=await detailResponse.json();
+  assert.ok(parseAdminSellerDetail({
+    ...detailBody,applicationId:ID,
+  },ID),"detail HTTP response must satisfy the production DTO");
   await page.getByPlaceholder(
     "نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید.").waitFor();
   await page.locator(".admin-sellers__facts")
