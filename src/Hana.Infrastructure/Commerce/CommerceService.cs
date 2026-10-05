@@ -319,6 +319,40 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var assigned=await identity.RoleAssignments.AsNoTracking().Where(r=>r.Role==HanaRoles.Seller).Select(r=>r.AccountId).ToArrayAsync(ct);
   return await sellers.SellerActivations.AsNoTracking().Where(s=>assigned.Contains(s.ApplicationAccountId)).Select(s=>s.ApplicationAccountId).ToArrayAsync(ct);
  }
+ public async Task<object> OrganizationDashboardAsync(Guid actor,CancellationToken ct=default) {
+  var ownMembershipRows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="MEMBERSHIP"&&d.OwnerId==actor).ToListAsync(ct);
+  var managed=ownMembershipRows.Select(d=>JsonSerializer.Deserialize<OrganizationMembership>(d.Body)!)
+   .Where(m=>m.Role=="MANAGER").Select(m=>m.OrganizationId).Distinct().ToArray();
+  if(managed.Length==0)throw new CommerceForbidden();
+  var organizationRows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="ORGANIZATION"&&managed.Contains(d.Id)).ToListAsync(ct);
+  if(organizationRows.Count!=managed.Length)throw new InvalidOperationException("Organization membership references missing organization.");
+  var organizations=organizationRows.Select(d=>JsonSerializer.Deserialize<CommerceOrganization>(d.Body)!).OrderBy(o=>o.Name,StringComparer.Ordinal).ToList();
+  var programRows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="PROGRAM").ToListAsync(ct);
+  var programs=programRows.Select(d=>JsonSerializer.Deserialize<CreditProgram>(d.Body)!)
+   .Where(p=>p.OrganizationId is Guid organizationId&&managed.Contains(organizationId))
+   .OrderBy(p=>p.ExpiresAtUtc).ThenBy(p=>p.Name,StringComparer.Ordinal).ToList();
+  var membershipRows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="MEMBERSHIP").ToListAsync(ct);
+  var memberships=membershipRows.Select(d=>JsonSerializer.Deserialize<OrganizationMembership>(d.Body)!)
+   .Where(m=>managed.Contains(m.OrganizationId)&&m.Role!="REVOKED").ToList();
+  var notifications=await db.Documents.AsNoTracking().Where(d=>d.Kind=="NOTIFICATION"&&d.OwnerId==actor).ToListAsync(ct);
+  var unreadNotifications=notifications.Select(d=>JsonSerializer.Deserialize<CommerceNotification>(d.Body)!).Count(n=>!n.Read);
+  var tickets=await db.Documents.AsNoTracking().Where(d=>d.Kind=="TICKET"&&d.OwnerId==actor).ToListAsync(ct);
+  var openTickets=tickets.Select(d=>JsonSerializer.Deserialize<SupportTicket>(d.Body)!).Count(t=>t.State=="OPEN");
+  return new {
+   organizations=organizations.Select(o=>new {
+    id=o.Id,name=o.Name,
+    managerCount=memberships.Count(m=>m.OrganizationId==o.Id&&m.Role=="MANAGER"),
+    beneficiaryCount=memberships.Count(m=>m.OrganizationId==o.Id&&m.Role=="BENEFICIARY"),
+    programCount=programs.Count(p=>p.OrganizationId==o.Id)
+   }),
+   programs=programs.Select(p=>new {
+    id=p.Id,organizationId=p.OrganizationId!.Value,name=p.Name,
+    fundedRial=p.FundedRial,unallocatedRial=p.UnallocatedRial,
+    expiresAtUtc=p.ExpiresAtUtc,categoryCount=p.CategoryIds.Count
+   }),
+   unreadNotifications,openTickets
+  };
+ }
  public async Task<object> PublicOffers(Guid? productId,int page,CancellationToken ct) {
   if(page is <1 or >10000)throw new ArgumentException("Page.");var active=await ActiveSellers(ct);
   var query=db.Documents.AsNoTracking().Where(d=>d.Kind=="OFFER"&&active.Contains(d.OwnerId)&&EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));
