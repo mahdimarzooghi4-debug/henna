@@ -320,7 +320,7 @@ async function fakeApi(route) {
         inventory: true,
         pricing: true,
         settlements: true,
-        reports: false,
+        reports: true,
       },
     }));
   }
