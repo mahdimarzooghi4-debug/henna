@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       typeof capabilities.reports !== "boolean" ||
       typeof capabilities.orders !== "boolean" ||
       typeof capabilities.listings !== "boolean" ||
+      typeof capabilities.serviceListings !== "boolean" ||
       typeof capabilities.inventory !== "boolean" ||
       typeof capabilities.pricing !== "boolean" ||
       typeof capabilities.settlements !== "boolean")
@@ -68,11 +69,14 @@ export async function GET(request: NextRequest) {
 
     const goodsEnabled = payload.offeringType === "GOOD" ||
       payload.offeringType === "BOTH";
+    const serviceEnabled = payload.offeringType === "SERVICE" ||
+      payload.offeringType === "BOTH";
     if (capabilities.settlements !== capabilities.orders ||
       capabilities.reports !== capabilities.orders ||
-      capabilities.inventory !== capabilities.listings ||
-      capabilities.pricing !== capabilities.listings ||
-      capabilities.listings !== (capabilities.orders && goodsEnabled))
+      capabilities.listings !== capabilities.orders ||
+      capabilities.pricing !== capabilities.orders ||
+      capabilities.inventory !== (capabilities.orders && goodsEnabled) ||
+      capabilities.serviceListings !== (capabilities.orders && serviceEnabled))
       return error("قابلیت‌های پنل فروشنده با وضعیت واقعی سرویس سازگار نیست.", 503);
 
     return NextResponse.json(payload, { headers: noStore });
