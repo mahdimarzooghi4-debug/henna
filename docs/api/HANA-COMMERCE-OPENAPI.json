@@ -6269,6 +6269,50 @@
           }
         }
       }
+    },
+    "/api/v1/seller/report": {
+      "get": {
+        "description": "Active seller only. Aggregate order, incident and prepared-settlement metrics scoped to the current seller; no buyer identities.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerOperationalReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9370,6 +9414,109 @@
           "programs",
           "unreadNotifications",
           "openTickets"
+        ]
+      },
+      "SellerOperationalReport": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "orders": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "paid": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "preparing": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "readyForPickup": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "collected": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "cancelled": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "grossRial": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "openIncidents": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "incidentRefundRial": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "preparedSettlements": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "settlementGrossRial": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "settlementRefundRial": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "settlementPenaltyRial": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "settlementFeeRial": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "settlementNetRial": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "financeReviewRequired": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          }
+        },
+        "required": [
+          "orders",
+          "paid",
+          "preparing",
+          "readyForPickup",
+          "collected",
+          "cancelled",
+          "grossRial",
+          "openIncidents",
+          "incidentRefundRial",
+          "preparedSettlements",
+          "settlementGrossRial",
+          "settlementRefundRial",
+          "settlementPenaltyRial",
+          "settlementFeeRial",
+          "settlementNetRial",
+          "financeReviewRequired"
         ]
       }
     }
