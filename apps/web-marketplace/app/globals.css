@@ -2927,3 +2927,19 @@ a { color: inherit; }
     grid-template-columns: 1fr;
   }
 }
+
+
+.admin-integrity {
+  margin: 14px 0;
+  padding: 13px 15px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+.admin-integrity--ok {
+  background: #eaf4f2;
+  color: #15584e;
+}
+.admin-integrity--bad {
+  background: #fff0ec;
+  color: #8f2f23;
+}
