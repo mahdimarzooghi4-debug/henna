@@ -87,6 +87,8 @@ internal static class SellerRegistrationEndpoints
                     draft.ActivityCityId,
                     activityCityName,
                     draft.ActivityAddress,
+                    draft.ActivityLatitude,
+                    draft.ActivityLongitude,
                     draft.ActivityHours,
                     draft.SellerDelivery,
                     draft.Pickup,
