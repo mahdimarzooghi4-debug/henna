@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   adminOperationIntent,
+  parseAdminClientResourceList,
   parseAdminCommandResponse,
   parseAdminResourcePage,
   parseAdminSummary,
@@ -64,6 +65,26 @@ test("admin summary and privileged resource DTOs fail closed",()=>{
     }],
   },1);
   assert.equal(households?.[0].householdKey,ID3);
+});
+
+test("camel-case BFF resource DTOs remain bounded in browser",()=>{
+  const programs=parseAdminClientResourceList("programs",[{
+    id:ID,name:"برنامه CI",fundedRial:10000,unallocatedRial:4000,
+    expiresAtUtc:"2026-12-05T05:00:00Z",categoryIds:[ID2],
+    organizationId:null,secret:"never-use",
+  }]);
+  assert.deepEqual(programs,[{
+    id:ID,name:"برنامه CI",fundedRial:10000,unallocatedRial:4000,
+    expiresAtUtc:"2026-12-05T05:00:00Z",categoryIds:[ID2],
+    organizationId:null,
+  }]);
+  assert.equal(JSON.stringify(programs).includes("secret"),false);
+
+  const content=parseAdminClientResourceList("content",[{
+    id:ID,slug:"terms",title:"شرایط",text:"متن",published:false,version:1,
+  }]);
+  assert.equal(content?.[0].title,"شرایط");
+  assert.equal(parseAdminClientResourceList("programs",[{id:"bad"}]),null);
 });
 
 test("admin command responses are bounded by command contract",()=>{
