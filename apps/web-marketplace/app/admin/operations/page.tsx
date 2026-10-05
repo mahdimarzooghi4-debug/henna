@@ -7,7 +7,7 @@ import {
   adminOperationIntent,
   adminRial,
   adminTime,
-  parseAdminResourcePage,
+  parseAdminClientResourceList,
   parseAdminSummary,
   type AdminAudit,
   type AdminContent,
@@ -134,8 +134,7 @@ export default function AdminOperationsPage(){
           cache:"no-store",credentials:"same-origin",redirect:"error",signal,
           headers:{Accept:"application/json"},
         }));
-      const parsed=parseAdminResourcePage(kind,{items:raw,page,
-        ...(kind==="audit"?{}:{pageSize:20})},page);
+      const parsed=parseAdminClientResourceList(kind,raw);
       setter(parsed?{kind:"ready",items:parsed as T[]}:
         {kind:"error",message:"پاسخ مدیریتی قابل اعتماد نیست."});
     }catch(error){
