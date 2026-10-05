@@ -141,7 +141,10 @@ public sealed class CommerceTests
  var contactKey=Guid.NewGuid();var contactInput=new{incidentId,evidenceReference="CI first-call log"};await Command(seller,"RETURN_CONTACT",contactInput,contactKey);await Command(seller,"RETURN_CONTACT",contactInput,contactKey);
  var visitKey=Guid.NewGuid();var visitInput=new{incidentId,evidenceReference="CI door-visit log"};await Command(seller,"RETURN_VISIT",visitInput,visitKey);await Command(seller,"RETURN_VISIT",visitInput,visitKey);
  var stored=JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==creditId)).Body)!;Assert.Equal(10000,stored.AvailableRial);
- clock.UtcNow=clock.UtcNow.AddHours(2);await Command(admin,"ASSESS_RETURN_SLA",new{});
+ clock.UtcNow=clock.UtcNow.AddHours(2);
+ Assert.Equal(1,(await Command(admin,"ASSESS_RETURN_SLA",new{})).GetProperty("assessed").GetInt32());
+ Assert.Equal(0,(await Command(admin,"ASSESS_RETURN_SLA",new{})).GetProperty("assessed").GetInt32());
+ await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(stranger,"ASSESS_RETURN_SLA",new{}));
  var late=JsonSerializer.Deserialize<Incident>((await db.Documents.SingleAsync(d=>d.Id==incidentId)).Body)!;Assert.True(late.PenaltyApplied);Assert.Null(late.CollectedAtUtc);
  Assert.True(await db.Journal.AnyAsync(j=>j.ActorId==buyer&&j.Event=="PLACE_ORDER"));
  // Content moderation and permission revocation must not be bypassed by cached results.
