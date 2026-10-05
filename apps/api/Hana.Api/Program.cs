@@ -76,7 +76,8 @@ var identityConnectionString = builder.Configuration.GetConnectionString("Identi
 var hasIdentityDb = !string.IsNullOrWhiteSpace(identityConnectionString);
 // Research storage is opt-in and has no public write/export endpoint.
 var learningConnectionString = builder.Configuration.GetConnectionString("AllocationLearningDb");
-if (!string.IsNullOrWhiteSpace(learningConnectionString))
+var hasLearningDb = !string.IsNullOrWhiteSpace(learningConnectionString);
+if (hasLearningDb)
 {
     builder.Services.AddDbContext<HanaAllocationLearningDbContext>(options =>
         options.UseNpgsql(learningConnectionString, postgres =>
@@ -96,6 +97,11 @@ if (hasCommerceDb)
         builder.Services.AddHostedService(services => new CommerceAutomation(
             services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<IClock>(),
             services.GetRequiredService<ILogger<CommerceAutomation>>(), automationAccount));
+}
+if (hasCommerceDb && hasLearningDb)
+{
+    builder.Services.AddScoped<HennaAllocationLearningCapture>();
+    builder.Services.AddHostedService<HennaAllocationLearningCaptureWorker>();
 }
 if (hasIdentityDb)
 {
@@ -179,7 +185,6 @@ app.MapGet("/health/ready", async (IServiceProvider services,
                 return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
-        var hasLearningDb = !string.IsNullOrWhiteSpace(learningConnectionString);
         if (hasLearningDb)
         {
             var learningDb = scope.ServiceProvider
@@ -406,7 +411,7 @@ app.MapSellerApplicationAmendments(hasIdentityDb);
 app.MapSellerAccess(hasIdentityDb, hasCommerceDb);
 app.MapAdminSellerApplications(hasIdentityDb);
 app.MapCommerce(hasCommerceDb);
-app.MapAllocationLearningProposals(hasIdentityDb && !string.IsNullOrWhiteSpace(learningConnectionString));
+app.MapAllocationLearningProposals(hasIdentityDb && hasLearningDb);
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapAdminSellerSuspensions(hasIdentityDb);
 app.MapAdminExternalIntegrations(hasIdentityDb);
