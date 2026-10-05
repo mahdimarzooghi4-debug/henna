@@ -28,6 +28,20 @@ public sealed class CommerceTests
   var prior=db.GetService<IModelRuntimeInitializer>().Initialize(snapshot.Model,true);
   Assert.Empty(db.GetService<IMigrationsModelDiffer>().GetDifferences(prior.GetRelationalModel(),db.GetService<IDesignTimeModel>().Model.GetRelationalModel()));
  }
+ [Fact] public void SettlementAutomationUsesTehranMidnightAndDailyStableKey() {
+  var zone=TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran");
+  DateTimeOffset AtLocal(int hour,int minute,int second) {
+   var local=new DateTime(2026,10,6,hour,minute,second,DateTimeKind.Unspecified);
+   return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local,zone));
+  }
+  Assert.Equal(new DateOnly(2026,10,5),
+   CommerceAutomationSchedule.SettlementBusinessDate(AtLocal(0,0,27)));
+  Assert.Null(CommerceAutomationSchedule.SettlementBusinessDate(AtLocal(0,1,0)));
+  Assert.Null(CommerceAutomationSchedule.SettlementBusinessDate(AtLocal(12,0,0)));
+  var a=CommerceAutomationSchedule.Key("BUILD_SETTLEMENTS","2026-10-05");
+  Assert.Equal(a,CommerceAutomationSchedule.Key("BUILD_SETTLEMENTS","2026-10-05"));
+  Assert.NotEqual(a,CommerceAutomationSchedule.Key("BUILD_SETTLEMENTS","2026-10-06"));
+ }
  [Fact] public async Task CreditPurchaseCancellationAndDamageAreAtomicAuditedAndIdempotent() {
  var connection=Environment.GetEnvironmentVariable("ConnectionStrings__IdentityDb");if(string.IsNullOrWhiteSpace(connection))return;
  var database="commerce_test_"+Guid.NewGuid().ToString("N");
