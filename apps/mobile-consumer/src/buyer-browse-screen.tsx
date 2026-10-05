@@ -220,7 +220,7 @@ export function BuyerBrowseScreen({ onLogin, onIssues, onOrders, onCart, active=
                   {browse.search || browse.categoryId
                     ? "در این جست‌وجو یا دسته‌بندی کالای منتشرشده‌ای پیدا نشد."
                     : "پس از انتشار کالاهای واقعی، فهرست اینجا نمایش داده می‌شود."}
-                  {" "}خرید هنوز فعال نیست.
+                  {" "}برای کالاهای منتشرشده، سبد و خرید از جزئیات در دسترس است؛ خدمت فقط ارائه‌دهنده و دسترس‌پذیری را نشان می‌دهد.
                 </Text>
               </View>
             ) : (
@@ -284,7 +284,7 @@ export function BuyerBrowseScreen({ onLogin, onIssues, onOrders, onCart, active=
                   </View>
                 </View>
                 <Text style={styles.nonCommerce}>
-                  این فهرست برای مرور است؛ قیمت، موجودی و امکان خرید هنوز فعال نیست.
+                  قیمت و موجودی کالا هنگام ورود به سبد و مقایسهٔ فروشگاه از سرور بررسی می‌شود؛ خدمات در این مسیر رزرو یا لجستیک ایجاد نمی‌کنند.
                 </Text>
               </>
             )}
