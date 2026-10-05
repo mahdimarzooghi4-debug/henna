@@ -58,6 +58,7 @@ function allowed(scope: PendingCommerceScope, path: string) {
   if (scope === "orders")
     return /^orders\/[0-9a-f-]+\/(cancel|pickup-confirmation)$/i.test(path);
   return path === "evidence" ||
+    /^evidence\/[0-9a-f-]+\/discard$/i.test(path) ||
     /^orders\/[0-9a-f-]+\/incidents$/i.test(path) ||
     /^item-returns\/[0-9a-f-]+\/confirm-collection$/i.test(path);
 }
