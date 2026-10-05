@@ -69,7 +69,8 @@ async function main() {
       }));
     if (url.pathname === "/api/catalog/products/" + OTHER)
       return route.fulfill(json({
-        ...published, id: OTHER, name: "کالای دیگر", description: null,
+        ...published, id: OTHER, kind: "GOOD",
+        name: "کالای دیگر", description: null,
       }));
     assert.equal(url.pathname, "/api/catalog/products/" + ID);
     if (mode === "404") return route.fulfill(json({}, 404));
