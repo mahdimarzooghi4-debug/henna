@@ -23,7 +23,7 @@ formula/dataset version, allocation result, timestamps and structured outcome ob
 Only snapshots recorded internally by Henna without attributed/manual-import provenance are
 training-eligible. Human-attributed assessment capture remains research/audit material and is
 explicitly excluded from labels and training.
-Retention controls and connection to actual allocation/purchase event producers remain to implement.
+Retention controls and additional outcome producers remain to implement. First-party allocation snapshots are now captured directly from Henna's append-only commerce journal by a local DB-to-DB worker; no API or model service is involved.
 Keep identity mapping and health details outside model datasets. Access must be authorized.
 Track credit usage alongside stock availability, delivery/access constraints, essential-needs
 coverage and reviewed complaints. Spending alone is not a need label; unused credit does
@@ -109,7 +109,7 @@ review screen in this increment. Stage review and a controlled pilot remain sepa
 
 ## Experimental supervised weight learner
 
-`ExperimentalAllocationProposalProvider` fits the six weights to independently reviewed
+`ExperimentalAllocationWeightLearner` fits the six weights to independently reviewed
 need scores in [0,1] using constrained least-squares coordinate search. It is a small supervised
 learning implementation, not an LLM. Targets are reviewed need labels under one scoring rubric,
 not purchase volume, unspent credit or the existing formula's own outputs.
@@ -128,22 +128,23 @@ no acceptable candidate. This threshold is experimental, not a validated busines
 
 The output contains training and validation errors, sample counts, rubric, UTC cutoff and a
 SHA-256 fingerprint covering reviewed inputs, partition, baseline and model version. Keeping
-the same inputs and cutoff reproduces the fit. The provider also returns dataset version and
+the same inputs and cutoff reproduces the fit. The Henna-owned workflow freezes dataset version and
 checks that label features match the supplied assessment cases. Geography remains fixed; only
 household weights are learned. Held-out performance does not prove fairness or causal impact.
 
 Synthetic tests demonstrate fitting, repeatability, validation separation and fail-closed
-handling. They are not training on actual Henna beneficiaries. The provider is not registered
-for HTTP training and has no training endpoint yet. The internal workflow below now submits
-successful candidates to the proposal queue. Representative/time-separated evaluation, fairness
+handling. They are not training on actual Henna beneficiaries. The learner has no network endpoint and is never registered as a model service. The authenticated
+administrative train route is only a control-plane trigger for the local in-process workflow;
+the learner itself reads no API. The workflow submits successful candidates to the proposal queue. Representative/time-separated evaluation, fairness
 checks and pilot activation remain future work.
 
 ## Reviewed labels and completed training-run audit
 
 The internal `AllocationTrainingWorkflow` connects persisted first-party Henna snapshots,
 reviewed labels, the local learner and proposal queue. It rejects any attributed/manual
-assessment before labeling and again before training. It is registered when both databases are configured. There is no HTTP label
-or training route yet; internal callers must resolve an active session before supplying an actor.
+assessment before labeling and again before training. It is registered when both databases are configured. Administrative label/train routes invoke
+this local workflow but do not supply a model endpoint or model data API; the workflow reads
+persisted PostgreSQL records directly and requires an active ADMIN actor.
 The workflow checks that the supplied actor currently has a server-side ADMIN assignment.
 
 `ReviewNeedAsync` records a 0–1 reviewed need label, reviewer identity, rubric, training/validation
@@ -196,7 +197,7 @@ Operators select actual persisted labels, with at least 30 training and 10 indep
 
 `/admin/allocation-assessments` and POST `/api/v1/admin/allocation-proposals/research/assessments` let an authenticated current administrator capture a documented external assessment. All six integer 0–3 scores are required (missing is not zero), along with a stable pseudonymous household UUID, dataset/source versions, positive approved geographic factor, nonnegative whole-rial allocation and a past UTC assessment time. The server fixes the supported baseline version and records the authenticated actor and evidence reference. Existing internal snapshots retain null provenance; new HTTP captures require both fields. This is human-attributed intake, not automatic verification of an external dossier, MPI table or payment decision. The operator must use the approved mapping and source document.
 
-Snapshots remain append-only. The browser retains one snapshot UUID across retries; duplicate IDs return 409 without overwriting. There is no national-ID intake, synthetic production seed, wallet write or automatic ingestion connector. Capture → reviewed label → audited training → independent proposal review is now navigable in the administrative UI. The migration adds nullable provenance fields without fabricating authors for historical snapshots. Production migration, real evidence validation and external-source integration are still separate rollout tasks.
+Snapshots remain append-only. The browser retains one snapshot UUID across retries; duplicate IDs return 409 without overwriting. There is no national-ID intake, synthetic production seed or wallet write. Attributed/manual capture is research-only and is deliberately blocked from labels and training. First-party operational allocation snapshots arrive separately from Henna's commerce journal. The migration adds nullable provenance fields without fabricating authors for historical snapshots. Production migration, real evidence validation and external-source integration are still separate rollout tasks.
 
 
 ## Completed training run history
