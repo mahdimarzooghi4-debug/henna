@@ -36,6 +36,34 @@ async function boundedText(response: Request | Response, max: number) {
   }
 }
 
+async function boundedBytes(response: Response, max: number) {
+  if (!response.body) throw Error();
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > max) {
+        await reader.cancel();
+        throw Error();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const output = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    output.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return output;
+}
+
 function failure(status: number, code = "") {
   const message = staffMessages[code] ??
     (status === 401 ? "برای ادامه وارد شوید." :
@@ -192,9 +220,8 @@ export async function forwardStaffCommerce(
       if (!contentType ||
           !["image/png", "image/jpeg", "image/webp"].includes(contentType))
         return failure(503);
-      const bytes = new Uint8Array(await upstream.arrayBuffer());
-      if (bytes.byteLength < 12 || bytes.byteLength > 40000)
-        return failure(503);
+      const bytes = await boundedBytes(upstream, 40000);
+      if (bytes.byteLength < 12) return failure(503);
       return new NextResponse(bytes, {
         status: 200,
         headers: {
