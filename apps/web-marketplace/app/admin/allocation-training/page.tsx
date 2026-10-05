@@ -50,7 +50,7 @@ export default function AllocationTrainingPage() {
       <p>ارزیابی‌های ذخیره‌شده؛ ترتیب فیلدها: سلامت، معیشت، سن، اندازه، مراقبت، تحصیلات.</p>
       {!rows.length && <p>ارزیابی ذخیره‌شده‌ای در این صفحه وجود ندارد.</p>}
       <label htmlFor="snapshot">ارزیابی خانوار</label><select id="snapshot" value={snapshot} disabled={busy} onChange={e => setSnapshot(e.target.value)}>
-        <option value="">انتخاب کنید</option>{rows.map((x,i) => <option key={x.id} value={x.trainingEligible ? x.id : ""} disabled={!x.trainingEligible}>ردیف {i+1} · {x.datasetVersion} · {x.sourceInstructionReference} · {x.trainingEligible ? "داده داخلی حنا" : "فقط پژوهش؛ غیرمجاز برای آموزش"} · {[x.health,x.hardship,x.age,x.size,x.care,x.education].join(" / ")}</option>)}
+        <option value="">انتخاب کنید</option>{rows.map((x,i) => <option key={x.id} value={x.id} disabled={!x.trainingEligible}>ردیف {i+1} · {x.datasetVersion} · {x.sourceInstructionReference} · {x.trainingEligible ? "داده داخلی حنا" : "فقط پژوهش؛ غیرمجاز برای آموزش"} · {[x.health,x.hardship,x.age,x.size,x.care,x.education].join(" / ")}</option>)}
       </select>
       <nav><button disabled={busy || page === 1} onClick={() => setPage(p => p-1)}>قبلی</button><span>صفحه {page}</span><button disabled={busy || rows.length < 20 || page >= 10000} onClick={() => setPage(p => p+1)}>بعدی</button></nav>
       <form onSubmit={e => { e.preventDefault(); void perform(async () => {
