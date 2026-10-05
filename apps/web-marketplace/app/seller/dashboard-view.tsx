@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SellerCommerceOperations } from "./commerce-operations";
 
 type SellerAccess = {
   sellerAccess: true;
@@ -13,7 +14,7 @@ type SellerAccess = {
   offeringType: "GOOD" | "SERVICE" | "BOTH";
   capabilities: {
     dashboard: true;
-    orders: false;
+    orders: true;
     listings: false;
     inventory: false;
     pricing: false;
@@ -24,7 +25,7 @@ type SellerAccess = {
 
 const navigation = [
   ["داشبورد", true],
-  ["سفارش‌ها", false],
+  ["سفارش‌ها", true],
   ["کالاها و خدمات", false],
   ["کتابخانه تصاویر", false],
   ["موجودی و دسترس‌پذیری", false],
@@ -195,6 +196,8 @@ export function SellerDashboardView() {
           </dl>
         </section>
 
+        <SellerCommerceOperations />
+
         <section className="seller-panel__capabilities"
           aria-labelledby="seller-capabilities-heading">
           <div className="seller-panel__section-heading">
@@ -231,8 +234,8 @@ export function SellerDashboardView() {
           <strong>دسترسی فروشندگی فعال است.</strong>
           <p>
             فعال‌شدن نقش فروشنده فقط دسترسی این پنل را باز کرده است.
-            سفارش، موجودی، قیمت‌گذاری و تسویه هرکدام در برش مستقل
-            و پس از اتصال backend واقعی فعال می‌شوند.
+            سفارش و مرجوعی به backend واقعی حنا متصل‌اند. موجودی،
+            قیمت‌گذاری و تسویه در برش‌های مستقل بعدی فعال می‌شوند.
           </p>
         </section>
       </section>
