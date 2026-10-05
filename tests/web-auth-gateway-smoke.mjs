@@ -422,6 +422,7 @@ async function main() {
               dashboard: true,
               orders: true,
               listings: true,
+              serviceListings: false,
               inventory: true,
               pricing: true,
               settlements: true,
