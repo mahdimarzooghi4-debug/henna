@@ -68,6 +68,8 @@ internal static class CommerceEndpoints
    var view=path.StartsWith("/me/",StringComparison.Ordinal)||path=="/carts/current"||path=="/orders"?"BUYER":path.StartsWith("/seller/",StringComparison.Ordinal)?"SELLER":path.StartsWith("/support/",StringComparison.Ordinal)?"SUPPORT":null;
    rest.MapGet(path,(int? page,HttpContext http,IServiceProvider services,CancellationToken ct)=>services.GetRequiredService<CommerceService>().ReadAsync((Guid)http.Items["CommerceActor"]!,resourceKind,null,page??1,ct,view));
  }
+ rest.MapGet("/organization/dashboard",(HttpContext http,IServiceProvider services,CancellationToken ct)=>
+  services.GetRequiredService<CommerceService>().OrganizationDashboardAsync((Guid)http.Items["CommerceActor"]!,ct));
  rest.MapGet("/evidence/{id:guid}",async(Guid id,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
   var e=await services.GetRequiredService<CommerceService>().EvidenceAsync((Guid)http.Items["CommerceActor"]!,id,ct);
   http.Response.Headers["X-Content-Type-Options"]="nosniff";http.Response.Headers["Content-Security-Policy"]="default-src 'none'; sandbox";
