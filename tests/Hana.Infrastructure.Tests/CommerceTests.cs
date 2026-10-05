@@ -177,7 +177,7 @@ public sealed class CommerceTests
  Assert.Equal(HttpStatusCode.OK,publicServices.StatusCode);
  var publicServiceBody=await publicServices.Content.ReadFromJsonAsync<JsonElement>();
  Assert.Single(publicServiceBody.GetProperty("items").EnumerateArray());
- Assert.Equal("CI weekdays 9-17",publicServiceBody.GetProperty("items")[0].GetProperty("AvailabilityNote").GetString());
+ Assert.Equal("CI weekdays 9-17",publicServiceBody.GetProperty("items")[0].GetProperty("availabilityNote").GetString());
  Assert.Equal(HttpStatusCode.BadRequest,(await anonymous.GetAsync("/api/v1/service-listings?page=0")).StatusCode);
  var sellerServices=await storeClient.GetAsync("/api/v1/seller/service-listings?page=1");
  Assert.Equal(HttpStatusCode.OK,sellerServices.StatusCode);
