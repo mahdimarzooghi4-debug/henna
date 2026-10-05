@@ -3,8 +3,8 @@ import {
   accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCookieName,
 } from "./server-auth";
 import {
-  adminOperationId, parseAdminCommandResponse, parseAdminResourcePage, parseAdminSummary,
-  type AdminResourceKind,
+  adminOperationId, parseAdminCommandResponse, parseAdminIntegrity,
+  parseAdminResourcePage, parseAdminSummary, type AdminResourceKind,
 } from "./admin-operations";
 
 async function boundedText(source: Request | Response, max: number) {
@@ -151,11 +151,14 @@ export async function forwardAdminOperations(
     return fail(401,"برای دسترسی مدیریتی ابتدا وارد شوید.");
 
   let upstream="",expectedPage=1,parseKind:AdminResourceKind|null=null;
-  let body:string|undefined,key:string|undefined,summary=false;
+  let body:string|undefined,key:string|undefined,summary=false,integrity=false;
 
   if(method==="GET"&&segments.length===1&&segments[0]==="summary"&&
       request.nextUrl.searchParams.size===0){
     upstream="/api/v1/commerce/resources/SUMMARY"; summary=true;
+  } else if(method==="GET"&&segments.length===1&&segments[0]==="integrity"&&
+      request.nextUrl.searchParams.size===0){
+    upstream="/api/v1/commerce/resources/INTEGRITY"; integrity=true;
   } else if(method==="GET"&&segments.length===1&&resourceMap[segments[0]]){
     const p=page(request); if(p===null)return fail(400,"صفحه‌بندی معتبر نیست.");
     expectedPage=p; const mapped=resourceMap[segments[0]];
@@ -210,6 +213,11 @@ export async function forwardAdminOperations(
       const parsed=parseAdminSummary(raw);
       return parsed?NextResponse.json(parsed,{headers:noStore}):
         fail(503,"پاسخ خلاصه مدیریتی قابل اعتماد نیست.");
+    }
+    if(integrity){
+      const parsed=parseAdminIntegrity(raw);
+      return parsed?NextResponse.json(parsed,{headers:noStore}):
+        fail(503,"پاسخ کنترل یکپارچگی قابل اعتماد نیست.");
     }
     const parsed=parseAdminResourcePage(parseKind!,raw,expectedPage);
     return parsed?NextResponse.json(parsed,{headers:noStore}):
