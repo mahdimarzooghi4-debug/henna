@@ -41,6 +41,11 @@ const rawOffer = (version = 1) => ({
   CategoryId: ITEM, PriceRial: 1400, Stock: 6, Version: version,
   Published: true,
 });
+const rawServiceListing = (version = 1) => ({
+  Id: ORDER, SellerId: "SECRET-SELLER", ProductId: PRODUCT,
+  CategoryId: ITEM, PriceRial: 2400,
+  AvailabilityNote: "CI weekdays", Version: version, Published: true,
+});
 const rawSettlement = {
   Id: ID, OrderId: ORDER, SellerId: "SECRET-SELLER",
   GrossRial: 1000, RefundRial: 0, PenaltyRial: 1000,
@@ -96,6 +101,10 @@ async function main() {
       if (req.method === "GET" && req.url === "/api/v1/seller/offers?page=1")
         return res.end(JSON.stringify({ items: [rawOffer()],
           page: 1, pageSize: 20 }));
+      if (req.method === "GET" &&
+          req.url === "/api/v1/seller/service-listings?page=1")
+        return res.end(JSON.stringify({ items: [rawServiceListing()],
+          page: 1, pageSize: 20 }));
       if (req.method === "GET" && req.url === "/api/v1/seller/settlements?page=1")
         return res.end(JSON.stringify({ items: [rawSettlement],
           page: 1, pageSize: 20 }));
@@ -117,6 +126,9 @@ async function main() {
           page: 1, pageSize: 20 }));
       if (req.method === "POST" && req.url === "/api/v1/seller/offers")
         return res.end(JSON.stringify(rawOffer(2)));
+      if (req.method === "POST" &&
+          req.url === "/api/v1/seller/service-listings")
+        return res.end(JSON.stringify(rawServiceListing(2)));
       if (req.method === "POST" &&
           req.url === "/api/v1/me/notifications/" + ID + "/read")
         return res.end(JSON.stringify(rawNotification(true)));
@@ -233,6 +245,18 @@ async function main() {
   });
   assert.equal(savedOffer.status, 200);
   assert.equal((await savedOffer.json()).version, 2);
+
+  const services = await sellerGet("service-listings?page=1");
+  assert.equal(services.status, 200);
+  const serviceBody = await services.json();
+  assert.equal(serviceBody[0].availabilityNote, "CI weekdays");
+  assert.equal(JSON.stringify(serviceBody).includes("SECRET"), false);
+  const savedService = await post("seller", "service-listings", {
+    listingId: ORDER, productId: PRODUCT, priceRial: 2400,
+    availabilityNote: "CI weekdays", expectedVersion: 1,
+  });
+  assert.equal(savedService.status, 200);
+  assert.equal((await savedService.json()).version, 2);
 
   const settlements = await sellerGet("settlements?page=1");
   assert.equal(settlements.status, 200);
