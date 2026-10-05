@@ -170,7 +170,7 @@ It proves:
 - panel link becomes available after activation
 - `/seller` opens
 - real business/store names are rendered
-- only still-unsupported capability cards are marked «هنوز متصل نشده»
+- no internal seller capability card remains marked «هنوز متصل نشده»; only external bank/logistics boundaries remain out of scope
 - commerce data is loaded only after an explicit seller action
 - order-state and return-contact commands use persisted idempotency
 - no Figma sample metrics are required for the dashboard shell
