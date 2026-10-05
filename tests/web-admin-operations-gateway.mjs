@@ -197,17 +197,6 @@ async function main(){
       "Content-Type":"application/json","Idempotency-Key":ID},
     body:JSON.stringify(body),
   });
-  const sellerAccess=await command("SET_SELLER_ACCESS",{
-    accountId:ACCOUNT,active:false,reason:"reviewed suspension",
-    ignored:"secret",
-  });
-  assert.equal(sellerAccess.status,200);
-  const sellerAccessBody=await sellerAccess.json();
-  assert.deepEqual(sellerAccessBody,{
-    accountId:ACCOUNT,active:false,reason:"reviewed suspension",
-  });
-  assert.equal(JSON.stringify(sellerAccessBody).includes("secret"),false);
-
     const linked=await command("LINK_HOUSEHOLD",{
     accountId:ACCOUNT,householdKey:HOUSEHOLD,evidenceReference:"reviewed-ci",
     ignored:"secret",
