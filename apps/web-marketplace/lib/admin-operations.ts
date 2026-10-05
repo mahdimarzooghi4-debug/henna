@@ -120,11 +120,6 @@ export type AdminAllocation = {
   unallocatedRial: number;
   formulaVersion: string;
 };
-export type AdminSellerAccess = {
-  accountId: string;
-  active: boolean;
-  reason: string;
-};
 
 export function parseAdminSummary(value: unknown): AdminSummary | null {
   const x = row(value);
@@ -295,14 +290,6 @@ export function parseAdminCommandResponse(
   value:unknown,
 ): unknown | null {
   if(action==="SET_STAFF_PERMISSION") return parsePermission(value);
-  if(action==="SET_SELLER_ACCESS"){
-    const x=row(value);
-    return x&&adminOperationId(x.accountId)&&typeof x.active==="boolean"&&
-      text(x.reason,1000)
-      ? {accountId:x.accountId,active:x.active,reason:x.reason}
-        satisfies AdminSellerAccess
-      : null;
-  }
   if(action==="CREATE_PROGRAM") return parseProgram(value);
   if(action==="LINK_HOUSEHOLD") return parseHousehold(value);
   if(action==="ALLOCATE_CREDIT"){
