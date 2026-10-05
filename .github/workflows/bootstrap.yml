@@ -290,10 +290,10 @@ jobs:
           # Compare deterministic logical data, including sequence values.
           pg17 pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
             --dbname="$source_db" --data-only --inserts --no-owner --no-privileges \
-            | grep -vE '^\\\\(un)?restrict ' > "$source_data"
+            | grep -vE '^\\(un)?restrict ' > "$source_data"
           pg17 pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
             --dbname="$restore_db" --data-only --inserts --no-owner --no-privileges \
-            | grep -vE '^\\\\(un)?restrict ' > "$restored_data"
+            | grep -vE '^\\(un)?restrict ' > "$restored_data"
           cmp "$source_data" "$restored_data"
 
           restored='Host=127.0.0.1;Port=5432;Database=hana_ci_restore;Username=hana_ci;Password=hana_ci_only'
