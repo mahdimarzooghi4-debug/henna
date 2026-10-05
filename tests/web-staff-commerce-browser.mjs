@@ -109,7 +109,8 @@ async function main() {
         storeName: "فروشگاه مرورگر", businessName: "کسب‌وکار مرورگر",
         offeringType: "GOOD",
         capabilities: { dashboard:true, orders:true, listings:true,
-          inventory:true, pricing:true, settlements:true, reports: true },
+          serviceListings:false, inventory:true, pricing:true,
+          settlements:true, reports: true },
       }));
 
     if (path === "/api/seller/commerce/orders" && request.method() === "GET") {
