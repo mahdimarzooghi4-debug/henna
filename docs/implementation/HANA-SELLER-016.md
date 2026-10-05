@@ -65,7 +65,7 @@ Current capability readiness:
 - inventory = same readiness as listings
 - pricing = same readiness as listings
 - settlements = true when CommerceDb is configured
-- reports = false
+- reports = true when CommerceDb is configured
 
 ## Dashboard UI
 
@@ -204,6 +204,7 @@ For GOOD/BOTH sellers, the panel now connects existing commerce contracts for:
 - read-only prepared settlements
 - internal notifications and mark-read
 - internal support ticket creation/history
+- server-scoped operational report for order states, incident/refund totals and prepared-settlement breakdowns
 
 Settlement states are deliberately shown as `READY_FOR_BANK_TRANSFER` or
 `FINANCE_REVIEW_REQUIRED`; the UI never labels them paid. Bank transfer remains
@@ -215,7 +216,6 @@ silently republish it through the buyer catalog.
 
 ## Remaining seller scope
 
-- reports/analytics read model
 - service-listing write model for SERVICE-only sellers
 - deactivation/suspension operator flow
 - external bank settlement confirmation
