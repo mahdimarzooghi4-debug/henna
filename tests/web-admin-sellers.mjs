@@ -33,6 +33,8 @@ const detail = {
   businessDescription: "شرح کسب‌وکار",
   businessPhone: "02112345678",
   activityAddress: "نشانی فعالیت",
+  activityLatitude: null,
+  activityLongitude: null,
   activityHours: "شنبه تا پنجشنبه",
   sellerDelivery: false,
   pickup: true,
