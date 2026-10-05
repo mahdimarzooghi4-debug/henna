@@ -27,7 +27,7 @@ function text(value: unknown, max: number) {
     value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
-export type WebPendingScope = "cart" | "checkout" | "orders";
+export type WebPendingScope = "cart" | "checkout" | "orders" | "support";
 
 function validBody(scope: WebPendingScope, path: string, value: unknown) {
   const x = row(value);
@@ -63,6 +63,14 @@ function validBody(scope: WebPendingScope, path: string, value: unknown) {
     const id = path.split("/")[1];
     return commerceId(id) && exactKeys(x,["expectedVersion"]) &&
       int(x.expectedVersion,1,2147483647);
+  }
+  if (scope === "support" && path === "tickets")
+    return exactKeys(x,["subject","message"]) &&
+      text(x.subject,120) && text(x.message,2000);
+  if (scope === "support" &&
+      /^notifications\/[0-9a-f-]+\/read$/i.test(path)) {
+    const id = path.split("/")[1];
+    return commerceId(id) && exactKeys(x,[]);
   }
   return false;
 }
