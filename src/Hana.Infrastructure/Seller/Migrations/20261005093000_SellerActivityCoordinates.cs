@@ -30,7 +30,8 @@ public sealed class SellerActivityCoordinates : Migration
             schema: "seller",
             table: "registration_drafts",
             sql: "(activity_latitude IS NULL AND activity_longitude IS NULL) OR " +
-                "(activity_latitude >= -90 AND activity_latitude <= 90 AND " +
+                "(activity_latitude IS NOT NULL AND activity_longitude IS NOT NULL AND " +
+                "activity_latitude >= -90 AND activity_latitude <= 90 AND " +
                 "activity_longitude >= -180 AND activity_longitude <= 180)");
     }
 
