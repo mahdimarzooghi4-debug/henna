@@ -5446,6 +5446,50 @@
         }
       }
     },
+    "/api/v1/organization/dashboard": {
+      "get": {
+        "description": "Organization manager only. No beneficiary identities, funding references or unrelated organization data are returned.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationDashboard"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/evidence/{id}": {
       "get": {
         "description": "Private evidence download; owner, current SUPPORT or active seller of the referenced incident. no-store, attachment, nosniff, CSP sandbox.",
@@ -9059,6 +9103,117 @@
         "required": [
           "items",
           "page"
+        ]
+      },
+      "OrganizationDashboard": {
+        "type": "object",
+        "properties": {
+          "organizations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "managerCount": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "beneficiaryCount": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "programCount": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "managerCount",
+                "beneficiaryCount",
+                "programCount"
+              ]
+            }
+          },
+          "programs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "organizationId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "fundedRial": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "unallocatedRial": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "expiresAtUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "UTC timestamp with zero offset."
+                },
+                "categoryCount": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "id",
+                "organizationId",
+                "name",
+                "fundedRial",
+                "unallocatedRial",
+                "expiresAtUtc",
+                "categoryCount"
+              ]
+            }
+          },
+          "unreadNotifications": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "openTickets": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "organizations",
+          "programs",
+          "unreadNotifications",
+          "openTickets"
         ]
       }
     }
