@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  adminSellerId,
   adminSellerIntent,
   adminSellerTime,
   parseAdminSellerDetail,
@@ -145,6 +146,15 @@ export default function AdminSellersPage() {
     void loadList(page, controller.signal);
     return () => controller.abort();
   }, [loadList, page]);
+
+  useEffect(() => {
+    if (selected || list.kind !== "ready") return;
+    const requested = new URLSearchParams(window.location.search)
+      .get("application");
+    if (requested && adminSellerId(requested) &&
+        list.items.some(item => item.id === requested))
+      setSelected(requested);
+  }, [list, selected]);
 
   useEffect(() => {
     if (!selected) {
