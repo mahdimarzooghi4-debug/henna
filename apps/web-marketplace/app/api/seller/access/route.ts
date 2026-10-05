@@ -57,18 +57,22 @@ export async function GET(request: NextRequest) {
       return error("دسترسی پنل فروشنده قابل تأیید نیست.", 503);
 
     const capabilities = payload.capabilities as Record<string, unknown>;
-    const expected: Record<string, boolean> = {
-      dashboard: true,
-      listings: false,
-      inventory: false,
-      pricing: false,
-      settlements: false,
-      reports: false,
-    };
-    if (typeof capabilities.orders !== "boolean" ||
-      Object.keys(expected).some((key) =>
-        capabilities[key] !== expected[key]))
+    if (capabilities.dashboard !== true ||
+      capabilities.reports !== false ||
+      typeof capabilities.orders !== "boolean" ||
+      typeof capabilities.listings !== "boolean" ||
+      typeof capabilities.inventory !== "boolean" ||
+      typeof capabilities.pricing !== "boolean" ||
+      typeof capabilities.settlements !== "boolean")
       return error("قابلیت‌های پنل فروشنده قابل تأیید نیست.", 503);
+
+    const goodsEnabled = payload.offeringType === "GOOD" ||
+      payload.offeringType === "BOTH";
+    if (capabilities.settlements !== capabilities.orders ||
+      capabilities.inventory !== capabilities.listings ||
+      capabilities.pricing !== capabilities.listings ||
+      capabilities.listings !== (capabilities.orders && goodsEnabled))
+      return error("قابلیت‌های پنل فروشنده با وضعیت واقعی سرویس سازگار نیست.", 503);
 
     return NextResponse.json(payload, { headers: noStore });
   } catch {
