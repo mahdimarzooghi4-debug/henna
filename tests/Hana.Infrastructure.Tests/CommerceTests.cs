@@ -81,13 +81,15 @@ public sealed class CommerceTests
  var credit=JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==creditId)).Body)!;Assert.Equal(10000,credit.AvailableRial);
  // New paid pickup, then confirmed receipt and support-approved damage.
  await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=1});q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});order=await Command(buyer,"PLACE_ORDER",new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=creditId,unavailableDisposition="KEEP"});orderId=order.GetProperty("Id").GetGuid();
- await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=1,state="PREPARING"});await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=2,state="READY_FOR_PICKUP"});await Command(buyer,"CONFIRM_PICKUP",new{orderId,expectedVersion=3});
+ var sellerStateKey=Guid.NewGuid();var sellerStateInput=new{orderId,expectedVersion=1,state="PREPARING"};await Command(seller,"SELLER_ORDER_STATE",sellerStateInput,sellerStateKey);await Command(seller,"SELLER_ORDER_STATE",sellerStateInput,sellerStateKey);await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=2,state="READY_FOR_PICKUP"});await Command(buyer,"CONFIRM_PICKUP",new{orderId,expectedVersion=3});
  await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"CANCEL_ORDER",new{orderId,expectedVersion=4}));
  var image=await Command(buyer,"SAVE_EVIDENCE",new{contentType="image/png",contentBase64="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII="});
  var evidenceId=image.GetProperty("evidenceId").GetGuid();
  await Assert.ThrowsAsync<CommerceMissing>(()=>service.EvidenceAsync(stranger,evidenceId,default));
  var incident=await Command(buyer,"REPORT_INCIDENT",new{orderId,orderItemId=order.GetProperty("Items")[0].GetProperty("Id").GetGuid(),type="DAMAGED_ITEM",quantity=1,evidenceId});var incidentId=incident.GetProperty("Id").GetGuid();
  await Command(admin,"DECIDE_INCIDENT",new{incidentId,decision="APPROVE",reason="CI reviewed evidence"});
+ var contactKey=Guid.NewGuid();var contactInput=new{incidentId,evidenceReference="CI first-call log"};await Command(seller,"RETURN_CONTACT",contactInput,contactKey);await Command(seller,"RETURN_CONTACT",contactInput,contactKey);
+ var visitKey=Guid.NewGuid();var visitInput=new{incidentId,evidenceReference="CI door-visit log"};await Command(seller,"RETURN_VISIT",visitInput,visitKey);await Command(seller,"RETURN_VISIT",visitInput,visitKey);
  var stored=JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==creditId)).Body)!;Assert.Equal(10000,stored.AvailableRial);
  clock.UtcNow=clock.UtcNow.AddHours(2);await Command(admin,"ASSESS_RETURN_SLA",new{});
  var late=JsonSerializer.Deserialize<Incident>((await db.Documents.SingleAsync(d=>d.Id==incidentId)).Body)!;Assert.True(late.PenaltyApplied);Assert.Null(late.CollectedAtUtc);
@@ -120,6 +122,7 @@ public sealed class CommerceTests
  using var anonymous=factory.CreateClient();using var customer=factory.CreateClient();using var other=factory.CreateClient();using var operatorClient=factory.CreateClient();using var storeClient=factory.CreateClient();
  customer.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[buyer]);other.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[stranger]);operatorClient.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[admin]);storeClient.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",tokens[seller]);
  async Task<HttpResponseMessage> Post(HttpClient client,string action,object body,Guid? commandId=null){using var request=new HttpRequestMessage(HttpMethod.Post,"/api/v1/commerce/commands/"+action){Content=JsonContent.Create(body)};request.Headers.Add("Idempotency-Key",(commandId??Guid.NewGuid()).ToString());return await client.SendAsync(request);}
+ async Task<HttpResponseMessage> PostPath(HttpClient client,string path,object body,Guid? commandId=null){using var request=new HttpRequestMessage(HttpMethod.Post,path){Content=JsonContent.Create(body)};request.Headers.Add("Idempotency-Key",(commandId??Guid.NewGuid()).ToString());return await client.SendAsync(request);}
  Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/commerce/resources/ORDER")).StatusCode);
  Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/orders")).StatusCode);
  Assert.Equal(HttpStatusCode.OK,(await anonymous.GetAsync("/api/v1/content/ci-policy")).StatusCode);
@@ -138,6 +141,11 @@ public sealed class CommerceTests
  var ownCredits=await customer.GetAsync("/api/v1/me/credits");Assert.Equal(HttpStatusCode.OK,ownCredits.StatusCode);
  Assert.Equal(HttpStatusCode.Forbidden,(await Post(customer,"CREATE_PROGRAM",new{})).StatusCode);
  Assert.Equal(HttpStatusCode.NotFound,(await other.GetAsync("/api/v1/commerce/resources/ORDER?id="+orderId)).StatusCode);
+ Assert.Equal(HttpStatusCode.Forbidden,(await other.GetAsync("/api/v1/support/incidents?page=1")).StatusCode);
+ var grantSupport=await Post(operatorClient,"SET_STAFF_PERMISSION",new{accountId=stranger,permission="SUPPORT",active=true});Assert.Equal(HttpStatusCode.OK,grantSupport.StatusCode);
+ var supportIncidents=await other.GetAsync("/api/v1/support/incidents?page=1");Assert.Equal(HttpStatusCode.OK,supportIncidents.StatusCode);Assert.Contains((await supportIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray(),x=>x.GetProperty("Id").GetGuid()==incidentId);
+ var sellerIncidents=await storeClient.GetAsync("/api/v1/commerce/resources/INCIDENT?page=1");Assert.Equal(HttpStatusCode.OK,sellerIncidents.StatusCode);Assert.Contains((await sellerIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray(),x=>x.GetProperty("Id").GetGuid()==incidentId);
+ Assert.Equal(HttpStatusCode.OK,(await other.GetAsync("/api/v1/evidence/"+evidenceId)).StatusCode);
  var currentOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
  Assert.Equal(HttpStatusCode.OK,(await Post(storeClient,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=1,expectedVersion=currentOffer.Version})).StatusCode);
  var p2=await Post(operatorClient,"CREATE_PROGRAM",new{name="Race CI",fundingReference="race-approved",fundedRial=4000,expiresAtUtc=DateTimeOffset.UtcNow.AddDays(1),categoryIds=new[]{category}});Assert.Equal(HttpStatusCode.OK,p2.StatusCode);
@@ -162,7 +170,7 @@ public sealed class CommerceTests
  await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=1,state="PREPARING"});await Command(seller,"SELLER_ORDER_STATE",new{orderId,expectedVersion=2,state="READY_FOR_PICKUP"});await Command(buyer,"CONFIRM_PICKUP",new{orderId,expectedVersion=3});
  for(var n=0;n<3;n++) {
   var issue=await Command(buyer,"REPORT_INCIDENT",new{orderId,orderItemId=order.GetProperty("Items")[0].GetProperty("Id").GetGuid(),type="MISSING_ITEM",quantity=1,evidenceId});
-  await Command(admin,"DECIDE_INCIDENT",new{incidentId=issue.GetProperty("Id").GetGuid(),decision="APPROVE",reason="CI verified shortage"});
+  var shortageIncidentId=issue.GetProperty("Id").GetGuid();var decisionKey=Guid.NewGuid();var decisionBody=new{decision="APPROVE",reason="CI verified shortage"};var supportDecision=await PostPath(other,"/api/v1/support/incidents/"+shortageIncidentId+"/decision",decisionBody,decisionKey);Assert.Equal(HttpStatusCode.OK,supportDecision.StatusCode);var supportReplay=await PostPath(other,"/api/v1/support/incidents/"+shortageIncidentId+"/decision",decisionBody,decisionKey);Assert.Equal(HttpStatusCode.OK,supportReplay.StatusCode);
  }
  db.ChangeTracker.Clear();Assert.Equal(100,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);Assert.Equal(1,JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==tinyCredit)).Body)!.AvailableRial);
  var withdrawal=await Command(buyer,"REQUEST_WITHDRAWAL",new{amountRial=70,ibanVerificationRequestReference="ci-ownership-check-request"});var releaseKey=Guid.NewGuid();var release=new{withdrawalId=withdrawal.GetProperty("Id").GetGuid()};await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);
