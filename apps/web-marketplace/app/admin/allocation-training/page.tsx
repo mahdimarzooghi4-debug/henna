@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import styles from "../allocation-proposals/page.module.css";
-type Assessment = { id: string; datasetVersion: string; sourceInstructionReference: string; health: number; hardship: number; age: number; size: number; care: number; education: number; evidenceReference?: string | null };
+type Assessment = { id: string; datasetVersion: string; sourceInstructionReference: string; health: number; hardship: number; age: number; size: number; care: number; education: number; evidenceReference?: string | null; trainingEligible: boolean };
 type Label = { id: string; snapshotId: string; needScore: number; partition: number };
 class RequestError extends Error { constructor(message: string, public status: number) { super(message); } }
 async function request(path: string, body?: unknown) {
@@ -41,7 +41,7 @@ export default function AllocationTrainingPage() {
     <h1>آموزش آزمایشی تخصیص</h1>
     <Link href="/admin/allocation-training-runs">پیگیری سوابق و نتیجه آموزش</Link>
     <Link href="/admin/allocation-assessments">ثبت ارزیابی مستند خانوار</Link>
-    <aside className={styles.note}>امتیاز نیاز را طبق معیار مصوب، مستقل از مبلغ خرید ثبت کنید. حداقل ۳۰ خانوار برای آموزش و ۱۰ خانوار متفاوت برای ارزیابی لازم است. ضرایب پس از آموزش فعال نمی‌شوند.</aside>
+    <aside className={styles.note}>هوش حنا فقط از snapshotهای first-party ثبت‌شده داخل خود حنا آموزش می‌بیند؛ ارزیابی‌های منتسب/ورودی دستی فقط برای سابقه پژوهشی‌اند و وارد training نمی‌شوند. حداقل ۳۰ خانوار برای آموزش و ۱۰ خانوار متفاوت برای ارزیابی لازم است. ضرایب پس از آموزش خودکار فعال نمی‌شوند.</aside>
     {error && <p role="alert" className={styles.error}>{error}</p>}{notice && <p role="status">{notice}</p>}
     {proposal && <Link href="/admin/allocation-proposals">مشاهده پیشنهاد ثبت‌شده در فهرست بررسی</Link>}
     <section className={styles.card}>
@@ -50,7 +50,7 @@ export default function AllocationTrainingPage() {
       <p>ارزیابی‌های ذخیره‌شده؛ ترتیب فیلدها: سلامت، معیشت، سن، اندازه، مراقبت، تحصیلات.</p>
       {!rows.length && <p>ارزیابی ذخیره‌شده‌ای در این صفحه وجود ندارد.</p>}
       <label htmlFor="snapshot">ارزیابی خانوار</label><select id="snapshot" value={snapshot} disabled={busy} onChange={e => setSnapshot(e.target.value)}>
-        <option value="">انتخاب کنید</option>{rows.map((x,i) => <option key={x.id} value={x.id}>ردیف {i+1} · {x.datasetVersion} · {x.sourceInstructionReference} · {x.evidenceReference ?? "ثبت داخلی"} · {[x.health,x.hardship,x.age,x.size,x.care,x.education].join(" / ")}</option>)}
+        <option value="">انتخاب کنید</option>{rows.map((x,i) => <option key={x.id} value={x.trainingEligible ? x.id : ""} disabled={!x.trainingEligible}>ردیف {i+1} · {x.datasetVersion} · {x.sourceInstructionReference} · {x.trainingEligible ? "داده داخلی حنا" : "فقط پژوهش؛ غیرمجاز برای آموزش"} · {[x.health,x.hardship,x.age,x.size,x.care,x.education].join(" / ")}</option>)}
       </select>
       <nav><button disabled={busy || page === 1} onClick={() => setPage(p => p-1)}>قبلی</button><span>صفحه {page}</span><button disabled={busy || rows.length < 20 || page >= 10000} onClick={() => setPage(p => p+1)}>بعدی</button></nav>
       <form onSubmit={e => { e.preventDefault(); void perform(async () => {
