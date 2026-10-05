@@ -159,6 +159,10 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
             entity.Property(x => x.ActivityCityId).HasColumnName("activity_city_id");
             entity.Property(x => x.ActivityAddress).HasColumnName("activity_address")
                 .HasMaxLength(500);
+            entity.Property(x => x.ActivityLatitude).HasColumnName("activity_latitude")
+                .HasPrecision(9, 6);
+            entity.Property(x => x.ActivityLongitude).HasColumnName("activity_longitude")
+                .HasPrecision(9, 6);
             entity.Property(x => x.ActivityHours).HasColumnName("activity_hours")
                 .HasMaxLength(180);
             entity.Property(x => x.SellerDelivery).HasColumnName("seller_delivery");
