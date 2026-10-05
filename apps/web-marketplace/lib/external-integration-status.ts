@@ -7,6 +7,10 @@ export type ExternalIntegrationStatus = {
     requiredForNaturalSellerVerification: true;
   };
   payment: { configured: boolean; requiredForExternalPayment: true };
+  ibanOwnership: {
+    configured: boolean;
+    requiredForWithdrawalOwnership: true;
+  };
   logistics: { configured: boolean; requiredForDelivery: true };
   allExternalReady: boolean;
 };
@@ -34,16 +38,21 @@ export function parseExternalIntegrationStatus(
   const sellerIdentity = readiness(
     x.sellerIdentity, "requiredForNaturalSellerVerification");
   const payment = readiness(x.payment, "requiredForExternalPayment");
+  const ibanOwnership = readiness(
+    x.ibanOwnership, "requiredForWithdrawalOwnership");
   const logistics = readiness(x.logistics, "requiredForDelivery");
-  if (!sms || !sellerIdentity || !payment || !logistics) return null;
+  if (!sms || !sellerIdentity || !payment || !ibanOwnership || !logistics)
+    return null;
   const expected = sms.configured && sellerIdentity.configured &&
-    payment.configured && logistics.configured;
+    payment.configured && ibanOwnership.configured && logistics.configured;
   if (x.allExternalReady !== expected) return null;
   return {
     sms: sms as ExternalIntegrationStatus["sms"],
     sellerIdentity:
       sellerIdentity as ExternalIntegrationStatus["sellerIdentity"],
     payment: payment as ExternalIntegrationStatus["payment"],
+    ibanOwnership:
+      ibanOwnership as ExternalIntegrationStatus["ibanOwnership"],
     logistics: logistics as ExternalIntegrationStatus["logistics"],
     allExternalReady: x.allExternalReady,
   };
