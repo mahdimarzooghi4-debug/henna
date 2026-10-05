@@ -65,7 +65,7 @@
 
 ## مسیرهای REST
 
-مسیرهای `/carts/current`, `/carts/current/items`, `/carts/current/comparison`, `/quotes`, `/orders`, `/orders/{id}`, `/orders/{id}/cancel`, `/orders/{id}/pickup-confirmation`, `/me/addresses`, `/me/credits`, `/me/wallet`, `/me/withdrawals`, `/me/notifications`, `/seller/offers`, `/seller/orders`, `/seller/settlements` و مسیرهای رسیدگی/بازپس‌گیری به همان سرویس اتمیک متصل‌اند. شناسه مسیر بر ورودی کلاینت تحمیل نمی‌شود: تناقض شناسه مسیر و body رد می‌شود. `/me` و فهرست سفارش خریدار فقط داده خود کاربر را می‌دهند، حتی اگر آن کاربر مجوز مدیریتی دیگری داشته باشد. مسیر فروشگاه به فروشنده فعال و داده همان فروشگاه محدود است.
+مسیرهای `/carts/current`, `/carts/current/items`, `/carts/current/comparison`, `/quotes`, `/orders`, `/orders/{id}`, `/orders/{id}/cancel`, `/orders/{id}/pickup-confirmation`, `/me/addresses`, `/me/credits`, `/me/wallet`, `/me/withdrawals`, `/me/notifications`, `/seller/offers`, `/seller/orders`, `/seller/incidents`, `/seller/settlements`, `/support/incidents`, `/support/incidents/{id}/decision` و مسیرهای رسیدگی/بازپس‌گیری به همان سرویس اتمیک متصل‌اند. شناسه مسیر بر ورودی کلاینت تحمیل نمی‌شود: تناقض شناسه مسیر و body رد می‌شود. `/me` و فهرست سفارش خریدار فقط داده خود کاربر را می‌دهند، حتی اگر آن کاربر مجوز مدیریتی دیگری داشته باشد. مسیرهای فروشگاه به فروشنده فعال و داده همان فروشگاه محدودند. `/seller/incidents` بر اساس `SellerId` پیش از صفحه‌بندی scope می‌شود. مسیر `/support/incidents` فقط با مجوز جاری SUPPORT یا ADMIN باز می‌شود و به نمای شخصی actor fallback نمی‌کند.
 
 
 ## خانوار و مدرک
@@ -84,9 +84,30 @@ SAVE_EVIDENCE تصویر PNG/JPEG/WebP تا ۴۰KB با کنترل امضای ف
 
 ## قرارداد تایپ‌شده خرید
 
-`docs/api/HANA-COMMERCE-OPENAPI.json` قرارداد OpenAPI 3.1 برای ۳۴ فرمان و ۶۵ مسیر خرید است. schemaهای درخواست، خروجی، دسترسی، شناسه نسخه و idempotency در آن مشخص‌اند. فرمان‌ها و منابع ذخیره‌شده PascalCase هستند؛ خروجی public دارای مدل مستقیم HTTP، camelCase است. این فایل مخصوص بک‌اند خرید است و جای قرارداد سایر دامنه‌ها را نمی‌گیرد. `python tools/contracts/commerce_openapi.py --check` پوشش تمام فرمان‌های واقعی و به‌روز بودن قرارداد را کنترل می‌کند.
+`docs/api/HANA-COMMERCE-OPENAPI.json` قرارداد OpenAPI 3.1 برای ۳۴ فرمان و ۶۸ مسیر خرید است. schemaهای درخواست، خروجی، دسترسی، شناسه نسخه و idempotency در آن مشخص‌اند. فرمان‌ها و منابع ذخیره‌شده PascalCase هستند؛ خروجی public دارای مدل مستقیم HTTP، camelCase است. این فایل مخصوص بک‌اند خرید است و جای قرارداد سایر دامنه‌ها را نمی‌گیرد. `python tools/contracts/commerce_openapi.py --check` پوشش تمام فرمان‌های واقعی و به‌روز بودن قرارداد را کنترل می‌کند.
 
 
 ## اتصال وب خریدار
 
 مسیر جزئیات، سبد، مقایسه/پیش‌فاکتور و سفارش‌های خریدار در وب به این سرویس متصل شده است؛ جزئیات و مرزهای آن در `HANA-BUYER-COMMERCE-WEB.md` ثبت شده. سبد Version دارد و expectedVersion اختیاری برای کلاینت‌های قدیمی و اجباری در کلاینت جدید ارسال می‌شود. پیشنهاد عمومی و مقایسه نام واقعی فروشگاه را می‌دهند؛ قلم سفارش جدید ProductName منجمد دارد. خرید نهایی، انتشار کالا/دسته و پوشش نشانی را دوباره کنترل می‌کند.
+
+
+## اتصال وب فروشنده و پشتیبانی
+
+پنل فروشنده اکنون سفارش‌های همان فروشگاه را از read model واقعی می‌خواند و
+تغییر وضعیت `PAID → PREPARING → READY_FOR_PICKUP` را با
+`expectedVersion` و `Idempotency-Key` ثبت می‌کند. فهرست گزارش/مرجوعی
+فروشنده نیز server-scoped است و ثبت تماس اول و مراجعه حضوری روی فرمان‌های
+`RETURN_CONTACT` و `RETURN_VISIT` انجام می‌شود. تأیید دریافت فیزیکی
+مرجوعی همچنان فقط با خریدار است.
+
+پنل پشتیبانی فهرست گزارش‌ها را فقط با مجوز SUPPORT/ADMIN می‌خواند، تصویر
+خصوصی را از proxy همان‌مبدأ و بدون افشای bearer نمایش می‌دهد و
+`APPROVE/REJECT` را با دلیل به سرور می‌فرستد. نتیجه نمایش‌داده‌شده از پاسخ
+واقعی سرور است؛ UI مبلغ بازپرداخت یا state را محلی جعل نمی‌کند.
+
+هر دو پنل از BFF دارای allowlist محدود، cookie امن HttpOnly، کنترل same-origin
+برای mutation، اندازه محدود body/response و DTOهای bounded استفاده می‌کنند.
+در پاسخ نامشخص 503، کلید و بدنه اصلی برای retry ثابت می‌مانند؛ در conflict
+قطعی 409، داده سرور دوباره بارگیری می‌شود. این اتصال، پیامک، PSP یا لجستیک
+خارجی اضافه نمی‌کند و به معنی آمادگی کل محصول یا ظرفیت ملی نیست.
