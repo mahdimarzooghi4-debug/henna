@@ -46,6 +46,8 @@ function detail() {
     businessDescription: "شرح کسب‌وکار مرورگر",
     businessPhone: "02112345678",
     activityAddress: "نشانی فعالیت مرورگر",
+    activityLatitude: null,
+    activityLongitude: null,
     activityHours: "شنبه تا پنجشنبه",
     sellerDelivery: false,
     pickup: true,
