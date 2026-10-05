@@ -328,6 +328,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs tests/web-allocation-assessment.mjs tests/web-allocation-training-runs.mjs
       - name: Test buyer commerce DTOs and safe return destinations
         run: node --experimental-strip-types --test tests/web-buyer-commerce.mjs
+      - name: Test durable web buyer commerce intent recovery
+        run: node --experimental-strip-types --test tests/web-pending-commerce.mjs
       - name: Test staff commerce DTOs and frozen retry intents
         run: node --experimental-strip-types --test tests/web-staff-commerce.mjs
       - name: Test organization dashboard bounded DTO
