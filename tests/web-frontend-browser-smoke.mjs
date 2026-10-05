@@ -761,7 +761,7 @@ async function main() {
   }).waitFor();
   assert.equal(await otherTab.getByText("هنوز متصل نشده", {
     exact: true,
-  }).count(), 1);
+  }).count(), 0);
   await otherTab.getByText("دسترسی فروشندگی فعال است.", {
     exact: true,
   }).waitFor();
