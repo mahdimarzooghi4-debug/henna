@@ -152,8 +152,12 @@ export default function AdminSellersPage() {
     const requested = new URLSearchParams(window.location.search)
       .get("application");
     if (requested && adminSellerId(requested) &&
-        list.items.some(item => item.id === requested))
+        list.items.some(item => item.id === requested)) {
       setSelected(requested);
+      return;
+    }
+    if (list.items.length === 1)
+      setSelected(list.items[0].id);
   }, [list, selected]);
 
   useEffect(() => {
