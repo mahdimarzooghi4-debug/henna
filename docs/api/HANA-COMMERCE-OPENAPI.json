@@ -4647,6 +4647,82 @@
         }
       }
     },
+    "/api/v1/seller/incidents": {
+      "get": {
+        "description": "Scoped before pagination. /me and /orders show the buyer; /seller requires active SELLER.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Incident"
+                      }
+                    },
+                    "page": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 1
+                    },
+                    "pageSize": {
+                      "const": 20
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/me/credits": {
       "get": {
         "description": "Scoped before pagination. /me and /orders show the buyer; /seller requires active SELLER.",
