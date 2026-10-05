@@ -251,8 +251,8 @@ async function main() {
         request.method === "PUT") {
         const data = JSON.parse(body);
         assert.deepEqual(Object.keys(data).sort(), [
-          "activityHours", "address", "cityId", "pickup",
-          "provinceId", "revision", "sellerDelivery", "serviceArea",
+          "activityHours", "address", "cityId", "latitude", "longitude",
+          "pickup", "provinceId", "revision", "sellerDelivery", "serviceArea",
         ].sort());
         if (sellerDraft?.revision !== data.revision ||
           sellerDraft?.completedStep !== 4) {
