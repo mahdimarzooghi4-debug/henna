@@ -96,6 +96,15 @@ function routeFor(
         parsePath: path,
         page: 1,
       };
+    if (scope === "seller" &&
+        ["offers", "settlements", "notifications", "tickets"].includes(path))
+      return {
+        upstream: path === "offers" ? "/seller/offers" :
+          path === "settlements" ? "/seller/settlements" :
+            path === "notifications" ? "/me/notifications" : "/me/tickets",
+        parsePath: path,
+        page: 1,
+      };
     if (scope === "support" && path === "incidents")
       return { upstream: "/support/incidents", parsePath: path, page: 1 };
     if (scope === "support" && segments.length === 2 &&
@@ -108,6 +117,18 @@ function routeFor(
     return null;
   }
 
+  if (scope === "seller" && path === "offers")
+    return { upstream: "/seller/offers", parsePath: path, page: 1 };
+  if (scope === "seller" && path === "tickets")
+    return { upstream: "/support/tickets", parsePath: path, page: 1 };
+  if (scope === "seller" && segments.length === 3 &&
+      segments[0] === "notifications" && commerceId(segments[1]) &&
+      segments[2] === "read")
+    return {
+      upstream: "/me/notifications/" + segments[1] + "/read",
+      parsePath: path,
+      page: 1,
+    };
   if (scope === "seller" && segments.length === 3 &&
       segments[0] === "orders" && commerceId(segments[1]) &&
       segments[2] === "state")
