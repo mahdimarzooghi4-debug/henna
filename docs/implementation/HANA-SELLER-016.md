@@ -60,7 +60,7 @@ The backend returns only real persisted context:
 Current capability readiness:
 
 - dashboard = true
-- orders = true
+- orders = true only when IdentityDb + CommerceDb are configured; otherwise false
 - listings = false
 - inventory = false
 - pricing = false
@@ -97,7 +97,7 @@ Unavailable modules show:
 
 `هنوز متصل نشده`
 
-Orders are now backed by real commerce reads and commands. The seller can load
+When the backend reports `orders=true`, orders are backed by real commerce reads and commands. The seller can load
 its own server-scoped orders, move `PAID → PREPARING → READY_FOR_PICKUP`,
 and load its own incident/return list. For an approved damaged-item return the
 seller can register first contact and then a door visit with a traceable
@@ -143,7 +143,7 @@ Seller activation integration now verifies:
 - activation response reports panel enabled
 - Seller access returns real business name
 - dashboard capability enabled
-- orders capability enabled only after the commerce contract is connected
+- orders capability is true only when the commerce database/service is configured
 - seller order/incident lists are scoped by SellerId before pagination
 - support incident reads require current SUPPORT permission
 
