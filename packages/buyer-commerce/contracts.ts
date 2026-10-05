@@ -22,7 +22,16 @@ export type BuyerOrder = { id: string; sellerId: string; state: "PAID" | "PREPAR
 export type BuyerIncidentOrder = BuyerOrder & {receivedAtUtc:string|null;incidentItems:{id:string;productId:string;productName:string|null;quantity:number;refundedQuantity:number}[]};
 export type BuyerIncident = {id:string;orderId:string;orderItemId:string;type:"DAMAGED_ITEM"|"MISSING_ITEM";quantity:number;state:"UNDER_REVIEW"|"REJECTED"|"AWAITING_RETURN"|"RESOLVED"|"COLLECTED"|"CUSTOMER_UNAVAILABLE_VERIFIED";reportedAtUtc:string;returnDueAtUtc:string|null;collectedAtUtc:string|null;refundRial:number};
 export type BuyerEvidence = {evidenceId:string;sha256:string;contentType:string;size:number};
+export type BuyerNotification = {
+  id:string; code:string; resourceId:string; createdAtUtc:string; read:boolean;
+};
+export type BuyerTicket = {
+  id:string; subject:string; message:string; state:"OPEN"|"ANSWERED";
+  createdAtUtc:string; reply:string|null;
+};
 const incident = (x:unknown):BuyerIncident=>{const r=row(x);if(!["DAMAGED_ITEM","MISSING_ITEM"].includes(r.Type as string)||!["UNDER_REVIEW","REJECTED","AWAITING_RETURN","RESOLVED","COLLECTED","CUSTOMER_UNAVAILABLE_VERIFIED"].includes(r.State as string))throw Error();return {id:id(r.Id),orderId:id(r.OrderId),orderItemId:id(r.OrderItemId),type:r.Type as BuyerIncident["type"],quantity:number(r.Quantity,1,999),state:r.State as BuyerIncident["state"],reportedAtUtc:time(r.ReportedAtUtc),returnDueAtUtc:r.ReturnDueAtUtc===null?null:time(r.ReturnDueAtUtc),collectedAtUtc:r.CollectedAtUtc===null?null:time(r.CollectedAtUtc),refundRial:number(r.RefundRial)};};
+const notification=(x:unknown):BuyerNotification=>{const r=row(x);if(typeof r.Read!=="boolean")throw Error();return{id:id(r.Id),code:text(r.Code,80),resourceId:id(r.ResourceId),createdAtUtc:time(r.CreatedAtUtc),read:r.Read};};
+const ticket=(x:unknown):BuyerTicket=>{const r=row(x);if(!["OPEN","ANSWERED"].includes(String(r.State)))throw Error();return{id:id(r.Id),subject:text(r.Subject,120),message:text(r.Message,2000),state:r.State as BuyerTicket["state"],createdAtUtc:time(r.CreatedAtUtc),reply:r.Reply===null?null:text(r.Reply,2000)};};
 const item = (x: unknown): CartItem => { const r = row(x); return { productId: id(r.ProductId), quantity: number(r.Quantity, 1, 999) }; };
 const quoteItem = (x: unknown): QuoteItem => { const r = row(x); return { offerId: id(r.OfferId), productId: id(r.ProductId), quantity: number(r.Quantity, 1, 999), unitPriceRial: number(r.UnitPriceRial, 1), offerVersion: number(r.OfferVersion, 1) }; };
 const cart = (x: unknown): BuyerCart => { const r = row(x); return { id: id(r.Id), version: number(r.Version), items: list(r.Items, item, 100) }; };
@@ -56,6 +65,11 @@ export function parseCommerce(path: string, method: "GET" | "POST", x: unknown, 
   return attempt(() => {
     if (/^incident-order\//.test(path)) {const r=row(x),parsed=order(x);return {...parsed,receivedAtUtc:r.ReceivedAtUtc===null?null:time(r.ReceivedAtUtc),incidentItems:list(r.Items,v=>{const p=row(v);return{id:id(p.Id),productId:id(p.ProductId),productName:p.ProductName===null||p.ProductName===undefined?null:text(p.ProductName,200),quantity:number(p.Quantity,1,999),refundedQuantity:number(p.RefundedQuantity,0,number(p.Quantity,1,999))};},100)};}
     if (path === "incidents") return page(x,incident,expectedPage);
+    if (path === "notifications")
+      return page(x,notification,expectedPage);
+    if (path === "tickets")
+      return method === "GET" ? page(x,ticket,expectedPage) : ticket(x);
+    if (/^notifications\/[^/]+\/read$/.test(path)) return notification(x);
     if (/^orders\/[^/]+\/incidents$/.test(path)||/^item-returns\/[^/]+\/confirm-collection$/.test(path)) return incident(x);
     if (path === "evidence") {const r=row(x);if(typeof r.sha256!=="string"||!/^[0-9a-f]{64}$/i.test(r.sha256)||!["image/png","image/jpeg","image/webp"].includes(r.contentType as string))throw Error();return{evidenceId:id(r.evidenceId),sha256:r.sha256,contentType:r.contentType,size:number(r.size,12,40000)};}
     if (/^evidence\/[^/]+\/discard$/.test(path)) {const r=row(x);if(r.deleted!==true)throw Error();return{evidenceId:id(r.evidenceId),deleted:true};}
