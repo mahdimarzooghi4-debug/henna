@@ -312,6 +312,9 @@ export default function AdminOperationsPage(){
         </div>
         <div className="admin-ops__header-actions">
           <Link href="/admin/sellers" className="auth-card__secondary">بررسی فروشندگان</Link>
+          <Link href="/support" className="auth-card__secondary">پشتیبانی</Link>
+          <Link href="/admin/allocation-training" className="auth-card__secondary">پژوهش تخصیص</Link>
+          <Link href="/admin/allocation-proposals" className="auth-card__secondary">پیشنهادهای تخصیص</Link>
           <button type="button" className="seller-commerce__refresh"
             disabled={busy!==null} onClick={()=>void refresh()}>تازه‌سازی</button>
         </div>
