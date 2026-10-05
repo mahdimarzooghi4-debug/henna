@@ -296,6 +296,21 @@ public sealed class SellerActivationApiTests
             Assert.True(body.RootElement.GetProperty(
                 "capabilities").GetProperty(
                     "orders").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "listings").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "inventory").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "pricing").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "settlements").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "reports").GetBoolean());
         }
 
         var status = await applicant.GetAsync(
