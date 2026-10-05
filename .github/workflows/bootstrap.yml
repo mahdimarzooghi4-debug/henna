@@ -328,6 +328,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-staff-commerce.mjs
       - name: Test organization dashboard bounded DTO
         run: node --experimental-strip-types --test tests/web-organization-dashboard-smoke.mjs
+      - name: Test admin seller review DTOs and retry intent
+        run: node --experimental-strip-types --test tests/web-admin-sellers.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
@@ -396,6 +398,8 @@ jobs:
         run: node tests/web-staff-commerce-gateway.mjs
       - name: Test organization dashboard gateway over isolated HTTPS
         run: node tests/web-organization-dashboard-gateway.mjs
+      - name: Test admin seller review gateway over isolated HTTPS
+        run: node tests/web-admin-sellers-gateway.mjs
       - name: Test isolated web cookie gateway (CI-only mock upstream)
         run: node tests/web-auth-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
@@ -428,6 +432,8 @@ jobs:
         run: node tests/web-buyer-commerce-browser.mjs
       - name: Browser test seller and support commerce lifecycle
         run: node tests/web-staff-commerce-browser.mjs
+      - name: Browser test admin seller review and activation
+        run: node tests/web-admin-sellers-browser.mjs
       - name: Browser test approved buyer login and seller form across two tabs
         run: node tests/web-frontend-browser-smoke.mjs
       - name: Browser test administrative allocation proposal review
