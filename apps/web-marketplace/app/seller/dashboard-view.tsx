@@ -29,17 +29,14 @@ const navigation = [
   ["داشبورد", true],
   ["سفارش‌ها", false],
   ["کالاها و خدمات", false],
-  ["کتابخانه تصاویر", false],
   ["موجودی و دسترس‌پذیری", false],
   ["قیمت‌گذاری", false],
-  ["طرح‌ها و اعتبارها", false],
-  ["ارسال و محدوده فعالیت", false],
+  ["محدوده فعالیت", true],
   ["تسویه‌حساب‌ها", false],
   ["گزارش‌ها", false],
   ["اعلان‌ها", false],
-  ["اطلاعات کسب‌وکار", false],
+  ["اطلاعات کسب‌وکار", true],
   ["پشتیبانی", false],
-  ["تنظیمات", false],
 ] as const;
 
 const capabilityCards = [
@@ -149,7 +146,7 @@ export function SellerDashboardView() {
 
         <nav className="seller-panel__nav">
           {sellerNavigation.map(([label, enabled]) => {
-            if (label === "اطلاعات کسب‌وکار")
+            if (label === "اطلاعات کسب‌وکار" || label === "محدوده فعالیت")
               return <Link key={label} href="/seller/register/status"
                 className="seller-panel__nav-item seller-panel__nav-item--active">
                 {label}
