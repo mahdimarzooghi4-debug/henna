@@ -64,3 +64,40 @@ test("incident transport uses owner routes only and never allows staff decisions
  for(const path of [`support/incidents/${ID}/decision`,`seller/item-returns/${ID}/contact`,`commerce/commands/SAVE_EVIDENCE`,`me/incidents?accountId=${ID}`])assert.throws(()=>mobileCommerceIntent(path,{},ID),e=>e.status===404);
  assert.equal(s.calls.length,5);assert.equal(JSON.stringify(await s.client.incidents(2)).includes("PRIVATE"),false);
 });
+
+test("native buyer notifications and support use only owner routes",async()=>{
+ const notification={Id:ID,AccountId:"SECRET",Code:"REPLY_TICKET",
+  ResourceId:ID,CreatedAtUtc:"2026-10-05T09:00:00Z",Read:false};
+ const ticket={Id:ID,AccountId:"SECRET",Subject:"پیگیری",Message:"متن",
+  State:"ANSWERED",CreatedAtUtc:"2026-10-05T09:10:00Z",Reply:"پاسخ"};
+ const s=setup((url,o)=>{
+  if(url.includes("/me/notifications?"))
+   return json({items:[notification],page:2,pageSize:20});
+  if(url.endsWith(`/me/notifications/${ID}/read`))
+   return json({...notification,Read:true});
+  if(url.includes("/me/tickets?"))
+   return json({items:[ticket],page:3,pageSize:20});
+  if(url.endsWith("/support/tickets"))return json(ticket);
+  throw Error("unexpected "+url);
+ });
+ const notifications=await s.client.notifications(2);
+ assert.equal(notifications[0].code,"REPLY_TICKET");
+ assert.equal(JSON.stringify(notifications).includes("SECRET"),false);
+ const tickets=await s.client.tickets(3);
+ assert.equal(tickets[0].reply,"پاسخ");
+ assert.equal(JSON.stringify(tickets).includes("SECRET"),false);
+ const read=mobileCommerceIntent(`notifications/${ID}/read`,{},ID);
+ assert.equal((await s.client.post(read)).read,true);
+ const opened=mobileCommerceIntent("tickets",{
+  subject:"پیگیری",message:"متن",
+ },ID);
+ assert.equal((await s.client.post(opened)).state,"ANSWERED");
+ assert.equal(s.calls[0].url,
+  "https://api.henna.test/api/v1/me/notifications?page=2");
+ assert.equal(s.calls[1].url,
+  "https://api.henna.test/api/v1/me/tickets?page=3");
+ assert.equal(s.calls[2].url,
+  `https://api.henna.test/api/v1/me/notifications/${ID}/read`);
+ assert.equal(s.calls[3].url,
+  "https://api.henna.test/api/v1/support/tickets");
+});
