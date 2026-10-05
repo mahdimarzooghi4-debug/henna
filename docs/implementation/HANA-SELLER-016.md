@@ -33,13 +33,14 @@ which is a Next BFF over:
 
 `GET /api/v1/seller/access`
 
-Backend access requires both:
+Backend access requires all of:
 
 1. Identity role `SELLER`
 2. matching Seller application with:
    - `SUBMITTED`
    - review `APPROVED`
    - non-null activation timestamp
+3. no open seller suspension record
 
 A verified account, an APPROVED review by itself, or a browser-only flag is insufficient.
 
@@ -61,9 +62,10 @@ Current capability readiness:
 
 - dashboard = true
 - orders = true only when IdentityDb + CommerceDb are configured; otherwise false
-- listings = true for GOOD/BOTH sellers when CommerceDb is configured
-- inventory = same readiness as listings
-- pricing = same readiness as listings
+- listings = true when CommerceDb is configured
+- serviceListings = true for SERVICE/BOTH sellers when CommerceDb is configured
+- inventory = true only for GOOD/BOTH sellers when CommerceDb is configured
+- pricing = true when CommerceDb is configured
 - settlements = true when CommerceDb is configured
 - reports = true when CommerceDb is configured
 
@@ -196,11 +198,21 @@ safe retry; a known 409 reloads server state before a new decision.
 
 ## Connected seller business operations
 
-For GOOD/BOTH sellers, the panel now connects existing commerce contracts for:
+For GOOD/BOTH sellers, the panel connects:
 
-- seller-owned offers
+- seller-owned GOOD offers
 - price and stock updates with expectedVersion
 - published GOOD catalog lookup before creating a new offer
+
+For SERVICE/BOTH sellers, the panel also connects:
+
+- seller-owned service listings
+- versioned price + availability-note updates
+- published SERVICE catalog lookup before creating a listing
+- public service-provider display on buyer product detail
+- no fake stock, booking slot, delivery coverage or logistics promise
+
+Shared seller operations include:
 - read-only prepared settlements
 - internal notifications and mark-read
 - internal support ticket creation/history
@@ -210,14 +222,30 @@ Settlement states are deliberately shown as `READY_FOR_BANK_TRANSFER` or
 `FINANCE_REVIEW_REQUIRED`; the UI never labels them paid. Bank transfer remains
 an external integration.
 
-Offers whose catalog product/category is later unpublished are removed from the
-public offer API, while the seller can still see the stale own offer and cannot
-silently republish it through the buyer catalog.
+Offers or service listings whose catalog product/category is later unpublished
+are removed from public commerce reads, while the seller can still see its own
+stored row. Public service listings expose price and availability text only;
+they do not claim booking, inventory or delivery.
+
+## Seller suspension and restore
+
+The admin seller-review console has an explicit operator flow for already
+activated sellers:
+
+- suspend requires the current application revision, a bounded reason and a
+  UUID idempotency key;
+- suspension is stored as a separate audit record; activation history and
+  order/settlement history are preserved;
+- the SELLER role is removed in the same database transaction;
+- an open suspension is also checked independently by Seller access, Commerce
+  seller authorization and public offer/service visibility, so an accidental
+  role re-grant cannot bypass the hold;
+- restore requires the current revision and a separate idempotency key, closes
+  the open suspension and re-grants SELLER without deleting suspension history;
+- registration status reports seller access disabled while the hold is open.
 
 ## Remaining seller scope
 
-- service-listing write model for SERVICE-only sellers
-- deactivation/suspension operator flow
 - external bank settlement confirmation
 - external logistics
 
