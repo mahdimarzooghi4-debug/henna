@@ -252,7 +252,10 @@ async function main() {
   await page.getByRole("heading", {
     name: "پیشخوان مدیریت کسب‌وکار",
   }).waitFor();
-  await page.getByRole("button", { name: "بارگیری عملیات" }).click();
+  await page.getByRole("button", {
+    name: "بارگیری عملیات",
+    exact: true,
+  }).click();
   await page.getByText("کالای مرورگر", { exact: true }).waitFor();
   await page.getByRole("button", { name: "شروع آماده‌سازی" }).click();
   await page.getByText("در حال آماده‌سازی", { exact: true }).first().waitFor();
