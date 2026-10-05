@@ -29,9 +29,19 @@ export type BuyerTicket = {
   id:string; subject:string; message:string; state:"OPEN"|"ANSWERED";
   createdAtUtc:string; reply:string|null;
 };
+export type BuyerWallet = { balanceRial:number };
+export type BuyerWithdrawal = {
+  id:string;
+  amountRial:number;
+  state:"OWNERSHIP_VERIFICATION_PENDING"|"CANCELLED";
+  requestedAtUtc:string;
+  dueAtUtc:string;
+  slaEscalated:boolean;
+};
 const incident = (x:unknown):BuyerIncident=>{const r=row(x);if(!["DAMAGED_ITEM","MISSING_ITEM"].includes(r.Type as string)||!["UNDER_REVIEW","REJECTED","AWAITING_RETURN","RESOLVED","COLLECTED","CUSTOMER_UNAVAILABLE_VERIFIED"].includes(r.State as string))throw Error();return {id:id(r.Id),orderId:id(r.OrderId),orderItemId:id(r.OrderItemId),type:r.Type as BuyerIncident["type"],quantity:number(r.Quantity,1,999),state:r.State as BuyerIncident["state"],reportedAtUtc:time(r.ReportedAtUtc),returnDueAtUtc:r.ReturnDueAtUtc===null?null:time(r.ReturnDueAtUtc),collectedAtUtc:r.CollectedAtUtc===null?null:time(r.CollectedAtUtc),refundRial:number(r.RefundRial)};};
 const notification=(x:unknown):BuyerNotification=>{const r=row(x);if(typeof r.Read!=="boolean")throw Error();return{id:id(r.Id),code:text(r.Code,80),resourceId:id(r.ResourceId),createdAtUtc:time(r.CreatedAtUtc),read:r.Read};};
 const ticket=(x:unknown):BuyerTicket=>{const r=row(x);if(!["OPEN","ANSWERED"].includes(String(r.State)))throw Error();return{id:id(r.Id),subject:text(r.Subject,120),message:text(r.Message,2000),state:r.State as BuyerTicket["state"],createdAtUtc:time(r.CreatedAtUtc),reply:r.Reply===null?null:text(r.Reply,2000)};};
+const withdrawal=(x:unknown):BuyerWithdrawal=>{const r=row(x);if(!["OWNERSHIP_VERIFICATION_PENDING","CANCELLED"].includes(String(r.State))||typeof r.SlaEscalated!=="boolean")throw Error();return{id:id(r.Id),amountRial:number(r.AmountRial,1),state:r.State as BuyerWithdrawal["state"],requestedAtUtc:time(r.RequestedAtUtc),dueAtUtc:time(r.DueAtUtc),slaEscalated:r.SlaEscalated};};
 const item = (x: unknown): CartItem => { const r = row(x); return { productId: id(r.ProductId), quantity: number(r.Quantity, 1, 999) }; };
 const quoteItem = (x: unknown): QuoteItem => { const r = row(x); return { offerId: id(r.OfferId), productId: id(r.ProductId), quantity: number(r.Quantity, 1, 999), unitPriceRial: number(r.UnitPriceRial, 1), offerVersion: number(r.OfferVersion, 1) }; };
 const cart = (x: unknown): BuyerCart => { const r = row(x); return { id: id(r.Id), version: number(r.Version), items: list(r.Items, item, 100) }; };
@@ -85,6 +95,9 @@ export function parseCommerce(path: string, method: "GET" | "POST", x: unknown, 
     if (path === "addresses") return method === "GET" ? page(x, address) : address(x);
     if (path === "credits") return page(x, credit);
     if (path === "wallet") { const wallets = page(x, v => number(row(v).BalanceRial)); if (wallets.length > 1) throw Error(); return { balanceRial: wallets[0] ?? 0 }; }
+    if (path === "withdrawals")
+      return method === "GET" ? page(x,withdrawal,expectedPage) : withdrawal(x);
+    if (/^withdrawals\/[^/]+\/cancel$/.test(path)) return withdrawal(x);
     if (path === "quotes") return quote(x);
     if (path === "orders") return method === "GET" ? page(x, order, expectedPage) : order(x);
     if (/^orders\//.test(path)) return order(x);
@@ -107,6 +120,8 @@ export const commerceMessages: Record<string, string> = {
   INCIDENT_QUANTITY_EXCEEDED: "تعداد گزارش از مقدار قابل بررسی بیشتر است؛ وضعیت تازه را دریافت کنید.",
   RETURN_STATE_INVALID: "این مرجوعی اکنون قابل تأیید نیست؛ وضعیت تازه را دریافت کنید.",
   ORDER_TRANSITION_INVALID: "این تغییر در وضعیت فعلی سفارش ممکن نیست.",
+  WALLET_FUNDS_INSUFFICIENT: "موجودی کیف پول برای این برداشت کافی نیست.",
+  WITHDRAWAL_STATE_INVALID: "این درخواست برداشت دیگر قابل لغو نیست.",
   COMMAND_RATE_LIMITED: "تعداد درخواست‌ها زیاد است؛ کمی بعد تلاش کنید.",
 };
 export class BuyerCommerceError extends Error { status: number; code: string; constructor(status: number, code = "") { super((Object.prototype.hasOwnProperty.call(commerceMessages, code) ? commerceMessages[code] : undefined) ?? (status === 401 ? "برای ادامه وارد حساب خود شوید." : status === 403 ? "اجازه این عملیات را ندارید." : status === 404 ? "اطلاعات موردنظر پیدا نشد." : status === 400 ? "اطلاعات واردشده معتبر نیست." : "پاسخ سرور تأیید نشد؛ دوباره تلاش کنید.")); this.status = status; this.code = code; } }
