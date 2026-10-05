@@ -6,7 +6,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BuyerDetailController, type BuyerDetailState } from "./buyer-detail-controller.ts";
-import { MobileCatalogClient } from "./mobile-catalog.ts";
+import {
+  MobileCatalogClient, type CatalogServiceListing,
+} from "./mobile-catalog.ts";
 import { colors } from "./theme";
 
 const logo = require("../assets/hana-app-logo.png");
@@ -17,6 +19,9 @@ export function BuyerProductDetailScreen({
   id, catalog, onBack, onCart, active=true,
 }: { active?:boolean; id: string; catalog: MobileCatalogClient; onBack: () => void; onCart: (productId?:string)=>void }) {
   const [state, setState] = useState<BuyerDetailState>({ status: "loading", id });
+  const [serviceListings,setServiceListings] = useState<
+    {status:"idle"|"loading"|"unavailable";items:CatalogServiceListing[]}
+  >({status:"idle",items:[]});
   const [controller] = useState(
     () => new BuyerDetailController(catalog, setState, id),
   );
@@ -25,6 +30,23 @@ export function BuyerProductDetailScreen({
     controller.start();
     return () => controller.stop();
   }, [controller]);
+
+  useEffect(() => {
+    const detail=state.id===id?state:null;
+    if(detail?.status!=="ok" || detail.product.kind!=="SERVICE"){
+      setServiceListings({status:"idle",items:[]});
+      return;
+    }
+    const abort=new AbortController();
+    setServiceListings({status:"loading",items:[]});
+    void catalog.serviceListings(id,abort.signal).then(result=>{
+      if(abort.signal.aborted)return;
+      setServiceListings(result.status==="ok"
+        ?{status:"idle",items:result.data}
+        :{status:"unavailable",items:[]});
+    });
+    return()=>abort.abort();
+  },[catalog,id,state]);
 
   useEffect(() => {
     if (!active) return;
@@ -115,10 +137,46 @@ export function BuyerProductDetailScreen({
                   </Text>
                 ) : null}
               </View>
-              {detail.product.kind === "GOOD" && <Pressable accessibilityRole="button" accessibilityLabel="انتخاب برای سبد خرید" onPress={()=>onCart(detail.product.id)} style={styles.primaryButton}><Text style={styles.primaryText}>انتخاب برای سبد خرید</Text></Pressable>}
+              {detail.product.kind === "GOOD" ? (
+                <Pressable accessibilityRole="button"
+                  accessibilityLabel="انتخاب برای سبد خرید"
+                  onPress={()=>onCart(detail.product.id)}
+                  style={styles.primaryButton}>
+                  <Text style={styles.primaryText}>انتخاب برای سبد خرید</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle} accessibilityRole="header">
+                    ارائه‌دهندگان این خدمت
+                  </Text>
+                  {serviceListings.status==="loading" ? (
+                    <Text style={styles.text} accessibilityLiveRegion="polite">
+                      در حال دریافت ارائه‌دهندگان…
+                    </Text>
+                  ) : serviceListings.status==="unavailable" ? (
+                    <Text style={styles.error} accessibilityRole="alert">
+                      دریافت ارائه‌دهندگان تأیید نشد.
+                    </Text>
+                  ) : serviceListings.items.length===0 ? (
+                    <Text style={styles.text}>
+                      در حال حاضر ارائه‌دهنده‌ای برای این خدمت منتشر نشده است.
+                    </Text>
+                  ) : serviceListings.items.map(item=>(
+                    <View key={item.id} style={styles.serviceItem}>
+                      <Text style={styles.serviceStore}>{item.storeName}</Text>
+                      <Text style={styles.text}>
+                        قیمت پایه: {new Intl.NumberFormat("fa-IR").format(item.priceRial)} ریال
+                      </Text>
+                      <Text style={styles.text}>{item.availabilityNote}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               <View style={styles.disclosure}>
                 <Text style={styles.disclosureText}>
-                  قیمت و موجودی قطعی هنگام بررسی پیشنهاد فروشگاه کنترل می‌شوند؛ انتخاب سبد سفارش یا رزرو نیست.
+                  {detail.product.kind==="GOOD"
+                    ? "قیمت و موجودی قطعی هنگام بررسی پیشنهاد فروشگاه کنترل می‌شوند؛ انتخاب سبد سفارش یا رزرو نیست."
+                    : "این اطلاعات، دسترس‌پذیری اعلام‌شده است؛ رزرو زمان، پرداخت بانکی و هماهنگی لجستیک در این مسیر انجام نمی‌شود."}
                 </Text>
               </View>
             </>
@@ -175,6 +233,13 @@ const styles = StyleSheet.create({
   text: { color: colors.muted, fontSize: 14, lineHeight: 26, ...rtl },
   category: { color: colors.muted, fontSize: 13, lineHeight: 24, ...rtl },
   description: { color: colors.muted, fontSize: 14, lineHeight: 26, ...rtl },
+  serviceItem: {
+    borderTopWidth: 1, borderTopColor: colors.beige,
+    paddingTop: 10, marginTop: 4, gap: 4,
+  },
+  serviceStore: {
+    color: colors.teal, fontSize: 15, fontWeight: "700", ...rtl,
+  },
   disclosure: {
     backgroundColor: colors.paleTeal, borderRadius: 12,
     paddingHorizontal: 15, paddingVertical: 13,
