@@ -99,6 +99,16 @@ async function main() {
       if (req.method === "GET" && req.url === "/api/v1/seller/settlements?page=1")
         return res.end(JSON.stringify({ items: [rawSettlement],
           page: 1, pageSize: 20 }));
+      if (req.method === "GET" && req.url === "/api/v1/seller/report")
+        return res.end(JSON.stringify({
+          orders: 5, paid: 1, preparing: 1, readyForPickup: 1,
+          collected: 1, cancelled: 1, grossRial: 9000,
+          openIncidents: 1, incidentRefundRial: 1000,
+          preparedSettlements: 2, settlementGrossRial: 7000,
+          settlementRefundRial: 1000, settlementPenaltyRial: 500,
+          settlementFeeRial: 200, settlementNetRial: 5300,
+          financeReviewRequired: 1, BuyerIds: ["SECRET-BUYER"],
+        }));
       if (req.method === "GET" && req.url === "/api/v1/me/notifications?page=1")
         return res.end(JSON.stringify({ items: [rawNotification()],
           page: 1, pageSize: 20 }));
@@ -227,6 +237,14 @@ async function main() {
   const settlements = await sellerGet("settlements?page=1");
   assert.equal(settlements.status, 200);
   assert.equal((await settlements.json())[0].netRial, -500);
+
+  const report = await sellerGet("report");
+  assert.equal(report.status, 200);
+  const reportBody = await report.json();
+  assert.equal(reportBody.settlementNetRial, 5300);
+  assert.equal(JSON.stringify(reportBody).includes("SECRET"), false);
+  assert.equal(calls.at(-1).url, "/api/v1/seller/report");
+  assert.equal((await sellerGet("report?page=1")).status, 400);
 
   const alerts = await sellerGet("notifications?page=1");
   assert.equal(alerts.status, 200);
