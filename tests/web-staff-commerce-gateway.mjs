@@ -36,6 +36,28 @@ const rawIncident = (state = "UNDER_REVIEW") => ({
   FirstContactAtUtc: null, DoorVisitAtUtc: null, CollectedAtUtc: null,
   PenaltyApplied: false, RefundRial: state === "AWAITING_RETURN" ? 1000 : 0,
 });
+const rawOffer = (version = 1) => ({
+  Id: ID, SellerId: "SECRET-SELLER", ProductId: PRODUCT,
+  CategoryId: ITEM, PriceRial: 1400, Stock: 6, Version: version,
+  Published: true,
+});
+const rawSettlement = {
+  Id: ID, OrderId: ORDER, SellerId: "SECRET-SELLER",
+  GrossRial: 1000, RefundRial: 0, PenaltyRial: 1000,
+  FixedFeeRial: 500, FeeVersion: "fee-ci", NetRial: -500,
+  State: "FINANCE_REVIEW_REQUIRED",
+  CreatedAtUtc: "2026-10-05T03:40:00Z",
+};
+const rawNotification = (read = false) => ({
+  Id: ID, AccountId: "SECRET-SELLER", Code: "SELLER_ORDER_STATE",
+  ResourceId: ORDER, CreatedAtUtc: "2026-10-05T03:45:00Z", Read: read,
+});
+const rawTicket = (state = "OPEN") => ({
+  Id: ID, AccountId: "SECRET-SELLER", Subject: "CI support",
+  Message: "CI help", State: state,
+  CreatedAtUtc: "2026-10-05T03:50:00Z",
+  Reply: state === "ANSWERED" ? "CI reply" : null,
+});
 
 async function main() {
   const cert = join(temp, "tls.crt"), key = join(temp, "tls.key");
@@ -71,6 +93,25 @@ async function main() {
       if (req.method === "GET" && req.url === "/api/v1/support/incidents?page=1")
         return res.end(JSON.stringify({ items: [rawIncident()],
           page: 1, pageSize: 20 }));
+      if (req.method === "GET" && req.url === "/api/v1/seller/offers?page=1")
+        return res.end(JSON.stringify({ items: [rawOffer()],
+          page: 1, pageSize: 20 }));
+      if (req.method === "GET" && req.url === "/api/v1/seller/settlements?page=1")
+        return res.end(JSON.stringify({ items: [rawSettlement],
+          page: 1, pageSize: 20 }));
+      if (req.method === "GET" && req.url === "/api/v1/me/notifications?page=1")
+        return res.end(JSON.stringify({ items: [rawNotification()],
+          page: 1, pageSize: 20 }));
+      if (req.method === "GET" && req.url === "/api/v1/me/tickets?page=1")
+        return res.end(JSON.stringify({ items: [rawTicket()],
+          page: 1, pageSize: 20 }));
+      if (req.method === "POST" && req.url === "/api/v1/seller/offers")
+        return res.end(JSON.stringify(rawOffer(2)));
+      if (req.method === "POST" &&
+          req.url === "/api/v1/me/notifications/" + ID + "/read")
+        return res.end(JSON.stringify(rawNotification(true)));
+      if (req.method === "POST" && req.url === "/api/v1/support/tickets")
+        return res.end(JSON.stringify(rawTicket()));
       if (req.method === "POST" &&
           req.url === "/api/v1/seller/orders/" + ORDER + "/state")
         return res.end(JSON.stringify(rawOrder("PREPARING", 2)));
@@ -154,6 +195,38 @@ async function main() {
   assert.deepEqual(JSON.parse(calls.at(-1).body),
     {expectedVersion:1,state:"PREPARING"});
 
+  const offers = await sellerGet("offers?page=1");
+  assert.equal(offers.status, 200);
+  const offerBody = await offers.json();
+  assert.equal(offerBody[0].stock, 6);
+  assert.equal(JSON.stringify(offerBody).includes("SECRET"), false);
+  const savedOffer = await post("seller", "offers", {
+    offerId: ID, productId: PRODUCT, priceRial: 1400,
+    stock: 6, expectedVersion: 1,
+  });
+  assert.equal(savedOffer.status, 200);
+  assert.equal((await savedOffer.json()).version, 2);
+
+  const settlements = await sellerGet("settlements?page=1");
+  assert.equal(settlements.status, 200);
+  assert.equal((await settlements.json())[0].netRial, -500);
+
+  const alerts = await sellerGet("notifications?page=1");
+  assert.equal(alerts.status, 200);
+  assert.equal(JSON.stringify(await alerts.json()).includes("SECRET"), false);
+  const readAlert = await post("seller", `notifications/${ID}/read`, {});
+  assert.equal(readAlert.status, 200);
+  assert.equal((await readAlert.json()).read, true);
+
+  const ticketList = await sellerGet("tickets?page=1");
+  assert.equal(ticketList.status, 200);
+  assert.equal(JSON.stringify(await ticketList.json()).includes("SECRET"), false);
+  const openedTicket = await post("seller", "tickets", {
+    subject: "CI support", message: "CI help",
+  });
+  assert.equal(openedTicket.status, 200);
+  assert.equal((await openedTicket.json()).state, "OPEN");
+
   const returns = await sellerGet("returns?page=1");
   assert.equal(returns.status, 200);
   assert.equal((await returns.json())[0].state, "AWAITING_RETURN");
@@ -182,7 +255,7 @@ async function main() {
   broken = true;
   assert.equal((await supportGet("incidents?page=1")).status, 503);
 
-  console.log("Shipping staff BFF passed: cookie isolation, CSRF, scoped allowlist, bounded DTOs, private evidence and idempotency.");
+  console.log("Shipping staff BFF passed: cookie isolation, CSRF, scoped seller commerce, finance views, alerts, tickets, private evidence and idempotency.");
 }
 
 try { await main(); } finally {
