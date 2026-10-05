@@ -55,6 +55,12 @@ const offer = {
   Id: ID, SellerId: "SECRET-SELLER", ProductId: PRODUCT,
   CategoryId: ITEM, PriceRial: 1500, Stock: 4, Version: 2, Published: true,
 };
+const serviceListing = {
+  Id: ORDER, SellerId: "SECRET-SELLER", ProductId: PRODUCT,
+  CategoryId: ITEM, PriceRial: 2500,
+  AvailabilityNote: "شنبه تا چهارشنبه با هماهنگی",
+  Version: 3, Published: true,
+};
 const settlement = {
   Id: ID, OrderId: ORDER, SellerId: "SECRET-SELLER",
   GrossRial: 1000, RefundRial: 0, PenaltyRial: 1000,
@@ -88,6 +94,11 @@ test("staff DTOs are bounded and omit private owner fields", () => {
 
   const offers = parseStaffCommerce("seller", "offers", "GET", page([offer]));
   assert.equal(offers?.[0].stock, 4);
+  const services = parseStaffCommerce(
+    "seller", "service-listings", "GET", page([serviceListing]));
+  assert.equal(services?.[0].availabilityNote,
+    "شنبه تا چهارشنبه با هماهنگی");
+  assert.equal(JSON.stringify(services).includes("SECRET"), false);
   assert.equal(JSON.stringify(offers).includes("SECRET"), false);
   const settlements = parseStaffCommerce(
     "seller", "settlements", "GET", page([settlement]));
@@ -143,6 +154,9 @@ test("staff command responses validate the exact shipping shapes", () => {
 
   assert.equal(parseStaffCommerce(
     "seller", "offers", "POST", {...offer, Version: 3})?.version, 3);
+  assert.equal(parseStaffCommerce(
+    "seller", "service-listings", "POST",
+    {...serviceListing, Version: 4})?.version, 4);
   assert.equal(parseStaffCommerce(
     "seller", "tickets", "POST", {...ticket, State: "ANSWERED",
       Reply: "پاسخ"})?.state, "ANSWERED");
