@@ -31,6 +31,14 @@ async function main(){
     if(req.url==="/api/v1/commerce/resources/SUMMARY")
       return res.end(JSON.stringify({orders:5,cancelled:1,collected:2,
         openIncidents:1,preparedSettlements:1,grossRial:9000}));
+    if(req.url==="/api/v1/commerce/resources/INTEGRITY")
+      return res.end(JSON.stringify({
+        healthy:true,checkedAtUtc:"2026-10-05T12:00:00Z",
+        violationCount:0,truncated:false,violations:[],
+        counts:{wallets:1,credits:1,programs:1,orders:5,incidents:1,
+          settlements:1,withdrawals:0,evidence:1},
+        secret:"never-forward",
+      }));
     if(req.url==="/api/v1/commerce/resources/AUDIT?page=1")
       return res.end(JSON.stringify({page:1,items:[{
         Id:ID,ActorId:ACCOUNT,CommandId:ID,ResourceId:ACCOUNT,
@@ -142,6 +150,13 @@ async function main(){
     orders:5,cancelled:1,collected:2,openIncidents:1,
     preparedSettlements:1,grossRial:9000,
   });
+
+  const integrity=await fetch(base+"/api/admin/operations/integrity",{headers:cookie});
+  assert.equal(integrity.status,200);
+  const integrityBody=await integrity.json();
+  assert.equal(integrityBody.healthy,true);
+  assert.equal(integrityBody.violationCount,0);
+  assert.equal(JSON.stringify(integrityBody).includes("secret"),false);
 
   const permissions=await fetch(base+"/api/admin/operations/permissions?page=1",{headers:cookie});
   assert.equal(permissions.status,200);
