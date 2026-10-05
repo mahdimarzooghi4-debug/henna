@@ -81,7 +81,7 @@ internal static class SellerAccessEndpoints
                     capabilities = new
                     {
                         dashboard = true,
-                        orders = false,
+                        orders = true,
                         listings = false,
                         inventory = false,
                         pricing = false,
