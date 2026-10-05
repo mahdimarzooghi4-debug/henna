@@ -16,6 +16,12 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "حنا فقط با اقدام خودتان از موقعیت فعلی برای تکمیل مختصات نشانی استفاده می‌کند."
+        }
       ]
     ],
     "ios": {
@@ -25,7 +31,7 @@
       "edgeToEdgeEnabled": true
     },
     "extra": {
-      "implementationPhase": "Frontend 020 buyer public custom-scheme links; native E2E and real SMS adapter pending"
+      "implementationPhase": "Buyer commerce cold-start recovery, evidence cleanup and foreground address location; SMS/PSP/logistics external integrations pending"
     }
   }
 }
