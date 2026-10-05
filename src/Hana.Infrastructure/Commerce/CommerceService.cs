@@ -496,7 +496,9 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var evidence=await All<CommerceEvidence>("EVIDENCE",ct);
   var households=await All<CommerceHouseholdLink>("HOUSEHOLD",ct);
   var violations=new List<object>();
+  var violationCount=0;
   void Bad(string code,string kind,Guid id) {
+   violationCount++;
    if(violations.Count<200)violations.Add(new{code,resourceKind=kind,resourceId=id});
   }
 
@@ -601,9 +603,10 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    Bad("ORPHAN_EVIDENCE_STALE","EVIDENCE",proof.Id);
 
   return new{
-   healthy=violations.Count==0,
+   healthy=violationCount==0,
    checkedAtUtc=clock.UtcNow,
-   truncated=violations.Count>=200,
+   violationCount,
+   truncated=violationCount>violations.Count,
    violations,
    counts=new{
     wallets=wallets.Count,credits=credits.Count,programs=programs.Count,
