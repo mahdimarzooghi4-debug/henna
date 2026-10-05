@@ -76,7 +76,8 @@ command('SET_STAFF_PERMISSION',{'accountId':uuid,'permission':enum('FINANCE','SU
 command('SAVE_CONTENT',{'slug':{'type':'string','maxLength':100,'pattern':'^[a-z0-9]+(?:-[a-z0-9]+)*$'},'title':text(200),'text':text(10000),'expectedVersion':integer(0,2147483647)},ref('CommerceContent'),permission='ADMIN')
 command('PUBLISH_CONTENT',{'contentId':uuid,'published':boolean,'expectedVersion':version},ref('CommerceContent'),permission='ADMIN')
 command('READ_NOTIFICATION',{'notificationId':uuid},ref('CommerceNotification'))
-command('SAVE_EVIDENCE',{'contentType':enum('image/png','image/jpeg','image/webp'),'contentBase64':{'type':'string','maxLength':55000,'contentEncoding':'base64','description':'Decoded image 12..40000 bytes; file signature checked.'}},obj({'evidenceId':uuid,'sha256':{'type':'string','pattern':'^[A-F0-9]{64}
+command('SAVE_EVIDENCE',{'contentType':enum('image/png','image/jpeg','image/webp'),'contentBase64':{'type':'string','maxLength':55000,'contentEncoding':'base64','description':'Decoded image 12..40000 bytes; file signature checked.'}},obj({'evidenceId':uuid,'sha256':{'type':'string','pattern':'^[A-F0-9]{64}$'},'contentType':text(40),'size':integer(12,40000)}))
+command('DELETE_EVIDENCE',{'evidenceId':uuid},obj({'evidenceId':uuid,'deleted':boolean}))
 service=(ROOT/'src/Hana.Infrastructure/Commerce/CommerceService.cs').read_text()
 actual=set(re.findall(r'"([A-Z_]+)"=>await',service))
 assert actual==set(commands), f'Action mismatch: {actual ^ set(commands)}'
