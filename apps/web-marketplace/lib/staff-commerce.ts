@@ -143,6 +143,10 @@ export type StaffReport = {
   financeReviewRequired: number;
 };
 
+export type StaffReturnSlaResult = {
+  assessed: number;
+};
+
 const order = (value: unknown): StaffOrder => {
   const data = row(value);
   const states = ["PAID", "PREPARING", "READY_FOR_PICKUP",
@@ -384,6 +388,10 @@ export function parseStaffCommerce(
     }
     if (scope === "support" && /^tickets\/[^/]+\/reply$/.test(path) &&
         method === "POST") return ticket(value);
+    if (scope === "support" && path === "return-sla" && method === "POST") {
+      const data = row(value);
+      return { assessed: integer(data.assessed) };
+    }
     throw Error();
   });
 }
