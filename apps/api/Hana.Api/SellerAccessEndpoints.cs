@@ -45,6 +45,12 @@ internal static class SellerAccessEndpoints
 
                 var db =
                     services.GetRequiredService<HanaSellerDbContext>();
+                if (await db.SellerSuspensions.AsNoTracking().AnyAsync(
+                    x => x.ApplicationAccountId == accountId.Value &&
+                        x.RestoredAtUtc == null,
+                    cancellationToken))
+                    return Results.StatusCode(
+                        StatusCodes.Status403Forbidden);
                 var activation = await db.RegistrationDrafts
                     .AsNoTracking()
                     .Where(x =>
