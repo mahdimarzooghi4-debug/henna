@@ -73,9 +73,6 @@ export default function AdminOperationsPage(){
   const [staffPermission,setStaffPermission]=useState<"FINANCE"|"SUPPORT">("SUPPORT");
   const [staffActive,setStaffActive]=useState(true);
 
-  const [sellerAccessAccount,setSellerAccessAccount]=useState("");
-  const [sellerAccessActive,setSellerAccessActive]=useState(false);
-  const [sellerAccessReason,setSellerAccessReason]=useState("");
 
   const [contentId,setContentId]=useState("");
   const [contentSlug,setContentSlug]=useState("");
@@ -219,20 +216,7 @@ export default function AdminOperationsPage(){
       accountId:staffAccount,permission:staffPermission,active:staffActive,
     },"مجوز تخصصی کاربر ثبت شد.");
   };
-  const submitSellerAccess=(event:FormEvent)=>{
-    event.preventDefault();
-    const reason=sellerAccessReason.trim();
-    if(!adminOperationId(sellerAccessAccount)||!reason||reason.length>1000){
-      setNotice("شناسه فروشنده و دلیل مستند معتبر لازم است.");return;
-    }
-    void command("SET_SELLER_ACCESS",{
-      accountId:sellerAccessAccount,active:sellerAccessActive,reason,
-    },sellerAccessActive
-      ?"دسترسی عملیاتی فروشنده دوباره فعال شد."
-      :"دسترسی عملیاتی فروشنده تعلیق شد؛ سابقه سفارش حذف نشده است.");
-  };
-
-    const submitContent=(event:FormEvent)=>{
+  const submitContent=(event:FormEvent)=>{
     event.preventDefault();
     const expected=Number(contentVersion);
     if(!Number.isSafeInteger(expected)||expected<0){setNotice("نسخه محتوا معتبر نیست.");return;}
@@ -368,31 +352,6 @@ export default function AdminOperationsPage(){
           <Resource state={permissions} empty="مجوزی ثبت نشده است.">
             {item=><p key={item.id}><bdi dir="ltr">{item.accountId}</bdi> — {item.permission} — {item.active?"فعال":"غیرفعال"}</p>}
           </Resource>
-        </article>
-
-        <article className="admin-ops__section">
-          <h2>تعلیق / رفع تعلیق فروشنده</h2>
-          <p className="form-status">
-            این اقدام فقط نقش عملیاتی SELLER را تغییر می‌دهد؛ پرونده فعال‌سازی
-            و سفارش‌های قبلی حذف نمی‌شوند. دلیل در audit فرمان ثبت می‌شود.
-          </p>
-          <form onSubmit={submitSellerAccess} className="admin-ops__form">
-            <input className="field__input" placeholder="UUID حساب فروشنده"
-              value={sellerAccessAccount}
-              onChange={e=>setSellerAccessAccount(e.target.value)}/>
-            <textarea className="field__input admin-ops__textarea"
-              placeholder="دلیل مستند تعلیق یا رفع تعلیق"
-              maxLength={1000} value={sellerAccessReason}
-              onChange={e=>setSellerAccessReason(e.target.value)}/>
-            <label className="admin-ops__check">
-              <input type="checkbox" checked={sellerAccessActive}
-                onChange={e=>setSellerAccessActive(e.target.checked)}/>
-              دسترسی SELLER فعال باشد
-            </label>
-            <button className="primary-button" disabled={busy!==null}>
-              {sellerAccessActive?"رفع تعلیق":"تعلیق فروشنده"}
-            </button>
-          </form>
         </article>
 
         <article className="admin-ops__section">
