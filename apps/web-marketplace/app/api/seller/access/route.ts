@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const capabilities = payload.capabilities as Record<string, unknown>;
     const expected: Record<string, boolean> = {
       dashboard: true,
-      orders: false,
+      orders: true,
       listings: false,
       inventory: false,
       pricing: false,
