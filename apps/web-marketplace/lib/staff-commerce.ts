@@ -265,6 +265,8 @@ export function parseStaffCommerce(
       return page(value, ticket, expectedPage);
     if (scope === "support" && path === "incidents" && method === "GET")
       return page(value, incident, expectedPage);
+    if (scope === "support" && path === "tickets" && method === "GET")
+      return page(value, ticket, expectedPage);
     if (scope === "seller" && path === "offers" && method === "POST")
       return offer(value);
     if (scope === "seller" && path === "tickets" && method === "POST")
@@ -290,6 +292,16 @@ export function parseStaffCommerce(
         reason: text(data.reason, 1000),
       };
     }
+    if (scope === "support" && /^returns\/[^/]+\/unavailability$/.test(path) &&
+        method === "POST") {
+      const data = row(value);
+      return {
+        incident: incident(data.incident),
+        reason: text(data.reason, 1000),
+      };
+    }
+    if (scope === "support" && /^tickets\/[^/]+\/reply$/.test(path) &&
+        method === "POST") return ticket(value);
     throw Error();
   });
 }
@@ -307,6 +319,8 @@ export const staffMessages: Record<string, string> = {
     "پیش از ثبت مراجعه، تماس اول باید ثبت شده باشد.",
   TIMELY_CALL_AND_DOOR_EVIDENCE_REQUIRED:
     "شواهد تماس و مراجعه در مهلت مقرر کامل نیست.",
+  SETTLEMENT_ALREADY_PREPARED:
+    "برای این سفارش تسویه قبلاً آماده شده و این تصمیم دیگر قابل ثبت نیست.",
   COMMAND_RATE_LIMITED:
     "تعداد درخواست‌ها زیاد است؛ کمی بعد دوباره تلاش کنید.",
   IDEMPOTENCY_PAYLOAD_CHANGED:
