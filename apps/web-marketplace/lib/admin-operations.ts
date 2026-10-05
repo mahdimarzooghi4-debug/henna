@@ -1,0 +1,226 @@
+export const adminOperationId = (value: unknown): value is string =>
+  typeof value === "string" &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) &&
+  value !== "00000000-0000-0000-0000-000000000000";
+
+type Row = Record<string, unknown>;
+const row = (value: unknown): Row | null =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Row : null;
+const int = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER):
+  value is number => typeof value === "number" &&
+  Number.isSafeInteger(value) && value >= min && value <= max;
+const text = (value: unknown, max: number): value is string =>
+  typeof value === "string" && value.trim().length > 0 &&
+  value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
+const utc = (value: unknown): value is string =>
+  typeof value === "string" && value.length <= 50 &&
+  Number.isFinite(Date.parse(value));
+
+export type AdminSummary = {
+  orders: number;
+  cancelled: number;
+  collected: number;
+  openIncidents: number;
+  preparedSettlements: number;
+  grossRial: number;
+};
+export type AdminAudit = {
+  id: string;
+  actorId: string;
+  commandId: string;
+  resourceId: string;
+  event: string;
+  createdAtUtc: string;
+};
+export type AdminPermission = {
+  id: string;
+  accountId: string;
+  permission: "FINANCE" | "SUPPORT";
+  active: boolean;
+};
+export type AdminContent = {
+  id: string;
+  slug: string;
+  title: string;
+  text: string;
+  published: boolean;
+  version: number;
+};
+export type AdminOrganization = {
+  id: string;
+  name: string;
+  registrationReference: string;
+};
+export type AdminMembership = {
+  id: string;
+  organizationId: string;
+  accountId: string;
+  role: "MANAGER" | "BENEFICIARY";
+};
+export type AdminFeePolicy = {
+  id: string;
+  version: string;
+  fixedInvoiceFeeRial: number;
+  approvalReference: string;
+};
+export type AdminWithdrawal = {
+  id: string;
+  buyerId: string;
+  amountRial: number;
+  ibanVerificationRequestReference: string;
+  state: string;
+  requestedAtUtc: string;
+  dueAtUtc: string;
+  slaEscalated: boolean;
+};
+export type AdminSettlement = {
+  id: string;
+  orderId: string;
+  sellerId: string;
+  grossRial: number;
+  refundRial: number;
+  penaltyRial: number;
+  fixedFeeRial: number;
+  feeVersion: string;
+  netRial: number;
+  state: string;
+  createdAtUtc: string;
+};
+
+export function parseAdminSummary(value: unknown): AdminSummary | null {
+  const x = row(value);
+  if (!x || !int(x.orders) || !int(x.cancelled) || !int(x.collected) ||
+      !int(x.openIncidents) || !int(x.preparedSettlements) ||
+      !int(x.grossRial) || x.cancelled > x.orders ||
+      x.collected > x.orders) return null;
+  return {
+    orders: x.orders, cancelled: x.cancelled, collected: x.collected,
+    openIncidents: x.openIncidents,
+    preparedSettlements: x.preparedSettlements,
+    grossRial: x.grossRial,
+  };
+}
+
+const parseAudit = (value: unknown): AdminAudit | null => {
+  const x = row(value);
+  return x && adminOperationId(x.Id) && adminOperationId(x.ActorId) &&
+    adminOperationId(x.CommandId) && adminOperationId(x.ResourceId) &&
+    text(x.Event, 120) && utc(x.CreatedAtUtc)
+    ? { id:x.Id, actorId:x.ActorId, commandId:x.CommandId,
+      resourceId:x.ResourceId, event:x.Event, createdAtUtc:x.CreatedAtUtc }
+    : null;
+};
+const parsePermission = (value: unknown): AdminPermission | null => {
+  const x = row(value);
+  return x && adminOperationId(x.Id) && adminOperationId(x.AccountId) &&
+    ["FINANCE","SUPPORT"].includes(String(x.Permission)) &&
+    typeof x.Active === "boolean"
+    ? { id:x.Id, accountId:x.AccountId,
+      permission:x.Permission as AdminPermission["permission"],
+      active:x.Active } : null;
+};
+const parseContent = (value: unknown): AdminContent | null => {
+  const x = row(value);
+  return x && adminOperationId(x.Id) && text(x.Slug,100) &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(x.Slug) &&
+    text(x.Title,200) && text(x.Text,10000) &&
+    typeof x.Published === "boolean" && int(x.Version,0,2147483647)
+    ? { id:x.Id, slug:x.Slug, title:x.Title, text:x.Text,
+      published:x.Published, version:x.Version } : null;
+};
+const parseOrganization = (value: unknown): AdminOrganization | null => {
+  const x = row(value);
+  return x && adminOperationId(x.Id) && text(x.Name,200) &&
+    text(x.RegistrationReference,1000)
+    ? { id:x.Id, name:x.Name, registrationReference:x.RegistrationReference }
+    : null;
+};
+const parseMembership = (value: unknown): AdminMembership | null => {
+  const x = row(value);
+  return x && adminOperationId(x.Id) &&
+    adminOperationId(x.OrganizationId) && adminOperationId(x.AccountId) &&
+    ["MANAGER","BENEFICIARY"].includes(String(x.Role))
+    ? { id:x.Id, organizationId:x.OrganizationId, accountId:x.AccountId,
+      role:x.Role as AdminMembership["role"] } : null;
+};
+const parseFee = (value: unknown): AdminFeePolicy | null => {
+  const x = row(value);
+  return x && adminOperationId(x.Id) && text(x.Version,120) &&
+    int(x.FixedInvoiceFeeRial) && text(x.ApprovalReference,1000)
+    ? { id:x.Id, version:x.Version,
+      fixedInvoiceFeeRial:x.FixedInvoiceFeeRial,
+      approvalReference:x.ApprovalReference } : null;
+};
+const parseWithdrawal = (value: unknown): AdminWithdrawal | null => {
+  const x = row(value);
+  return x && adminOperationId(x.Id) && adminOperationId(x.BuyerId) &&
+    int(x.AmountRial,1) && text(x.IbanVerificationRequestReference,1000) &&
+    text(x.State,80) && utc(x.RequestedAtUtc) && utc(x.DueAtUtc) &&
+    typeof x.SlaEscalated === "boolean"
+    ? { id:x.Id, buyerId:x.BuyerId, amountRial:x.AmountRial,
+      ibanVerificationRequestReference:x.IbanVerificationRequestReference,
+      state:x.State, requestedAtUtc:x.RequestedAtUtc,
+      dueAtUtc:x.DueAtUtc, slaEscalated:x.SlaEscalated } : null;
+};
+const parseSettlement = (value: unknown): AdminSettlement | null => {
+  const x = row(value);
+  return x && adminOperationId(x.Id) && adminOperationId(x.OrderId) &&
+    adminOperationId(x.SellerId) && int(x.GrossRial) &&
+    int(x.RefundRial) && int(x.PenaltyRial) && int(x.FixedFeeRial) &&
+    text(x.FeeVersion,120) && int(x.NetRial) && text(x.State,80) &&
+    utc(x.CreatedAtUtc)
+    ? { id:x.Id, orderId:x.OrderId, sellerId:x.SellerId,
+      grossRial:x.GrossRial, refundRial:x.RefundRial,
+      penaltyRial:x.PenaltyRial, fixedFeeRial:x.FixedFeeRial,
+      feeVersion:x.FeeVersion, netRial:x.NetRial,
+      state:x.State, createdAtUtc:x.CreatedAtUtc } : null;
+};
+
+const parsers = {
+  audit: parseAudit,
+  permissions: parsePermission,
+  content: parseContent,
+  organizations: parseOrganization,
+  memberships: parseMembership,
+  "fee-policies": parseFee,
+  withdrawals: parseWithdrawal,
+  settlements: parseSettlement,
+} as const;
+
+export type AdminResourceKind = keyof typeof parsers;
+export function parseAdminResourcePage(
+  kind: AdminResourceKind,
+  value: unknown,
+  expectedPage: number,
+): unknown[] | null {
+  const x = row(value);
+  if (!x || x.page !== expectedPage ||
+      !(x.pageSize === 20 || (kind === "audit" && x.pageSize === undefined)) ||
+      !Array.isArray(x.items) || x.items.length > 20) return null;
+  const result: unknown[] = [];
+  for (const item of x.items) {
+    const parsed = parsers[kind](item as never);
+    if (!parsed) return null;
+    result.push(parsed);
+  }
+  return result;
+}
+
+export type AdminOperationIntent = { action:string; body:string; key:string };
+export function adminOperationIntent(
+  previous: AdminOperationIntent | null,
+  action: string,
+  input: unknown,
+): AdminOperationIntent {
+  const body=JSON.stringify(input);
+  return previous?.action===action && previous.body===body
+    ? previous : { action, body, key: crypto.randomUUID() };
+}
+
+export const adminRial = (value:number) =>
+  new Intl.NumberFormat("fa-IR").format(value) + " ریال";
+export const adminTime = (value:string) =>
+  new Intl.DateTimeFormat("fa-IR", {
+    dateStyle:"medium", timeStyle:"short",
+  }).format(new Date(value));
