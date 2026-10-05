@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BuyerProductPurchase } from "./buyer-product-purchase";
+import { BuyerServiceListings } from "./buyer-service-listings";
 import { useEffect, useState } from "react";
 import {
   parseBuyerProduct, validBuyerProductId, type BuyerProduct,
@@ -131,7 +132,10 @@ export function BuyerProductDetail({ id, backHref }: {
             {current.product.description !== null &&
               <p className="buyer-detail-description">{current.product.description}</p>}
           </article>
-          {current.product.kind === "GOOD" ? <BuyerProductPurchase key={id} productId={id}/> : <p className="buyer-detail-disclosure">خرید خدمات در این مسیر فعال نیست.</p>}
+          {current.product.kind === "GOOD"
+            ? <BuyerProductPurchase key={id} productId={id}/>
+            : <BuyerServiceListings key={id} productId={id}/>}
+
         </>
       )}
       <Link href={backHref} className="buyer-detail-button buyer-detail-button--back">
