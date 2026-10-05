@@ -89,7 +89,19 @@ public sealed class CommerceTests
  var image=await Command(buyer,"SAVE_EVIDENCE",new{contentType="image/png",contentBase64="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII="});
  var evidenceId=image.GetProperty("evidenceId").GetGuid();
  await Assert.ThrowsAsync<CommerceMissing>(()=>service.EvidenceAsync(stranger,evidenceId,default));
+
+ // An unreferenced owner image can be discarded idempotently, but another account cannot.
+ var orphanImage=await Command(buyer,"SAVE_EVIDENCE",new{contentType="image/png",contentBase64="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII="});
+ var orphanEvidenceId=orphanImage.GetProperty("evidenceId").GetGuid();
+ await Assert.ThrowsAsync<CommerceMissing>(()=>Command(stranger,"DELETE_EVIDENCE",new{evidenceId=orphanEvidenceId}));
+ var discardKey=Guid.NewGuid();var discardInput=new{evidenceId=orphanEvidenceId};
+ Assert.True((await Command(buyer,"DELETE_EVIDENCE",discardInput,discardKey)).GetProperty("deleted").GetBoolean());
+ Assert.True((await Command(buyer,"DELETE_EVIDENCE",discardInput,discardKey)).GetProperty("deleted").GetBoolean());
+ Assert.False(await db.Documents.AsNoTracking().AnyAsync(d=>d.Id==orphanEvidenceId&&d.Kind=="EVIDENCE"));
+
  var incident=await Command(buyer,"REPORT_INCIDENT",new{orderId,orderItemId=order.GetProperty("Items")[0].GetProperty("Id").GetGuid(),type="DAMAGED_ITEM",quantity=1,evidenceId});var incidentId=incident.GetProperty("Id").GetGuid();
+ var evidenceInUse=await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"DELETE_EVIDENCE",new{evidenceId}));
+ Assert.Equal("EVIDENCE_IN_USE",evidenceInUse.Message);
  await Command(admin,"DECIDE_INCIDENT",new{incidentId,decision="APPROVE",reason="CI reviewed evidence"});
  var contactKey=Guid.NewGuid();var contactInput=new{incidentId,evidenceReference="CI first-call log"};await Command(seller,"RETURN_CONTACT",contactInput,contactKey);await Command(seller,"RETURN_CONTACT",contactInput,contactKey);
  var visitKey=Guid.NewGuid();var visitInput=new{incidentId,evidenceReference="CI door-visit log"};await Command(seller,"RETURN_VISIT",visitInput,visitKey);await Command(seller,"RETURN_VISIT",visitInput,visitKey);
