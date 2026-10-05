@@ -351,7 +351,9 @@ public sealed class CommerceTests
  // pretending that external bank/logistics reconciliation has happened.
  await Assert.ThrowsAsync<CommerceForbidden>(()=>service.IntegrityAsync(buyer));
  var healthyIntegrity=JsonSerializer.SerializeToElement(await service.IntegrityAsync(admin));
- Assert.True(healthyIntegrity.GetProperty("healthy").GetBoolean());
+ Assert.True(
+  healthyIntegrity.GetProperty("healthy").GetBoolean(),
+  healthyIntegrity.GetRawText());
  Assert.Equal(0,healthyIntegrity.GetProperty("violationCount").GetInt32());
 
  var corruptAccount=Guid.NewGuid();
