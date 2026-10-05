@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { NativeIncidentsController,evidencePhotoValid } from "../apps/mobile-consumer/src/buyer-incidents-controller.ts";
 import { BuyerCommerceError,parseCommerce } from "../packages/buyer-commerce/contracts.ts";
-const ID="60000000-0000-4000-8000-000000000001",OTHER="60000000-0000-4000-8000-000000000002";
+const ID="60000000-0000-4000-8000-000000000001",OTHER="60000000-0000-4000-8000-000000000002",THIRD="60000000-0000-4000-8000-000000000003";
 const photo={uri:"file:///selected.jpg",base64:Buffer.from([255,216,255,0,0,0,0,0,0,0,255,217]).toString("base64")};
 let now=Date.parse("2026-10-04T20:00:00Z");const receivedAtUtc="2026-10-04T19:45:00Z";
 const order={id:ID,state:"COLLECTED",receivedAtUtc,incidentItems:[{id:ID,productId:ID,quantity:2,refundedQuantity:0}]};
@@ -12,6 +12,74 @@ function setup(overrides={},orderId=ID){let state;const api={incidentOrder:async
 test("photo upload and report each retain their own intent; editing and back-page changes cannot replace a pending report",async()=>{now=Date.parse("2026-10-04T20:00:00Z");const attempts=[];let upload=0,report=0;const f=setup({post:async i=>{attempts.push(i);if(i.path==="evidence"){if(++upload===1)throw new BuyerCommerceError(503);return{evidenceId:OTHER};}if(++report===1)throw new BuyerCommerceError(503);return issue;}});await wait(()=>f.state()?.order&&!f.state().busy);f.c.edit({itemId:ID,quantity:1,photo});await f.c.report();assert.equal(f.state().intent.path,"evidence");f.c.edit({quantity:2,photo:null});await f.c.retry();assert.equal(attempts[0],attempts[1]);assert.equal(f.state().intent.path,`orders/${ID}/incidents`);now+=7200000;await f.c.page(1);await f.c.retry();assert.equal(attempts[2],attempts[3]);assert.deepEqual(JSON.parse(attempts[3].body),{orderItemId:ID,type:"DAMAGED_ITEM",quantity:1,evidenceId:OTHER});assert.equal(f.state().intent,null);assert.equal(f.state().draft.photo,null);f.c.stop();});
 test("new reports require real received time, unrefunded quantity and a bounded photo",async()=>{now=Date.parse("2026-10-04T20:00:00Z");let calls=0;const f=setup({post:async()=>{calls++;return{};}});await wait(()=>f.state()?.order&&!f.state().busy);f.c.edit({itemId:ID,quantity:3,photo});await f.c.report();assert.equal(calls,0);f.c.edit({quantity:1,photo:null});assert.equal(f.c.canReport(),false);f.c.edit({photo});assert.equal(f.c.canReport(),true);assert.equal(evidencePhotoValid({...photo,base64:"/9j/"+"A".repeat(54000)}),false);now+=7200000;await f.c.report();assert.equal(calls,0);f.c.stop();});
 test("upload acknowledged after the window expires does not create a fresh report",async()=>{now=Date.parse("2026-10-04T20:00:00Z");const paths=[];const f=setup({post:async i=>{paths.push(i.path);now+=7200000;return{evidenceId:OTHER};}});await wait(()=>f.state()?.order&&!f.state().busy);f.c.edit({itemId:ID,photo});await f.c.report();assert.deepEqual(paths,["evidence"]);assert.equal(f.state().intent,null);f.c.stop();});
+test("persisted evidence is deleted when upload succeeds after the report window closes",async()=>{
+ now=Date.parse("2026-10-04T20:00:00Z");
+ const paths=[],events=[];let state,key=0;
+ const pending={
+  restore:async()=>null,
+  save:async(scope,intent,context)=>events.push(["save",scope,intent.path,intent.key,context?.photoUri]),
+  advance:async(prior,scope,intent,context)=>events.push(["advance",prior,scope,intent.path,intent.key,context?.photoUri]),
+  clear:async current=>{events.push(["clear",current]);return true;},
+  discardPhoto:async()=>{},cleanupPhotos:async()=>{},
+ };
+ const api={
+  incidentOrder:async()=>order,incidents:async()=>[issue],
+  post:async intent=>{
+   paths.push(intent.path);
+   if(intent.path==="evidence"){now+=7200000;return{evidenceId:OTHER};}
+   if(intent.path===`evidence/${OTHER}/discard`)return{evidenceId:OTHER,deleted:true};
+   throw Error("unexpected");
+  },
+ };
+ const keys=[ID,THIRD];
+ const c=new NativeIncidentsController(api,()=>keys[key++],next=>state=next,ID,()=>now,pending);
+ c.start();await wait(()=>state?.order&&!state.busy);
+ c.edit({itemId:ID,quantity:1,photo});await c.report();
+ assert.deepEqual(paths,["evidence",`evidence/${OTHER}/discard`]);
+ assert.ok(events.some(e=>e[0]==="advance"&&e[3]===`evidence/${OTHER}/discard`));
+ assert.ok(events.some(e=>e[0]==="clear"&&e[1]===THIRD));
+ assert.equal(state.intent,null);assert.equal(state.draft.photo,null);
+ assert.equal(state.message,"مدرک بدون گزارش از سرور پاک شد.");
+ c.stop();
+});
+
+test("terminal report rejection advances to cleanup while ambiguous cleanup stays retryable",async()=>{
+ now=Date.parse("2026-10-04T20:00:00Z");
+ const paths=[],events=[];let state,key=0,cleanupAttempts=0,stored=null;
+ const pending={
+  restore:async()=>stored,
+  save:async(scope,intent,context)=>{if(!stored)stored={scope,intent,incident:context};events.push(["save",intent.path,intent.key]);},
+  advance:async(prior,scope,intent,context)=>{events.push(["advance",prior,intent.path,intent.key]);stored={scope,intent,incident:context};},
+  clear:async current=>{events.push(["clear",current]);stored=null;return true;},
+  discardPhoto:async()=>{},cleanupPhotos:async()=>{},
+ };
+ const api={
+  incidentOrder:async()=>order,incidents:async()=>[issue],
+  post:async intent=>{
+   paths.push(intent.path);
+   if(intent.path==="evidence")return{evidenceId:OTHER};
+   if(intent.path===`orders/${ID}/incidents`)throw new BuyerCommerceError(409,"INCIDENT_WINDOW_EXPIRED");
+   if(intent.path===`evidence/${OTHER}/discard`){
+    if(++cleanupAttempts===1)throw new BuyerCommerceError(503);
+    return{evidenceId:OTHER,deleted:true};
+   }
+   throw Error("unexpected");
+  },
+ };
+ const keys=[ID,THIRD,OTHER];
+ const c=new NativeIncidentsController(api,()=>keys[key++],next=>state=next,ID,()=>now,pending);
+ c.start();await wait(()=>state?.order&&!state.busy);
+ c.edit({itemId:ID,quantity:1,photo});await c.report();
+ assert.deepEqual(paths,["evidence",`orders/${ID}/incidents`,`evidence/${OTHER}/discard`]);
+ assert.equal(state.intent.path,`evidence/${OTHER}/discard`);
+ assert.equal(stored.intent.key,OTHER);
+ await c.retry();
+ assert.equal(paths.at(-1),`evidence/${OTHER}/discard`);
+ assert.equal(state.intent,null);assert.equal(stored,null);
+ assert.ok(events.some(e=>e[0]==="advance"&&e[2]===`evidence/${OTHER}/discard`));
+ c.stop();
+});
+
 test("return requires physical-handoff consent, unchanged retry, and clears consent after a conflict",async()=>{const calls=[];const f=setup({post:async i=>{calls.push(i);if(calls.length===1)throw new BuyerCommerceError(503);throw new BuyerCommerceError(409,"RETURN_STATE_INVALID");}});await wait(()=>f.state()?.incidents&&!f.state().busy);await f.c.confirmReturn(OTHER);assert.equal(calls.length,0);f.c.consent(OTHER);await f.c.confirmReturn(OTHER);await f.c.retry();assert.equal(calls[0],calls[1]);assert.equal(f.state().returnConsent,null);assert.equal(f.state().intent,null);f.api.incidents=async()=>{throw new BuyerCommerceError(401);};await f.c.refresh();assert.equal(f.state().order,null);assert.equal(f.state().incidents,null);assert.equal(f.state().error.status,401);f.c.stop();});
 test("all own report pages are bounded; stopped views never publish late private data",async()=>{const pages=[];const f=setup({incidents:async p=>{pages.push(p);return p===1?Array(20).fill(issue):[];}},null);await wait(()=>f.state()?.incidents&&!f.state().busy);await f.c.page(1);await f.c.page(1);assert.deepEqual(pages,[1,2]);f.c.stop();let resolve,count=0;const c=new NativeIncidentsController({incidents:()=>new Promise(r=>resolve=r)},()=>ID,()=>count++,null);c.start();c.stop();resolve([issue]);await new Promise(r=>setTimeout(r,5));assert.equal(count,1);});
 test("incident DTO drops evidence and actor identity; malformed amounts and state are not empty success",()=>{const raw={Id:OTHER,OrderId:ID,OrderItemId:ID,Type:"DAMAGED_ITEM",Quantity:1,State:"AWAITING_RETURN",ReportedAtUtc:receivedAtUtc,ReturnDueAtUtc:null,CollectedAtUtc:null,RefundRial:1000,BuyerId:"SECRET",EvidenceReference:"SECRET"};const x={items:[raw],page:2,pageSize:20};const parsed=parseCommerce("incidents","GET",x,2);assert.equal(JSON.stringify(parsed).includes("SECRET"),false);assert.equal(parseCommerce("incidents","GET",x,1),null);assert.equal(parseCommerce(`orders/${ID}/incidents`,"POST",{...raw,State:"APPROVE"}),null);assert.equal(parseCommerce(`item-returns/${ID}/confirm-collection`,"POST",{...raw,RefundRial:9007199254740992}),null);const rawOrder={Id:ID,SellerId:OTHER,State:"COLLECTED",RefundState:"NONE",Version:4,TotalRial:2000,CashPaidRial:2000,CreditPaidRial:0,CreatedAtUtc:receivedAtUtc,ReceivedAtUtc:receivedAtUtc,Items:[{Id:ID,ProductId:ID,Quantity:2,UnitPriceRial:1000,RefundedQuantity:0}]};assert.equal(parseCommerce(`incident-order/${ID}`,"GET",rawOrder).incidentItems[0].id,ID);assert.equal(parseCommerce(`incident-order/${ID}`,"GET",{...rawOrder,Items:[{...rawOrder.Items[0],RefundedQuantity:3}]}),null);});
