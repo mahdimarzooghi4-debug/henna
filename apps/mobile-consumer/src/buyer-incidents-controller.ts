@@ -15,7 +15,7 @@ export class NativeIncidentsController {
  private api:MobileCommerceClient;private uuid:()=>string;private notify:(s:NativeIncidentsState)=>void;private orderId:string|null;private now:()=>number;private pending?:MobilePendingCommerceStore;
  constructor(api:MobileCommerceClient,uuid:()=>string,notify:(s:NativeIncidentsState)=>void,orderId:string|null,now=Date.now,pending?:MobilePendingCommerceStore){this.api=api;this.uuid=uuid;this.notify=notify;this.orderId=commerceId(orderId)?orderId:null;this.now=now;this.pending=pending;}
  private emit(p:Partial<NativeIncidentsState>){this.state={...this.state,...p};if(this.active)this.notify(this.state);}
- start(){this.active=true;void this.resume();}stop(){this.active=false;this.epoch++;}
+ start(){this.active=true;if(this.pending)void this.resume();else void this.refresh();}stop(){this.active=false;this.epoch++;}
  private context():PendingIncidentContext|null{
   const d=this.snapshot;
   return d?.photo&&this.orderId?{orderId:this.orderId,itemId:d.itemId,
