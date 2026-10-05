@@ -129,6 +129,14 @@ async function main() {
       return route.fulfill(json([offer()]));
     if (path === "/api/seller/commerce/settlements" && request.method() === "GET")
       return route.fulfill(json([settlement()]));
+    if (path === "/api/seller/commerce/report" && request.method() === "GET")
+      return route.fulfill(json({
+        orders:5,paid:1,preparing:1,readyForPickup:1,collected:1,
+        cancelled:1,grossRial:9000,openIncidents:1,incidentRefundRial:1800,
+        preparedSettlements:1,settlementGrossRial:1800,
+        settlementRefundRial:0,settlementPenaltyRial:0,settlementFeeRial:100,
+        settlementNetRial:1700,financeReviewRequired:0,
+      }));
     if (path === "/api/seller/commerce/notifications" && request.method() === "GET")
       return route.fulfill(json([notification()]));
     if (path === "/api/seller/commerce/tickets" && request.method() === "GET")
@@ -272,6 +280,8 @@ async function main() {
   await page.getByRole("button", {
     name: "بارگیری عملیات تکمیلی",
   }).click();
+  await page.getByRole("heading", { name: "گزارش عملیاتی فروشگاه" }).waitFor();
+  await page.getByText("۹٬۰۰۰ ریال", { exact: true }).waitFor();
   await page.getByText("آماده انتقال بانکی", { exact: true }).waitFor();
   await page.getByText("این وضعیت داخلی حناست؛ «آماده انتقال» به معنی واریز بانکی نیست.", {
     exact: true,
