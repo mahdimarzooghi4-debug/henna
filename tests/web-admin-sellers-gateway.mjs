@@ -33,6 +33,8 @@ function application() {
     activityProvinceId: "60000000-0000-4000-8000-000000000043",
     activityCityId: "60000000-0000-4000-8000-000000000044",
     activityAddress: "نشانی فعالیت",
+    activityLatitude: null,
+    activityLongitude: null,
     activityHours: "شنبه تا پنجشنبه",
     sellerDelivery: false,
     pickup: true,
