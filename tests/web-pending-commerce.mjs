@@ -5,10 +5,6 @@ import {
   persistWebCommerceIntent,
   restoreWebCommerceIntent,
 } from "../apps/web-marketplace/lib/web-pending-commerce.ts";
-import {
-  commerceIntent,
-} from "../apps/web-marketplace/lib/buyer-commerce.ts";
-
 const PRODUCT="91000000-0000-4000-8000-000000000001";
 const SELLER="91000000-0000-4000-8000-000000000002";
 const ADDRESS="91000000-0000-4000-8000-000000000003";
@@ -31,15 +27,14 @@ function fakeStorage(){
 function install(){
   const sessionStorage=fakeStorage();
   globalThis.window={sessionStorage};
-  globalThis.crypto={randomUUID:()=>KEY};
   return sessionStorage;
 }
 
 test("web cart intent survives a simulated reload with exact body and key",()=>{
   install();
-  const intent=commerceIntent(null,"cart-items",{
+  const intent={path:"cart-items",body:JSON.stringify({
     productId:PRODUCT,quantity:2,expectedVersion:3,
-  });
+  }),key:KEY};
   persistWebCommerceIntent("cart",intent);
   assert.deepEqual(restoreWebCommerceIntent("cart"),intent);
   assert.equal(clearWebCommerceIntent(KEY2),false);
