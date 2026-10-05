@@ -48,6 +48,8 @@ internal static class AdminExternalIntegrationEndpoints
                     .GetRequiredService<ISellerNaturalIdentityVerifier>();
                 var payment = services
                     .GetRequiredService<IExternalPaymentProvider>();
+                var ibanOwnership = services
+                    .GetRequiredService<IExternalIbanOwnershipVerifier>();
                 var logistics = services
                     .GetRequiredService<IExternalLogisticsProvider>();
 
@@ -68,6 +70,11 @@ internal static class AdminExternalIntegrationEndpoints
                         configured = payment.IsAvailable,
                         requiredForExternalPayment = true
                     },
+                    ibanOwnership = new
+                    {
+                        configured = ibanOwnership.IsAvailable,
+                        requiredForWithdrawalOwnership = true
+                    },
                     logistics = new
                     {
                         configured = logistics.IsAvailable,
@@ -77,6 +84,7 @@ internal static class AdminExternalIntegrationEndpoints
                         sms.IsAvailable &&
                         identity.IsAvailable &&
                         payment.IsAvailable &&
+                        ibanOwnership.IsAvailable &&
                         logistics.IsAvailable
                 });
             }
