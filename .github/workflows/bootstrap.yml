@@ -39,6 +39,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Enforce Henna-owned local-only AI boundary
+        run: python tools/ci/guard_henna_ai_local_only.py
       - name: Verify commerce contract matches shipping commands
         run: python tools/contracts/commerce_openapi.py --check
       - name: Restore .NET solution
