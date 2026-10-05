@@ -347,6 +347,25 @@ public sealed class CommerceTests
  Assert.Empty(JsonSerializer.SerializeToElement(await service.PublicOffers(product,1,CancellationToken.None)).GetProperty("items").EnumerateArray());
  await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(seller,"SAVE_OFFER",offerPayload,offerKey));
 
+ // Admin-only release integrity validates the persisted commerce graph without
+ // pretending that external bank/logistics reconciliation has happened.
+ await Assert.ThrowsAsync<CommerceForbidden>(()=>service.IntegrityAsync(buyer));
+ var healthyIntegrity=JsonSerializer.SerializeToElement(await service.IntegrityAsync(admin));
+ Assert.True(healthyIntegrity.GetProperty("healthy").GetBoolean());
+ Assert.Equal(0,healthyIntegrity.GetProperty("violationCount").GetInt32());
+
+ var corruptAccount=Guid.NewGuid();
+ db.Documents.Add(new CommerceDocument{
+  Id=Guid.NewGuid(),OwnerId=corruptAccount,Kind="WALLET",Revision=1,
+  Body=JsonSerializer.Serialize(new CashWallet(corruptAccount,-1)),
+  UpdatedAtUtc=clock.UtcNow
+ });
+ await db.SaveChangesAsync();
+ var brokenIntegrity=JsonSerializer.SerializeToElement(await service.IntegrityAsync(admin));
+ Assert.False(brokenIntegrity.GetProperty("healthy").GetBoolean());
+ Assert.Contains(brokenIntegrity.GetProperty("violations").EnumerateArray(),
+  x=>x.GetProperty("code").GetString()=="WALLET_NEGATIVE");
+
  }
  private static HanaCommerceDbContext Context(string connection)=>new(new DbContextOptionsBuilder<HanaCommerceDbContext>().UseNpgsql(connection,p=>p.MigrationsHistoryTable("__EFMigrationsHistory","commerce")).Options);
  private sealed class Clock:IClock {public DateTimeOffset UtcNow{get;set;}}
