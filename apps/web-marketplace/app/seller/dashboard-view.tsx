@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SellerCommerceOperations } from "./commerce-operations";
+import { SellerBusinessOperations } from "./business-operations";
 
 type SellerAccess = {
   sellerAccess: true;
@@ -15,10 +16,10 @@ type SellerAccess = {
   capabilities: {
     dashboard: true;
     orders: boolean;
-    listings: false;
-    inventory: false;
-    pricing: false;
-    settlements: false;
+    listings: boolean;
+    inventory: boolean;
+    pricing: boolean;
+    settlements: boolean;
     reports: false;
   };
 };
@@ -118,8 +119,18 @@ export function SellerDashboardView() {
   }
 
   const seller = state.value;
-  const sellerNavigation = navigation.map(([label, enabled]) =>
-    [label, label === "سفارش‌ها" ? seller.capabilities.orders : enabled] as const);
+  const sellerNavigation = navigation.map(([label, enabled]) => {
+    const connected =
+      label === "سفارش‌ها" ? seller.capabilities.orders :
+      label === "کالاها و خدمات" ? seller.capabilities.listings :
+      label === "موجودی و دسترس‌پذیری" ? seller.capabilities.inventory :
+      label === "قیمت‌گذاری" ? seller.capabilities.pricing :
+      label === "تسویه‌حساب‌ها" ? seller.capabilities.settlements :
+      label === "اعلان‌ها" || label === "پشتیبانی"
+        ? seller.capabilities.orders
+        : enabled;
+    return [label, connected] as const;
+  });
   return (
     <main className="seller-panel">
       <aside className="seller-panel__sidebar"
@@ -199,6 +210,12 @@ export function SellerDashboardView() {
         </section>
 
         {seller.capabilities.orders && <SellerCommerceOperations />}
+        {seller.capabilities.orders && (
+          <SellerBusinessOperations
+            offerManagementEnabled={seller.capabilities.listings}
+            settlementsEnabled={seller.capabilities.settlements}
+          />
+        )}
 
         <section className="seller-panel__capabilities"
           aria-labelledby="seller-capabilities-heading">
@@ -237,8 +254,10 @@ export function SellerDashboardView() {
           <p>
             فعال‌شدن نقش فروشنده فقط دسترسی این پنل را باز کرده است.
             {seller.capabilities.orders
-              ? "سفارش و مرجوعی به backend واقعی حنا متصل‌اند. موجودی، قیمت‌گذاری و تسویه در برش‌های مستقل بعدی فعال می‌شوند."
-              : "CommerceDb در این محیط آماده نیست؛ سفارش و مرجوعی عمداً غیرفعال مانده‌اند و داده نمونه نمایش داده نمی‌شود."}
+              ? seller.capabilities.listings
+                ? "سفارش، مرجوعی، قیمت، موجودی، تسویه آماده‌شده، اعلان و تیکت به backend واقعی حنا متصل‌اند. انتقال بانکی و سرویس بیرونی جعل نمی‌شوند."
+                : "سفارش، مرجوعی، تسویه آماده‌شده، اعلان و تیکت متصل‌اند؛ برای فروشنده صرفاً خدماتی، مدیریت offer کالای GOOD عمداً فعال نیست."
+              : "CommerceDb در این محیط آماده نیست؛ عملیات تجاری عمداً غیرفعال مانده‌اند و داده نمونه نمایش داده نمی‌شود."}
           </p>
         </section>
       </section>
