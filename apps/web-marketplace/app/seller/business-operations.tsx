@@ -17,6 +17,7 @@ import {
   type StaffNotification,
   type StaffOffer,
   type StaffReport,
+  type StaffServiceListing,
   type StaffSettlement,
   type StaffTicket,
 } from "../../lib/staff-commerce";
@@ -71,15 +72,18 @@ async function publicProduct(
 
 export function SellerBusinessOperations({
   offerManagementEnabled,
+  serviceListingEnabled,
   settlementsEnabled,
   reportsEnabled,
 }: {
   offerManagementEnabled: boolean;
+  serviceListingEnabled: boolean;
   settlementsEnabled: boolean;
   reportsEnabled: boolean;
 }) {
   const [activated, setActivated] = useState(false);
   const [offersPage, setOffersPage] = useState(1);
+  const [serviceListingsPage, setServiceListingsPage] = useState(1);
   const [settlementsPage, setSettlementsPage] = useState(1);
   const [notificationsPage, setNotificationsPage] = useState(1);
   const [ticketsPage, setTicketsPage] = useState(1);
@@ -89,6 +93,8 @@ export function SellerBusinessOperations({
     { kind: "error"; message: string }
   >({ kind: "idle" });
   const [offers, setOffers] = useState<Load<StaffOffer>>({ kind: "idle" });
+  const [serviceListings, setServiceListings] =
+    useState<Load<StaffServiceListing>>({ kind: "idle" });
   const [settlements, setSettlements] =
     useState<Load<StaffSettlement>>({ kind: "idle" });
   const [notifications, setNotifications] =
@@ -98,11 +104,18 @@ export function SellerBusinessOperations({
   const [drafts, setDrafts] = useState<Record<string, OfferDraft>>({});
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogResults, setCatalogResults] = useState<BuyerProduct[]>([]);
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [serviceResults, setServiceResults] = useState<BuyerProduct[]>([]);
   const [catalogStatus, setCatalogStatus] =
     useState<"idle" | "loading" | "error">("idle");
+  const [serviceStatus, setServiceStatus] =
+    useState<"idle" | "loading" | "error">("idle");
   const [selectedProduct, setSelectedProduct] = useState<BuyerProduct | null>(null);
+  const [selectedService, setSelectedService] = useState<BuyerProduct | null>(null);
   const [newPrice, setNewPrice] = useState("");
   const [newStock, setNewStock] = useState("");
+  const [servicePrice, setServicePrice] = useState("");
+  const [serviceAvailability, setServiceAvailability] = useState("");
   const [ticketSubject, setTicketSubject] = useState("");
   const [ticketMessage, setTicketMessage] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -114,6 +127,13 @@ export function SellerBusinessOperations({
     productId: string;
     priceRial: number;
     stock: number;
+    expectedVersion: number;
+  } | null>(null);
+  const pendingService = useRef<{
+    listingId: string;
+    productId: string;
+    priceRial: number;
+    availabilityNote: string;
     expectedVersion: number;
   } | null>(null);
 
