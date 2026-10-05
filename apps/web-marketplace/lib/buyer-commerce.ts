@@ -2,7 +2,7 @@ import { BuyerCommerceError } from "../../../packages/buyer-commerce/contracts.t
 export * from "../../../packages/buyer-commerce/contracts.ts";
 export async function buyerGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   try {
-    const r = await fetch("/api/buyer/commerce/" + path, { cache: "no-store", credentials: path.startsWith("offers?") ? "omit" : "same-origin", redirect: "error", signal, headers: { Accept: "application/json" } });
+    const r = await fetch("/api/buyer/commerce/" + path, { cache: "no-store", credentials: path.startsWith("offers?") || path.startsWith("service-listings?") ? "omit" : "same-origin", redirect: "error", signal, headers: { Accept: "application/json" } });
     if (!r.ok) { const x = await r.json().catch(() => ({})); throw new BuyerCommerceError(r.status, x.code); }
     if (!r.headers.get("content-type")?.includes("application/json")) throw new BuyerCommerceError(503);
     return await r.json() as T;
