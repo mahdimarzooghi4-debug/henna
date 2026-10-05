@@ -107,7 +107,17 @@ test("admin command responses are bounded by command contract",()=>{
   assert.equal(parseAdminCommandResponse("ALLOCATE_CREDIT",{
     grants:[{Id:"bad"}],unallocatedRial:0,formulaVersion:"baseline-v1",
   }),null);
-  assert.equal(parseAdminCommandResponse("SAVE_CONTENT",{Id:"bad"}),null);
+  const sellerAccess=parseAdminCommandResponse("SET_SELLER_ACCESS",{
+    accountId:ID2,active:false,reason:"reviewed suspension",secret:"hidden",
+  });
+  assert.deepEqual(sellerAccess,{
+    accountId:ID2,active:false,reason:"reviewed suspension",
+  });
+  assert.equal(JSON.stringify(sellerAccess).includes("hidden"),false);
+  assert.equal(parseAdminCommandResponse("SET_SELLER_ACCESS",{
+    accountId:ID2,active:false,reason:"",
+  }),null);
+    assert.equal(parseAdminCommandResponse("SAVE_CONTENT",{Id:"bad"}),null);
 });
 
 test("ambiguous admin retry preserves exact key and body",()=>{
