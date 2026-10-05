@@ -6,6 +6,7 @@ using Hana.Infrastructure.Catalog;
 using Hana.Infrastructure.Geography;
 using Hana.Infrastructure.CreditLearning;
 using Hana.Infrastructure.Commerce;
+using Hana.Infrastructure.External;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
@@ -44,6 +45,10 @@ if (trustedForwarding is not null)
 // must be implemented against an actual contracted provider and reviewed
 // before replacing this registration. A signing key alone never enables OTP.
 builder.Services.AddSingleton<IOtpSmsSender, UnconfiguredOtpSmsSender>();
+builder.Services.AddSingleton<IExternalPaymentProvider,
+    UnconfiguredExternalPaymentProvider>();
+builder.Services.AddSingleton<IExternalLogisticsProvider,
+    UnconfiguredExternalLogisticsProvider>();
 var otpKeyConfigured = false;
 try
 {
@@ -404,6 +409,7 @@ app.MapCommerce(hasCommerceDb);
 app.MapAllocationLearningProposals(hasIdentityDb && !string.IsNullOrWhiteSpace(learningConnectionString));
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapAdminSellerSuspensions(hasIdentityDb);
+app.MapAdminExternalIntegrations(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 
