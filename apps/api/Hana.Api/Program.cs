@@ -47,6 +47,8 @@ if (trustedForwarding is not null)
 builder.Services.AddSingleton<IOtpSmsSender, UnconfiguredOtpSmsSender>();
 builder.Services.AddSingleton<IExternalPaymentProvider,
     UnconfiguredExternalPaymentProvider>();
+builder.Services.AddSingleton<IExternalIbanOwnershipVerifier,
+    UnconfiguredExternalIbanOwnershipVerifier>();
 builder.Services.AddSingleton<IExternalLogisticsProvider,
     UnconfiguredExternalLogisticsProvider>();
 var otpKeyConfigured = false;
