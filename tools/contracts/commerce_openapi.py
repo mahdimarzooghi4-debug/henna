@@ -35,12 +35,15 @@ for name,parameters in records:
         S[('Public' if camel else '')+name]=obj(fields)
 S['PublicOffer']['properties']['storeName']=text(200)
 S['PublicOffer']['required'].append('storeName')
+S['PublicServiceListing']['properties']['storeName']=text(200)
+S['PublicServiceListing']['required'].append('storeName')
 comparison=obj({'storeName':text(200),'sellerId':uuid,'available':arr(ref('QuoteItem')),'unavailable':arr(ref('CartItem')),'itemsTotalRial':integer()})
 commands={}
 def command(action,fields,response,optional=(),permission='Authenticated owner'):
     S[action+'Input']=obj(fields,optional)
     commands[action]=(response,permission)
 command('SAVE_OFFER',{'offerId':uuid,'productId':uuid,'priceRial':integer(1),'stock':integer(0,1000000),'expectedVersion':integer(0,2147483647)},ref('Offer'),permission='Active SELLER')
+command('SAVE_SERVICE_LISTING',{'listingId':uuid,'productId':uuid,'priceRial':integer(1),'availabilityNote':text(500),'expectedVersion':integer(0,2147483647)},ref('ServiceListing'),permission='Active SERVICE/BOTH SELLER')
 command('SET_CART_ITEM',{'productId':uuid,'quantity':integer(0,999),'expectedVersion':integer(0,2147483647)},ref('Cart'),('expectedVersion',))
 command('COMPARE_CART',{},arr(comparison))
 command('SAVE_ADDRESS',{'addressId':uuid,'cityId':uuid,'text':text(1000),'latitude':{'type':'number','minimum':-90,'maximum':90},'longitude':{'type':'number','minimum':-180,'maximum':180}},ref('BuyerAddress'))
@@ -102,7 +105,7 @@ for path,action,key in re.findall(r'\("(/[^"]+)","([A-Z_]+)"(?:,"([a-zA-Z]+)")?\
         params=[{'name':'id','in':'path','required':True,'schema':uuid}]
     response,permission=commands[action]
     paths.setdefault('/api/v1'+path,{})['post']=operation('post',response,permission+'; alias of '+action+'. A supplied body ID must match the route ID.',fields,params)
-resource_models={'OFFER':'Offer','CART':'Cart','ADDRESS':'BuyerAddress','QUOTE':'Quote','ORDER':'Order','WALLET':'CashWallet','CREDIT':'CreditGrant','PROGRAM':'CreditProgram','INCIDENT':'Incident','SETTLEMENT':'Settlement','WITHDRAWAL':'Withdrawal','TICKET':'SupportTicket','NOTIFICATION':'CommerceNotification','CONTENT':'CommerceContent','ORGANIZATION':'CommerceOrganization','MEMBERSHIP':'OrganizationMembership','PERMISSION':'CommerceStaffPermission','FEE_VERSION':'FeePolicy','HOUSEHOLD':'CommerceHouseholdLink'}
+resource_models={'OFFER':'Offer','SERVICE_LISTING':'ServiceListing','CART':'Cart','ADDRESS':'BuyerAddress','QUOTE':'Quote','ORDER':'Order','WALLET':'CashWallet','CREDIT':'CreditGrant','PROGRAM':'CreditProgram','INCIDENT':'Incident','SETTLEMENT':'Settlement','WITHDRAWAL':'Withdrawal','TICKET':'SupportTicket','NOTIFICATION':'CommerceNotification','CONTENT':'CommerceContent','ORGANIZATION':'CommerceOrganization','MEMBERSHIP':'OrganizationMembership','PERMISSION':'CommerceStaffPermission','FEE_VERSION':'FeePolicy','HOUSEHOLD':'CommerceHouseholdLink'}
 page={'name':'page','in':'query','schema':integer(1,10000)}
 def envelope(model): return obj({'items':arr(ref(model)),'page':integer(1),'pageSize':{'const':20}})
 for path,kind in re.findall(r'\("(/[^"]+)","([A-Z_]+)"\)',endpoints):
@@ -111,6 +114,7 @@ for path,kind in re.findall(r'\("(/[^"]+)","([A-Z_]+)"\)',endpoints):
 paths['/api/v1/orders/{id}']={'get':operation('get',ref('Order'),'Buyer, current seller or authorized support/admin; other users receive 404.',parameters=[{'name':'id','in':'path','required':True,'schema':uuid}])}
 paths['/api/v1/carts/current/comparison']={'get':operation('get',arr(comparison),'Current cart availability; not a price/stock reservation.')}
 paths['/api/v1/offers']={'get':operation('get',envelope('PublicOffer'),'Published offers belonging to currently activated sellers.',parameters=[{'name':'productId','in':'query','schema':uuid},page],public=True)}
+paths['/api/v1/service-listings']={'get':operation('get',envelope('PublicServiceListing'),'Published service listings belonging to currently activated sellers. This is not a booking or logistics promise.',parameters=[{'name':'productId','in':'query','schema':uuid},page],public=True)}
 paths['/api/v1/content/{slug}']={'get':operation('get',ref('PublicCommerceContent'),'Only explicitly published content.',parameters=[{'name':'slug','in':'path','required':True,'schema':text(100)}],public=True)}
 paths['/api/v1/organization/dashboard']={'get':operation('get',ref('OrganizationDashboard'),'Organization manager only. No beneficiary identities, funding references or unrelated organization data are returned.')}
 paths['/api/v1/seller/report']={'get':operation('get',ref('SellerOperationalReport'),'Active seller only. Aggregate order, incident and prepared-settlement metrics scoped to the current seller; no buyer identities.')}
