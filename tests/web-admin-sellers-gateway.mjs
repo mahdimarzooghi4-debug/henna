@@ -11,6 +11,7 @@ const ID = "60000000-0000-4000-8000-000000000041";
 const token = "hn1_" + Buffer.alloc(32, 5).toString("base64url");
 let server, web, logs = "", calls = [];
 let revision = 7, reviewStatus = "UNDER_REVIEW", activatedAtUtc = null;
+let sellerSuspended = false, suspendedAtUtc = null, suspensionReason = null;
 
 function application() {
   return {
@@ -56,6 +57,9 @@ function application() {
     activatedAtUtc,
     activatedByAccountId: activatedAtUtc
       ? "60000000-0000-4000-8000-000000000045" : null,
+    sellerSuspended,
+    suspendedAtUtc,
+    suspensionReason,
     submittedAtUtc: "2026-10-05T03:00:00Z",
     secretInternalNote: "MUST-NOT-LEAK",
   };
@@ -142,6 +146,40 @@ async function main() {
           sellerPanelEnabled: true,
         }));
       }
+      if (req.method === "POST" &&
+          req.url === "/api/v1/admin/seller-applications/" + ID + "/suspend") {
+        assert.deepEqual(JSON.parse(body), {
+          revision: 9, reason: "بررسی انطباق CI",
+        });
+        revision = 10;
+        sellerSuspended = true;
+        suspendedAtUtc = "2026-10-05T03:40:00Z";
+        suspensionReason = "بررسی انطباق CI";
+        return res.end(JSON.stringify({
+          applicationId: ID, revision, reviewStatus,
+          reviewReason: "بررسی CI", activatedAtUtc,
+          sellerActivated: true, sellerSuspended,
+          suspendedAtUtc, suspensionReason,
+          sellerRoleGranted: false, sellerAccessEnabled: false,
+          sellerPanelEnabled: false,
+        }));
+      }
+      if (req.method === "POST" &&
+          req.url === "/api/v1/admin/seller-applications/" + ID + "/restore") {
+        assert.deepEqual(JSON.parse(body), { revision: 10 });
+        revision = 11;
+        sellerSuspended = false;
+        suspendedAtUtc = null;
+        suspensionReason = null;
+        return res.end(JSON.stringify({
+          applicationId: ID, revision, reviewStatus,
+          reviewReason: "بررسی CI", activatedAtUtc,
+          sellerActivated: true, sellerSuspended,
+          suspendedAtUtc, suspensionReason,
+          sellerRoleGranted: true, sellerAccessEnabled: true,
+          sellerPanelEnabled: true,
+        }));
+      }
       res.statusCode = 404;
       res.end(JSON.stringify({ message: "missing" }));
     });
@@ -222,7 +260,41 @@ async function main() {
   assert.equal(activated.sellerPanelEnabled, true);
   assert.equal(activated.revision, 9);
 
-  console.log("Admin seller BFF passed: cookie isolation, CSRF, bounded DTO and review/activation idempotency.");
+  const suspend = await fetch(
+    base + "/api/admin/seller-applications/" + ID + "/suspend", {
+      method: "POST",
+      headers: {...cookie, Origin:base,
+        "Content-Type":"application/json","Idempotency-Key":
+          "60000000-0000-4000-8000-000000000047"},
+      body: JSON.stringify({
+        revision:9, reason:" بررسی انطباق CI ",
+        ignored:"must-not-forward",
+      }),
+    });
+  assert.equal(suspend.status, 200);
+  const suspended = await suspend.json();
+  assert.equal(suspended.sellerSuspended, true);
+  assert.equal(suspended.sellerPanelEnabled, false);
+  assert.equal(suspended.revision, 10);
+  assert.equal(calls.at(-1).body,
+    JSON.stringify({ revision:9, reason:"بررسی انطباق CI" }));
+
+  const restore = await fetch(
+    base + "/api/admin/seller-applications/" + ID + "/restore", {
+      method: "POST",
+      headers: {...cookie, Origin:base,
+        "Content-Type":"application/json","Idempotency-Key":
+          "60000000-0000-4000-8000-000000000048"},
+      body: JSON.stringify({ revision:10, ignored:"must-not-forward" }),
+    });
+  assert.equal(restore.status, 200);
+  const restored = await restore.json();
+  assert.equal(restored.sellerSuspended, false);
+  assert.equal(restored.sellerPanelEnabled, true);
+  assert.equal(restored.revision, 11);
+  assert.equal(calls.at(-1).body, JSON.stringify({ revision:10 }));
+
+  console.log("Admin seller BFF passed: cookie isolation, CSRF, bounded DTO and review/activation/suspension idempotency.");
 }
 
 try { await main(); } finally {
