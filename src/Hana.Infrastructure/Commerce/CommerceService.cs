@@ -23,7 +23,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var support=new[]{"DECIDE_INCIDENT","VERIFY_UNAVAILABILITY","ASSESS_RETURN_SLA","REPLY_TICKET"};
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
-  else if(privileged.Contains(action)||action is "SET_STAFF_PERMISSION" or "SET_SELLER_ACCESS")await Admin(actor,ct);
+  else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
   if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   transactionActor=actor;transactionCommand=command;
   // Pilot correctness boundary: serialize commerce mutations across API processes. Never an in-memory lock.
@@ -32,7 +32,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   // Re-read permissions after waiting for another transaction, including cached command replay.
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
-  else if(privileged.Contains(action)||action is "SET_STAFF_PERMISSION" or "SET_SELLER_ACCESS")await Admin(actor,ct);
+  else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
   if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   var fingerprint=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(action+Canonical(input))));
   var prior=await db.Receipts.SingleOrDefaultAsync(x=>x.ActorId==actor && x.CommandId==command,ct);
@@ -55,7 +55,6 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    "DELETE_EVIDENCE"=>await DeleteEvidence(actor,input,ct),
    "LINK_HOUSEHOLD"=>await LinkHousehold(actor,input,ct),
    "SET_STAFF_PERMISSION"=>await SetPermission(actor,input,ct),
-   "SET_SELLER_ACCESS"=>await SetSellerAccess(actor,input,ct),
    "CREATE_ORGANIZATION"=>await CreateOrganization(actor,input,ct), "GRANT_ORGANIZATION_MEMBER"=>await GrantMembership(actor,input,ct), "REVOKE_ORGANIZATION_MEMBER"=>await RevokeMembership(actor,input,ct),
    "SAVE_CONTENT"=>await SaveContent(actor,input,ct), "PUBLISH_CONTENT"=>await PublishContent(actor,input,ct), "READ_NOTIFICATION"=>await MarkNotification(actor,input,ct),
    "OPEN_TICKET"=>await OpenTicket(actor,input,ct), "REPLY_TICKET"=>await ReplyTicket(actor,input,ct),
@@ -119,33 +118,6 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private async Task<object> SetPermission(Guid actor,JsonElement x,CancellationToken ct) {
   await Admin(actor,ct);var target=Id(x,"accountId");if(!await identity.Accounts.AnyAsync(a=>a.Id==target,ct))throw new CommerceMissing();var permission=Text(x,"permission");if(permission is not("FINANCE" or "SUPPORT"))throw new ArgumentException("Permission.");
   var active=x.GetProperty("active").GetBoolean();var prior=(await All<CommerceStaffPermission>("PERMISSION",ct)).SingleOrDefault(p=>p.AccountId==target&&p.Permission==permission);var p=new CommerceStaffPermission(prior?.Id??Guid.NewGuid(),target,permission,active);await Put(p.Id,target,"PERMISSION",p,ct);return p;
- }
- private async Task<object> SetSellerAccess(Guid actor,JsonElement x,CancellationToken ct) {
-  await Admin(actor,ct);
-  var target=Id(x,"accountId");
-  var reason=Text(x,"reason",1000);
-  if(!x.TryGetProperty("active",out var activeProperty)||
-     activeProperty.ValueKind is not(JsonValueKind.True or JsonValueKind.False))
-   throw new ArgumentException("active");
-  var active=activeProperty.GetBoolean();
-  if(!await identity.Accounts.AsNoTracking().AnyAsync(a=>a.Id==target,ct))
-   throw new CommerceMissing();
-  if(!await sellers.SellerActivations.AsNoTracking()
-    .AnyAsync(a=>a.ApplicationAccountId==target,ct))
-   throw new CommerceConflict("SELLER_NOT_ACTIVATED");
-  if(active) {
-   await db.Database.ExecuteSqlInterpolatedAsync($"""
-    INSERT INTO identity.role_assignments (account_id, role, granted_at_utc)
-    VALUES ({target}, {HanaRoles.Seller}, {clock.UtcNow.ToUniversalTime()})
-    ON CONFLICT (account_id, role) DO NOTHING
-    """,ct);
-  } else {
-   await db.Database.ExecuteSqlInterpolatedAsync($"""
-    DELETE FROM identity.role_assignments
-    WHERE account_id={target} AND role={HanaRoles.Seller}
-    """,ct);
-  }
-  return new{accountId=target,active,reason};
  }
  private async Task Seller(Guid actor,CancellationToken ct) {
   if(!await roles.HasRoleAsync(actor,HanaRoles.Seller,ct)||
