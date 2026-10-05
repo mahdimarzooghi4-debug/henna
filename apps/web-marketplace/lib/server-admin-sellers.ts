@@ -13,6 +13,29 @@ import {
   parseAdminSellerMutation,
 } from "./admin-sellers";
 
+async function boundedRequestText(request: NextRequest, max: number) {
+  if (!request.body) throw Error();
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let bytes = 0;
+  let text = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > max) {
+        await reader.cancel();
+        throw Error();
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 async function boundedJson(response: Response, max: number): Promise<unknown> {
   if (!response.body) throw Error();
   const reader = response.body.getReader();
@@ -104,7 +127,7 @@ export async function forwardAdminSeller(
     mode = segments[1] as "review" | "activate";
     upstreamPath += "/" + expectedId + "/" + mode;
     try {
-      const raw: unknown = await request.json();
+      const raw: unknown = JSON.parse(await boundedRequestText(request, 8192));
       if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return fail(400, "اطلاعات عملیات معتبر نیست.");
       const x = raw as Record<string, unknown>;
