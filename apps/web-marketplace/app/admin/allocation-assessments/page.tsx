@@ -37,9 +37,9 @@ export default function AllocationAssessmentsPage() {
   return <main className={styles.page}>
     <header><Link href="/admin/allocation-training">امتیازدهی و آموزش</Link><Link href="/auth">ورود</Link></header>
     <h1>ثبت ارزیابی مستند خانوار</h1>
-    <aside className={styles.note}>اطلاعات را از ارزیابی تأییدشده وارد کنید. شناسه خانوار باید همان شناسه ثابت پرونده باشد؛ کد ملی و نام خانوار وارد نکنید. ثبت این فرم اعتبار کیف پول را تغییر نمی‌دهد.</aside>
+    <aside className={styles.note}>این فرم فقط ثبت پژوهشیِ منتسب به انسان است. دادهٔ آن وارد آموزش هوش حنا نمی‌شود. هوش حنا فقط از snapshotهای first-party که داخل خود پلتفرم تولید شده‌اند آموزش می‌بیند. کد ملی و نام خانوار وارد نکنید و ثبت این فرم اعتبار کیف پول را تغییر نمی‌دهد.</aside>
     {error && <p role="alert" className={styles.error}>{error}</p>}
-    {saved && <section role="status"><p>ارزیابی ثبت شد و در صفحه آموزش قابل انتخاب است.</p><Link href="/admin/allocation-training">ادامه به ثبت امتیاز نیاز</Link><button onClick={reset}>ثبت ارزیابی بعدی</button></section>}
+    {saved && <section role="status"><p>ارزیابی پژوهشی ثبت شد؛ این رکورد برای آموزش هوش حنا مجاز نیست.</p><Link href="/admin/allocation-training">مشاهده داده‌های مجاز آموزش</Link><button onClick={reset}>ثبت ارزیابی بعدی</button></section>}
     <section className={styles.card}>
       <p>شناسه ثبت: <b dir="ltr" className={styles.version}>{snapshotId}</b></p>
       <p>در صورت قطع ارتباط، تکرار همین شناسه رکورد قبلی را بازنویسی نمی‌کند.</p>
