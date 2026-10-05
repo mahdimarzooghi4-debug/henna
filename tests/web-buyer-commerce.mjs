@@ -41,6 +41,24 @@ test("published service listings are bounded and omit seller-private fields", ()
  assert.equal(parseServiceListings(page([{...listing,availabilityNote:""}]),ID),null);
 });
 
+test("buyer notifications and tickets omit private account fields", () => {
+ const notification={Id:ID,AccountId:"SECRET",Code:"REPLY_TICKET",
+  ResourceId:SELLER,CreatedAtUtc:"2026-10-05T09:00:00Z",Read:false};
+ const ticket={Id:ID,AccountId:"SECRET",Subject:"پیگیری سفارش",
+  Message:"متن درخواست",State:"ANSWERED",
+  CreatedAtUtc:"2026-10-05T09:10:00Z",Reply:"پاسخ پشتیبانی"};
+ const n=parseCommerce("notifications","GET",page([notification]));
+ const t=parseCommerce("tickets","GET",page([ticket]));
+ assert.equal(n?.[0].code,"REPLY_TICKET");
+ assert.equal(t?.[0].reply,"پاسخ پشتیبانی");
+ assert.equal(JSON.stringify(n).includes("SECRET"),false);
+ assert.equal(JSON.stringify(t).includes("SECRET"),false);
+ assert.equal(parseCommerce("tickets","GET",page([{...ticket,State:"PRIVATE"}])),null);
+ const read=parseCommerce(`notifications/${ID}/read`,"POST",
+  {...notification,Read:true});
+ assert.equal(read?.read,true);
+});
+
 test("idempotency retry keeps the original key/body; a reviewed changed intent gets a new key", () => {
  const first = commerceIntent(null, "orders", { quoteId: ID, unavailableDisposition: "KEEP" });
  assert.deepEqual(commerceIntent(first, "orders", { quoteId: ID, unavailableDisposition: "KEEP" }), first);
