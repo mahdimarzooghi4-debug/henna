@@ -45,6 +45,9 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         var snapshot = await db.Assessments.AsNoTracking().SingleOrDefaultAsync(x => x.Id == snapshotId, ct);
         if (snapshot is null)
             throw new ArgumentException("Assessment snapshot is missing.");
+        if (snapshot.RecordedByAccountId is not null || snapshot.EvidenceReference is not null)
+            throw new ArgumentException(
+                "Only first-party Henna snapshots can receive training labels.");
         if (snapshot.AssessedAtUtc > clock.UtcNow)
             throw new ArgumentException("Assessment cannot be in the future.");
         var id = Guid.NewGuid();
