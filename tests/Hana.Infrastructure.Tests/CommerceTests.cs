@@ -357,8 +357,7 @@ public sealed class CommerceTests
  var corruptAccount=Guid.NewGuid();
  db.Documents.Add(new CommerceDocument{
   Id=Guid.NewGuid(),OwnerId=corruptAccount,Kind="WALLET",Revision=1,
-  Body=JsonSerializer.Serialize(new CashWallet(corruptAccount,-1)),
-  UpdatedAtUtc=clock.UtcNow
+  Body=JsonSerializer.Serialize(new CashWallet(corruptAccount,-1))
  });
  await db.SaveChangesAsync();
  var brokenIntegrity=JsonSerializer.SerializeToElement(await service.IntegrityAsync(admin));
