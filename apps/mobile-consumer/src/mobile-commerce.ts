@@ -13,6 +13,7 @@ function target(path: string, method: "GET" | "POST") {
   if (parts[0] === "orders" && commerceId(parts[1]) && (method === "GET" && parts.length === 2 || method === "POST" && parts.length === 3 && ["cancel", "pickup-confirmation", "incidents"].includes(parts[2]))) return "/orders/" + parts.slice(1).join("/");
   if(method==="GET"&&parts[0]==="incident-order"&&parts.length===2&&commerceId(parts[1]))return "/orders/"+parts[1];
   if(method==="POST"&&parts[0]==="item-returns"&&parts.length===3&&commerceId(parts[1])&&parts[2]==="confirm-collection")return "/item-returns/"+parts[1]+"/confirm-collection";
+  if(method==="POST"&&parts[0]==="evidence"&&parts.length===3&&commerceId(parts[1])&&parts[2]==="discard")return "/me/evidence/"+parts[1]+"/discard";
   throw new BuyerCommerceError(404);
 }
 /** Supply an OS-generated UUID once; retain this frozen object after an ambiguous response. */
