@@ -88,7 +88,7 @@ export class NativeIncidentsController {
     const follow=mobileCommerceIntent(`orders/${this.orderId}/incidents`,
      {orderItemId:d.itemId,type:d.type,quantity:d.quantity,
       evidenceId:(result as BuyerEvidence).evidenceId},this.uuid());
-    await this.pending?.save("incidents",follow,this.context());
+    if(this.pending)await this.pending.advance(intent.key,"incidents",follow,this.context());
     this.emit({intent:follow});next=true;
    }else{
     try{await this.pending?.clear(intent.key);}catch{}
