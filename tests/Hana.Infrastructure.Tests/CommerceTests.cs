@@ -60,17 +60,33 @@ public sealed class CommerceTests
  // Isolated approved seller receipt: no application bypass in production.
  sellers.RegistrationDrafts.Add(new(){AccountId=seller,StoreName="CI",OwnerName="CI",Phone=identity.Accounts.Local.Single(a=>a.Id==seller).NormalizedPhone,City="CI",Address="CI",PostalCode="1234567890",UpdatedAtUtc=clock.UtcNow});await sellers.SaveChangesAsync();
  sellers.SellerActivations.Add(new(){Id=Guid.NewGuid(),ApplicationAccountId=seller,ActivatedByAccountId=admin,ActivationKey=Guid.NewGuid(),ExpectedRevision=1,CreatedAtUtc=clock.UtcNow});await sellers.SaveChangesAsync();
- var category=Guid.NewGuid();var product=Guid.NewGuid();catalog.Categories.Add(new(){Id=category,Name="CI food",Slug="ci-"+category,State=PublicationStates.Published,CreatedAtUtc=clock.UtcNow});catalog.Products.Add(new(){Id=product,CategoryId=category,Name="CI product",State=PublicationStates.Published,CreatedAtUtc=clock.UtcNow});await catalog.SaveChangesAsync();
+ var category=Guid.NewGuid();var product=Guid.NewGuid();var serviceProduct=Guid.NewGuid();
+ catalog.Categories.Add(new(){Id=category,Name="CI food",Slug="ci-"+category,State=PublicationStates.Published,CreatedAtUtc=clock.UtcNow});
+ catalog.Products.Add(new(){Id=product,CategoryId=category,Name="CI product",Kind=CatalogProductKinds.Good,State=PublicationStates.Published,CreatedAtUtc=clock.UtcNow});
+ catalog.Products.Add(new(){Id=serviceProduct,CategoryId=category,Name="CI service",Kind=CatalogProductKinds.Service,State=PublicationStates.Published,CreatedAtUtc=clock.UtcNow});
+ await catalog.SaveChangesAsync();
  geo.Provinces.Add(new(){Id=province,Name="CI",Slug="ci-"+province,State=GeographyStates.Selectable});geo.Cities.Add(new(){Id=city,ProvinceId=province,Name="CI",Slug="ci-"+city,State=GeographyStates.Selectable});await geo.SaveChangesAsync();
  var draft=await sellers.RegistrationDrafts.SingleAsync(d=>d.AccountId==seller);
  draft.CompletedStep=5;draft.ApplicantType="NATURAL";draft.NaturalNationalCode="0013549829";draft.IdentityStatus="VERIFIED";
  draft.BusinessCategoryId=Guid.NewGuid();sellers.BusinessCategories.Add(new(){Id=draft.BusinessCategoryId.Value,Name="CI",IsActive=true,UpdatedAtUtc=clock.UtcNow});
- draft.BusinessName="CI";draft.BusinessDescription="CI";draft.BusinessPhone="02112345678";draft.ServiceArea="CI city";draft.OfferingType="GOOD";draft.ActivityProvinceId=province;draft.ActivityCityId=city;draft.ActivityAddress="CI";draft.ActivityHours="CI";draft.Pickup=true;draft.SellerDelivery=false;
+ draft.BusinessName="CI";draft.BusinessDescription="CI";draft.BusinessPhone="02112345678";draft.ServiceArea="CI city";draft.OfferingType="BOTH";draft.ActivityProvinceId=province;draft.ActivityCityId=city;draft.ActivityAddress="CI";draft.ActivityHours="CI";draft.Pickup=true;draft.SellerDelivery=false;
  await sellers.SaveChangesAsync();
  var roles=new RoleAuthorizationService(identity,new AuthSessionService(identity,clock));var service=new CommerceService(db,catalog,sellers,geo,identity,roles,clock);
  Task<JsonElement> Command(Guid actor,string action,object input,Guid? key=null)=>service.ExecuteAsync(actor,key??Guid.NewGuid(),action,JsonSerializer.SerializeToElement(input));
  var offerId=Guid.NewGuid();await Command(seller,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=5,expectedVersion=0});
  await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(buyer,"SAVE_OFFER",new{}));
+ var serviceListingId=Guid.NewGuid();
+ var serviceListing=await Command(seller,"SAVE_SERVICE_LISTING",new{
+  listingId=serviceListingId,productId=serviceProduct,priceRial=2500,
+  availabilityNote="CI weekdays by coordination",expectedVersion=0});
+ Assert.Equal(1,serviceListing.GetProperty("Version").GetInt32());
+ var serviceReplayKey=Guid.NewGuid();var serviceUpdate=new{
+  listingId=serviceListingId,productId=serviceProduct,priceRial=2600,
+  availabilityNote="CI weekdays 9-17",expectedVersion=1};
+ var updatedService=await Command(seller,"SAVE_SERVICE_LISTING",serviceUpdate,serviceReplayKey);
+ Assert.Equal(2,updatedService.GetProperty("Version").GetInt32());
+ Assert.Equal(2,(await Command(seller,"SAVE_SERVICE_LISTING",serviceUpdate,serviceReplayKey)).GetProperty("Version").GetInt32());
+ await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(buyer,"SAVE_SERVICE_LISTING",new{}));
  var addressId=Guid.NewGuid();await Command(buyer,"SAVE_ADDRESS",new{addressId,cityId=city,text="CI only",latitude=35m,longitude=51m});await Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=2});
  var staleCart=await Assert.ThrowsAsync<CommerceConflict>(()=>Command(buyer,"SET_CART_ITEM",new{productId=product,quantity=9,expectedVersion=0}));Assert.Equal("CART_VERSION_CHANGED",staleCart.Message);
  Assert.Equal(2,JsonSerializer.Deserialize<Cart>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Kind=="CART"&&d.OwnerId==buyer)).Body)!.Items[0].Quantity);
@@ -157,6 +173,19 @@ public sealed class CommerceTests
  Assert.Equal(HttpStatusCode.OK,(await anonymous.GetAsync("/api/v1/content/ci-policy")).StatusCode);
  var publicOffers=await anonymous.GetAsync("/api/v1/offers?productId="+product);Assert.Equal(HttpStatusCode.OK,publicOffers.StatusCode);Assert.Single((await publicOffers.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
  Assert.Equal(HttpStatusCode.BadRequest,(await anonymous.GetAsync("/api/v1/offers?page=0")).StatusCode);
+ var publicServices=await anonymous.GetAsync("/api/v1/service-listings?productId="+serviceProduct);
+ Assert.Equal(HttpStatusCode.OK,publicServices.StatusCode);
+ var publicServiceBody=await publicServices.Content.ReadFromJsonAsync<JsonElement>();
+ Assert.Single(publicServiceBody.GetProperty("items").EnumerateArray());
+ Assert.Equal("CI weekdays 9-17",publicServiceBody.GetProperty("items")[0].GetProperty("AvailabilityNote").GetString());
+ Assert.Equal(HttpStatusCode.BadRequest,(await anonymous.GetAsync("/api/v1/service-listings?page=0")).StatusCode);
+ var sellerServices=await storeClient.GetAsync("/api/v1/seller/service-listings?page=1");
+ Assert.Equal(HttpStatusCode.OK,sellerServices.StatusCode);
+ Assert.Contains((await sellerServices.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray(),
+  x=>x.GetProperty("Id").GetGuid()==serviceListingId);
+ Assert.Equal(HttpStatusCode.Forbidden,(await Post(customer,"SAVE_SERVICE_LISTING",new{
+  listingId=Guid.NewGuid(),productId=serviceProduct,priceRial=1,
+  availabilityNote="bad",expectedVersion=0})).StatusCode);
  Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/me/incidents")).StatusCode);
  var buyerIncidents=await customer.GetAsync("/api/v1/me/incidents?page=1");Assert.Equal(HttpStatusCode.OK,buyerIncidents.StatusCode);
  Assert.Single((await buyerIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
