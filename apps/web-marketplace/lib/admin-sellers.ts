@@ -46,6 +46,8 @@ export type AdminSellerDetail = AdminSellerListItem & {
   businessDescription: string;
   businessPhone: string;
   activityAddress: string;
+  activityLatitude: number | null;
+  activityLongitude: number | null;
   activityHours: string;
   sellerDelivery: boolean;
   pickup: boolean;
@@ -172,6 +174,13 @@ export function parseAdminSellerDetail(
       !optionalText(x.legalRepresentativePhoneMasked, 20) ||
       !text(x.businessDescription, 2000) ||
       !text(x.businessPhone, 30) || !text(x.activityAddress, 1000) ||
+      !((x.activityLatitude === null && x.activityLongitude === null) ||
+        (typeof x.activityLatitude === "number" &&
+          Number.isFinite(x.activityLatitude) &&
+          x.activityLatitude >= -90 && x.activityLatitude <= 90 &&
+          typeof x.activityLongitude === "number" &&
+          Number.isFinite(x.activityLongitude) &&
+          x.activityLongitude >= -180 && x.activityLongitude <= 180)) ||
       !text(x.activityHours, 500) || typeof x.sellerDelivery !== "boolean" ||
       typeof x.pickup !== "boolean" || !text(x.serviceArea, 500) ||
       !text(x.registrationContactName, 200) ||
@@ -201,6 +210,8 @@ export function parseAdminSellerDetail(
     businessDescription: x.businessDescription.trim(),
     businessPhone: x.businessPhone.trim(),
     activityAddress: x.activityAddress.trim(),
+    activityLatitude: x.activityLatitude as number | null,
+    activityLongitude: x.activityLongitude as number | null,
     activityHours: x.activityHours.trim(),
     sellerDelivery: x.sellerDelivery,
     pickup: x.pickup,
