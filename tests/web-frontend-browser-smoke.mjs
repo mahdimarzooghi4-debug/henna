@@ -35,6 +35,10 @@ function json(data, status = 200) {
   return { status, contentType: "application/json; charset=utf-8",
     headers: { "Cache-Control": "no-store" }, body: JSON.stringify(data) };
 }
+const tilePng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=",
+  "base64");
+let sellerMapTileReads = 0;
 
 async function fakeApi(route) {
   const req = route.request();
@@ -169,16 +173,18 @@ async function fakeApi(route) {
     req.method() === "PUT") {
     assert.ok(signedIn, "anonymous form must never save activity area");
     const body = req.postDataJSON();
-    assert.deepEqual(body, {
-      provinceId,
-      cityId,
-      address: "خیابان آزادی، پلاک ۱۲",
-      activityHours: "شنبه تا پنجشنبه، ۸ تا ۲۲",
-      sellerDelivery: true,
-      pickup: true,
-      serviceArea: "کل شهر",
-      revision: draft?.revision,
-    });
+    assert.equal(body.provinceId, provinceId);
+    assert.equal(body.cityId, cityId);
+    assert.equal(body.address, "خیابان آزادی، پلاک ۱۲");
+    assert.equal(body.activityHours, "شنبه تا پنجشنبه، ۸ تا ۲۲");
+    assert.equal(body.sellerDelivery, true);
+    assert.equal(body.pickup, true);
+    assert.equal(body.serviceArea, "کل شهر");
+    assert.equal(body.revision, draft?.revision);
+    assert.equal(typeof body.latitude, "number");
+    assert.equal(typeof body.longitude, "number");
+    assert.ok(body.latitude >= -90 && body.latitude <= 90);
+    assert.ok(body.longitude >= -180 && body.longitude <= 180);
     assert.equal(draft?.completedStep, 4);
     draft = {
       ...draft,
@@ -187,6 +193,8 @@ async function fakeApi(route) {
       activityCityId: cityId,
       activityCityName: city.name,
       activityAddress: body.address,
+      activityLatitude: body.latitude,
+      activityLongitude: body.longitude,
       activityHours: body.activityHours,
       sellerDelivery: body.sellerDelivery,
       pickup: body.pickup,
@@ -201,6 +209,8 @@ async function fakeApi(route) {
       province: { id: provinceId, name: province.name },
       city: { id: cityId, name: city.name },
       address: draft.activityAddress,
+      latitude: draft.activityLatitude,
+      longitude: draft.activityLongitude,
       activityHours: draft.activityHours,
       sellerDelivery: true,
       pickup: true,
@@ -366,6 +376,12 @@ async function main() {
   const context = await browser.newContext({
     viewport: { width: 1365, height: 900 },
     locale: "fa-IR",
+  });
+  await context.route("https://tile.openstreetmap.org/**", route => {
+    sellerMapTileReads++;
+    return route.fulfill({
+      status: 200, contentType: "image/png", body: tilePng,
+    });
   });
   await context.route("**/api/**", fakeApi);
   const page = await context.newPage();
@@ -603,9 +619,23 @@ async function main() {
   await otherTab.getByLabel("ارسال توسط فروشنده").check();
   await otherTab.getByLabel("تحویل حضوری").check();
   await otherTab.locator("#seller-service-area").fill("کل شهر");
-  await otherTab.getByText(
-    "نقشه تعاملی حنا هنوز به قرارداد مختصات متصل نشده است.",
-  ).waitFor();
+  await otherTab.getByRole("button", {
+    name: "باز کردن نقشه",
+  }).click();
+  const activityMap = otherTab.getByRole("application", {
+    name: "انتخاب موقعیت محل فعالیت فروشنده روی نقشه",
+  });
+  await activityMap.waitFor();
+  const activityMapBox = await activityMap.boundingBox();
+  assert.ok(activityMapBox);
+  await otherTab.mouse.click(
+    activityMapBox.x + activityMapBox.width * 0.64,
+    activityMapBox.y + activityMapBox.height * 0.46,
+  );
+  await otherTab.getByText("مختصات انتخاب‌شده:", {
+    exact: false,
+  }).waitFor();
+  assert.ok(sellerMapTileReads > 0);
 
   await otherTab.getByRole("button", {
     name: "ذخیره و ادامه", exact: true,
@@ -617,6 +647,10 @@ async function main() {
   assert.equal(draft.revision, 7);
   assert.equal(draft.activityProvinceId, provinceId);
   assert.equal(draft.activityCityId, cityId);
+  assert.equal(typeof draft.activityLatitude, "number");
+  assert.equal(typeof draft.activityLongitude, "number");
+  assert.ok(Math.abs(draft.activityLatitude) <= 90);
+  assert.ok(Math.abs(draft.activityLongitude) <= 180);
   assert.equal(draft.sellerDelivery, true);
   assert.equal(draft.pickup, true);
   await otherTab.getByText("مرحله بعد «اطلاعات تکمیلی» است.").waitFor();
@@ -627,6 +661,8 @@ async function main() {
   await otherTab.reload();
   await otherTab.locator(".seller-activity__completed")
     .getByText("شهر مرورگر CI", { exact: false }).waitFor();
+  await otherTab.locator(".seller-activity__completed")
+    .getByText("مختصات", { exact: true }).waitFor();
 
   await otherTab.getByRole("heading", {
     name: "اطلاعات تکمیلی",
