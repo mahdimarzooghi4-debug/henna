@@ -159,13 +159,25 @@ app.MapGet("/health/ready", async (IServiceProvider services,
         var sellerPending = await sellerDb.Database.GetPendingMigrationsAsync(cancellationToken);
         var catalogPending = await catalogDb.Database.GetPendingMigrationsAsync(cancellationToken);
         var geographyPending = await geographyDb.Database.GetPendingMigrationsAsync(cancellationToken);
-        return pending.Any() || sellerPending.Any() || catalogPending.Any() ||
+        if (pending.Any() || sellerPending.Any() || catalogPending.Any() ||
             geographyPending.Any() ||
             !await sellerDb.Database.CanConnectAsync(cancellationToken) ||
             !await catalogDb.Database.CanConnectAsync(cancellationToken) ||
-            !await geographyDb.Database.CanConnectAsync(cancellationToken)
-            ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
-            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller", "catalog", "geography" } });
+            !await geographyDb.Database.CanConnectAsync(cancellationToken))
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+        if (hasCommerceDb)
+        {
+            var commerceDb = scope.ServiceProvider.GetRequiredService<HanaCommerceDbContext>();
+            if (!await commerceDb.Database.CanConnectAsync(cancellationToken) ||
+                (await commerceDb.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var modules = hasCommerceDb
+            ? new[] { "identity", "seller", "catalog", "geography", "commerce" }
+            : new[] { "identity", "seller", "catalog", "geography" };
+        return Results.Ok(new { ready = true, modules });
     }
     catch
     {
