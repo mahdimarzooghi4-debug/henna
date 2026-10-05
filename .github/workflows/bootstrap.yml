@@ -192,7 +192,10 @@ jobs:
           for attempt in {1..45}; do
             if curl --fail --silent http://127.0.0.1:5184/health/live > /dev/null; then
               curl --fail --silent http://127.0.0.1:5184/api/v1/system/status | grep -q '"phase":"bootstrap"'
-              curl --fail --silent http://127.0.0.1:5184/health/ready | grep -q '"ready":true'
+              curl --fail --silent http://127.0.0.1:5184/health/ready -o /tmp/hana-ready.json
+              grep -q '"ready":true' /tmp/hana-ready.json
+              grep -q '"allocation-learning"' /tmp/hana-ready.json
+              grep -q '"commerce"' /tmp/hana-ready.json
               curl --fail --silent http://127.0.0.1:5184/api/v1/catalog/categories -o /tmp/hana-catalog-categories.json
               grep -q '"items":' /tmp/hana-catalog-categories.json
               curl --fail --silent http://127.0.0.1:5184/api/v1/catalog/products -o /tmp/hana-catalog-products.json
@@ -232,6 +235,27 @@ jobs:
             sleep 1
           done
           cat /tmp/hana-api.log
+          exit 1
+
+      - name: Fail readiness when configured learning database is unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASPNETCORE_ENVIRONMENT=Development \
+          ASPNETCORE_URLS=http://127.0.0.1:5189 \
+          ConnectionStrings__AllocationLearningDb='Host=127.0.0.1;Port=55432;Database=missing;Username=none;Password=none;Timeout=1;Command Timeout=1' \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-learning-ready.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5189/health/live > /dev/null; then
+              code=$(curl --silent --output /tmp/hana-learning-not-ready.json --write-out "%{http_code}" http://127.0.0.1:5189/health/ready)
+              test "$code" = "503"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hana-learning-ready.log
           exit 1
 
       - name: Smoke test explicit trusted proxy handling
