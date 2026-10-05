@@ -24,7 +24,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
   else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
-  if(new[]{"SAVE_OFFER","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
+  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   transactionActor=actor;transactionCommand=command;
   // Pilot correctness boundary: serialize commerce mutations across API processes. Never an in-memory lock.
   await using var tx=await db.Database.BeginTransactionAsync(ct);
@@ -33,14 +33,14 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
   else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
-  if(new[]{"SAVE_OFFER","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
+  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   var fingerprint=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(action+Canonical(input))));
   var prior=await db.Receipts.SingleOrDefaultAsync(x=>x.ActorId==actor && x.CommandId==command,ct);
   if(prior!=null) { if(prior.Fingerprint!=fingerprint) throw new CommerceConflict("IDEMPOTENCY_PAYLOAD_CHANGED"); return JsonSerializer.Deserialize<JsonElement>(prior.ResultJson); }
   if(await db.Receipts.CountAsync(r=>r.ActorId==actor&&r.CreatedAtUtc>clock.UtcNow.AddMinutes(-1),ct)>=120)
    throw new CommerceConflict("COMMAND_RATE_LIMITED");
   object result=action switch {
-   "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct), "COMPARE_CART"=>await CompareCart(actor,ct),
+   "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SAVE_SERVICE_LISTING"=>await SaveServiceListing(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct), "COMPARE_CART"=>await CompareCart(actor,ct),
    "SAVE_ADDRESS"=>await SaveAddress(actor,input,ct), "CREATE_QUOTE"=>await CreateQuote(actor,input,ct),
    "PLACE_ORDER"=>await PlaceOrder(actor,input,ct), "CANCEL_ORDER"=>await Cancel(actor,input,ct),
    "SELLER_ORDER_STATE"=>await SellerState(actor,input,ct), "CONFIRM_PICKUP"=>await ConfirmPickup(actor,input,ct),
@@ -120,18 +120,47 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var active=x.GetProperty("active").GetBoolean();var prior=(await All<CommerceStaffPermission>("PERMISSION",ct)).SingleOrDefault(p=>p.AccountId==target&&p.Permission==permission);var p=new CommerceStaffPermission(prior?.Id??Guid.NewGuid(),target,permission,active);await Put(p.Id,target,"PERMISSION",p,ct);return p;
  }
  private async Task Seller(Guid actor,CancellationToken ct) { if(!await roles.HasRoleAsync(actor,HanaRoles.Seller,ct)||!await sellers.SellerActivations.AnyAsync(x=>x.ApplicationAccountId==actor,ct)) throw new CommerceForbidden(); }
+ private async Task SellerOffering(Guid actor,string kind,CancellationToken ct) {
+  await Seller(actor,ct);
+  var offering=await sellers.RegistrationDrafts.AsNoTracking()
+   .Where(x=>x.AccountId==actor&&x.Status=="SUBMITTED"&&x.ReviewStatus=="APPROVED"&&x.ActivatedAtUtc!=null)
+   .Select(x=>x.OfferingType).SingleOrDefaultAsync(ct);
+  if(kind=="GOOD"&&offering is not("GOOD" or "BOTH"))throw new CommerceForbidden();
+  if(kind=="SERVICE"&&offering is not("SERVICE" or "BOTH"))throw new CommerceForbidden();
+ }
  private async Task<T> Get<T>(Guid id,string kind,CancellationToken ct) { var d=await db.Documents.SingleOrDefaultAsync(x=>x.Id==id&&x.Kind==kind,ct)??throw new CommerceMissing();return JsonSerializer.Deserialize<T>(d.Body)!; }
  private async Task<T?> Owned<T>(Guid owner,string kind,CancellationToken ct) where T:class {var d=await db.Documents.SingleOrDefaultAsync(x=>x.OwnerId==owner&&x.Kind==kind,ct);return d==null?null:JsonSerializer.Deserialize<T>(d.Body);}
  private async Task Put(Guid id,Guid owner,string kind,object value,CancellationToken ct) { var d=await db.Documents.SingleOrDefaultAsync(x=>x.Id==id,ct);if(d==null)db.Documents.Add(new(){Id=id,OwnerId=owner,Kind=kind,Body=JsonSerializer.Serialize(value),Revision=1});else {if(d.Kind!=kind||d.OwnerId!=owner)throw new CommerceConflict("RESOURCE_ID_COLLISION");d.Body=JsonSerializer.Serialize(value);d.Revision=checked(d.Revision+1);} }
  private async Task<List<T>> All<T>(string kind,CancellationToken ct) {var rows=await db.Documents.Where(x=>x.Kind==kind).OrderBy(x=>x.Id).ToListAsync(ct);return rows.Select(x=>JsonSerializer.Deserialize<T>(x.Body)!).ToList();}
  private async Task<object> SaveOffer(Guid actor,JsonElement x,CancellationToken ct) {
-  await Seller(actor,ct);var product=await catalog.Products.AsNoTracking().SingleOrDefaultAsync(p=>p.Id==Id(x,"productId")&&p.State==PublicationStates.Published&&p.Kind==CatalogProductKinds.Good,ct)??throw new CommerceConflict("PRODUCT_NOT_PUBLISHED");
+  await SellerOffering(actor,"GOOD",ct);var product=await catalog.Products.AsNoTracking().SingleOrDefaultAsync(p=>p.Id==Id(x,"productId")&&p.State==PublicationStates.Published&&p.Kind==CatalogProductKinds.Good,ct)??throw new CommerceConflict("PRODUCT_NOT_PUBLISHED");
   if(!await catalog.Categories.AnyAsync(c=>c.Id==product.CategoryId&&c.State==PublicationStates.Published,ct))throw new CommerceConflict("CATEGORY_NOT_PUBLISHED");
   var offerId=Id(x,"offerId");var old=(await All<Offer>("OFFER",ct)).SingleOrDefault(o=>o.SellerId==actor&&o.ProductId==product.Id);
   if(old!=null&&(old.Id!=offerId||old.Version!=Count(x,"expectedVersion",0,int.MaxValue)))throw new CommerceConflict("OFFER_VERSION_CHANGED");
   if(old==null&&Count(x,"expectedVersion",0,int.MaxValue)!=0)throw new CommerceConflict("OFFER_VERSION_CHANGED");
   var offer=new Offer(offerId,actor,product.Id,product.CategoryId,Money(x,"priceRial"),Count(x,"stock",0,1000000),checked((old?.Version??0)+1),true);
   await Put(offer.Id,actor,"OFFER",offer,ct);return offer;
+ }
+ private async Task<object> SaveServiceListing(Guid actor,JsonElement x,CancellationToken ct) {
+  await SellerOffering(actor,"SERVICE",ct);
+  var product=await catalog.Products.AsNoTracking()
+   .SingleOrDefaultAsync(p=>p.Id==Id(x,"productId")&&p.State==PublicationStates.Published&&
+    p.Kind==CatalogProductKinds.Service,ct)??throw new CommerceConflict("PRODUCT_NOT_PUBLISHED");
+  if(!await catalog.Categories.AnyAsync(c=>c.Id==product.CategoryId&&
+    c.State==PublicationStates.Published,ct))throw new CommerceConflict("CATEGORY_NOT_PUBLISHED");
+  var listingId=Id(x,"listingId");
+  var old=(await All<ServiceListing>("SERVICE_LISTING",ct))
+   .SingleOrDefault(o=>o.SellerId==actor&&o.ProductId==product.Id);
+  var expected=Count(x,"expectedVersion",0,int.MaxValue);
+  if(old!=null&&(old.Id!=listingId||old.Version!=expected))
+   throw new CommerceConflict("SERVICE_LISTING_VERSION_CHANGED");
+  if(old==null&&expected!=0)
+   throw new CommerceConflict("SERVICE_LISTING_VERSION_CHANGED");
+  var listing=new ServiceListing(listingId,actor,product.Id,product.CategoryId,
+   Money(x,"priceRial"),Text(x,"availabilityNote",500),
+   checked((old?.Version??0)+1),true);
+  await Put(listing.Id,actor,"SERVICE_LISTING",listing,ct);
+  return listing;
  }
  private async Task<object> SetCart(Guid actor,JsonElement x,CancellationToken ct) {
   var productId=Id(x,"productId");var quantity=Count(x,"quantity",0);
@@ -384,6 +413,33 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var stores=await sellers.RegistrationDrafts.AsNoTracking().Where(s=>sellerIds.Contains(s.AccountId)).ToDictionaryAsync(s=>s.AccountId,s=>s.BusinessName??s.StoreName,ct);
   return new{items=offers.Select(o=>new{o.Id,o.SellerId,o.ProductId,o.CategoryId,o.PriceRial,o.Stock,o.Version,o.Published,StoreName=stores[o.SellerId]}),page,pageSize=20};
  }
+ public async Task<object> PublicServiceListings(Guid? productId,int page,CancellationToken ct) {
+  if(page is <1 or >10000)throw new ArgumentException("Page.");
+  var active=await ActiveSellers(ct);
+  var query=db.Documents.AsNoTracking()
+   .Where(d=>d.Kind=="SERVICE_LISTING"&&active.Contains(d.OwnerId)&&
+    EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));
+  if(productId!=null){
+   var selector=JsonSerializer.Serialize(new{ProductId=productId});
+   query=query.Where(d=>EF.Functions.JsonContains(d.Body,selector));
+  }
+  var candidateRows=await query.OrderBy(d=>d.Id).ToListAsync(ct);
+  var candidates=candidateRows.Select(d=>JsonSerializer.Deserialize<ServiceListing>(d.Body)!).ToList();
+  var productIds=candidates.Select(o=>o.ProductId).Distinct().ToArray();
+  var publishedProducts=await catalog.Products.AsNoTracking()
+   .Where(p=>productIds.Contains(p.Id)&&p.State==PublicationStates.Published&&
+    p.Kind==CatalogProductKinds.Service&&p.Category.State==PublicationStates.Published)
+   .Select(p=>p.Id).ToArrayAsync(ct);
+  var listings=candidates.Where(o=>publishedProducts.Contains(o.ProductId))
+   .Skip((page-1)*20).Take(20).ToList();
+  var sellerIds=listings.Select(o=>o.SellerId).Distinct().ToArray();
+  var stores=await sellers.RegistrationDrafts.AsNoTracking()
+   .Where(x=>sellerIds.Contains(x.AccountId))
+   .ToDictionaryAsync(x=>x.AccountId,x=>x.BusinessName??x.StoreName,ct);
+  return new{items=listings.Select(o=>new{o.Id,o.SellerId,o.ProductId,o.CategoryId,
+   o.PriceRial,o.AvailabilityNote,o.Version,o.Published,StoreName=stores[o.SellerId]}),
+   page,pageSize=20};
+ }
  public async Task<object> SellerReportAsync(Guid actor,CancellationToken ct=default) {
   await Seller(actor,ct);
   var orderRows=await db.Documents.AsNoTracking()
@@ -431,14 +487,14 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    await Admin(actor,ct);var orders=await All<Order>("ORDER",ct);var cases=await All<Incident>("INCIDENT",ct);var settlements=await All<Settlement>("SETTLEMENT",ct);
    return new{orders=orders.Count,cancelled=orders.Count(o=>o.State=="CANCELLED"),collected=orders.Count(o=>o.State=="COLLECTED"),openIncidents=cases.Count(i=>i.State is "UNDER_REVIEW" or "AWAITING_RETURN"),preparedSettlements=settlements.Count,grossRial=orders.Where(o=>o.State!="CANCELLED").Aggregate(0L,(n,o)=>checked(n+o.TotalRial))};
   }
-  var allowed=new[]{"OFFER","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION","FEE_VERSION","HOUSEHOLD"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
+  var allowed=new[]{"OFFER","SERVICE_LISTING","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION","FEE_VERSION","HOUSEHOLD"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
   if(view=="SUPPORT")await Permission(actor,"SUPPORT",ct);
   var admin=await roles.HasRoleAsync(actor,HanaRoles.Admin,ct);
   var supportAccess=new[]{"ORDER","INCIDENT","TICKET"}.Contains(kind)&&await HasPermission(actor,"SUPPORT",ct);
   var financeAccess=new[]{"PROGRAM","CREDIT","SETTLEMENT","WITHDRAWAL","FEE_VERSION"}.Contains(kind)&&await HasPermission(actor,"FINANCE",ct);
   admin=admin||supportAccess||financeAccess;
   var query=db.Documents.AsNoTracking().Where(d=>d.Kind==kind);
-  if(kind=="OFFER") {var active=await ActiveSellers(ct);query=query.Where(d=>active.Contains(d.OwnerId)&&EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));}
+  if(kind is "OFFER" or "SERVICE_LISTING") {var active=await ActiveSellers(ct);query=query.Where(d=>active.Contains(d.OwnerId)&&EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));}
   if(id!=null)query=query.Where(d=>d.Id==id);
   if(view=="BUYER")query=query.Where(d=>d.OwnerId==actor);
   if(view=="SELLER") {await Seller(actor,ct);query=kind is "ORDER" or "INCIDENT"?query.Where(d=>EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{SellerId=actor}))):query.Where(d=>d.OwnerId==actor);}
@@ -457,7 +513,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   }
   var rows=await query.OrderBy(d=>d.Id).Skip(id==null?(page-1)*20:0).Take(id==null?20:1).ToListAsync(ct);
   var result=new List<JsonElement>();foreach(var d in rows){var body=JsonSerializer.Deserialize<JsonElement>(d.Body);
-   bool visible=admin||kind=="PROGRAM"&&organizations.Contains(body.GetProperty("OrganizationId").ValueKind==JsonValueKind.Null?Guid.Empty:body.GetProperty("OrganizationId").GetGuid())||kind=="ORGANIZATION"&&organizations.Contains(d.Id)||d.OwnerId==actor||kind=="OFFER"||sellerAccess&&kind=="ORDER"&&body.GetProperty("SellerId").GetGuid()==actor||sellerAccess&&kind=="INCIDENT"&&body.GetProperty("SellerId").GetGuid()==actor;
+   bool visible=admin||kind=="PROGRAM"&&organizations.Contains(body.GetProperty("OrganizationId").ValueKind==JsonValueKind.Null?Guid.Empty:body.GetProperty("OrganizationId").GetGuid())||kind=="ORGANIZATION"&&organizations.Contains(d.Id)||d.OwnerId==actor||kind is "OFFER" or "SERVICE_LISTING"||sellerAccess&&kind=="ORDER"&&body.GetProperty("SellerId").GetGuid()==actor||sellerAccess&&kind=="INCIDENT"&&body.GetProperty("SellerId").GetGuid()==actor;
    if(visible)result.Add(body);
   }
   if(id!=null&&result.Count==0)throw new CommerceMissing();return new{items=result,page,pageSize=20};
