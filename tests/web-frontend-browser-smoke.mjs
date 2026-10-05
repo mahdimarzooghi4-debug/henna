@@ -315,7 +315,7 @@ async function fakeApi(route) {
       activityCityId: draft.activityCityId,
       capabilities: {
         dashboard: true,
-        orders: false,
+        orders: true,
         listings: false,
         inventory: false,
         pricing: false,
@@ -724,7 +724,7 @@ async function main() {
   }).waitFor();
   assert.equal(await otherTab.getByText("هنوز متصل نشده", {
     exact: true,
-  }).count(), 6);
+  }).count(), 5);
   await otherTab.getByText("دسترسی فروشندگی فعال است.", {
     exact: true,
   }).waitFor();
