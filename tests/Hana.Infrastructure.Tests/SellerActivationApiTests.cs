@@ -114,6 +114,27 @@ public sealed class SellerActivationApiTests
             new AuthenticationHeaderValue(
                 "Bearer", applicantToken);
 
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await applicant.GetAsync(
+                "/api/v1/admin/integrations/status")).StatusCode);
+        var integrationStatus = await admin.GetAsync(
+            "/api/v1/admin/integrations/status");
+        Assert.Equal(HttpStatusCode.OK, integrationStatus.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await integrationStatus.Content.ReadAsStringAsync()))
+        {
+            Assert.False(body.RootElement.GetProperty(
+                "sms").GetProperty("configured").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerIdentity").GetProperty("configured").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "payment").GetProperty("configured").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "logistics").GetProperty("configured").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "allExternalReady").GetBoolean());
+        }
+
         Assert.False(await identity.RoleAssignments.AsNoTracking()
             .AnyAsync(x =>
                 x.AccountId == applicantId &&
