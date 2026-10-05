@@ -3,18 +3,59 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BuyerCommerceError, buyerGet, buyerPost, commerceId, commerceIntent, rial, type BuyerOrder, type CommerceIntent } from "../lib/buyer-commerce";
 import { BuyerCommerceStatus } from "./buyer-commerce-status";
+import {
+  clearWebCommerceIntent,
+  persistWebCommerceIntent,
+  restoreWebCommerceIntent,
+} from "../lib/web-pending-commerce";
 const stateText: Record<BuyerOrder["state"], string> = { PAID: "ثبت شده و پرداخت شده", PREPARING: "در حال آماده‌سازی", READY_FOR_PICKUP: "آماده دریافت حضوری", COLLECTED: "دریافت شده", CANCELLED: "لغو شده" };
 export function BuyerOrders({ id }: { id?: string }) {
   const [orders, setOrders] = useState<BuyerOrder[] | null>(null), [error, setError] = useState<Error | null>(null), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   const [page, setPage] = useState(1);
   const [received, setReceived] = useState(false); const intent = useRef<CommerceIntent | null>(null), lock = useRef(false);
   const load = useCallback(async () => { setOrders(null); setError(null); setReceived(false); if (id && !commerceId(id)) { setError(new BuyerCommerceError(404)); return; } try { setOrders(id ? [await buyerGet<BuyerOrder>("orders/" + id)] : await buyerGet<BuyerOrder[]>("orders?page=" + page)); } catch (e) { setError(e instanceof Error ? e : new BuyerCommerceError(503)); } }, [id, page]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if(id){
+      try{
+        const restored=restoreWebCommerceIntent("orders");
+        if(restored&&restored.path.startsWith("orders/"+id+"/")){
+          intent.current=restored;
+          setMessage("درخواست سفارشِ تأییدنشده از قبل بازیابی شد؛ همان درخواست را بررسی کنید.");
+        }
+      }catch{
+        setError(new BuyerCommerceError(503));
+        setMessage("وضعیت درخواست سفارش قبلی قابل اعتماد نیست؛ فرمان تازه‌ای ارسال نمی‌شود.");
+      }
+    }
+    void load();
+  }, [id,load]);
   async function change(action?: "cancel" | "pickup-confirmation") {
     if (lock.current || !id || !orders?.[0]) return; lock.current = true; setBusy(true); setMessage("");
-    if (!intent.current) intent.current = commerceIntent(null, `orders/${id}/${action}`, { expectedVersion: orders[0].version });
-    try { const result = await buyerPost<BuyerOrder>(intent.current); intent.current = null; setOrders([result]); setReceived(false); setMessage("وضعیت سفارش به‌روز شد."); }
-    catch (e) { if (e instanceof BuyerCommerceError && e.status !== 503) { intent.current = null; if (e.status === 401) setError(e); if (e.code === "ORDER_VERSION_CHANGED") await load(); } setMessage(e instanceof Error ? e.message : "ثبت نتیجه تأیید نشد؛ همان درخواست را دوباره بررسی کنید."); }
+    if (!intent.current)
+      intent.current = commerceIntent(null, `orders/${id}/${action}`, {
+        expectedVersion: orders[0].version,
+      });
+    try {
+      persistWebCommerceIntent("orders",intent.current);
+      const result = await buyerPost<BuyerOrder>(intent.current);
+      clearWebCommerceIntent(intent.current.key);
+      intent.current = null;
+      setOrders([result]);
+      setReceived(false);
+      setMessage("وضعیت سفارش به‌روز شد.");
+    }
+    catch (e) {
+      if (e instanceof BuyerCommerceError && e.status !== 503) {
+        if(intent.current)clearWebCommerceIntent(intent.current.key);
+        intent.current = null;
+        if (e.status === 401) setError(e);
+        if (e.code === "ORDER_VERSION_CHANGED") await load();
+      } else if (!(e instanceof BuyerCommerceError)) {
+        setError(new BuyerCommerceError(503));
+      }
+      setMessage(e instanceof Error ? e.message :
+        "ثبت نتیجه تأیید نشد؛ همان درخواست را دوباره بررسی کنید.");
+    }
     finally { lock.current = false; setBusy(false); }
   }
   return <main className="commerce-main" dir="rtl"><p className="commerce-eyebrow">خرید از حنا</p><h1>{id ? "سفارش شما" : "سفارش‌های من"}</h1>
@@ -30,6 +71,6 @@ export function BuyerOrders({ id }: { id?: string }) {
       {message && <p role="status" className="commerce-notice">{message}</p>}{intent.current && <button className="commerce-button" disabled={busy} onClick={() => void change()}>بررسی نتیجه درخواست قبلی</button>}
       {!intent.current && <button className="commerce-button commerce-button--secondary" disabled={busy} onClick={() => void load()}>دریافت وضعیت تازه</button>}
     </>}
-    <div className="commerce-actions"><Link className="commerce-button commerce-button--secondary" href="/cart">سبد خرید</Link>{id && <Link className="commerce-button commerce-button--secondary" href="/orders">سفارش‌های من</Link>}</div>
+    {!intent.current && <div className="commerce-actions"><Link className="commerce-button commerce-button--secondary" href="/cart">سبد خرید</Link>{id && <Link className="commerce-button commerce-button--secondary" href="/orders">سفارش‌های من</Link>}</div>}
   </main>;
 }
