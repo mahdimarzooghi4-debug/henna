@@ -84,6 +84,16 @@ export type StaffOffer = {
   published: boolean;
 };
 
+export type StaffServiceListing = {
+  id: string;
+  productId: string;
+  categoryId: string;
+  priceRial: number;
+  availabilityNote: string;
+  version: number;
+  published: boolean;
+};
+
 export type StaffSettlement = {
   id: string;
   orderId: string;
@@ -205,6 +215,20 @@ const offer = (value: unknown): StaffOffer => {
   };
 };
 
+const serviceListing = (value: unknown): StaffServiceListing => {
+  const data = row(value);
+  if (typeof data.Published !== "boolean") throw Error();
+  return {
+    id: id(data.Id),
+    productId: id(data.ProductId),
+    categoryId: id(data.CategoryId),
+    priceRial: integer(data.PriceRial, 1),
+    availabilityNote: text(data.AvailabilityNote, 500),
+    version: integer(data.Version, 1),
+    published: data.Published,
+  };
+};
+
 const settlement = (value: unknown): StaffSettlement => {
   const data = row(value);
   if (!["READY_FOR_BANK_TRANSFER", "FINANCE_REVIEW_REQUIRED"]
@@ -309,6 +333,8 @@ export function parseStaffCommerce(
       return page(value, incident, expectedPage);
     if (scope === "seller" && path === "offers" && method === "GET")
       return page(value, offer, expectedPage);
+    if (scope === "seller" && path === "service-listings" && method === "GET")
+      return page(value, serviceListing, expectedPage);
     if (scope === "seller" && path === "settlements" && method === "GET")
       return page(value, settlement, expectedPage);
     if (scope === "seller" && path === "notifications" && method === "GET")
@@ -323,6 +349,8 @@ export function parseStaffCommerce(
       return page(value, ticket, expectedPage);
     if (scope === "seller" && path === "offers" && method === "POST")
       return offer(value);
+    if (scope === "seller" && path === "service-listings" && method === "POST")
+      return serviceListing(value);
     if (scope === "seller" && path === "tickets" && method === "POST")
       return ticket(value);
     if (scope === "seller" && /^notifications\/[^/]+\/read$/.test(path) &&
@@ -363,6 +391,8 @@ export function parseStaffCommerce(
 export const staffMessages: Record<string, string> = {
   ORDER_VERSION_CHANGED:
     "نسخه سفارش تغییر کرده است؛ داده تازه را دریافت کنید.",
+  SERVICE_LISTING_VERSION_CHANGED:
+    "نسخه خدمت تغییر کرده است؛ داده تازه را دریافت کنید.",
   ORDER_TRANSITION_INVALID:
     "این تغییر برای وضعیت فعلی سفارش مجاز نیست.",
   INCIDENT_ALREADY_DECIDED:
