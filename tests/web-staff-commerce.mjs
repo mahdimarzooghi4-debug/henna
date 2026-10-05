@@ -163,6 +163,14 @@ test("staff command responses validate the exact shipping shapes", () => {
   assert.equal(parseStaffCommerce(
     "seller", `notifications/${ID}/read`, "POST",
     {...notification, Read: true})?.read, true);
+
+  assert.deepEqual(parseStaffCommerce(
+    "support", "return-sla", "POST", { assessed: 3 }),
+    { assessed: 3 });
+  assert.equal(parseStaffCommerce(
+    "support", "return-sla", "POST", { assessed: -1 }), null);
+  assert.equal(parseStaffCommerce(
+    "support", "return-sla", "POST", { assessed: 1.5 }), null);
 });
 
 test("ambiguous retry intent preserves key and body until input changes", () => {
