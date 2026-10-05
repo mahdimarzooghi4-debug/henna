@@ -5,12 +5,13 @@ import * as Crypto from "expo-crypto";
 import { NativeOrdersController,initialNativeOrdersState } from "./buyer-orders-controller.ts";
 import type { MobileCommerceClient } from "./mobile-commerce.ts";
 import { colors } from "./theme";
+import { pendingCommerceStore } from "./native-pending-commerce.ts";
 const labels={PAID:"ثبت و پرداخت شده",PREPARING:"در حال آماده‌سازی",READY_FOR_PICKUP:"آماده دریافت حضوری",COLLECTED:"دریافت شده",CANCELLED:"لغو شده"};
 const rial=(n:number)=>new Intl.NumberFormat("fa-IR").format(n)+" ریال";
 const rtl={textAlign:"right",writingDirection:"rtl",fontFamily:"Vazirmatn_400Regular"} as const;
 /** Operational order views reuse the native commerce tokens; no matching Figma order frame was found. */
 export function BuyerOrdersScreen({api,selectedId,onBack,onLogin,onIssues}:{onIssues:(id:string)=>void;api:MobileCommerceClient;selectedId:string|null;onBack:()=>void;onLogin:()=>void}){
- const [state,setState]=useState(()=>initialNativeOrdersState(selectedId));const [controller]=useState(()=>new NativeOrdersController(api,Crypto.randomUUID,setState,selectedId));
+ const [state,setState]=useState(()=>initialNativeOrdersState(selectedId));const [controller]=useState(()=>new NativeOrdersController(api,Crypto.randomUUID,setState,selectedId,pendingCommerceStore));
  useEffect(()=>{controller.start();const sub=AppState.addEventListener("change",s=>{if(s==="active")void controller.refresh();});return()=>{sub.remove();controller.stop();};},[controller]);
  const locked=state.busy||!!state.intent;const back=()=>{if(locked)return;if(state.selectedId)void controller.open(null);else onBack();};
  useEffect(()=>{const sub=BackHandler.addEventListener("hardwareBackPress",()=>{back();return true;});return()=>sub.remove();});
