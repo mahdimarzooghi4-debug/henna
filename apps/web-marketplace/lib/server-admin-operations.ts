@@ -3,7 +3,7 @@ import {
   accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCookieName,
 } from "./server-auth";
 import {
-  adminOperationId, parseAdminResourcePage, parseAdminSummary,
+  adminOperationId, parseAdminCommandResponse, parseAdminResourcePage, parseAdminSummary,
   type AdminResourceKind,
 } from "./admin-operations";
 
@@ -151,8 +151,11 @@ export async function forwardAdminOperations(
        !response.headers.get("content-type")?.includes("application/json"))
       return fail(503,"پاسخ عملیات ادمین قابل تأیید نیست.");
     const raw=await boundedJson(response,1024*1024);
-    if(method==="POST")
-      return NextResponse.json(raw,{headers:noStore});
+    if(method==="POST"){
+      const parsed=parseAdminCommandResponse(segments[1],raw);
+      return parsed?NextResponse.json(parsed,{headers:noStore}):
+        fail(503,"پاسخ عملیات ادمین قابل اعتماد نیست.");
+    }
     if(summary){
       const parsed=parseAdminSummary(raw);
       return parsed?NextResponse.json(parsed,{headers:noStore}):
