@@ -17,6 +17,8 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
         Set<SellerApplicationAmendmentRecord>();
     public DbSet<SellerActivationRecord> SellerActivations =>
         Set<SellerActivationRecord>();
+    public DbSet<SellerSuspensionRecord> SellerSuspensions =>
+        Set<SellerSuspensionRecord>();
     public DbSet<SellerBusinessCategoryRecord> BusinessCategories =>
         Set<SellerBusinessCategoryRecord>();
     public DbSet<SellerBusinessCategoryImportReceipt> BusinessCategoryImportReceipts =>
@@ -285,6 +287,54 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasForeignKey(x => x.ApplicationAccountId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_seller_activations_registration_drafts");
+        });
+
+        modelBuilder.Entity<SellerSuspensionRecord>(entity =>
+        {
+            entity.ToTable("seller_suspensions", table =>
+            {
+                table.HasCheckConstraint("ck_seller_suspensions_revision",
+                    "expected_revision >= 1");
+                table.HasCheckConstraint("ck_seller_suspensions_reason",
+                    "char_length(btrim(reason)) BETWEEN 1 AND 500");
+                table.HasCheckConstraint("ck_seller_suspensions_restore",
+                    "(restored_at_utc IS NULL AND restored_by_account_id IS NULL AND restore_key IS NULL AND restore_expected_revision IS NULL) OR " +
+                    "(restored_at_utc IS NOT NULL AND restored_by_account_id IS NOT NULL AND restore_key IS NOT NULL AND restore_expected_revision >= 1)");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.ApplicationAccountId)
+                .HasColumnName("application_account_id").IsRequired();
+            entity.Property(x => x.SuspendedByAccountId)
+                .HasColumnName("suspended_by_account_id").IsRequired();
+            entity.Property(x => x.SuspensionKey)
+                .HasColumnName("suspension_key").IsRequired();
+            entity.Property(x => x.ExpectedRevision)
+                .HasColumnName("expected_revision").IsRequired();
+            entity.Property(x => x.Reason).HasColumnName("reason")
+                .HasMaxLength(500).IsRequired();
+            entity.Property(x => x.CreatedAtUtc)
+                .HasColumnName("created_at_utc").IsRequired();
+            entity.Property(x => x.RestoredAtUtc).HasColumnName("restored_at_utc");
+            entity.Property(x => x.RestoredByAccountId)
+                .HasColumnName("restored_by_account_id");
+            entity.Property(x => x.RestoreKey).HasColumnName("restore_key");
+            entity.Property(x => x.RestoreExpectedRevision)
+                .HasColumnName("restore_expected_revision");
+            entity.HasIndex(x => x.SuspensionKey).IsUnique()
+                .HasDatabaseName("ux_seller_suspensions_suspension_key");
+            entity.HasIndex(x => x.RestoreKey).IsUnique()
+                .HasFilter("restore_key IS NOT NULL")
+                .HasDatabaseName("ux_seller_suspensions_restore_key");
+            entity.HasIndex(x => x.ApplicationAccountId).IsUnique()
+                .HasFilter("restored_at_utc IS NULL")
+                .HasDatabaseName("ux_seller_suspensions_open_application");
+            entity.HasIndex(x => new { x.ApplicationAccountId, x.CreatedAtUtc })
+                .HasDatabaseName("ix_seller_suspensions_application_created");
+            entity.HasOne<SellerRegistrationDraft>().WithMany()
+                .HasForeignKey(x => x.ApplicationAccountId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_seller_suspensions_registration_drafts");
         });
 
         modelBuilder.Entity<SellerApplicationReviewRecord>(entity =>
