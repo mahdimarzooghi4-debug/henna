@@ -76,7 +76,6 @@ command('CREATE_ORGANIZATION',{'name':text(200),'registrationReference':text()},
 command('GRANT_ORGANIZATION_MEMBER',{'organizationId':uuid,'accountId':uuid,'role':enum('MANAGER','BENEFICIARY')},ref('OrganizationMembership'),permission='ADMIN')
 command('REVOKE_ORGANIZATION_MEMBER',{'membershipId':uuid},ref('OrganizationMembership'),permission='ADMIN')
 command('SET_STAFF_PERMISSION',{'accountId':uuid,'permission':enum('FINANCE','SUPPORT'),'active':boolean},ref('CommerceStaffPermission'),permission='ADMIN')
-command('SET_SELLER_ACCESS',{'accountId':uuid,'active':boolean,'reason':text(1000)},obj({'accountId':uuid,'active':boolean,'reason':text(1000)}),permission='ADMIN; changes SELLER RBAC only for a previously activated seller and is audit logged')
 command('SAVE_CONTENT',{'slug':{'type':'string','maxLength':100,'pattern':'^[a-z0-9]+(?:-[a-z0-9]+)*$'},'title':text(200),'text':text(10000),'expectedVersion':integer(0,2147483647)},ref('CommerceContent'),permission='ADMIN')
 command('PUBLISH_CONTENT',{'contentId':uuid,'published':boolean,'expectedVersion':version},ref('CommerceContent'),permission='ADMIN')
 command('READ_NOTIFICATION',{'notificationId':uuid},ref('CommerceNotification'))
