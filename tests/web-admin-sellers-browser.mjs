@@ -207,17 +207,12 @@ async function main() {
     name: "بررسی و فعال‌سازی فروشندگان",
   }).waitFor();
   await page.locator(`[data-application-id="${ID}"]`).click();
-  for (let attempt = 0; attempt < 50 && detailReads < 1; attempt++)
-    await new Promise(resolve => setTimeout(resolve, 50));
-  const adminBody = await page.locator("body").innerText();
-  assert.ok(detailReads >= 1,
-    "selected application must request detail; rendered body:\n" + adminBody);
-  assert.ok(adminBody.includes("مالک مرورگر"),
-    "valid detail response must render; rendered body:\n" + adminBody);
-  await page.getByPlaceholder(
-    "نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید.").waitFor();
   await page.locator(".admin-sellers__facts")
     .getByText("مالک مرورگر", { exact: true }).waitFor();
+  assert.ok(detailReads >= 1,
+    "selected application must request detail before rendering.");
+  await page.getByPlaceholder(
+    "نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید.").waitFor();
 
   const reason = page.getByPlaceholder(
     "نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید.");
