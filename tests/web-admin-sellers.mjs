@@ -48,6 +48,9 @@ const detail = {
   address: "نشانی CI",
   postalCode: "1234567890",
   reviewReason: null,
+  sellerSuspended: false,
+  suspendedAtUtc: null,
+  suspensionReason: null,
 };
 
 test("admin seller list/detail parsers accept bounded masked data", () => {
@@ -66,6 +69,16 @@ test("admin seller list/detail parsers accept bounded masked data", () => {
   const parsed = parseAdminSellerDetail(detail, ID);
   assert.equal(parsed?.phoneMasked, "0912*******");
   assert.equal(parsed?.pickup, true);
+  const suspended = parseAdminSellerDetail({
+    ...detail,
+    sellerSuspended: true,
+    suspendedAtUtc: "2026-10-05T04:00:00Z",
+    suspensionReason: "بررسی انطباق",
+  }, ID);
+  assert.equal(suspended?.sellerSuspended, true);
+  assert.equal(parseAdminSellerDetail({
+    ...detail, sellerSuspended: true,
+  }, ID), null);
 });
 
 test("admin seller parsers reject unsafe status and malformed tracking", () => {
