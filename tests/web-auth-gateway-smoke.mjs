@@ -425,7 +425,7 @@ async function main() {
               inventory: true,
               pricing: true,
               settlements: true,
-              reports: false,
+              reports: true,
             },
           }));
         }
@@ -1058,7 +1058,7 @@ async function main() {
       inventory: true,
       pricing: true,
       settlements: true,
-      reports: false,
+      reports: true,
     },
   });
 
