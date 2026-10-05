@@ -20,6 +20,26 @@ public sealed class UnconfiguredExternalPaymentProvider
 }
 
 /// <summary>
+/// Readiness boundary for verifying that a withdrawal destination IBAN belongs
+/// to the authenticated buyer. Provider-specific requests are intentionally
+/// deferred until an approved banking/identity contract is supplied.
+/// </summary>
+public interface IExternalIbanOwnershipVerifier
+{
+    bool IsAvailable { get; }
+}
+
+/// <summary>
+/// Shipping default. A withdrawal can be held for review, but ownership is
+/// never inferred from IBAN syntax, buyer-entered names or payment readiness.
+/// </summary>
+public sealed class UnconfiguredExternalIbanOwnershipVerifier
+    : IExternalIbanOwnershipVerifier
+{
+    public bool IsAvailable => false;
+}
+
+/// <summary>
 /// Provider readiness boundary for the independently supplied logistics
 /// business. Operational fleet logic never lives in the marketplace core.
 /// </summary>
