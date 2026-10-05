@@ -11,11 +11,14 @@ import {
   parseAdminSummary,
   type AdminAudit,
   type AdminContent,
+  type AdminCredit,
   type AdminFeePolicy,
+  type AdminHousehold,
   type AdminMembership,
   type AdminOperationIntent,
   type AdminOrganization,
   type AdminPermission,
+  type AdminProgram,
   type AdminResourceKind,
   type AdminSettlement,
   type AdminSummary,
@@ -59,6 +62,9 @@ export default function AdminOperationsPage(){
   const [fees,setFees]=useState<Load<AdminFeePolicy>>(initial());
   const [withdrawals,setWithdrawals]=useState<Load<AdminWithdrawal>>(initial());
   const [settlements,setSettlements]=useState<Load<AdminSettlement>>(initial());
+  const [programs,setPrograms]=useState<Load<AdminProgram>>(initial());
+  const [credits,setCredits]=useState<Load<AdminCredit>>(initial());
+  const [households,setHouseholds]=useState<Load<AdminHousehold>>(initial());
   const [notice,setNotice]=useState("");
   const [busy,setBusy]=useState<string|null>(null);
   const intents=useRef<Record<string,AdminOperationIntent|null>>({});
@@ -84,6 +90,19 @@ export default function AdminOperationsPage(){
   const [feeVersion,setFeeVersion]=useState("");
   const [feeRial,setFeeRial]=useState("");
   const [feeApproval,setFeeApproval]=useState("");
+
+  const [householdAccount,setHouseholdAccount]=useState("");
+  const [householdKey,setHouseholdKey]=useState("");
+  const [householdEvidence,setHouseholdEvidence]=useState("");
+  const [programName,setProgramName]=useState("");
+  const [programFunding,setProgramFunding]=useState("");
+  const [programFundedRial,setProgramFundedRial]=useState("");
+  const [programExpires,setProgramExpires]=useState("");
+  const [programCategories,setProgramCategories]=useState("");
+  const [programOrganization,setProgramOrganization]=useState("");
+  const [allocationProgram,setAllocationProgram]=useState("");
+  const [allocationPool,setAllocationPool]=useState("");
+  const [allocationBeneficiaries,setAllocationBeneficiaries]=useState("");
 
   const loadSummary=useCallback(async(signal?:AbortSignal)=>{
     setSummary({kind:"loading"});
@@ -135,6 +154,9 @@ export default function AdminOperationsPage(){
       loadResource("fee-policies",1,setFees),
       loadResource("withdrawals",1,setWithdrawals),
       loadResource("settlements",1,setSettlements),
+      loadResource("programs",1,setPrograms),
+      loadResource("credits",1,setCredits),
+      loadResource("households",1,setHouseholds),
     ]);
   },[auditPage,loadResource,loadSummary]);
 
@@ -149,6 +171,9 @@ export default function AdminOperationsPage(){
     void loadResource("fee-policies",1,setFees,controller.signal);
     void loadResource("withdrawals",1,setWithdrawals,controller.signal);
     void loadResource("settlements",1,setSettlements,controller.signal);
+    void loadResource("programs",1,setPrograms,controller.signal);
+    void loadResource("credits",1,setCredits,controller.signal);
+    void loadResource("households",1,setHouseholds,controller.signal);
     return()=>controller.abort();
   },[auditPage,loadResource,loadSummary]);
 
@@ -231,6 +256,48 @@ export default function AdminOperationsPage(){
     if(amount===null){setNotice("کارمزد باید عدد صحیح ریالی باشد.");return;}
     void command("SET_FEE_POLICY",{version:feeVersion,fixedInvoiceFeeRial:amount,
       approvalReference:feeApproval},"نسخه کارمزد ثبت شد؛ هیچ پرداخت بانکی انجام نشده است.");
+  };
+
+  const linkHousehold=(event:FormEvent)=>{
+    event.preventDefault();
+    if(!adminOperationId(householdAccount)||!adminOperationId(householdKey)){
+      setNotice("شناسه حساب یا خانوار معتبر نیست.");return;
+    }
+    void command("LINK_HOUSEHOLD",{accountId:householdAccount,
+      householdKey,evidenceReference:householdEvidence},
+      "پیوند خانوار ثبت شد.");
+  };
+  const createProgram=(event:FormEvent)=>{
+    event.preventDefault();
+    const amount=money(programFundedRial);
+    const categoryIds=programCategories.split(/[\s,]+/).filter(Boolean);
+    const organizationId=programOrganization.trim()||null;
+    if(amount===null||categoryIds.length===0||
+       categoryIds.some(id=>!adminOperationId(id))||
+       !(organizationId===null||adminOperationId(organizationId))){
+      setNotice("مبلغ، دسته‌ها یا شناسه سازمان معتبر نیست.");return;
+    }
+    const date=new Date(programExpires);
+    if(!Number.isFinite(date.getTime())){setNotice("زمان انقضا معتبر نیست.");return;}
+    void command("CREATE_PROGRAM",{name:programName,
+      fundingReference:programFunding,fundedRial:amount,
+      expiresAtUtc:date.toISOString(),categoryIds,organizationId},
+      "برنامه اعتبار ثبت شد؛ تأمین مالی بیرونی از این عملیات استنتاج نمی‌شود.");
+  };
+  const allocateCredit=(event:FormEvent)=>{
+    event.preventDefault();
+    const poolRial=money(allocationPool);
+    if(!adminOperationId(allocationProgram)||poolRial===null){
+      setNotice("شناسه برنامه یا مبلغ تخصیص معتبر نیست.");return;
+    }
+    let beneficiaries:unknown;
+    try{beneficiaries=JSON.parse(allocationBeneficiaries);}
+    catch{setNotice("JSON مشمولان معتبر نیست.");return;}
+    if(!Array.isArray(beneficiaries)||beneficiaries.length===0){
+      setNotice("حداقل یک مشمول لازم است.");return;
+    }
+    void command("ALLOCATE_CREDIT",{programId:allocationProgram,poolRial,
+      beneficiaries},"تخصیص اعتبار با فرمول سرور ثبت شد.");
   };
 
   return(
@@ -343,6 +410,63 @@ export default function AdminOperationsPage(){
           </Resource>
           <Resource state={memberships} empty="عضوی ثبت نشده است.">
             {item=><p key={item.id}>{item.role} — <bdi dir="ltr">{item.accountId}</bdi></p>}
+          </Resource>
+        </article>
+
+        <article className="admin-ops__section">
+          <h2>برنامه و تخصیص اعتبار</h2>
+          <p className="form-status">
+            ورودی خانوار و ضرایب باید از منبع مصوب بیایند؛ این صفحه صحت آن‌ها را جعل یا تأیید نمی‌کند.
+          </p>
+          <form onSubmit={linkHousehold} className="admin-ops__form">
+            <input className="field__input" placeholder="UUID حساب مشمول"
+              value={householdAccount} onChange={e=>setHouseholdAccount(e.target.value)}/>
+            <input className="field__input" placeholder="UUID خانوار"
+              value={householdKey} onChange={e=>setHouseholdKey(e.target.value)}/>
+            <input className="field__input" placeholder="مرجع مدرک/بررسی"
+              value={householdEvidence} onChange={e=>setHouseholdEvidence(e.target.value)}/>
+            <button className="primary-button" disabled={busy!==null}>ثبت پیوند خانوار</button>
+          </form>
+          <form onSubmit={createProgram} className="admin-ops__form">
+            <input className="field__input" placeholder="نام برنامه"
+              value={programName} onChange={e=>setProgramName(e.target.value)}/>
+            <input className="field__input" placeholder="مرجع منبع مالی"
+              value={programFunding} onChange={e=>setProgramFunding(e.target.value)}/>
+            <input className="field__input" inputMode="numeric" placeholder="مبلغ برنامه، ریال"
+              value={programFundedRial} onChange={e=>setProgramFundedRial(e.target.value)}/>
+            <input className="field__input" type="datetime-local"
+              aria-label="زمان انقضای برنامه" value={programExpires}
+              onChange={e=>setProgramExpires(e.target.value)}/>
+            <textarea className="field__input admin-ops__textarea"
+              placeholder="UUID دسته‌ها؛ با فاصله یا ویرگول جدا کنید"
+              value={programCategories} onChange={e=>setProgramCategories(e.target.value)}/>
+            <input className="field__input" placeholder="UUID سازمان (اختیاری)"
+              value={programOrganization} onChange={e=>setProgramOrganization(e.target.value)}/>
+            <button className="primary-button" disabled={busy!==null}>ایجاد برنامه اعتبار</button>
+          </form>
+          <form onSubmit={allocateCredit} className="admin-ops__form">
+            <input className="field__input" placeholder="UUID برنامه برای تخصیص"
+              value={allocationProgram} onChange={e=>setAllocationProgram(e.target.value)}/>
+            <input className="field__input" inputMode="numeric" placeholder="استخر تخصیص، ریال"
+              value={allocationPool} onChange={e=>setAllocationPool(e.target.value)}/>
+            <textarea className="field__input admin-ops__textarea"
+              aria-label="JSON مشمولان"
+              placeholder={'[{"accountId":"UUID","householdKey":"UUID","geographicFactor":1,"scores":{"health":0,"hardship":0,"age":0,"size":0,"care":0,"education":0}}]'}
+              value={allocationBeneficiaries}
+              onChange={e=>setAllocationBeneficiaries(e.target.value)}/>
+            <button className="primary-button" disabled={busy!==null}>اجرای تخصیص</button>
+          </form>
+          <h3>برنامه‌ها</h3>
+          <Resource state={programs} empty="برنامه‌ای ثبت نشده است.">
+            {item=><p key={item.id}><b>{item.name}</b> — {adminRial(item.fundedRial)} — مانده {adminRial(item.unallocatedRial)} — انقضا {adminTime(item.expiresAtUtc)}</p>}
+          </Resource>
+          <h3>اعتبارها</h3>
+          <Resource state={credits} empty="اعتباری تخصیص نیافته است.">
+            {item=><p key={item.id}><bdi dir="ltr">{item.accountId}</bdi> — {adminRial(item.grantedRial)} — مانده {adminRial(item.availableRial)}</p>}
+          </Resource>
+          <h3>پیوندهای خانوار</h3>
+          <Resource state={households} empty="پیوند خانواری ثبت نشده است.">
+            {item=><p key={item.id}><bdi dir="ltr">{item.accountId}</bdi> — خانوار <bdi dir="ltr">{item.householdKey}</bdi> — {item.evidenceReference}</p>}
           </Resource>
         </article>
 
