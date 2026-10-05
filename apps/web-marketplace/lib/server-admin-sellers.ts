@@ -98,7 +98,7 @@ export async function forwardAdminSeller(
   let expectedPage = 1;
   let body: string | undefined;
   let idempotencyKey: string | undefined;
-  let mode: "list" | "detail" | "review" | "activate";
+  let mode: "list" | "detail" | "review" | "activate" | "suspend" | "restore";
 
   if (method === "GET" && segments.length === 0) {
     const requestedPage = page(request);
@@ -113,7 +113,7 @@ export async function forwardAdminSeller(
     mode = "detail";
   } else if (method === "POST" && segments.length === 2 &&
       adminSellerId(segments[0]) &&
-      ["review", "activate"].includes(segments[1]) &&
+      ["review", "activate", "suspend", "restore"].includes(segments[1]) &&
       request.nextUrl.searchParams.size === 0) {
     if (!isSameOrigin(request))
       return fail(403, "مبدأ درخواست معتبر نیست.");
@@ -124,7 +124,7 @@ export async function forwardAdminSeller(
       return fail(400, "کلید ثبت عملیات معتبر نیست.");
 
     expectedId = segments[0];
-    mode = segments[1] as "review" | "activate";
+    mode = segments[1] as "review" | "activate" | "suspend" | "restore";
     upstreamPath += "/" + expectedId + "/" + mode;
     try {
       const raw: unknown = JSON.parse(await boundedRequestText(request, 8192));
@@ -146,6 +146,11 @@ export async function forwardAdminSeller(
           decision: x.decision,
           reason,
         });
+      } else if (mode === "suspend") {
+        const reason = cleanReason(x.reason);
+        if (!reason)
+          return fail(400, "دلیل مستند تعلیق الزامی است.");
+        body = JSON.stringify({ revision: x.revision, reason });
       } else {
         body = JSON.stringify({ revision: x.revision });
       }
@@ -186,7 +191,11 @@ export async function forwardAdminSeller(
         404: "پرونده فروشنده پیدا نشد.",
         409: mode === "activate"
           ? "پرونده تأیید نشده، تغییر کرده یا قبلاً فعال شده است."
-          : "پرونده تغییر کرده یا قبلاً بررسی شده است.",
+          : mode === "suspend"
+            ? "فروشنده فعال نیست، نسخه تغییر کرده یا قبلاً تعلیق شده است."
+            : mode === "restore"
+              ? "تعلیق باز وجود ندارد یا نسخه پرونده تغییر کرده است."
+              : "پرونده تغییر کرده یا قبلاً بررسی شده است.",
         503: "سرویس مدیریت فروشندگان آماده نیست.",
       };
       return fail(status, messages[status] ?? messages[503]);
