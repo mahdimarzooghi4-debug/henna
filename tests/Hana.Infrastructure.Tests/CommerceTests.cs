@@ -194,6 +194,22 @@ public sealed class CommerceTests
  Assert.All(settlementRun.EnumerateArray(),s=>Assert.Contains(s.GetProperty("State").GetString(),new[]{"READY_FOR_BANK_TRANSFER","FINANCE_REVIEW_REQUIRED"}));
  Assert.Empty((await Command(admin,"BUILD_SETTLEMENTS",new{})).EnumerateArray());
 
+ // Seller report is server-scoped and aggregate-only.
+ var sellerReportResponse=await storeClient.GetAsync("/api/v1/seller/report");
+ Assert.Equal(HttpStatusCode.OK,sellerReportResponse.StatusCode);
+ var sellerReport=await sellerReportResponse.Content.ReadFromJsonAsync<JsonElement>();
+ var reportOrders=sellerReport.GetProperty("orders").GetInt32();
+ Assert.True(reportOrders>0);
+ Assert.Equal(reportOrders,
+  sellerReport.GetProperty("paid").GetInt32()+
+  sellerReport.GetProperty("preparing").GetInt32()+
+  sellerReport.GetProperty("readyForPickup").GetInt32()+
+  sellerReport.GetProperty("collected").GetInt32()+
+  sellerReport.GetProperty("cancelled").GetInt32());
+ Assert.True(sellerReport.GetProperty("grossRial").GetInt64()>=0);
+ Assert.True(sellerReport.GetProperty("preparedSettlements").GetInt32()>=1);
+ Assert.Equal(HttpStatusCode.Forbidden,(await customer.GetAsync("/api/v1/seller/report")).StatusCode);
+
  // Organization portal is scoped to explicit MANAGER membership and omits sensitive source/member identities.
  var organizationResponse=await Post(operatorClient,"CREATE_ORGANIZATION",new{name="CI organization",registrationReference="private-registration-ref"});
  Assert.Equal(HttpStatusCode.OK,organizationResponse.StatusCode);
