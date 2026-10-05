@@ -8,6 +8,7 @@ import { MobileCatalogClient } from "./mobile-catalog.ts";
 import { MobileGeographyClient, type GeographyProvince, type GeographyCity } from "./mobile-geography.ts";
 import { normalizeDigits } from "./phone.ts";
 import { colors } from "./theme";
+import { pendingCommerceStore } from "./native-pending-commerce.ts";
 const logo=require("../assets/hana-cart-logo.png");
 const rtl={textAlign:"right",writingDirection:"rtl",fontFamily:"Vazirmatn_400Regular"} as const;
 const orderState={PAID:"ثبت و پرداخت شده",PREPARING:"در حال آماده‌سازی",READY_FOR_PICKUP:"آماده دریافت حضوری",COLLECTED:"دریافت شده",CANCELLED:"لغو شده"};
@@ -15,7 +16,7 @@ const rial=(v:number)=>new Intl.NumberFormat("fa-IR").format(v)+" ریال";
 /** Comparison geometry from draft 723:34; operational checkout controls extend that frame. */
 export function BuyerCheckoutScreen({api,onBack,onLogin,onOrder}:{onOrder:(id:string)=>void;api:MobileCommerceClient;onBack:()=>void;onLogin:()=>void}) {
  const [state,setState]=useState(initialNativeCheckoutState),[now,setNow]=useState(Date.now);
- const [controller]=useState(()=>new NativeCheckoutController(api,new MobileCatalogClient(process.env.EXPO_PUBLIC_HANA_API_BASE_URL,fetch,__DEV__),Crypto.randomUUID,setState));
+ const [controller]=useState(()=>new NativeCheckoutController(api,new MobileCatalogClient(process.env.EXPO_PUBLIC_HANA_API_BASE_URL,fetch,__DEV__),Crypto.randomUUID,setState,Date.now,pendingCommerceStore));
  const [geo]=useState(()=>new MobileGeographyClient(process.env.EXPO_PUBLIC_HANA_API_BASE_URL,fetch,__DEV__));
  const [addressForm,setAddressForm]=useState(false),[provinces,setProvinces]=useState<GeographyProvince[]>([]),[cities,setCities]=useState<GeographyCity[]>([]),[province,setProvince]=useState(""),[city,setCity]=useState(""),[addressText,setAddressText]=useState(""),[latitude,setLatitude]=useState(""),[longitude,setLongitude]=useState(""),[geoError,setGeoError]=useState("");
  useEffect(()=>{controller.start();const app=AppState.addEventListener("change",s=>{if(s==="active")void controller.refresh();});const timer=setInterval(()=>setNow(Date.now()),1000);return()=>{clearInterval(timer);app.remove();controller.stop();};},[controller]);
