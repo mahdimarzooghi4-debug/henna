@@ -207,6 +207,34 @@ export function parseAdminResourcePage(
   return result;
 }
 
+
+export function parseAdminCommandResponse(
+  action:string,
+  value:unknown,
+): unknown | null {
+  if(action==="SET_STAFF_PERMISSION") return parsePermission(value);
+  if(action==="SAVE_CONTENT"||action==="PUBLISH_CONTENT") return parseContent(value);
+  if(action==="CREATE_ORGANIZATION") return parseOrganization(value);
+  if(action==="GRANT_ORGANIZATION_MEMBER"||action==="REVOKE_ORGANIZATION_MEMBER")
+    return parseMembership(value);
+  if(action==="SET_FEE_POLICY") return parseFee(value);
+  if(action==="BUILD_SETTLEMENTS") {
+    if(!Array.isArray(value)||value.length>500) return null;
+    const rows:AdminSettlement[]=[];
+    for(const item of value){
+      const parsed=parseSettlement(item);
+      if(!parsed)return null;
+      rows.push(parsed);
+    }
+    return rows;
+  }
+  if(action==="ASSESS_WITHDRAWAL_SLA"){
+    const x=row(value);
+    return x&&int(x.escalated)?{escalated:x.escalated}:null;
+  }
+  return null;
+}
+
 export type AdminOperationIntent = { action:string; body:string; key:string };
 export function adminOperationIntent(
   previous: AdminOperationIntent | null,
