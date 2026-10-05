@@ -112,10 +112,20 @@ paths['/api/v1/carts/current/comparison']={'get':operation('get',arr(comparison)
 paths['/api/v1/offers']={'get':operation('get',envelope('PublicOffer'),'Published offers belonging to currently activated sellers.',parameters=[{'name':'productId','in':'query','schema':uuid},page],public=True)}
 paths['/api/v1/content/{slug}']={'get':operation('get',ref('PublicCommerceContent'),'Only explicitly published content.',parameters=[{'name':'slug','in':'path','required':True,'schema':text(100)}],public=True)}
 paths['/api/v1/organization/dashboard']={'get':operation('get',ref('OrganizationDashboard'),'Organization manager only. No beneficiary identities, funding references or unrelated organization data are returned.')}
+paths['/api/v1/seller/report']={'get':operation('get',ref('SellerOperationalReport'),'Active seller only. Aggregate order, incident and prepared-settlement metrics scoped to the current seller; no buyer identities.')}
 paths['/api/v1/evidence/{id}']={'get':operation('get',{},'Private evidence download; owner, current SUPPORT or active seller of the referenced incident. no-store, attachment, nosniff, CSP sandbox.',parameters=[{'name':'id','in':'path','required':True,'schema':uuid}])}
 paths['/api/v1/evidence/{id}']['get']['responses']['200']['content']={mime:{'schema':{'type':'string','format':'binary'}} for mime in ('image/png','image/jpeg','image/webp')}
 # Resources expose heterogeneous aggregates; summary and audit have distinct envelopes.
 S['OperationalSummary']=obj({k:integer() for k in ('orders','cancelled','collected','openIncidents','preparedSettlements','grossRial')})
+S['SellerOperationalReport']=obj({
+ 'orders':integer(),'paid':integer(),'preparing':integer(),'readyForPickup':integer(),
+ 'collected':integer(),'cancelled':integer(),'grossRial':integer(),
+ 'openIncidents':integer(),'incidentRefundRial':integer(),
+ 'preparedSettlements':integer(),'settlementGrossRial':integer(),
+ 'settlementRefundRial':integer(),'settlementPenaltyRial':integer(),
+ 'settlementFeeRial':integer(),'settlementNetRial':{'type':'integer','format':'int64'},
+ 'financeReviewRequired':integer()
+})
 S['AuditPage']=obj({'items':arr(obj({'id':uuid,'actorId':uuid,'commandId':uuid,'resourceId':uuid,'event':text(64),'createdAtUtc':utc})),'page':integer(1)})
 S['OrganizationDashboard']=obj({
  'organizations':arr(obj({'id':uuid,'name':text(200),'managerCount':integer(),'beneficiaryCount':integer(),'programCount':integer()})),
