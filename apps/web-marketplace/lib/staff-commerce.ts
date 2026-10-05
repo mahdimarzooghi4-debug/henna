@@ -114,6 +114,25 @@ export type StaffTicket = {
   reply: string | null;
 };
 
+export type StaffReport = {
+  orders: number;
+  paid: number;
+  preparing: number;
+  readyForPickup: number;
+  collected: number;
+  cancelled: number;
+  grossRial: number;
+  openIncidents: number;
+  incidentRefundRial: number;
+  preparedSettlements: number;
+  settlementGrossRial: number;
+  settlementRefundRial: number;
+  settlementPenaltyRial: number;
+  settlementFeeRial: number;
+  settlementNetRial: number;
+  financeReviewRequired: number;
+};
+
 const order = (value: unknown): StaffOrder => {
   const data = row(value);
   const states = ["PAID", "PREPARING", "READY_FOR_PICKUP",
@@ -229,6 +248,39 @@ const ticket = (value: unknown): StaffTicket => {
   };
 };
 
+const report = (value: unknown): StaffReport => {
+  const data = row(value);
+  const keys = [
+    "orders", "paid", "preparing", "readyForPickup", "collected", "cancelled",
+    "grossRial", "openIncidents", "incidentRefundRial", "preparedSettlements",
+    "settlementGrossRial", "settlementRefundRial", "settlementPenaltyRial",
+    "settlementFeeRial", "financeReviewRequired",
+  ] as const;
+  for (const key of keys) integer(data[key]);
+  const net = signedInteger(data.settlementNetRial);
+  if (data.paid as number + (data.preparing as number) +
+      (data.readyForPickup as number) + (data.collected as number) +
+      (data.cancelled as number) !== data.orders) throw Error();
+  return {
+    orders: data.orders as number,
+    paid: data.paid as number,
+    preparing: data.preparing as number,
+    readyForPickup: data.readyForPickup as number,
+    collected: data.collected as number,
+    cancelled: data.cancelled as number,
+    grossRial: data.grossRial as number,
+    openIncidents: data.openIncidents as number,
+    incidentRefundRial: data.incidentRefundRial as number,
+    preparedSettlements: data.preparedSettlements as number,
+    settlementGrossRial: data.settlementGrossRial as number,
+    settlementRefundRial: data.settlementRefundRial as number,
+    settlementPenaltyRial: data.settlementPenaltyRial as number,
+    settlementFeeRial: data.settlementFeeRial as number,
+    settlementNetRial: net,
+    financeReviewRequired: data.financeReviewRequired as number,
+  };
+};
+
 const page = <T>(
   value: unknown,
   parse: (entry: unknown) => T,
@@ -263,6 +315,8 @@ export function parseStaffCommerce(
       return page(value, notification, expectedPage);
     if (scope === "seller" && path === "tickets" && method === "GET")
       return page(value, ticket, expectedPage);
+    if (scope === "seller" && path === "report" && method === "GET")
+      return report(value);
     if (scope === "support" && path === "incidents" && method === "GET")
       return page(value, incident, expectedPage);
     if (scope === "support" && path === "tickets" && method === "GET")
