@@ -29,6 +29,7 @@ async function main(){
       sellerIdentity:{configured:false,
         requiredForNaturalSellerVerification:true},
       payment:{configured:false,requiredForExternalPayment:true},
+      ibanOwnership:{configured:false,requiredForWithdrawalOwnership:true},
       logistics:{configured:false,requiredForDelivery:true},
       allExternalReady:false,
       providerSecrets:"never-forward",
@@ -66,6 +67,7 @@ async function main(){
     sellerIdentity:{configured:false,
       requiredForNaturalSellerVerification:true},
     payment:{configured:false,requiredForExternalPayment:true},
+    ibanOwnership:{configured:false,requiredForWithdrawalOwnership:true},
     logistics:{configured:false,requiredForDelivery:true},
     allExternalReady:false,
   });
