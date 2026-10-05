@@ -9,7 +9,7 @@ export class NativeCartController {
   private readonly api: MobileCommerceClient; private readonly catalog: MobileCatalogClient; private readonly uuid:()=>string; private readonly notify:(s:NativeCartState)=>void; private readonly pending?:MobilePendingCommerceStore;
   constructor(api:MobileCommerceClient,catalog:MobileCatalogClient,uuid:()=>string,notify:(s:NativeCartState)=>void,pending?:MobilePendingCommerceStore) {this.api=api;this.catalog=catalog;this.uuid=uuid;this.notify=notify;this.pending=pending;}
   private emit(patch:Partial<NativeCartState>) {this.state={...this.state,...patch};if(this.active)this.notify(this.state);}
-  start() {this.active=true;void this.resume();}
+  start() {this.active=true;if(this.pending)void this.resume();else void this.refresh();}
   private async resume() {
     try {
       const restored=await this.pending?.restore("cart");
