@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 const base = "http://127.0.0.1:3022";
 const id = "b8b52eee-b4c3-4ae5-a72a-8a78dd1561c0";
+const firstPartyId = "b8b52eee-b4c3-4ae5-a72a-8a78dd1561c2";
 let web, browser, logs = "", mode = "normal", decision = null, postedReason = "";
 const json = (body, status = 200) => ({ status, contentType: "application/json", body: JSON.stringify(body) });
 try {
@@ -38,8 +39,14 @@ try {
         assert.equal(input.evidenceReference, "approved-document-ui");
         return route.fulfill(json({ id: input.snapshotId, active: false }, 201));
       }
-      if (path.endsWith("/assessments")) return route.fulfill(json({ active: false, items: [{ id, datasetVersion: "ui-dataset", sourceInstructionReference: "ui-source", health: 3, hardship: 0, age: 0, size: 0, care: 0, education: 0 }] }));
+      if (path.endsWith("/assessments")) return route.fulfill(json({ active: false, items: [
+        { id, datasetVersion: "ui-dataset", sourceInstructionReference: "ui-source", evidenceReference: "approved-document-ui",
+          health: 3, hardship: 0, age: 0, size: 0, care: 0, education: 0, trainingEligible: false },
+        { id: firstPartyId, datasetVersion: "henna-first-party-v1", sourceInstructionReference: "ui-source",
+          evidenceReference: null, health: 2, hardship: 1, age: 0, size: 1, care: 0, education: 1, trainingEligible: true }
+      ] }));
       if (path.endsWith("/labels") && request.method() === "POST") {
+        assert.equal(request.postDataJSON().snapshotId, firstPartyId);
         assert.equal(request.postDataJSON().needScore, .8);
         return route.fulfill(json({ id, active: false }));
       }
@@ -90,12 +97,14 @@ try {
   for (const name of ["سلامت و درمان", "فشار معیشتی", "سن و وابستگی", "اندازه خانوار", "مراقبت و حمایت", "تحصیلات"]) await page.getByLabel(name, { exact: true }).selectOption(name === "سلامت و درمان" ? "3" : "0");
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "ثبت ارزیابی مستند", exact: true }).click();
-  await page.getByText("ارزیابی ثبت شد و در صفحه آموزش قابل انتخاب است.").waitFor();
+  await page.getByText("ارزیابی پژوهشی ثبت شد؛ این رکورد برای آموزش هوش حنا مجاز نیست.").waitFor();
   assert.equal(await page.getByLabel("شناسه ثابت خانوار (UUID)").isDisabled(), true);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.goto(base + "/admin/allocation-training");
   await page.getByLabel("نسخه معیار ارزیابی").fill("reviewed-rubric-v1");
-  await page.getByLabel("ارزیابی خانوار").selectOption(id);
+  const assessmentSelect = page.getByLabel("ارزیابی خانوار");
+  await assessmentSelect.selectOption(firstPartyId);
+  assert.equal(await assessmentSelect.locator(`option[value="${id}"]`).isDisabled(), true);
   await page.getByLabel("امتیاز نیاز از صفر تا یک").fill("0.8");
   await page.getByRole("button", { name: "ثبت امتیاز", exact: true }).click();
   await page.getByText("امتیاز ثبت شد و قابل بازنویسی نیست.").waitFor();
