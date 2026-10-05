@@ -6,7 +6,7 @@
 
 ## وضعیت فعلی
 
-چهار dependency بیرونی به‌صورت مستقل دیده می‌شوند:
+پنج dependency بیرونی به‌صورت مستقل دیده می‌شوند:
 
 - `IOtpSmsSender` برای OTP؛ implementation پیش‌فرض
   `UnconfiguredOtpSmsSender` و `IsAvailable=false`.
@@ -15,11 +15,15 @@
 - `IExternalPaymentProvider` برای PSP/پرداخت بیرونی؛ implementation پیش‌فرض
   فقط readiness=false دارد. قرارداد provider-specific تا دریافت API واقعی
   PSP freeze نمی‌شود.
+- `IExternalIbanOwnershipVerifier` برای اثبات تعلق شبای مقصد برداشت به همان
+  خریدار؛ implementation پیش‌فرض fail-closed و `IsAvailable=false` است.
+  این dependency مستقل از PSP است و از روی فرمت شبا، نام واردشده یا موفقیت
+  پرداخت قبلی استنتاج نمی‌شود.
 - `IExternalLogisticsProvider` برای سرویس مستقل لجستیک؛ implementation
   پیش‌فرض readiness=false دارد. منطق ناوگان، تخصیص پیک و مسیر داخل marketplace
   ساخته نمی‌شود.
 
-دو interface آخر عمداً فقط boundary آمادگی‌اند؛ متدهای provider-specific قبل
+سه interface آخر عمداً فقط boundary آمادگی‌اند؛ متدهای provider-specific قبل
 از دریافت قرارداد واقعی اختراع نشده‌اند. قراردادهای داخلی سفارش، کیف پول،
 اعتبار، settlement و PICKUP موجود همچنان مستقل باقی می‌مانند.
 
@@ -28,7 +32,7 @@
 `GET /api/v1/admin/integrations/status`
 
 فقط ADMIN دارای نشست معتبر می‌تواند وضعیت را بخواند. پاسخ شامل secret،
-credential، URL provider یا داده شخصی نیست و فقط boolean readiness چهار
+credential، URL provider یا داده شخصی نیست و فقط boolean readiness پنج
 dependency و `allExternalReady` را برمی‌گرداند.
 
 وب ادمین از BFF با cookie امن HttpOnly در
@@ -59,12 +63,14 @@ adapter را از روی config یا وجود دکمه «آماده» فرض ن�
    هسته حنا ساخته نمی‌شود.
 7. برای PSP، `PAID` فقط با تأیید واقعی provider/reconciliation مجاز است؛
    آماده‌سازی settlement به معنی انتقال بانکی نیست.
-8. برای SMS، provider acceptance فقط پذیرش ارسال است، نه اثبات دریافت روی
+8. برای برداشت کیف پول، مالکیت شبا باید توسط verifier واقعی و auditable تأیید
+   شود؛ وضعیت `OWNERSHIP_VERIFICATION_PENDING` فعلی مجوز انتقال بانکی نیست.
+9. برای SMS، provider acceptance فقط پذیرش ارسال است، نه اثبات دریافت روی
    گوشی؛ OTP فقط بر اساس challenge معتبر خود حنا تأیید می‌شود.
 
 ## شواهد CI
 
-- parser وب تضاد `allExternalReady` با readiness چهار dependency را رد می‌کند.
+- parser وب تضاد `allExternalReady` با readiness پنج dependency را رد می‌کند.
 - BFF ایزوله HTTPS اثبات می‌کند cookie به upstream نشت نمی‌کند، bearer فقط
   server-to-server است و فیلدهای اضافی provider حذف می‌شوند.
 - smoke backend مسیر admin را بدون bearer برابر 401 می‌خواهد.
@@ -72,3 +78,16 @@ adapter را از روی config یا وجود دکمه «آماده» فرض ن�
 
 این مرحله به معنی آماده بودن providerها نیست؛ دقیقاً برعکس، تا تحویل
 implementation واقعی همه dependencyها fail-closed باقی می‌مانند.
+
+
+## مرز تحویل فعلی
+
+مالک محصول اعلام کرده اتصال SMS، PSP و لجستیک را تأمین می‌کند. دو dependency
+بیرونی دیگر همچنان مستقل‌اند و نباید زیر همان سه adapter پنهان شوند:
+
+- تطبیق هویت فروشنده حقیقی؛
+- احراز مالکیت شبای مقصد برداشت.
+
+تا زمانی که provider یا فرایند معتبر و auditable این دو مورد تأمین نشده باشد،
+readiness کلی بیرونی عمداً false می‌ماند. این رفتار مانع استفاده از مسیرهای
+داخلی/PICKUP موجود نیست، اما مانع ادعای آمادگی کامل انتشار می‌شود.
