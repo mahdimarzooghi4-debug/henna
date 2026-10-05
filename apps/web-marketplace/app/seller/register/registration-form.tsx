@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../../components/form-field";
 import { CoordinateMapPicker } from "../../../components/coordinate-map-picker";
-import type { MapPoint } from "../../../../packages/buyer-commerce/map-tiles";
+import type { MapPoint } from "../../../../../packages/buyer-commerce/map-tiles";
 import { SellerLocationReference } from "./location-reference";
 import {
   hasUnsavedSellerEdits, isLeavingSellerPage, validateSellerDraft,
