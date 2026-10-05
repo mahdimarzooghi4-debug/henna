@@ -227,7 +227,7 @@ export function BuyerAccountCenter() {
       {denied && (
         <p className="form-status form-status--error" role="alert">
           برای دیدن اطلاعات خصوصی حساب، ابتدا وارد حنا شوید.{" "}
-          <Link href="/auth">ورود به حنا</Link>
+          <Link href="/auth?returnTo=/account">ورود به حنا</Link>
         </p>
       )}
 
