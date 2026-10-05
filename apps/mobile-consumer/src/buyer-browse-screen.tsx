@@ -23,8 +23,8 @@ const catalog = new MobileCatalogClient(
 );
 
 /** Approved Figma buyer mobile frames 476:4 (empty), 478:22 (API-backed). */
-export function BuyerBrowseScreen({ onLogin, onIssues, onOrders, onSupport, onCart, active=true, link }: {
-  onIssues:()=>void; onOrders:()=>void; onSupport:()=>void; active?:boolean; onLogin: () => void; onCart: (productId?:string)=>void; link: BuyerLinkEvent;
+export function BuyerBrowseScreen({ onLogin, onIssues, onOrders, onSupport, onWallet, onCart, active=true, link }: {
+  onIssues:()=>void; onOrders:()=>void; onSupport:()=>void; onWallet:()=>void; active?:boolean; onLogin: () => void; onCart: (productId?:string)=>void; link: BuyerLinkEvent;
 }) {
   const [detailId, setDetailId] = useState<string | null>(
     link.route.kind === "detail" ? link.route.id : null,
@@ -96,6 +96,10 @@ export function BuyerBrowseScreen({ onLogin, onIssues, onOrders, onSupport, onCa
           <View style={styles.content}>
             <Pressable style={styles.headerLink} accessibilityRole="button" accessibilityLabel="سفارش‌های من" onPress={onOrders}><Text style={styles.headerLinkText}>سفارش‌های من</Text></Pressable>
             <Pressable style={styles.headerLink} accessibilityRole="button" accessibilityLabel="گزارش‌ها و مرجوعی‌های من" onPress={onIssues}><Text style={styles.headerLinkText}>گزارش‌ها و مرجوعی‌های من</Text></Pressable>
+            <Pressable style={styles.headerLink} accessibilityRole="button"
+              accessibilityLabel="کیف پول و برداشت" onPress={onWallet}>
+              <Text style={styles.headerLinkText}>کیف پول</Text>
+            </Pressable>
             <Pressable style={styles.headerLink} accessibilityRole="button"
               accessibilityLabel="اعلان‌ها و پشتیبانی" onPress={onSupport}>
               <Text style={styles.headerLinkText}>اعلان‌ها و پشتیبانی</Text>
