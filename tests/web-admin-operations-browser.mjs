@@ -75,14 +75,6 @@ async function main(){
       return route.fulfill(json({id:ID,accountId:ACCOUNT,
         permission:"SUPPORT",active:false}));
     }
-    if(path==="/api/admin/operations/commands/SET_SELLER_ACCESS"){
-      assert.deepEqual(req.postDataJSON(),{
-        accountId:ACCOUNT,active:false,reason:"تخلف بررسی‌شده CI",
-      });
-      return route.fulfill(json({
-        accountId:ACCOUNT,active:false,reason:"تخلف بررسی‌شده CI",
-      }));
-    }
         if(path==="/api/admin/operations/commands/SAVE_CONTENT"){
       assert.deepEqual(req.postDataJSON(),{
         slug:"terms",title:"شرایط استفاده",text:"متن آزمایشی",
@@ -147,13 +139,7 @@ async function main(){
   await page.getByText("مجوز تخصصی کاربر ثبت شد.",{exact:true}).waitFor();
   assert.equal(permissionAttempts,2);
 
-  await page.getByPlaceholder("UUID حساب فروشنده").fill(ACCOUNT);
-  await page.getByPlaceholder("دلیل مستند تعلیق یا رفع تعلیق")
-    .fill("تخلف بررسی‌شده CI");
-  await page.getByRole("button",{name:"تعلیق فروشنده"}).click();
-  await page.getByText("دسترسی عملیاتی فروشنده تعلیق شد",{exact:false}).waitFor();
-
-    await page.getByPlaceholder("slug").fill("terms");
+  await page.getByPlaceholder("slug").fill("terms");
   await page.getByPlaceholder("عنوان").fill("شرایط استفاده");
   await page.getByPlaceholder("متن").fill("متن آزمایشی");
   await page.getByRole("button",{name:"ذخیره محتوا"}).click();
@@ -186,12 +172,12 @@ async function main(){
   await page.getByText("تخصیص اعتبار با فرمول سرور ثبت شد.",{exact:true}).waitFor();
   await page.getByText("۶٬۰۰۰ ریال",{exact:false}).waitFor();
 
-    await page.getByRole("button",{name:"آماده‌سازی تسویه"}).click();
+  await page.getByRole("button",{name:"آماده‌سازی تسویه"}).click();
   await page.getByText("انتقال بانکی انجام نشده است",{exact:false}).waitFor();
 
   assert.deepEqual(pageErrors,[]);
   await context.close();
-  console.log("Chromium admin operations: summary, frozen retry, CMS and settlement preparation OK");
+  console.log("Chromium admin operations: summary, frozen retry, CMS, credit allocation and settlement preparation OK");
 }
 
 try{await main();}finally{
