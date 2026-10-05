@@ -186,6 +186,39 @@ public sealed class CommerceTests
  Assert.Equal(HttpStatusCode.Forbidden,(await Post(customer,"SAVE_SERVICE_LISTING",new{
   listingId=Guid.NewGuid(),productId=serviceProduct,priceRial=1,
   availabilityNote="bad",expectedVersion=0})).StatusCode);
+
+ // Suspension changes SELLER RBAC atomically, keeps activation/history, and
+ // removes both goods/services from public browse until explicit reactivation.
+ var suspensionKey=Guid.NewGuid();
+ var suspensionBody=new{accountId=seller,active=false,reason="CI compliance suspension"};
+ var suspended=await Post(operatorClient,"SET_SELLER_ACCESS",suspensionBody,suspensionKey);
+ Assert.Equal(HttpStatusCode.OK,suspended.StatusCode);
+ Assert.False((await suspended.Content.ReadFromJsonAsync<JsonElement>())
+  .GetProperty("active").GetBoolean());
+ var suspendedReplay=await Post(operatorClient,"SET_SELLER_ACCESS",suspensionBody,suspensionKey);
+ Assert.Equal(HttpStatusCode.OK,suspendedReplay.StatusCode);
+ Assert.Equal(HttpStatusCode.Forbidden,(await storeClient.GetAsync("/api/v1/seller/access")).StatusCode);
+ Assert.Empty((await (await anonymous.GetAsync("/api/v1/offers?productId="+product))
+  .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+ Assert.Empty((await (await anonymous.GetAsync("/api/v1/service-listings?productId="+serviceProduct))
+  .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+ Assert.Equal(HttpStatusCode.Forbidden,(await Post(storeClient,"SAVE_SERVICE_LISTING",new{
+  listingId=serviceListingId,productId=serviceProduct,priceRial=2700,
+  availabilityNote="suspended",expectedVersion=2})).StatusCode);
+ Assert.Single(await sellers.SellerActivations.AsNoTracking()
+  .Where(x=>x.ApplicationAccountId==seller).ToListAsync());
+
+ var reactivateKey=Guid.NewGuid();
+ var reactivated=await Post(operatorClient,"SET_SELLER_ACCESS",
+  new{accountId=seller,active=true,reason="CI compliance cleared"},reactivateKey);
+ Assert.Equal(HttpStatusCode.OK,reactivated.StatusCode);
+ Assert.Equal(HttpStatusCode.OK,(await storeClient.GetAsync("/api/v1/seller/access")).StatusCode);
+ Assert.Single((await (await anonymous.GetAsync("/api/v1/offers?productId="+product))
+  .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+ Assert.Single((await (await anonymous.GetAsync("/api/v1/service-listings?productId="+serviceProduct))
+  .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+ Assert.Single(await sellers.SellerActivations.AsNoTracking()
+  .Where(x=>x.ApplicationAccountId==seller).ToListAsync());
  Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/v1/me/incidents")).StatusCode);
  var buyerIncidents=await customer.GetAsync("/api/v1/me/incidents?page=1");Assert.Equal(HttpStatusCode.OK,buyerIncidents.StatusCode);
  Assert.Single((await buyerIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
