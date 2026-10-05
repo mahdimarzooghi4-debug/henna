@@ -37,6 +37,7 @@ function listItem() {
 function detail() {
   return {
     ...listItem(),
+    applicationId: ID,
     ownerName: "مالک مرورگر",
     nationalCodeMasked: "******1234",
     legalNationalId: null,
