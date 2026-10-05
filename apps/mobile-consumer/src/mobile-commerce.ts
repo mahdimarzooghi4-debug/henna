@@ -1,11 +1,11 @@
 import { safeApiBaseUrl } from "./api-base.ts";
 import type { TokenStore } from "./mobile-auth.ts";
-import { BuyerCommerceError, commerceId, commerceMessages, parseCommerce, parseOffers, type BuyerCart, type BuyerOrder, type BuyerOffer, type BuyerIncident, type BuyerIncidentOrder } from "../../../packages/buyer-commerce/contracts.ts";
+import { BuyerCommerceError, commerceId, commerceMessages, parseCommerce, parseOffers, type BuyerCart, type BuyerOrder, type BuyerOffer, type BuyerIncident, type BuyerIncidentOrder, type BuyerNotification, type BuyerTicket } from "../../../packages/buyer-commerce/contracts.ts";
 
 export type MobileCommerceIntent = Readonly<{ path: string; body: string; key: string }>;
 function utf8Size(value: string) { let bytes = 0; for (const c of value) { const n = c.codePointAt(0)!; bytes += n <= 0x7f ? 1 : n <= 0x7ff ? 2 : n <= 0xffff ? 3 : 4; } return bytes; }
-const reads: Record<string, string> = { cart: "/carts/current", comparison: "/carts/current/comparison", addresses: "/me/addresses", credits: "/me/credits", wallet: "/me/wallet", orders: "/orders", incidents:"/me/incidents" };
-const writes: Record<string, string> = { "cart-items": "/carts/current/items", addresses: "/me/addresses", quotes: "/quotes", orders: "/orders", evidence:"/me/evidence" };
+const reads: Record<string, string> = { cart: "/carts/current", comparison: "/carts/current/comparison", addresses: "/me/addresses", credits: "/me/credits", wallet: "/me/wallet", orders: "/orders", incidents:"/me/incidents", notifications:"/me/notifications", tickets:"/me/tickets" };
+const writes: Record<string, string> = { "cart-items": "/carts/current/items", addresses: "/me/addresses", quotes: "/quotes", orders: "/orders", evidence:"/me/evidence", tickets:"/support/tickets" };
 function target(path: string, method: "GET" | "POST") {
   const allowed = method === "GET" ? reads : writes;
   if (Object.prototype.hasOwnProperty.call(allowed, path)) return allowed[path];
@@ -14,6 +14,7 @@ function target(path: string, method: "GET" | "POST") {
   if(method==="GET"&&parts[0]==="incident-order"&&parts.length===2&&commerceId(parts[1]))return "/orders/"+parts[1];
   if(method==="POST"&&parts[0]==="item-returns"&&parts.length===3&&commerceId(parts[1])&&parts[2]==="confirm-collection")return "/item-returns/"+parts[1]+"/confirm-collection";
   if(method==="POST"&&parts[0]==="evidence"&&parts.length===3&&commerceId(parts[1])&&parts[2]==="discard")return "/me/evidence/"+parts[1]+"/discard";
+  if(method==="POST"&&parts[0]==="notifications"&&parts.length===3&&commerceId(parts[1])&&parts[2]==="read")return "/me/notifications/"+parts[1]+"/read";
   throw new BuyerCommerceError(404);
 }
 /** Supply an OS-generated UUID once; retain this frozen object after an ambiguous response. */
@@ -76,6 +77,8 @@ export class MobileCommerceClient {
   }
   incidentOrder(id:string):Promise<BuyerIncidentOrder>{return this.read("incident-order/"+id);}
   incidents(page=1):Promise<BuyerIncident[]>{if(!Number.isInteger(page)||page<1||page>10000)throw new BuyerCommerceError(400);return this.send("incidents","/me/incidents?page="+page,"GET",undefined,page) as Promise<BuyerIncident[]>;}
+  notifications(page=1):Promise<BuyerNotification[]>{if(!Number.isInteger(page)||page<1||page>10000)throw new BuyerCommerceError(400);return this.send("notifications","/me/notifications?page="+page,"GET",undefined,page) as Promise<BuyerNotification[]>;}
+  tickets(page=1):Promise<BuyerTicket[]>{if(!Number.isInteger(page)||page<1||page>10000)throw new BuyerCommerceError(400);return this.send("tickets","/me/tickets?page="+page,"GET",undefined,page) as Promise<BuyerTicket[]>;}
   offers(productId: string): Promise<BuyerOffer[]> {
     if (!commerceId(productId)) throw new BuyerCommerceError(400);
     return this.send("offers", "/offers?productId=" + productId + "&page=1", "GET", undefined, 1, productId) as Promise<BuyerOffer[]>;
