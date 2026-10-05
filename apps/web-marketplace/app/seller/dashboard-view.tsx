@@ -120,11 +120,13 @@ export function SellerDashboardView() {
   }
 
   const seller = state.value;
+  const availabilityReady = seller.capabilities.inventory ||
+    seller.capabilities.serviceListings;
   const sellerNavigation = navigation.map(([label, enabled]) => {
     const connected =
       label === "سفارش‌ها" ? seller.capabilities.orders :
       label === "کالاها و خدمات" ? seller.capabilities.listings :
-      label === "موجودی و دسترس‌پذیری" ? seller.capabilities.inventory :
+      label === "موجودی و دسترس‌پذیری" ? availabilityReady :
       label === "قیمت‌گذاری" ? seller.capabilities.pricing :
       label === "تسویه‌حساب‌ها" ? seller.capabilities.settlements :
       label === "گزارش‌ها" ? seller.capabilities.reports :
@@ -240,24 +242,30 @@ export function SellerDashboardView() {
           </div>
 
           <div className="seller-panel__capability-grid">
-            {capabilityCards.map(([label, key]) => (
-              <article className="seller-panel__capability" key={key}>
-                <strong>{label}</strong>
-                <span className={seller.capabilities[key]
-                  ? "seller-panel__capability-state seller-panel__capability-state--ready"
-                  : "seller-panel__capability-state"}>
-                  {seller.capabilities[key]
-                    ? "فعال"
-                    : "هنوز متصل نشده"}
-                </span>
-                <p>
-                  {seller.capabilities[key]
-                    ? "این قابلیت از سرویس واقعی حنا تغذیه می‌شود."
-                    : "برای این بخش هنوز قرارداد اجرایی متصل نشده است؛ داده نمونه نمایش داده نمی‌شود."}
-                </p>
-              </article>
-            ))}
-          </div>
+            {capabilityCards.map(([label, key]) => {
+              const ready = key === "inventory"
+                ? availabilityReady : seller.capabilities[key];
+              const serviceOnlyAvailability = key === "inventory" &&
+                !seller.capabilities.inventory &&
+                seller.capabilities.serviceListings;
+              return (
+                <article className="seller-panel__capability" key={key}>
+                  <strong>{label}</strong>
+                  <span className={ready
+                    ? "seller-panel__capability-state seller-panel__capability-state--ready"
+                    : "seller-panel__capability-state"}>
+                    {ready ? "فعال" : "هنوز متصل نشده"}
+                  </span>
+                  <p>
+                    {serviceOnlyAvailability
+                      ? "برای خدمت، موجودی کالایی وجود ندارد؛ متن دسترس‌پذیری نسخه‌دار از سرویس واقعی حنا مدیریت می‌شود."
+                      : ready
+                        ? "این قابلیت از سرویس واقعی حنا تغذیه می‌شود."
+                        : "برای این بخش هنوز قرارداد اجرایی متصل نشده است؛ داده نمونه نمایش داده نمی‌شود."}
+                  </p>
+                </article>
+              );
+            })}          </div>
         </section>
 
         <section className="seller-panel__notice">
