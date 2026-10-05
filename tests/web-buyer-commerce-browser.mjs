@@ -10,10 +10,12 @@ const qi={offerId:A,productId:A,quantity:2,unitPriceRial:1000,offerVersion:1};
 const quote={id:QUOTE,sellerId:SELLER,purchaseType:"PERSONAL",fulfillmentMode:"PICKUP",items:[qi],unavailable:[{productId:B,quantity:1}],itemsTotalRial:2000,expiresAtUtc:new Date(Date.now()+600000).toISOString(),used:false};
 let pagedHistory=false,historyPages=[],order=null,firstAttempt=null,orderAttempts=0,web,browser,logs="";
 const json=(body,status=200)=>({status,contentType:"application/json",headers:{"Cache-Control":"no-store"},body:JSON.stringify(body)});
+const tilePng=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=","base64");
 async function main(){
  web=spawn("npm",["run","start","--workspace","@hana/web-marketplace","--","-p","3022","-H","127.0.0.1"],{detached:true,stdio:["ignore","pipe","pipe"],env:{...process.env,NEXT_TELEMETRY_DISABLED:"1"}});web.stdout.on("data",b=>logs+=b);web.stderr.on("data",b=>logs+=b);
  for(let i=0;i<45;i++){if(web.exitCode!==null)throw Error(logs);try{if((await fetch(base+"/auth")).ok)break;}catch{}await new Promise(r=>setTimeout(r,500));}
  browser=await chromium.launch({headless:true});const context=await browser.newContext({locale:"fa-IR",viewport:{width:1440,height:1020}});const page=await context.newPage();page.setDefaultTimeout(10000);const errors=[],requests=[];page.on("pageerror",e=>errors.push(e.message));page.on("request",r=>requests.push(r.url()));
+ await context.route("https://tile.openstreetmap.org/**",route=>route.fulfill({status:200,contentType:"image/png",body:tilePng}));
  await context.route("**/api/catalog/products/*",route=>{const id=new URL(route.request().url()).pathname.split("/").at(-1);return route.fulfill(json(id===A?product:{...product,id:B,name:"قلم ناموجود آزمایشی"}));});
  await context.route("**/api/geography/provinces",route=>route.fulfill(json({items:[]})));
  await context.route("**/api/buyer/commerce/**",async route=>{
@@ -38,7 +40,18 @@ async function main(){
  });
  await page.goto(base+"/products/"+A);await page.getByRole("heading",{name:product.name}).waitFor();await page.getByRole("button",{name:"افزودن به سبد",exact:true}).click();await page.getByText("کالا به سبد اضافه شد.").waitFor();assert.equal(cart.items.find(i=>i.productId===A).quantity,1);
  await page.getByRole("link",{name:"مشاهده سبد خرید"}).click();await page.waitForURL(base+"/cart");await page.getByRole("link",{name:product.name,exact:true}).waitFor();const article=page.locator("article").filter({has:page.getByRole("link",{name:product.name,exact:true})});await article.getByRole("button",{name:"افزایش تعداد"}).click();await page.getByText("سبد به‌روز شد.").waitFor();assert.equal(cart.items.find(i=>i.productId===A).quantity,2);
- await page.getByRole("link",{name:"مقایسه فروشگاه‌ها و ادامه خرید"}).click();await page.waitForURL(base+"/checkout");await page.getByRole("button",{name:"انتخاب این فروشگاه"}).click();await page.getByRole("button",{name:"دریافت پیش‌فاکتور"}).click();await page.getByRole("heading",{name:"بازبینی و ثبت سفارش"}).waitFor();
+ await page.getByRole("link",{name:"مقایسه فروشگاه‌ها و ادامه خرید"}).click();await page.waitForURL(base+"/checkout");
+ await page.getByText("ثبت نشانی جدید",{exact:true}).click();
+ await page.getByRole("button",{name:"باز کردن نقشه"}).click();
+ const map=page.getByRole("application",{name:"انتخاب موقعیت نشانی خریدار روی نقشه"});
+ await map.waitFor();const mapBox=await map.boundingBox();assert.ok(mapBox);
+ await page.mouse.click(mapBox.x+mapBox.width*.68,mapBox.y+mapBox.height*.42);
+ const lat=page.getByLabel("عرض جغرافیایی"),lon=page.getByLabel("طول جغرافیایی");
+ assert.notEqual(await lat.inputValue(),"");assert.notEqual(await lon.inputValue(),"");
+ assert.equal(requests.some(u=>u.startsWith("https://tile.openstreetmap.org/")),true);
+ await page.getByText("مختصات از روی نقشه انتخاب شد",{exact:false}).waitFor();
+ await page.getByText("ثبت نشانی جدید",{exact:true}).click();
+ await page.getByRole("button",{name:"انتخاب این فروشگاه"}).click();await page.getByRole("button",{name:"دریافت پیش‌فاکتور"}).click();await page.getByRole("heading",{name:"بازبینی و ثبت سفارش"}).waitFor();
  await page.getByLabel("اعتبار حمایتی",{exact:true}).selectOption(GRANT);const submit=page.getByRole("button",{name:"ثبت سفارش و کسر مبلغ"});assert.equal(await submit.isDisabled(),true);await page.getByLabel("در سبد بمانند").check();await page.getByLabel("خرید فقط اقلام موجود را تأیید می‌کنم").check();assert.equal(await submit.isEnabled(),true);await submit.click();const retry=page.getByRole("button",{name:"بررسی نتیجه درخواست قبلی"});await retry.waitFor();assert.equal(orderAttempts,1);assert.equal(await page.getByLabel("اعتبار حمایتی",{exact:true}).isDisabled(),true);
  await page.clock.install();await page.clock.fastForward(610000);await page.getByText("پیش‌فاکتور منقضی شده؛ پیش‌فاکتور تازه بگیرید.").waitFor();assert.equal(await retry.isEnabled(),true);await retry.click();await page.waitForURL(base+"/orders/"+ORDER);await page.getByRole("heading",{name:"ثبت شده و پرداخت شده"}).waitFor();assert.equal(orderAttempts,2);
  await page.getByRole("button",{name:"لغو سفارش و بازگشت مبلغ"}).click();await page.getByRole("heading",{name:"لغو شده"}).waitFor();await page.getByText("مبلغ سفارش به منشأ پرداخت برگشت داده شده است.").waitFor();assert.equal(await page.getByRole("button",{name:"لغو سفارش و بازگشت مبلغ"}).count(),0);
@@ -49,6 +62,6 @@ async function main(){
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.equal(await page.evaluate(()=>[...document.fonts].some(f=>f.family.replaceAll('"','')==="Vazirmatn"&&f.status==="loaded")),true);
  const logo=page.getByRole("img",{name:"حنا",exact:true});await logo.waitFor();const box=await logo.boundingBox();assert.equal(Math.round(box.width),145);assert.equal(Math.round(box.height),48);assert.equal(await logo.evaluate(i=>i.naturalWidth>0),true);assert.equal(requests.some(u=>u.includes("figma.com")),false);
  if(process.env.CI)console.log("HANA_CART_SCREENSHOT="+(await page.screenshot({fullPage:true})).toString("base64"));
- assert.deepEqual(errors,[]);console.log("Buyer browser flow passed: add/cart quantities, quote, explicit partial basket, original-key retry after expiry, order cancellation, real-receipt confirmation, mobile RTL/font/logo.");
+ assert.deepEqual(errors,[]);console.log("Buyer browser flow passed: cart/quote/order lifecycle, interactive address map selection, safe retry, receipt confirmation and mobile RTL/font/logo.");
 }
 try{await main();}finally{await browser?.close();if(web?.pid){try{process.kill(-web.pid,"SIGTERM");}catch{}}}
