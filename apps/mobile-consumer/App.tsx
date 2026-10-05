@@ -36,6 +36,7 @@ import { validateOtpEntry } from "./src/otp-form-input";
 import {
   shouldRecheckOnForeground, type MobileAuthView,
 } from "./src/session-foreground";
+import { pendingCommerceStore } from "./src/native-pending-commerce";
 
 type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited";
 type ViewState = MobileAuthView;
@@ -532,16 +533,41 @@ export default function App() {
     };
     const listener = Linking.addEventListener("url", ({ url }) => {
       if (!active || parseBuyerLink(url) === null) return;
-      receivedLiveLink = true;
-      apply(url, true);
+      void pendingCommerceStore.route()
+        .then((pending) => {
+          if (!active || pending) return;
+          receivedLiveLink = true;
+          apply(url, true);
+        })
+        .catch(() => {
+          // A storage failure cannot prove there is no financial retry.
+          // Keep the current screen rather than letting a link hide it.
+        });
     });
-    void Linking.getInitialURL()
-      .then((url) => {
-        if (active && !receivedLiveLink) apply(url, false);
-      })
-      .catch(() => {
-        if (active && !receivedLiveLink) apply(null, false);
-      });
+    void Promise.all([
+      Linking.getInitialURL().catch(() => null),
+      pendingCommerceStore.route(),
+    ]).then(([url, pending]) => {
+      if (!active || receivedLiveLink) return;
+      if (pending) {
+        if (pending.selectedOrderId) setSelectedOrder(pending.selectedOrderId);
+        if (pending.incidentOrderId) {
+          setIncidentOrder(pending.incidentOrderId);
+          incidentReturn.current = "orders";
+        }
+        setScreen(pending.screen);
+        setLink({ token: ++sequence.current, route: blankBrowseLink });
+      } else {
+        apply(url, false);
+      }
+      void pendingCommerceStore.cleanupPhotos().catch(() => {});
+    }).catch(() => {
+      if (active && !receivedLiveLink) {
+        // Public browsing remains usable, while commerce controllers fail
+        // closed if SecureStore cannot prove whether a retry is pending.
+        apply(null, false);
+      }
+    });
     return () => { active = false; listener.remove(); };
   }, []);
 
