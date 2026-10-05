@@ -67,9 +67,14 @@ public sealed class CommerceTests
  await catalog.SaveChangesAsync();
  geo.Provinces.Add(new(){Id=province,Name="CI",Slug="ci-"+province,State=GeographyStates.Selectable});geo.Cities.Add(new(){Id=city,ProvinceId=province,Name="CI",Slug="ci-"+city,State=GeographyStates.Selectable});await geo.SaveChangesAsync();
  var draft=await sellers.RegistrationDrafts.SingleAsync(d=>d.AccountId==seller);
- draft.CompletedStep=5;draft.ApplicantType="NATURAL";draft.NaturalNationalCode="0013549829";draft.IdentityStatus="VERIFIED";
+ draft.CompletedStep=6;draft.ApplicantType="NATURAL";draft.NaturalNationalCode="0013549829";draft.IdentityStatus="VERIFIED";
  draft.BusinessCategoryId=Guid.NewGuid();sellers.BusinessCategories.Add(new(){Id=draft.BusinessCategoryId.Value,Name="CI",IsActive=true,UpdatedAtUtc=clock.UtcNow});
  draft.BusinessName="CI";draft.BusinessDescription="CI";draft.BusinessPhone="02112345678";draft.ServiceArea="CI city";draft.OfferingType="BOTH";draft.ActivityProvinceId=province;draft.ActivityCityId=city;draft.ActivityAddress="CI";draft.ActivityHours="CI";draft.Pickup=true;draft.SellerDelivery=false;
+ draft.RegistrationContactName="CI owner";draft.ResponseHours="CI";draft.Status="SUBMITTED";draft.Revision=2;
+ draft.SubmissionKey=Guid.NewGuid();draft.SubmissionExpectedRevision=1;draft.SubmittedAtUtc=clock.UtcNow.AddMinutes(-30);
+ draft.AccuracyConfirmedAtUtc=clock.UtcNow.AddMinutes(-30);draft.TrackingCode="HNA-A1B2C3D4E5F60718";
+ draft.ReviewStatus="APPROVED";draft.ReviewReason=null;draft.ReviewedByAccountId=admin;draft.ReviewedAtUtc=clock.UtcNow.AddMinutes(-20);
+ draft.ActivatedAtUtc=clock.UtcNow.AddMinutes(-10);draft.ActivatedByAccountId=admin;draft.UpdatedAtUtc=clock.UtcNow.AddMinutes(-10);
  await sellers.SaveChangesAsync();
  var roles=new RoleAuthorizationService(identity,new AuthSessionService(identity,clock));var service=new CommerceService(db,catalog,sellers,geo,identity,roles,clock);
  Task<JsonElement> Command(Guid actor,string action,object input,Guid? key=null)=>service.ExecuteAsync(actor,key??Guid.NewGuid(),action,JsonSerializer.SerializeToElement(input));
