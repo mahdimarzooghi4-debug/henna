@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright";
+import { parseAdminSellerDetail } from "../apps/web-marketplace/lib/admin-sellers.ts";
 
 const base = "http://127.0.0.1:3018";
 const ID = "60000000-0000-4000-8000-000000000041";
 let web, browser, logs = "";
 let revision = 7, reviewStatus = "UNDER_REVIEW", activatedAtUtc = null;
 let sellerSuspended = false, suspendedAtUtc = null, suspensionReason = null;
-let reviewAttempts = 0, firstReview = null;
+let reviewAttempts = 0, firstReview = null, detailReads = 0;
 
 function json(data, status = 200) {
   return {
@@ -102,8 +103,10 @@ async function main() {
       return route.fulfill(json({ items: [listItem()], total: 1 }));
     }
     if (path === "/api/admin/seller-applications/" + ID &&
-        request.method() === "GET")
+        request.method() === "GET") {
+      detailReads++;
       return route.fulfill(json(detail()));
+    }
 
     if (path === "/api/admin/seller-applications/" + ID + "/review" &&
         request.method() === "POST") {
@@ -196,11 +199,19 @@ async function main() {
       request.method() + " " + request.url());
   });
 
-  await page.goto(base + "/admin/sellers");
+  assert.ok(parseAdminSellerDetail(detail(), ID),
+    "browser detail fixture must satisfy the production DTO before rendering");
+
+    await page.goto(base + "/admin/sellers");
   await page.getByRole("heading", {
     name: "بررسی و فعال‌سازی فروشندگان",
   }).waitFor();
   await page.locator(`[data-application-id="${ID}"]`).click();
+  await page.waitForResponse(response =>
+    new URL(response.url()).pathname ===
+      "/api/admin/seller-applications/" + ID &&
+    response.request().method() === "GET");
+  assert.equal(detailReads, 1);
   await page.getByPlaceholder(
     "نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید.").waitFor();
   await page.locator(".admin-sellers__facts")
