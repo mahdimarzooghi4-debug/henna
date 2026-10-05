@@ -20,7 +20,7 @@ type SellerAccess = {
     inventory: boolean;
     pricing: boolean;
     settlements: boolean;
-    reports: false;
+    reports: boolean;
   };
 };
 
@@ -126,6 +126,7 @@ export function SellerDashboardView() {
       label === "موجودی و دسترس‌پذیری" ? seller.capabilities.inventory :
       label === "قیمت‌گذاری" ? seller.capabilities.pricing :
       label === "تسویه‌حساب‌ها" ? seller.capabilities.settlements :
+      label === "گزارش‌ها" ? seller.capabilities.reports :
       label === "اعلان‌ها" || label === "پشتیبانی"
         ? seller.capabilities.orders
         : enabled;
@@ -214,6 +215,7 @@ export function SellerDashboardView() {
           <SellerBusinessOperations
             offerManagementEnabled={seller.capabilities.listings}
             settlementsEnabled={seller.capabilities.settlements}
+            reportsEnabled={seller.capabilities.reports}
           />
         )}
 
