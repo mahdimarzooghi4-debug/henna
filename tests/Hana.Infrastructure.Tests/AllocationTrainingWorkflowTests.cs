@@ -59,6 +59,9 @@ public sealed class AllocationTrainingWorkflowTests
         Assert.Equal(ExperimentalAllocationWeightLearner.ModelVersion, proposal.ModelVersion);
         Assert.False(await db.Reviews.AnyAsync(x => x.ProposalId == proposal.Id));
         using var frozen = JsonDocument.Parse(run.InputsJson);
+        Assert.Equal("HENNA_OWNED_LOCAL", frozen.RootElement.GetProperty("engine").GetString());
+        Assert.False(frozen.RootElement.GetProperty("networkModelApi").GetBoolean());
+        Assert.Equal("HENNA_FIRST_PARTY", frozen.RootElement.GetProperty("dataOrigin").GetString());
         Assert.Equal(48, frozen.RootElement.GetProperty("examples").GetArrayLength());
         var baselineLabels = new List<Guid>();
         for (var i = 0; i < snapshotIds.Length; i++) baselineLabels.Add(await workflow.ReviewNeedAsync(reviewer,
@@ -68,6 +71,26 @@ public sealed class AllocationTrainingWorkflowTests
         Assert.Equal("NO_IMPROVEMENT", rejected.Status);
         Assert.Null(rejected.ProposalId);
         Assert.Equal(2, await db.TrainingRuns.CountAsync(x => x.RequestedByAccountId == actor));
+
+        // Human-attributed/manual HTTP capture is useful for audit/research but is not
+        // allowed to train the Henna-owned learner. Training data must be first-party.
+        var importedSnapshot = Guid.NewGuid();
+        db.Assessments.Add(new() {
+            Id = importedSnapshot, HouseholdKey = Guid.NewGuid(),
+            RecordedByAccountId = reviewer, EvidenceReference = "manual-reviewed-input",
+            FormulaVersion = AllocationWeightProfile.Baseline.Version,
+            DatasetVersion = dataset, SourceInstructionReference = source,
+            GeographicFactor = 1m, Health = 1, Hardship = 1, Age = 1,
+            Size = 1, Care = 1, Education = 1, AllocatedRial = 100,
+            AssessedAtUtc = clock.UtcNow.AddDays(-1), RecordedAtUtc = clock.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var importedLabel = await workflow.ReviewNeedAsync(reviewer, importedSnapshot, .5m,
+            "synthetic-import-rubric", LearningPartition.Training);
+        var mixed = labels.Take(39).Append(importedLabel).ToArray();
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            workflow.TrainAsync(actor, mixed, 4000, clock.UtcNow));
+
         db.ChangeTracker.Clear();
         var stored = await db.TrainingRuns.SingleAsync(x => x.Id == run.Id);
         stored.Status = "NO_IMPROVEMENT";
