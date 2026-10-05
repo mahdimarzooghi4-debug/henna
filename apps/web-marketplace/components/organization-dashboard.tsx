@@ -116,10 +116,15 @@ export function OrganizationDashboard() {
             ورودی منبع داده یا تخصیص جدید بدون مسیر مصوب مالی ساخته نمی‌شود.
           </p>
         </div>
-        <button type="button" className="seller-commerce__refresh"
-          onClick={() => void load()}>
-          تازه‌سازی
-        </button>
+        <div className="organization-portal__header-actions">
+          <a className="auth-card__secondary" href="/account">
+            اعلان‌ها و پشتیبانی
+          </a>
+          <button type="button" className="seller-commerce__refresh"
+            onClick={() => void load()}>
+            تازه‌سازی
+          </button>
+        </div>
       </header>
 
       <section className="organization-portal__metrics"
