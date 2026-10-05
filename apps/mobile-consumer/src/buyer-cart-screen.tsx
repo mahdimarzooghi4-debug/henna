@@ -6,12 +6,13 @@ import type { MobileCommerceClient } from "./mobile-commerce.ts";
 import { MobileCatalogClient } from "./mobile-catalog.ts";
 import { colors } from "./theme";
 import * as Crypto from "expo-crypto";
+import { pendingCommerceStore } from "./native-pending-commerce.ts";
 const logo=require("../assets/hana-cart-logo.png");
 const rtl={textAlign:"right",writingDirection:"rtl",fontFamily:"Vazirmatn_400Regular"} as const;
 /** Draft Figma 715:35 translated into native layout with real reference-cart controls. */
 export function BuyerCartScreen({api,onBack,onLogin,onCheckout,selectedProduct}:{api:MobileCommerceClient;onBack:()=>void;onLogin:()=>void;onCheckout:()=>void;selectedProduct:string|null}) {
  const [state,setState]=useState(initialNativeCartState);
- const [controller]=useState(()=>new NativeCartController(api,new MobileCatalogClient(process.env.EXPO_PUBLIC_HANA_API_BASE_URL,fetch,__DEV__),Crypto.randomUUID,setState));
+ const [controller]=useState(()=>new NativeCartController(api,new MobileCatalogClient(process.env.EXPO_PUBLIC_HANA_API_BASE_URL,fetch,__DEV__),Crypto.randomUUID,setState,pendingCommerceStore));
  useEffect(()=>{controller.start();const app=AppState.addEventListener("change",s=>{if(s==="active")void controller.refresh();});return()=>{app.remove();controller.stop();};},[controller]);
  useEffect(()=>{const back=BackHandler.addEventListener("hardwareBackPress",()=>{if(!state.busy&&!state.intent)onBack();return true;});return()=>back.remove();},[onBack,state.busy,state.intent]);
  const disabled=state.busy||!!state.intent;
