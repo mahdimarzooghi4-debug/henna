@@ -65,7 +65,7 @@ test("idempotency retry keeps the original key/body; a reviewed changed intent g
  assert.notEqual(commerceIntent(first, "orders", { quoteId: ID, unavailableDisposition: "REMOVE" }).key, first.key);
 });
 test("buyer login returns accept implemented paths and reject free redirects", () => {
- for (const path of ["/cart", "/checkout", "/orders", "/orders/" + ID, "/seller/register"]) assert.equal(safeAuthReturnTo(path), path);
+ for (const path of ["/cart", "/checkout", "/orders", "/account", "/orders/" + ID, "/seller/register"]) assert.equal(safeAuthReturnTo(path), path);
  for (const path of ["https://evil.test/cart", "//evil.test", "/cart?next=x", "/cart#x", "/orders/invalid", "/orders/" + ID + "/cancel", "%2Fcart", ["/cart"]]) assert.equal(safeAuthReturnTo(path), null);
 });
 
