@@ -326,6 +326,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-buyer-commerce.mjs
       - name: Test staff commerce DTOs and frozen retry intents
         run: node --experimental-strip-types --test tests/web-staff-commerce.mjs
+      - name: Test organization dashboard bounded DTO
+        run: node --experimental-strip-types --test tests/web-organization-dashboard-smoke.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
@@ -392,6 +394,8 @@ jobs:
         run: node tests/web-buyer-commerce-gateway.mjs
       - name: Test seller and support commerce gateways over isolated HTTPS
         run: node tests/web-staff-commerce-gateway.mjs
+      - name: Test organization dashboard gateway over isolated HTTPS
+        run: node tests/web-organization-dashboard-gateway.mjs
       - name: Test isolated web cookie gateway (CI-only mock upstream)
         run: node tests/web-auth-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
