@@ -128,8 +128,54 @@ export class MobilePendingCommerceStore {
     private readonly photos: PendingPhotoStore,
   ) {}
 
+  private async stored(): Promise<StoredPending | null> {
+    const raw=await this.text.read();
+    if(raw===null)return null;
+    const parsed=parseStored(raw);
+    if(!parsed)throw Error("Pending commerce state is invalid.");
+    return parsed;
+  }
+
+  private record(
+    scope: PendingCommerceScope,
+    intent: MobileCommerceIntent,
+    incident: PendingIncidentContext | null,
+  ): StoredPending {
+    if (!scopes.has(scope) || !allowed(scope, intent.path) ||
+        !commerceId(intent.key)) throw Error("Invalid pending commerce intent.");
+    const parsedIncident = incident === null ? null : incidentContext(incident);
+    if (incident !== null && parsedIncident === null)
+      throw Error("Invalid incident recovery context.");
+
+    if (intent.path === "evidence") {
+      if (scope !== "incidents" || !parsedIncident)
+        throw Error("Evidence recovery context required.");
+      let input: unknown;
+      try { input = JSON.parse(intent.body); } catch { throw Error(); }
+      if (!input || typeof input !== "object" || Array.isArray(input) ||
+          (input as Record<string, unknown>).contentType !== "image/jpeg" ||
+          typeof (input as Record<string, unknown>).contentBase64 !== "string")
+        throw Error("Invalid evidence intent.");
+      return {
+        version: 1, scope, path: intent.path, key: intent.key,
+        incident: parsedIncident,
+      };
+    }
+    if (intent.body.length > 8192)
+      throw Error("Pending commerce body too large.");
+    const restored = mobileCommerceIntent(
+      intent.path, JSON.parse(intent.body) as object, intent.key);
+    if (restored.body !== intent.body)
+      throw Error("Pending commerce body is not stable.");
+    return {
+      version: 1, scope, path: intent.path, key: intent.key,
+      body: intent.body,
+      ...(parsedIncident ? { incident: parsedIncident } : {}),
+    };
+  }
+
   async route(): Promise<PendingCommerceRoute | null> {
-    const stored = parseStored(await this.text.read());
+    const stored = await this.stored();
     if (!stored) return null;
     return {
       screen: stored.scope,
@@ -145,46 +191,35 @@ export class MobilePendingCommerceStore {
     intent: MobileCommerceIntent,
     incident: PendingIncidentContext | null = null,
   ): Promise<void> {
-    if (!scopes.has(scope) || !allowed(scope, intent.path) ||
-        !commerceId(intent.key)) throw Error("Invalid pending commerce intent.");
-    const parsedIncident = incident === null ? null : incidentContext(incident);
-    if (incident !== null && parsedIncident === null)
-      throw Error("Invalid incident recovery context.");
-
-    let record: StoredPending;
-    if (intent.path === "evidence") {
-      if (scope !== "incidents" || !parsedIncident)
-        throw Error("Evidence recovery context required.");
-      let input: unknown;
-      try { input = JSON.parse(intent.body); } catch { throw Error(); }
-      if (!input || typeof input !== "object" || Array.isArray(input) ||
-          (input as Record<string, unknown>).contentType !== "image/jpeg" ||
-          typeof (input as Record<string, unknown>).contentBase64 !== "string")
-        throw Error("Invalid evidence intent.");
-      record = {
-        version: 1, scope, path: intent.path, key: intent.key,
-        incident: parsedIncident,
-      };
-    } else {
-      if (intent.body.length > 8192)
-        throw Error("Pending commerce body too large.");
-      const restored = mobileCommerceIntent(
-        intent.path, JSON.parse(intent.body) as object, intent.key);
-      if (restored.body !== intent.body)
-        throw Error("Pending commerce body is not stable.");
-      record = {
-        version: 1, scope, path: intent.path, key: intent.key,
-        body: intent.body,
-        ...(parsedIncident ? { incident: parsedIncident } : {}),
-      };
+    const record=this.record(scope,intent,incident);
+    const existing=await this.stored();
+    if(existing){
+      if(existing.key!==record.key ||
+          JSON.stringify(existing)!==JSON.stringify(record))
+        throw Error("Another pending commerce intent must be resolved first.");
+      return;
     }
+    await this.text.write(JSON.stringify(record));
+  }
+
+  async advance(
+    expectedKey: string,
+    scope: PendingCommerceScope,
+    intent: MobileCommerceIntent,
+    incident: PendingIncidentContext | null = null,
+  ): Promise<void> {
+    if(!commerceId(expectedKey))throw Error("Invalid prior intent key.");
+    const existing=await this.stored();
+    if(!existing||existing.key!==expectedKey)
+      throw Error("Prior pending intent changed.");
+    const record=this.record(scope,intent,incident);
     await this.text.write(JSON.stringify(record));
   }
 
   async restore(
     expectedScope: PendingCommerceScope,
   ): Promise<RestoredPendingCommerce | null> {
-    const stored = parseStored(await this.text.read());
+    const stored = await this.stored();
     if (!stored || stored.scope !== expectedScope) return null;
     if (stored.path === "evidence") {
       const incident = stored.incident!;
@@ -206,7 +241,7 @@ export class MobilePendingCommerceStore {
 
   async clear(expectedKey: string): Promise<boolean> {
     if (!commerceId(expectedKey)) return false;
-    const stored = parseStored(await this.text.read());
+    const stored = await this.stored();
     if (!stored) return true;
     if (stored.key !== expectedKey) return false;
     await this.text.remove();
@@ -222,7 +257,7 @@ export class MobilePendingCommerceStore {
   }
 
   async cleanupPhotos(): Promise<void> {
-    const stored = parseStored(await this.text.read());
+    const stored = await this.stored();
     await this.photos.cleanup(stored?.incident?.photoUri ?? null);
   }
 }
