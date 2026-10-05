@@ -61,7 +61,7 @@ internal static class CommerceEndpoints
     return SendCommand(http,services,commandAction,JsonSerializer.SerializeToElement(node),ct);
    });
  }
- foreach(var (path,kind) in new (string,string)[]{("/carts/current","CART"),("/orders","ORDER"),("/seller/orders","ORDER"),("/seller/offers","OFFER"),
+ foreach(var (path,kind) in new (string,string)[]{("/carts/current","CART"),("/orders","ORDER"),("/seller/orders","ORDER"),("/seller/incidents","INCIDENT"),("/seller/offers","OFFER"),
   ("/me/addresses","ADDRESS"),("/me/credits","CREDIT"),("/me/wallet","WALLET"),("/me/withdrawals","WITHDRAWAL"),
   ("/me/incidents","INCIDENT"),("/me/notifications","NOTIFICATION"),("/support/tickets","TICKET"),("/support/incidents","INCIDENT"),("/seller/settlements","SETTLEMENT")}) {
    var resourceKind=kind;
