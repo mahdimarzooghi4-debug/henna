@@ -21,6 +21,25 @@ export class NativeIncidentsController {
   return d?.photo&&this.orderId?{orderId:this.orderId,itemId:d.itemId,
    type:d.type,quantity:d.quantity,photoUri:d.photo.uri}:null;
  }
+ private reportEvidenceId(intent:MobileCommerceIntent):string|null{
+  if(!/^orders\/[0-9a-f-]+\/incidents$/i.test(intent.path))return null;
+  try{
+   const body=JSON.parse(intent.body) as Record<string,unknown>;
+   return commerceId(body.evidenceId)?body.evidenceId.toLowerCase():null;
+  }catch{return null;}
+ }
+ private cleanupIntent(evidenceId:string){
+  return mobileCommerceIntent(`evidence/${evidenceId}/discard`,{},this.uuid());
+ }
+ private async moveToCleanup(
+  prior:MobileCommerceIntent,evidenceId:string,message:string,
+ ){
+  if(!this.pending)return false;
+  const cleanup=this.cleanupIntent(evidenceId);
+  await this.pending.advance(prior.key,"incidents",cleanup,this.context());
+  this.emit({intent:cleanup,message});
+  return true;
+ }
  private async resume(){
   try{
    const restored=await this.pending?.restore("incidents");
@@ -80,7 +99,11 @@ export class NativeIncidentsController {
    if(intent.path==="evidence"){
     const d=this.snapshot;
     if(!d||!this.orderId||!reportWindowOpen(this.state.order,this.now())){
-     try{await this.pending?.clear(intent.key);}catch{}
+     const evidenceId=(result as BuyerEvidence).evidenceId;
+     if(await this.moveToCleanup(intent,evidenceId,
+       "عکس ذخیره شد، اما مهلت گزارش پایان یافته است؛ مدرک یتیم در حال پاک‌سازی است.")){
+      next=true;return;
+     }
      this.emit({intent:null,draft:blankDraft(),
       message:"عکس ذخیره شد، اما مهلت ثبت گزارش پایان یافته است."});
      this.snapshot=null;return;
@@ -90,6 +113,10 @@ export class NativeIncidentsController {
       evidenceId:(result as BuyerEvidence).evidenceId},this.uuid());
     if(this.pending)await this.pending.advance(intent.key,"incidents",follow,this.context());
     this.emit({intent:follow});next=true;
+   }else if(/^evidence\/[0-9a-f-]+\/discard$/i.test(intent.path)){
+    try{await this.pending?.clear(intent.key);}catch{}
+    this.snapshot=null;this.emit({intent:null,draft:blankDraft(),returnConsent:null,
+     message:"مدرک بدون گزارش از سرور پاک شد."});
    }else{
     try{await this.pending?.clear(intent.key);}catch{}
     this.snapshot=null;this.emit({intent:null,draft:blankDraft(),returnConsent:null,
@@ -97,14 +124,33 @@ export class NativeIncidentsController {
    }
   }catch(e){
    const error=e instanceof BuyerCommerceError?e:new BuyerCommerceError(503);
-   if(error.status!==503)try{await this.pending?.clear(intent.key);}catch{}
+   const cleanupPath=/^evidence\/[0-9a-f-]+\/discard$/i.test(intent.path);
+   const evidenceId=this.reportEvidenceId(intent);
+   let moved=false;
+   if(error.status!==503&&evidenceId){
+    try{
+     moved=await this.moveToCleanup(intent,evidenceId,
+      "ثبت گزارش تأیید نشد؛ مدرک بدون گزارش برای پاک‌سازی امن نگه داشته شد.");
+     next=moved&&error.status!==401;
+    }catch{}
+   }
+   if(error.status!==503&&!moved&&!(cleanupPath&&error.status===401))
+    try{await this.pending?.clear(intent.key);}catch{}
    if(this.active&&epoch===this.epoch){
-    const photoReset=error.status!==503&&intent.path==="evidence"
+    const photoReset=error.status!==503&&!moved&&
+      (intent.path==="evidence"||cleanupPath&&error.status!==401)
      ?{draft:{...this.state.draft,photo:null}}:{};
-    this.emit({message:error.message,returnConsent:null,
-     ...(error.status!==503?{intent:null}:{}),...photoReset,
-     ...(error.status===401?{error,order:null,incidents:null,draft:blankDraft()}: {})});
-    if(error.status!==503)this.snapshot=null;reload=error.status===409;
+    this.emit({message:moved
+       ?"ثبت گزارش تأیید نشد؛ مدرک بدون گزارش برای پاک‌سازی امن نگه داشته شد."
+       :error.message,
+     returnConsent:null,
+     ...(error.status!==503&&!moved&&!(cleanupPath&&error.status===401)
+       ?{intent:null}:{}),...photoReset,
+     ...(error.status===401?{error,order:null,incidents:null,
+       ...(moved||cleanupPath?{}:{draft:blankDraft()})}: {})});
+    if(error.status!==503&&!moved&&!(cleanupPath&&error.status===401))
+     this.snapshot=null;
+    reload=error.status===409&&!moved&&!cleanupPath;
    }
   }finally{this.locked=false;if(this.active&&epoch===this.epoch){this.emit({busy:false});if(next)await this.retry();else if(reload)await this.refresh();}}
  }
