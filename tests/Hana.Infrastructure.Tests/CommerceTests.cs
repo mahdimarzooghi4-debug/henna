@@ -144,7 +144,7 @@ public sealed class CommerceTests
  Assert.Equal(HttpStatusCode.Forbidden,(await other.GetAsync("/api/v1/support/incidents?page=1")).StatusCode);
  var grantSupport=await Post(operatorClient,"SET_STAFF_PERMISSION",new{accountId=stranger,permission="SUPPORT",active=true});Assert.Equal(HttpStatusCode.OK,grantSupport.StatusCode);
  var supportIncidents=await other.GetAsync("/api/v1/support/incidents?page=1");Assert.Equal(HttpStatusCode.OK,supportIncidents.StatusCode);Assert.Contains((await supportIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray(),x=>x.GetProperty("Id").GetGuid()==incidentId);
- var sellerIncidents=await storeClient.GetAsync("/api/v1/commerce/resources/INCIDENT?page=1");Assert.Equal(HttpStatusCode.OK,sellerIncidents.StatusCode);Assert.Contains((await sellerIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray(),x=>x.GetProperty("Id").GetGuid()==incidentId);
+ var sellerIncidents=await storeClient.GetAsync("/api/v1/seller/incidents?page=1");Assert.Equal(HttpStatusCode.OK,sellerIncidents.StatusCode);Assert.Contains((await sellerIncidents.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray(),x=>x.GetProperty("Id").GetGuid()==incidentId);
  Assert.Equal(HttpStatusCode.OK,(await other.GetAsync("/api/v1/evidence/"+evidenceId)).StatusCode);
  var currentOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
  Assert.Equal(HttpStatusCode.OK,(await Post(storeClient,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=1,expectedVersion=currentOffer.Version})).StatusCode);
