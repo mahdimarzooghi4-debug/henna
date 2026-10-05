@@ -188,6 +188,31 @@ public sealed class CommerceTests
  Assert.All(settlementRun.EnumerateArray(),s=>Assert.Contains(s.GetProperty("State").GetString(),new[]{"READY_FOR_BANK_TRANSFER","FINANCE_REVIEW_REQUIRED"}));
  Assert.Empty((await Command(admin,"BUILD_SETTLEMENTS",new{})).EnumerateArray());
 
+ // Organization portal is scoped to explicit MANAGER membership and omits sensitive source/member identities.
+ var organizationResponse=await Post(operatorClient,"CREATE_ORGANIZATION",new{name="CI organization",registrationReference="private-registration-ref"});
+ Assert.Equal(HttpStatusCode.OK,organizationResponse.StatusCode);
+ var organizationId=(await organizationResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("Id").GetGuid();
+ Assert.Equal(HttpStatusCode.Forbidden,(await customer.GetAsync("/api/v1/organization/dashboard")).StatusCode);
+ var managerResponse=await Post(operatorClient,"GRANT_ORGANIZATION_MEMBER",new{organizationId,accountId=stranger,role="MANAGER"});
+ Assert.Equal(HttpStatusCode.OK,managerResponse.StatusCode);
+ var beneficiaryResponse=await Post(operatorClient,"GRANT_ORGANIZATION_MEMBER",new{organizationId,accountId=buyer,role="BENEFICIARY"});
+ Assert.Equal(HttpStatusCode.OK,beneficiaryResponse.StatusCode);
+ var orgProgram=await Post(operatorClient,"CREATE_PROGRAM",new{name="CI organization program",fundingReference="private-funding-ref",fundedRial=5000,expiresAtUtc=DateTimeOffset.UtcNow.AddDays(30),categoryIds=new[]{category},organizationId});
+ Assert.Equal(HttpStatusCode.OK,orgProgram.StatusCode);
+ var organizationDashboard=await other.GetAsync("/api/v1/organization/dashboard");
+ Assert.Equal(HttpStatusCode.OK,organizationDashboard.StatusCode);
+ var organizationBody=await organizationDashboard.Content.ReadFromJsonAsync<JsonElement>();
+ Assert.Equal("CI organization",organizationBody.GetProperty("organizations")[0].GetProperty("name").GetString());
+ Assert.Equal(1,organizationBody.GetProperty("organizations")[0].GetProperty("beneficiaryCount").GetInt32());
+ Assert.Equal("CI organization program",organizationBody.GetProperty("programs")[0].GetProperty("name").GetString());
+ var organizationJson=organizationBody.GetRawText();
+ Assert.DoesNotContain("private-registration-ref",organizationJson);
+ Assert.DoesNotContain("private-funding-ref",organizationJson);
+ Assert.DoesNotContain(buyer.ToString(),organizationJson,StringComparison.OrdinalIgnoreCase);
+ var membershipId=(await managerResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("Id").GetGuid();
+ Assert.Equal(HttpStatusCode.OK,(await Post(operatorClient,"REVOKE_ORGANIZATION_MEMBER",new{membershipId})).StatusCode);
+ Assert.Equal(HttpStatusCode.Forbidden,(await other.GetAsync("/api/v1/organization/dashboard")).StatusCode);
+
  // Public offers must disappear when the seller loses activation; cached mutation replay must also fail.
  var savedOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
  var offerKey=Guid.NewGuid();var offerPayload=new{offerId,productId=product,priceRial=1,stock=0,expectedVersion=savedOffer.Version};
