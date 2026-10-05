@@ -123,8 +123,8 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private async Task SellerOffering(Guid actor,string kind,CancellationToken ct) {
   await Seller(actor,ct);
   var offering=await sellers.RegistrationDrafts.AsNoTracking()
-   .Where(x=>x.AccountId==actor&&x.Status=="SUBMITTED"&&x.ReviewStatus=="APPROVED"&&x.ActivatedAtUtc!=null)
-   .Select(x=>x.OfferingType).SingleOrDefaultAsync(ct);
+   .Where(x=>x.AccountId==actor).Select(x=>x.OfferingType)
+   .SingleOrDefaultAsync(ct);
   if(kind=="GOOD"&&offering is not("GOOD" or "BOTH"))throw new CommerceForbidden();
   if(kind=="SERVICE"&&offering is not("SERVICE" or "BOTH"))throw new CommerceForbidden();
  }
