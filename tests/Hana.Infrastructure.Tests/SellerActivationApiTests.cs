@@ -293,7 +293,7 @@ public sealed class SellerActivationApiTests
             Assert.True(body.RootElement.GetProperty(
                 "capabilities").GetProperty(
                     "dashboard").GetBoolean());
-            Assert.False(body.RootElement.GetProperty(
+            Assert.True(body.RootElement.GetProperty(
                 "capabilities").GetProperty(
                     "orders").GetBoolean());
         }
