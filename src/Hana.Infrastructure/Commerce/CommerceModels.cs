@@ -1,5 +1,6 @@
 namespace Hana.Infrastructure.Commerce;
 public sealed record Offer(Guid Id,Guid SellerId,Guid ProductId,Guid CategoryId,long PriceRial,int Stock,int Version,bool Published);
+public sealed record ServiceListing(Guid Id,Guid SellerId,Guid ProductId,Guid CategoryId,long PriceRial,string AvailabilityNote,int Version,bool Published);
 public sealed record CartItem(Guid ProductId,int Quantity);
 public sealed record Cart(Guid Id,Guid BuyerId,List<CartItem> Items,int Version=0);
 public sealed record BuyerAddress(Guid Id,Guid BuyerId,Guid CityId,string Text,decimal Latitude,decimal Longitude);
