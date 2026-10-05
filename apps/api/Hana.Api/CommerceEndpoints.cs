@@ -52,7 +52,8 @@ internal static class CommerceEndpoints
   ("/support/incidents/{id:guid}/decision","DECIDE_INCIDENT","incidentId"),("/seller/item-returns/{id:guid}/contact","RETURN_CONTACT","incidentId"),
   ("/seller/item-returns/{id:guid}/visit","RETURN_VISIT","incidentId"),("/item-returns/{id:guid}/confirm-collection","CONFIRM_RETURN","incidentId"),
   ("/support/item-returns/{id:guid}/unavailability-decision","VERIFY_UNAVAILABILITY","incidentId"),
-  ("/me/withdrawals/{id:guid}/cancel","CANCEL_WITHDRAWAL","withdrawalId"),("/support/tickets/{id:guid}/reply","REPLY_TICKET","ticketId")}) {
+  ("/me/withdrawals/{id:guid}/cancel","CANCEL_WITHDRAWAL","withdrawalId"),("/me/notifications/{id:guid}/read","READ_NOTIFICATION","notificationId"),
+  ("/support/tickets/{id:guid}/reply","REPLY_TICKET","ticketId")}) {
    var commandAction=action;var resourceKey=keyName;
    rest.MapPost(path,(Guid id,JsonElement input,HttpContext http,IServiceProvider services,CancellationToken ct)=>{
     if(input.ValueKind!=JsonValueKind.Object)return Task.FromResult<IResult>(Results.BadRequest());
@@ -63,7 +64,7 @@ internal static class CommerceEndpoints
  }
  foreach(var (path,kind) in new (string,string)[]{("/carts/current","CART"),("/orders","ORDER"),("/seller/orders","ORDER"),("/seller/incidents","INCIDENT"),("/seller/offers","OFFER"),
   ("/me/addresses","ADDRESS"),("/me/credits","CREDIT"),("/me/wallet","WALLET"),("/me/withdrawals","WITHDRAWAL"),
-  ("/me/incidents","INCIDENT"),("/me/notifications","NOTIFICATION"),("/support/tickets","TICKET"),("/support/incidents","INCIDENT"),("/seller/settlements","SETTLEMENT")}) {
+  ("/me/incidents","INCIDENT"),("/me/notifications","NOTIFICATION"),("/me/tickets","TICKET"),("/support/tickets","TICKET"),("/support/incidents","INCIDENT"),("/seller/settlements","SETTLEMENT")}) {
    var resourceKind=kind;
    var view=path.StartsWith("/me/",StringComparison.Ordinal)||path=="/carts/current"||path=="/orders"?"BUYER":path.StartsWith("/seller/",StringComparison.Ordinal)?"SELLER":path.StartsWith("/support/",StringComparison.Ordinal)?"SUPPORT":null;
    rest.MapGet(path,(int? page,HttpContext http,IServiceProvider services,CancellationToken ct)=>services.GetRequiredService<CommerceService>().ReadAsync((Guid)http.Items["CommerceActor"]!,resourceKind,null,page??1,ct,view));
