@@ -185,8 +185,9 @@ Release gates remain:
 - web
 - mobile typecheck
 - Android native-link checks
+- iOS Expo export/bundle check
 
-iOS remains out of scope.
+آزمون iOS روی دستگاه/شبیه‌ساز macOS در CI فعلی موجود نیست؛ export موفق به‌تنهایی آزمون دستگاه واقعی نیست.
 
 ## Connected commerce BFF
 
