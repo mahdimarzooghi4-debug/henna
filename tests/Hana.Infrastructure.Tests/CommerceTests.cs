@@ -276,6 +276,42 @@ public sealed class CommerceTests
  db.ChangeTracker.Clear();Assert.Equal(0,JsonSerializer.Deserialize<Offer>((await db.Documents.SingleAsync(d=>d.Id==offerId)).Body)!.Stock);
  // Only the isolated fixture seeds provider-confirmed cash; production has no cash-mint endpoint.
  db.ChangeTracker.Clear();var walletDoc=await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer);walletDoc.Body=JsonSerializer.Serialize(new CashWallet(buyer,100));walletDoc.Revision++;await db.SaveChangesAsync();
+
+ // Burst replay across independent HTTP scopes: one financial intent with one
+ // idempotency key must create exactly one order and consume stock/cash once.
+ currentOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
+ Assert.Equal(HttpStatusCode.OK,(await Post(storeClient,"SAVE_OFFER",new{
+  offerId,productId=product,priceRial=1,stock=2,expectedVersion=currentOffer.Version})).StatusCode);
+ Assert.Equal(HttpStatusCode.OK,(await Post(customer,"SET_CART_ITEM",new{
+  productId=product,quantity=1})).StatusCode);
+ var burstQuoteResponse=await Post(customer,"CREATE_QUOTE",new{
+  sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});
+ Assert.Equal(HttpStatusCode.OK,burstQuoteResponse.StatusCode);
+ var burstQuoteId=(await burstQuoteResponse.Content.ReadFromJsonAsync<JsonElement>())
+  .GetProperty("Id").GetGuid();
+ var burstKey=Guid.NewGuid();
+ var beforeBurstOrders=(await db.Documents.AsNoTracking()
+  .Where(d=>d.Kind=="ORDER"&&d.OwnerId==buyer).ToListAsync()).Count;
+ var burstResponses=await Task.WhenAll(Enumerable.Range(0,16).Select(_=>
+  Post(customer,"PLACE_ORDER",new{
+   quoteId=burstQuoteId,creditGrantId=(Guid?)null,
+   unavailableDisposition="KEEP"},burstKey)));
+ Assert.All(burstResponses,r=>Assert.Equal(HttpStatusCode.OK,r.StatusCode));
+ var burstBodies=await Task.WhenAll(burstResponses.Select(r=>
+  r.Content.ReadFromJsonAsync<JsonElement>()));
+ var burstOrderIds=burstBodies.Select(x=>x.GetProperty("Id").GetGuid())
+  .Distinct().ToArray();
+ Assert.Single(burstOrderIds);
+ db.ChangeTracker.Clear();
+ Assert.Equal(beforeBurstOrders+1,(await db.Documents.AsNoTracking()
+  .Where(d=>d.Kind=="ORDER"&&d.OwnerId==buyer).ToListAsync()).Count);
+ Assert.Equal(1,JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking()
+  .SingleAsync(d=>d.Id==offerId)).Body)!.Stock);
+ Assert.Equal(99,JsonSerializer.Deserialize<CashWallet>((await db.Documents.AsNoTracking()
+  .SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);
+ Assert.Single(await db.Receipts.AsNoTracking()
+  .Where(r=>r.ActorId==buyer&&r.CommandId==burstKey).ToListAsync());
+
  var tinyProgram=await Command(admin,"CREATE_PROGRAM",new{name="Rounding CI",fundingReference="rounding-approved",fundedRial=1,expiresAtUtc=clock.UtcNow.AddDays(1),categoryIds=new[]{category}});
  var tinyAllocation=await Command(admin,"ALLOCATE_CREDIT",new{programId=tinyProgram.GetProperty("Id").GetGuid(),poolRial=1,beneficiaries=new[]{new{accountId=buyer,householdKey=households[buyer],geographicFactor=1m,scores=new{health=0,hardship=0,age=0,size=0,care=0,education=0}}}});var tinyCredit=tinyAllocation.GetProperty("grants")[0].GetProperty("Id").GetGuid();
  currentOffer=JsonSerializer.Deserialize<Offer>((await db.Documents.AsNoTracking().SingleAsync(d=>d.Id==offerId)).Body)!;
