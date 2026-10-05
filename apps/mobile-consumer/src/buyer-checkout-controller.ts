@@ -15,7 +15,7 @@ export class NativeCheckoutController {
  private readonly api:MobileCommerceClient;private readonly catalog:MobileCatalogClient;private readonly uuid:()=>string;private readonly notify:(s:NativeCheckoutState)=>void;private readonly now:()=>number;private readonly pending?:MobilePendingCommerceStore;
  constructor(api:MobileCommerceClient,catalog:MobileCatalogClient,uuid:()=>string,notify:(s:NativeCheckoutState)=>void,now=Date.now,pending?:MobilePendingCommerceStore){this.api=api;this.catalog=catalog;this.uuid=uuid;this.notify=notify;this.now=now;this.pending=pending;}
  private emit(p:Partial<NativeCheckoutState>){this.state={...this.state,...p};if(this.active)this.notify(this.state);}
- start(){this.active=true;void this.resume();}stop(){this.active=false;this.epoch++;}
+ start(){this.active=true;if(this.pending)void this.resume();else void this.refresh();}stop(){this.active=false;this.epoch++;}
  private async resume(){
   try{
    const restored=await this.pending?.restore("checkout");
