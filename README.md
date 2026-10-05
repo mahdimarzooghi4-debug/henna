@@ -88,7 +88,7 @@ QA دستگاه واقعی و Release Approval همچنان gate انتشارن�
 
 **[Frontend 022 — آزمون نصب‌شدهٔ لینک خریدار در شبیه‌ساز iOS](docs/implementation/HANA-FRONTEND-022.md).** CI مستقل macOS/Xcode از Expo پروژهٔ native می‌سازد، `.app` بدون امضای انتشار را روی iPhone Simulator نصب و `hana://` را با سیستم‌عامل باز می‌کند؛ Maestro با رابط دسترس‌پذیری، جزئیات/اختلال واقعیِ بدون API، برگشت به جست‌وجوی فارسی، لینک گرم/سرد و مسیر نامعتبر را بررسی می‌کند. پاپ‌آپ امنیتی اولین بازشدن scheme نیز به‌عنوان رفتار خود iOS آزمایش می‌شود. دستگاه فیزیکی، iOS App Store و لینک HTTPS تأییدشده هنوز خارج از شواهد هستند.
 
-**[Seller 016 — Activated Seller Panel Shell](docs/implementation/HANA-SELLER-016.md).** route واقعی `/seller` فقط با نقش `SELLER` و activation معتبر باز می‌شود؛ ماژول‌های بدون backend با وضعیت «هنوز متصل نشده» مشخص‌اند و دادهٔ نمونه وارد runtime نمی‌شود.
+**[Seller 016 — Activated Seller Panel and Commerce Operations](docs/implementation/HANA-SELLER-016.md).** route واقعی `/seller` فقط با نقش `SELLER`، activation معتبر و نبود تعلیق باز می‌شود؛ سفارش/مرجوعی، کالا/خدمت، گزارش، تسویهٔ آماده، اعلان و تیکت داخلی به backend واقعی وصل‌اند و دادهٔ نمونه وارد runtime نمی‌شود.
 
 **[Seller 015 — Approved Seller Activation](docs/implementation/HANA-SELLER-015.md).** بعد از `APPROVED`، Admin می‌تواند در یک transition مستقل و idempotent، activation audit و role واقعی `SELLER` را اتمیک ثبت کند. Seller API access فعال می‌شود، اما چون هنوز route واقعی پنل وجود ندارد `sellerPanelEnabled=false` باقی می‌ماند.
 
