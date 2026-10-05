@@ -2089,3 +2089,42 @@ a { color: inherit; }
     flex-direction: column;
   }
 }
+
+
+.support-unavailability {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #d9d2ca;
+  border-radius: 12px;
+  background: #f7f3ed;
+}
+.support-unavailability > p,
+.support-ticket__message {
+  margin: 0;
+  color: var(--hana-muted);
+}
+.support-unavailability .primary-button,
+.support-ticket__reply .primary-button {
+  width: auto;
+  justify-self: start;
+}
+.support-ticket {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid #e8e2db;
+  border-radius: 12px;
+  background: #fcfbf9;
+}
+.support-ticket__reply {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+@media (max-width: 620px) {
+  .support-unavailability .primary-button,
+  .support-ticket__reply .primary-button {
+    width: 100%;
+  }
+}
