@@ -170,6 +170,11 @@ async function main() {
           },
           reason: JSON.parse(body).reason,
         }));
+      if (req.method === "POST" &&
+          req.url === "/api/v1/commerce/commands/ASSESS_RETURN_SLA") {
+        assert.deepEqual(JSON.parse(body), {});
+        return res.end(JSON.stringify({ assessed: 2 }));
+      }
       res.statusCode = 404;
       res.end(JSON.stringify({ error: "missing" }));
     });
@@ -324,6 +329,19 @@ async function main() {
   assert.equal(unavailable.status, 200);
   assert.equal((await unavailable.json()).incident.state,
     "CUSTOMER_UNAVAILABLE_VERIFIED");
+
+  const beforeBadSla = calls.length;
+  const badSla = await post("support", "return-sla", { unexpected: true });
+  assert.equal(badSla.status, 400);
+  assert.equal(calls.length, beforeBadSla);
+
+  const sla = await post("support", "return-sla", {});
+  assert.equal(sla.status, 200);
+  assert.deepEqual(await sla.json(), { assessed: 2 });
+  assert.equal(calls.at(-1).url,
+    "/api/v1/commerce/commands/ASSESS_RETURN_SLA");
+  assert.equal(calls.at(-1).body, "{}");
+  assert.equal(calls.at(-1).key, ID);
 
   broken = true;
   assert.equal((await supportGet("incidents?page=1")).status, 503);
