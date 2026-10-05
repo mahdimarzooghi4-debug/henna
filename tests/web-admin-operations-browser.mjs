@@ -42,6 +42,13 @@ async function main(){
     if(path==="/api/admin/operations/summary")
       return route.fulfill(json({orders:4,cancelled:1,collected:2,
         openIncidents:1,preparedSettlements:0,grossRial:12000}));
+    if(path==="/api/admin/operations/integrity")
+      return route.fulfill(json({
+        healthy:true,checkedAtUtc:"2026-10-05T12:00:00Z",
+        violationCount:0,truncated:false,violations:[],
+        counts:{wallets:1,credits:0,programs:0,orders:4,incidents:1,
+          settlements:0,withdrawals:0,evidence:1},
+      }));
     if(path==="/api/admin/operations/audit")
       return route.fulfill(json([{id:ID,actorId:ACCOUNT,commandId:ID,
         resourceId:ACCOUNT,event:"SET_STAFF_PERMISSION",
@@ -130,6 +137,7 @@ async function main(){
   await page.goto(base+"/admin/operations");
   await page.getByRole("heading",{name:"عملیات ادمین"}).waitFor();
   await page.getByText("۱۲٬۰۰۰ ریال",{exact:true}).waitFor();
+  await page.getByText("سازگاری داخلی داده‌ها تأیید شد.",{exact:true}).waitFor();
 
   await page.getByPlaceholder("UUID حساب").first().fill(ACCOUNT);
   await page.getByLabel("فعال").uncheck();
