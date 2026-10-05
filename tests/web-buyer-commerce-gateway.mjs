@@ -33,6 +33,26 @@ async function main() {
   if (mode === "broken") return res.end(JSON.stringify({items:[{Id:"invalid"}],page:1,pageSize:20}));
   if (mode === "large") return res.end(JSON.stringify({value:"x".repeat(513000)}));
   if (req.url.startsWith("/api/v1/orders?page=")) return res.end(JSON.stringify({items:[],page:Number(new URL(req.url,"https://fixture.test").searchParams.get("page")),pageSize:20}));
+  if (req.url.startsWith("/api/v1/me/notifications?page="))
+   return res.end(JSON.stringify({items:[{
+    Id:ID,AccountId:"SECRET",Code:"REPLY_TICKET",ResourceId:ID,
+    CreatedAtUtc:"2026-10-05T10:00:00Z",Read:false
+   }],page:Number(new URL(req.url,"https://fixture.test").searchParams.get("page")),pageSize:20}));
+  if (req.url.startsWith("/api/v1/me/tickets?page="))
+   return res.end(JSON.stringify({items:[{
+    Id:ID,AccountId:"SECRET",Subject:"پیگیری",Message:"شرح",
+    State:"ANSWERED",CreatedAtUtc:"2026-10-05T10:05:00Z",Reply:"پاسخ"
+   }],page:Number(new URL(req.url,"https://fixture.test").searchParams.get("page")),pageSize:20}));
+  if (req.url===`/api/v1/me/notifications/${ID}/read`&&req.method==="POST")
+   return res.end(JSON.stringify({
+    Id:ID,AccountId:"SECRET",Code:"REPLY_TICKET",ResourceId:ID,
+    CreatedAtUtc:"2026-10-05T10:00:00Z",Read:true
+   }));
+  if (req.url==="/api/v1/support/tickets"&&req.method==="POST")
+   return res.end(JSON.stringify({
+    Id:ID,AccountId:"SECRET",Subject:"پیگیری",Message:"شرح",
+    State:"OPEN",CreatedAtUtc:"2026-10-05T10:05:00Z",Reply:null
+   }));
   const cart = {Id:ID,BuyerId:"SECRET",Items:[{ProductId:ID,Quantity:2}],Version:2};
   res.end(JSON.stringify(req.method === "GET" ? {items:[cart],page:1,pageSize:20} : cart));
  });
@@ -59,7 +79,31 @@ async function main() {
  assert.equal((await get("service-listings?productId="+ID+"&x=1")).status,400);
  const own=await get("cart");assert.equal(own.status,200);assert.deepEqual(await own.json(),{id:ID,version:2,items:[{productId:ID,quantity:2}]});assert.equal(own.headers.get("cache-control"),"no-store");
  const changed=await post();assert.equal(changed.status,200);assert.equal(calls.at(-1).key,ID);assert.deepEqual(JSON.parse(calls.at(-1).body),{productId:ID,quantity:2,expectedVersion:1});
- mode="conflict";const conflict=await post();assert.equal(conflict.status,409);const conflictBody=await conflict.json();assert.equal(conflictBody.code,"CART_VERSION_CHANGED");assert.equal(JSON.stringify(conflictBody).includes("SECRET"),false);
+ const notifications=await get("notifications?page=2");
+ assert.equal(notifications.status,200);
+ const notificationBody=await notifications.json();
+ assert.equal(notificationBody[0].code,"REPLY_TICKET");
+ assert.equal(JSON.stringify(notificationBody).includes("SECRET"),false);
+ assert.equal(calls.at(-1).url,"/api/v1/me/notifications?page=2");
+ const tickets=await get("tickets?page=3");
+ assert.equal(tickets.status,200);
+ const ticketBody=await tickets.json();
+ assert.equal(ticketBody[0].reply,"پاسخ");
+ assert.equal(JSON.stringify(ticketBody).includes("SECRET"),false);
+ const supportPost=(path,body)=>fetch(base+"/api/buyer/commerce/"+path,{
+  method:"POST",headers:{...cookie,Origin:base,"Content-Type":"application/json",
+   "Idempotency-Key":ID},body:JSON.stringify(body)
+ });
+ const marked=await supportPost(`notifications/${ID}/read`,{});
+ assert.equal(marked.status,200);
+ assert.equal((await marked.json()).read,true);
+ assert.equal(calls.at(-1).url,`/api/v1/me/notifications/${ID}/read`);
+ const opened=await supportPost("tickets",{subject:"پیگیری",message:"شرح"});
+ assert.equal(opened.status,200);
+ assert.equal((await opened.json()).state,"OPEN");
+ assert.equal(calls.at(-1).url,"/api/v1/support/tickets");
+ assert.deepEqual(JSON.parse(calls.at(-1).body),{subject:"پیگیری",message:"شرح"});
+  mode="conflict";const conflict=await post();assert.equal(conflict.status,409);const conflictBody=await conflict.json();assert.equal(conflictBody.code,"CART_VERSION_CHANGED");assert.equal(JSON.stringify(conflictBody).includes("SECRET"),false);
  for(const broken of ["broken","large","redirect"]){mode=broken;assert.equal((await get("cart")).status,503);}
  console.log("Shipping buyer BFF passed: cookie isolation, CSRF, route allowlist, bounded DTOs, idempotency and upstream redirects.");
 }
