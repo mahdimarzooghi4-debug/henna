@@ -8,7 +8,7 @@ export class NativeOrdersController {
  private api:MobileCommerceClient;private uuid:()=>string;private notify:(s:NativeOrdersState)=>void;private pending?:MobilePendingCommerceStore;
  constructor(api:MobileCommerceClient,uuid:()=>string,notify:(s:NativeOrdersState)=>void,selectedId:string|null=null,pending?:MobilePendingCommerceStore){this.api=api;this.uuid=uuid;this.notify=notify;this.state=initialNativeOrdersState(selectedId);this.pending=pending;}
  private emit(p:Partial<NativeOrdersState>){this.state={...this.state,...p};if(this.active)this.notify(this.state);}
- start(){this.active=true;void this.resume();}stop(){this.active=false;this.epoch++;}
+ start(){this.active=true;if(this.pending)void this.resume();else void this.refresh();}stop(){this.active=false;this.epoch++;}
  private async resume(){
   try{
    const restored=await this.pending?.restore("orders");
