@@ -8,12 +8,14 @@ import {
   adminRial,
   adminTime,
   parseAdminClientResourceList,
+  parseAdminIntegrity,
   parseAdminSummary,
   type AdminAudit,
   type AdminContent,
   type AdminCredit,
   type AdminFeePolicy,
   type AdminHousehold,
+  type AdminIntegrity,
   type AdminMembership,
   type AdminOperationIntent,
   type AdminOrganization,
@@ -34,6 +36,10 @@ type SummaryState =
   | { kind:"ready"; value:AdminSummary }
   | { kind:"denied"; message:string }
   | { kind:"error"; message:string };
+type IntegrityState =
+  | { kind:"loading" }
+  | { kind:"ready"; value:AdminIntegrity }
+  | { kind:"error"; message:string };
 
 class AdminOperationError extends Error {
   constructor(public status:number,message:string){super(message);}
@@ -53,6 +59,7 @@ const money=(value:string)=>/^[0-9]{1,15}$/.test(value)?Number(value):null;
 
 export default function AdminOperationsPage(){
   const [summary,setSummary]=useState<SummaryState>({kind:"loading"});
+  const [integrity,setIntegrity]=useState<IntegrityState>({kind:"loading"});
   const [auditPage,setAuditPage]=useState(1);
   const [audit,setAudit]=useState<Load<AdminAudit>>(initial());
   const [permissions,setPermissions]=useState<Load<AdminPermission>>(initial());
@@ -123,6 +130,23 @@ export default function AdminOperationsPage(){
     }
   },[]);
 
+  const loadIntegrity=useCallback(async(signal?:AbortSignal)=>{
+    setIntegrity({kind:"loading"});
+    try{
+      const raw=await responseJson(await fetch("/api/admin/operations/integrity",{
+        cache:"no-store",credentials:"same-origin",redirect:"error",signal,
+        headers:{Accept:"application/json"},
+      }));
+      const parsed=parseAdminIntegrity(raw);
+      setIntegrity(parsed?{kind:"ready",value:parsed}:
+        {kind:"error",message:"پاسخ کنترل یکپارچگی قابل اعتماد نیست."});
+    }catch(error){
+      if(!signal?.aborted)setIntegrity({kind:"error",
+        message:error instanceof Error?error.message:
+          "کنترل یکپارچگی در دسترس نیست."});
+    }
+  },[]);
+
   const loadResource=useCallback(async<T,>(
     kind:AdminResourceKind,page:number,setter:(value:Load<T>)=>void,
     signal?:AbortSignal,
@@ -146,6 +170,7 @@ export default function AdminOperationsPage(){
   const refresh=useCallback(async()=>{
     await Promise.all([
       loadSummary(),
+      loadIntegrity(),
       loadResource("audit",auditPage,setAudit),
       loadResource("permissions",1,setPermissions),
       loadResource("content",1,setContents),
@@ -158,11 +183,12 @@ export default function AdminOperationsPage(){
       loadResource("credits",1,setCredits),
       loadResource("households",1,setHouseholds),
     ]);
-  },[auditPage,loadResource,loadSummary]);
+  },[auditPage,loadIntegrity,loadResource,loadSummary]);
 
   useEffect(()=>{
     const controller=new AbortController();
     void loadSummary(controller.signal);
+    void loadIntegrity(controller.signal);
     void loadResource("audit",auditPage,setAudit,controller.signal);
     void loadResource("permissions",1,setPermissions,controller.signal);
     void loadResource("content",1,setContents,controller.signal);
@@ -175,7 +201,7 @@ export default function AdminOperationsPage(){
     void loadResource("credits",1,setCredits,controller.signal);
     void loadResource("households",1,setHouseholds,controller.signal);
     return()=>controller.abort();
-  },[auditPage,loadResource,loadSummary]);
+  },[auditPage,loadIntegrity,loadResource,loadSummary]);
 
   const command=useCallback(async(action:string,input:unknown,success:string)=>{
     const intent=adminOperationIntent(intents.current[action]??null,action,input);
@@ -334,6 +360,60 @@ export default function AdminOperationsPage(){
             <article><span>تسویه آماده</span><strong>{summary.value.preparedSettlements}</strong></article>
             <article><span>فروش ناخالص</span><strong>{adminRial(summary.value.grossRial)}</strong></article>
           </div>
+        )}
+      </section>
+
+      <section className="admin-ops__section" aria-labelledby="integrity-heading">
+        <div className="seller-commerce__section-title">
+          <div>
+            <h2 id="integrity-heading">Release Integrity داخلی</h2>
+            <p>
+              این کنترل فقط سازگاری داخلی داده و محاسبات حنا را می‌سنجد؛
+              تأیید بانک، پیامک، لجستیک یا Release Approval نیست.
+            </p>
+          </div>
+          {integrity.kind==="ready"&&
+            <span>{adminTime(integrity.value.checkedAtUtc)}</span>}
+        </div>
+        {integrity.kind==="loading"&&
+          <p className="form-status">در حال کنترل یکپارچگی…</p>}
+        {integrity.kind==="error"&&
+          <p className="form-status form-status--error" role="alert">
+            {integrity.message}
+          </p>}
+        {integrity.kind==="ready"&&(
+          <>
+            <p className={integrity.value.healthy
+              ?"admin-integrity admin-integrity--ok"
+              :"admin-integrity admin-integrity--bad"}
+              role="status">
+              {integrity.value.healthy
+                ?"سازگاری داخلی داده‌ها تأیید شد."
+                :`${new Intl.NumberFormat("fa-IR").format(
+                    integrity.value.violationCount)} ناسازگاری داخلی شناسایی شد؛ Release باید متوقف بماند.`}
+            </p>
+            <div className="admin-ops__metrics">
+              <article><span>کیف پول</span><strong>{integrity.value.counts.wallets}</strong></article>
+              <article><span>اعتبار</span><strong>{integrity.value.counts.credits}</strong></article>
+              <article><span>برنامه</span><strong>{integrity.value.counts.programs}</strong></article>
+              <article><span>سفارش</span><strong>{integrity.value.counts.orders}</strong></article>
+              <article><span>گزارش</span><strong>{integrity.value.counts.incidents}</strong></article>
+              <article><span>تسویه</span><strong>{integrity.value.counts.settlements}</strong></article>
+            </div>
+            {integrity.value.violations.length>0&&(
+              <div className="admin-ops__list">
+                {integrity.value.violations.map((item,index)=>(
+                  <p key={item.code+item.resourceId+index}>
+                    <bdi dir="ltr">{item.code}</bdi>
+                    {" — "}{item.resourceKind}{" — "}
+                    <bdi dir="ltr">{item.resourceId}</bdi>
+                  </p>
+                ))}
+                {integrity.value.truncated&&
+                  <p>فهرست تخلف‌ها به ۲۰۰ مورد اول محدود شده است.</p>}
+              </div>
+            )}
+          </>
         )}
       </section>
 
