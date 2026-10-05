@@ -42,6 +42,28 @@ test("admin summary and privileged resource DTOs fail closed",()=>{
   },1);
   assert.equal(audit?.[0].event,"SET_STAFF_PERMISSION");
   assert.equal(parseAdminResourcePage("audit",{page:2,items:[]},1),null);
+
+  const programs=parseAdminResourcePage("programs",{
+    page:1,pageSize:20,items:[{
+      Id:ID,Name:"برنامه CI",FundingReference:"private-source",
+      FundedRial:10000,UnallocatedRial:4000,
+      ExpiresAtUtc:"2026-12-05T05:00:00Z",CategoryIds:[ID2],
+      OrganizationId:null,
+    }],
+  },1);
+  assert.deepEqual(programs,[{
+    id:ID,name:"برنامه CI",fundedRial:10000,unallocatedRial:4000,
+    expiresAtUtc:"2026-12-05T05:00:00Z",categoryIds:[ID2],
+    organizationId:null,
+  }]);
+  assert.equal(JSON.stringify(programs).includes("private-source"),false);
+
+  const households=parseAdminResourcePage("households",{
+    page:1,pageSize:20,items:[{
+      Id:ID,AccountId:ID2,HouseholdKey:ID3,EvidenceReference:"review-42",
+    }],
+  },1);
+  assert.equal(households?.[0].householdKey,ID3);
 });
 
 test("admin command responses are bounded by command contract",()=>{
@@ -55,12 +77,36 @@ test("admin command responses are bounded by command contract",()=>{
 
   const settlement={
     Id:ID,OrderId:ID2,SellerId:ID3,GrossRial:1000,RefundRial:0,
-    PenaltyRial:0,FixedFeeRial:10,FeeVersion:"v1",NetRial:990,
+    PenaltyRial:1000,FixedFeeRial:10,FeeVersion:"v1",NetRial:-10,
     State:"READY_FOR_BANK_TRANSFER",CreatedAtUtc:"2026-10-05T05:00:00Z",
   };
-  assert.equal(parseAdminCommandResponse("BUILD_SETTLEMENTS",[settlement])?.length,1);
+  const built=parseAdminCommandResponse("BUILD_SETTLEMENTS",[settlement]);
+  assert.equal(built?.length,1);
+  assert.equal(built?.[0].netRial,-10);
   assert.deepEqual(parseAdminCommandResponse("ASSESS_WITHDRAWAL_SLA",
     {escalated:3}),{escalated:3});
+  const program=parseAdminCommandResponse("CREATE_PROGRAM",{
+    Id:ID,Name:"برنامه CI",FundingReference:"private-source",
+    FundedRial:10000,UnallocatedRial:10000,
+    ExpiresAtUtc:"2026-12-05T05:00:00Z",CategoryIds:[ID2],
+    OrganizationId:null,
+  });
+  assert.equal(program?.name,"برنامه CI");
+  assert.equal(JSON.stringify(program).includes("private-source"),false);
+
+  const allocation=parseAdminCommandResponse("ALLOCATE_CREDIT",{
+    grants:[{
+      Id:ID,AccountId:ID2,ProgramId:ID3,GrantedRial:6000,
+      AvailableRial:6000,ExpiresAtUtc:"2026-12-05T05:00:00Z",
+      CategoryIds:[ID],HouseholdKey:ID3,
+    }],
+    unallocatedRial:0,formulaVersion:"baseline-v1",
+  });
+  assert.equal(allocation?.grants[0].grantedRial,6000);
+  assert.equal(allocation?.formulaVersion,"baseline-v1");
+  assert.equal(parseAdminCommandResponse("ALLOCATE_CREDIT",{
+    grants:[{Id:"bad"}],unallocatedRial:0,formulaVersion:"baseline-v1",
+  }),null);
   assert.equal(parseAdminCommandResponse("SAVE_CONTENT",{Id:"bad"}),null);
 });
 
