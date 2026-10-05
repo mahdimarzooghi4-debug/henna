@@ -137,7 +137,7 @@ spec={'openapi':'3.1.0','info':{'title':'Henna internal pilot commerce API','ver
 output=json.dumps(spec,ensure_ascii=False,indent=2)+'\n'
 target=ROOT/'docs/api/HANA-COMMERCE-OPENAPI.json'
 if '--check' in sys.argv:
-    assert target.read_text()==output, 'Commerce OpenAPI is stale; run tools/contracts/commerce_openapi.py'
+    assert json.loads(target.read_text())==spec, 'Commerce OpenAPI is stale; run tools/contracts/commerce_openapi.py'
     print(f'Commerce contract matches {len(commands)} shipping commands and {len(paths)} routes.')
 else:
     target.write_text(output)
