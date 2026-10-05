@@ -59,15 +59,15 @@ export async function GET(request: NextRequest) {
     const capabilities = payload.capabilities as Record<string, unknown>;
     const expected: Record<string, boolean> = {
       dashboard: true,
-      orders: true,
       listings: false,
       inventory: false,
       pricing: false,
       settlements: false,
       reports: false,
     };
-    if (Object.keys(expected).some((key) =>
-      capabilities[key] !== expected[key]))
+    if (typeof capabilities.orders !== "boolean" ||
+      Object.keys(expected).some((key) =>
+        capabilities[key] !== expected[key]))
       return error("قابلیت‌های پنل فروشنده قابل تأیید نیست.", 503);
 
     return NextResponse.json(payload, { headers: noStore });
