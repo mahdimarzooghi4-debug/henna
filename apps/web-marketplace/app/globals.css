@@ -2454,3 +2454,42 @@ a { color: inherit; }
     flex: 1 1 auto;
   }
 }
+
+
+.seller-report-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.seller-report-grid article {
+  min-width: 0;
+  padding: 13px;
+  border-radius: 11px;
+  background: #faf8f5;
+}
+.seller-report-grid span {
+  display: block;
+  color: var(--hana-muted);
+  font-size: 12px;
+}
+.seller-report-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: #1c3f3a;
+  overflow-wrap: anywhere;
+}
+.seller-report-breakdown {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 900px) {
+  .seller-report-grid,
+  .seller-report-breakdown {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .seller-report-grid,
+  .seller-report-breakdown {
+    grid-template-columns: 1fr;
+  }
+}
