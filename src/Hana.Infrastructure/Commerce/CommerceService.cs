@@ -352,7 +352,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(kind=="OFFER") {var active=await ActiveSellers(ct);query=query.Where(d=>active.Contains(d.OwnerId)&&EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));}
   if(id!=null)query=query.Where(d=>d.Id==id);
   if(view=="BUYER")query=query.Where(d=>d.OwnerId==actor);
-  if(view=="SELLER") {await Seller(actor,ct);query=kind=="ORDER"?query.Where(d=>EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{SellerId=actor}))):query.Where(d=>d.OwnerId==actor);}
+  if(view=="SELLER") {await Seller(actor,ct);query=kind is "ORDER" or "INCIDENT"?query.Where(d=>EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{SellerId=actor}))):query.Where(d=>d.OwnerId==actor);}
   var sellerAccess=await roles.HasRoleAsync(actor,HanaRoles.Seller,ct)&&await sellers.SellerActivations.AnyAsync(s=>s.ApplicationAccountId==actor,ct);
   var memberships=await db.Documents.AsNoTracking().Where(d=>d.Kind=="MEMBERSHIP"&&d.OwnerId==actor).ToListAsync(ct);
   var organizations=memberships.Select(d=>JsonSerializer.Deserialize<OrganizationMembership>(d.Body)!).Where(m=>m.Role=="MANAGER").Select(m=>m.OrganizationId).ToArray();
