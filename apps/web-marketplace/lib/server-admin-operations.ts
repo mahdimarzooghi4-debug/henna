@@ -52,7 +52,7 @@ const resourceMap:Record<string,{kind:string;parse:AdminResourceKind}> = {
   households:{kind:"HOUSEHOLD",parse:"households"},
 };
 const actions=new Set([
-  "SET_STAFF_PERMISSION","SET_SELLER_ACCESS","SAVE_CONTENT","PUBLISH_CONTENT",
+  "SET_STAFF_PERMISSION","SAVE_CONTENT","PUBLISH_CONTENT",
   "CREATE_ORGANIZATION","GRANT_ORGANIZATION_MEMBER",
   "REVOKE_ORGANIZATION_MEMBER","SET_FEE_POLICY",
   "BUILD_SETTLEMENTS","ASSESS_WITHDRAWAL_SLA",
@@ -66,11 +66,6 @@ function validate(action:string,raw:unknown):Record<string,unknown>|null{
     return adminOperationId(x.accountId)&&["FINANCE","SUPPORT"].includes(String(x.permission))&&
       typeof x.active==="boolean"
       ? {accountId:x.accountId,permission:x.permission,active:x.active}:null;
-  if(action==="SET_SELLER_ACCESS"){
-    const reason=cleanText(x.reason,1000);
-    return adminOperationId(x.accountId)&&typeof x.active==="boolean"&&reason
-      ? {accountId:x.accountId,active:x.active,reason}:null;
-  }
   if(action==="LINK_HOUSEHOLD"){
     const evidence=cleanText(x.evidenceReference,1000);
     return adminOperationId(x.accountId)&&adminOperationId(x.householdKey)&&evidence
