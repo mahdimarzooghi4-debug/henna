@@ -92,7 +92,8 @@ function applicant(value: unknown):
 
 function parseListItem(value: unknown): AdminSellerListItem | null {
   const x = row(value);
-  if (!x || !adminSellerId(x.applicationId) ||
+  const identifier = x?.applicationId ?? x?.id;
+  if (!x || !adminSellerId(identifier) ||
       !text(x.storeName, 200) ||
       !(x.businessName === null || text(x.businessName, 200)) ||
       !applicant(x.applicantType) || !text(x.identityStatus, 40) ||
@@ -103,7 +104,7 @@ function parseListItem(value: unknown): AdminSellerListItem | null {
       !optionalUtc(x.activatedAtUtc) || !utc(x.submittedAtUtc))
     return null;
   return {
-    id: x.applicationId,
+    id: identifier,
     storeName: x.storeName.trim(),
     businessName: x.businessName === null ? null : x.businessName.trim(),
     applicantType: x.applicantType,
