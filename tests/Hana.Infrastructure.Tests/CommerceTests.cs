@@ -245,6 +245,10 @@ public sealed class CommerceTests
  var repeatedPhoto=await UploadPhoto(photoBody);Assert.Equal(HttpStatusCode.OK,repeatedPhoto.StatusCode);Assert.Equal(savedPhoto,(await repeatedPhoto.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("evidenceId").GetGuid());
  Assert.Equal(HttpStatusCode.Conflict,(await UploadPhoto(new{contentType="image/jpeg",contentBase64=photoBody.contentBase64})).StatusCode);
  Assert.Equal(HttpStatusCode.NotFound,(await other.GetAsync("/api/v1/evidence/"+savedPhoto)).StatusCode);
+ var discardHttp=await PostPath(customer,"/api/v1/me/evidence/"+savedPhoto+"/discard",new{});
+ Assert.Equal(HttpStatusCode.OK,discardHttp.StatusCode);
+ Assert.True((await discardHttp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("deleted").GetBoolean());
+ Assert.False(await db.Documents.AsNoTracking().AnyAsync(d=>d.Id==savedPhoto&&d.Kind=="EVIDENCE"));
  var ownCredits=await customer.GetAsync("/api/v1/me/credits");Assert.Equal(HttpStatusCode.OK,ownCredits.StatusCode);
  Assert.Equal(HttpStatusCode.Forbidden,(await Post(customer,"CREATE_PROGRAM",new{})).StatusCode);
  Assert.Equal(HttpStatusCode.NotFound,(await other.GetAsync("/api/v1/commerce/resources/ORDER?id="+orderId)).StatusCode);
