@@ -97,9 +97,10 @@ function routeFor(
         page: 1,
       };
     if (scope === "seller" &&
-        ["offers", "settlements", "notifications", "tickets"].includes(path))
+        ["offers", "service-listings", "settlements", "notifications", "tickets"].includes(path))
       return {
         upstream: path === "offers" ? "/seller/offers" :
+          path === "service-listings" ? "/seller/service-listings" :
           path === "settlements" ? "/seller/settlements" :
             path === "notifications" ? "/me/notifications" : "/me/tickets",
         parsePath: path,
@@ -123,6 +124,8 @@ function routeFor(
 
   if (scope === "seller" && path === "offers")
     return { upstream: "/seller/offers", parsePath: path, page: 1 };
+  if (scope === "seller" && path === "service-listings")
+    return { upstream: "/seller/service-listings", parsePath: path, page: 1 };
   if (scope === "seller" && path === "tickets")
     return { upstream: "/support/tickets", parsePath: path, page: 1 };
   if (scope === "seller" && segments.length === 3 &&
