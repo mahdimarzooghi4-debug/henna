@@ -52,6 +52,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    "ASSESS_RETURN_SLA"=>await AssessReturns(actor,ct), "SET_FEE_POLICY"=>await SetFee(actor,input,ct),
    "BUILD_SETTLEMENTS"=>await BuildSettlements(actor,ct), "REQUEST_WITHDRAWAL"=>await Withdraw(actor,input,ct), "CANCEL_WITHDRAWAL"=>await CancelWithdrawal(actor,input,ct),
    "SAVE_EVIDENCE"=>await SaveEvidence(actor,input,ct),
+   "DELETE_EVIDENCE"=>await DeleteEvidence(actor,input,ct),
    "LINK_HOUSEHOLD"=>await LinkHousehold(actor,input,ct),
    "SET_STAFF_PERMISSION"=>await SetPermission(actor,input,ct),
    "CREATE_ORGANIZATION"=>await CreateOrganization(actor,input,ct), "GRANT_ORGANIZATION_MEMBER"=>await GrantMembership(actor,input,ct), "REVOKE_ORGANIZATION_MEMBER"=>await RevokeMembership(actor,input,ct),
@@ -88,6 +89,17 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var data=Convert.FromBase64String(Text(x,"contentBase64",55000));if(data.Length is <12 or >40000)throw new ArgumentException("Evidence image size.");
   bool valid=mime switch {"image/png"=>data.AsSpan(0,8).SequenceEqual(new byte[]{137,80,78,71,13,10,26,10}),"image/jpeg"=>data[0]==255&&data[1]==216&&data[^2]==255&&data[^1]==217,"image/webp"=>Encoding.ASCII.GetString(data,0,4)=="RIFF"&&Encoding.ASCII.GetString(data,8,4)=="WEBP",_=>false};
   if(!valid)throw new ArgumentException("Evidence file signature.");var e=new CommerceEvidence(Guid.NewGuid(),actor,mime,Convert.ToBase64String(data),Convert.ToHexString(SHA256.HashData(data)),clock.UtcNow);await Put(e.Id,actor,"EVIDENCE",e,ct);return new{evidenceId=e.Id,sha256=e.Sha256,contentType=mime,size=data.Length};
+ }
+ private async Task<object> DeleteEvidence(Guid actor,JsonElement x,CancellationToken ct) {
+  var evidenceId=Id(x,"evidenceId");
+  var document=await db.Documents.SingleOrDefaultAsync(d=>d.Id==evidenceId&&d.Kind=="EVIDENCE",ct);
+  if(document==null)return new{evidenceId,deleted=true};
+  if(document.OwnerId!=actor)throw new CommerceMissing();
+  var selector=JsonSerializer.Serialize(new{EvidenceReference=evidenceId.ToString()});
+  if(await db.Documents.AsNoTracking().AnyAsync(d=>d.Kind=="INCIDENT"&&EF.Functions.JsonContains(d.Body,selector),ct))
+   throw new CommerceConflict("EVIDENCE_IN_USE");
+  db.Documents.Remove(document);
+  return new{evidenceId,deleted=true};
  }
  public async Task<CommerceEvidence> EvidenceAsync(Guid actor,Guid id,CancellationToken ct) {
   var e=await Get<CommerceEvidence>(id,"EVIDENCE",ct);if(e.AccountId==actor||await HasPermission(actor,"SUPPORT",ct))return e;
