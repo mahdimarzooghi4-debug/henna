@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseCommerce, parseOffers, commerceIntent } from "../apps/web-marketplace/lib/buyer-commerce.ts";
+import { parseCommerce, parseOffers, parseServiceListings, commerceIntent } from "../apps/web-marketplace/lib/buyer-commerce.ts";
 import { safeAuthReturnTo } from "../apps/web-marketplace/lib/auth-return.ts";
 const ID = "60000000-0000-4000-8000-000000000001", SELLER = "60000000-0000-4000-8000-000000000002";
 const item = { ProductId: ID, Quantity: 2 };
@@ -26,6 +26,21 @@ test("published offers require the requested product, active publication and rea
  assert.equal(parseOffers(page([{ ...offer, productId: SELLER }]), ID), null);
  assert.equal(parseOffers(page([{ ...offer, storeName: "" }]), ID), null);
 });
+test("published service listings are bounded and omit seller-private fields", () => {
+ const listing = {
+  id: ID, sellerId: SELLER, productId: ID, priceRial: 2500,
+  availabilityNote: "شنبه تا چهارشنبه با هماهنگی",
+  version: 2, published: true, storeName: "خدمات CI",
+  sellerPhone: "SECRET",
+ };
+ const parsed=parseServiceListings(page([listing]),ID);
+ assert.equal(parsed?.[0].availabilityNote,"شنبه تا چهارشنبه با هماهنگی");
+ assert.equal(JSON.stringify(parsed).includes("SECRET"),false);
+ assert.equal(parseServiceListings(page([{...listing,published:false}]),ID),null);
+ assert.equal(parseServiceListings(page([{...listing,productId:SELLER}]),ID),null);
+ assert.equal(parseServiceListings(page([{...listing,availabilityNote:""}]),ID),null);
+});
+
 test("idempotency retry keeps the original key/body; a reviewed changed intent gets a new key", () => {
  const first = commerceIntent(null, "orders", { quoteId: ID, unavailableDisposition: "KEEP" });
  assert.deepEqual(commerceIntent(first, "orders", { quoteId: ID, unavailableDisposition: "KEEP" }), first);
