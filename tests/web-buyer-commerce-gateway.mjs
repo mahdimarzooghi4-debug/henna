@@ -19,6 +19,14 @@ async function main() {
    assert.equal(req.headers.authorization, undefined);
    return res.end(JSON.stringify({items:[{id:ID,sellerId:ID,productId:ID,categoryId:ID,priceRial:1000,stock:2,version:1,published:true,storeName:"فروشگاه CI",privateNote:"SECRET"}],page:1,pageSize:20}));
   }
+  if (req.url.startsWith("/api/v1/service-listings?")) {
+   assert.equal(req.headers.authorization, undefined);
+   return res.end(JSON.stringify({items:[{
+    id:ID,sellerId:ID,productId:ID,categoryId:ID,priceRial:2500,
+    availabilityNote:"CI weekdays",version:1,published:true,
+    storeName:"خدمات CI",privateNote:"SECRET"
+   }],page:1,pageSize:20}));
+  }
   assert.equal(req.headers.authorization, "Bearer " + token);
   if (mode === "redirect") {res.writeHead(302,{Location:"https://evil.test/"});return res.end();}
   if (mode === "conflict") {res.statusCode=409;return res.end(JSON.stringify({error:"CART_VERSION_CHANGED",privateDetail:"SECRET"}));}
@@ -43,6 +51,12 @@ async function main() {
  const secondPage=await get("orders?page=2");assert.equal(secondPage.status,200);assert.deepEqual(await secondPage.json(),[]);assert.equal(calls.at(-1).url,"/api/v1/orders?page=2");
  const publicOffers=await get("offers?productId="+ID);assert.equal(publicOffers.status,200);assert.equal(JSON.stringify(await publicOffers.json()).includes("SECRET"),false);
  assert.equal((await get("offers?productId="+ID+"&productId="+ID)).status,400);
+ const publicServices=await get("service-listings?productId="+ID);
+ assert.equal(publicServices.status,200);
+ const servicesBody=await publicServices.json();
+ assert.equal(servicesBody[0].availabilityNote,"CI weekdays");
+ assert.equal(JSON.stringify(servicesBody).includes("SECRET"),false);
+ assert.equal((await get("service-listings?productId="+ID+"&x=1")).status,400);
  const own=await get("cart");assert.equal(own.status,200);assert.deepEqual(await own.json(),{id:ID,version:2,items:[{productId:ID,quantity:2}]});assert.equal(own.headers.get("cache-control"),"no-store");
  const changed=await post();assert.equal(changed.status,200);assert.equal(calls.at(-1).key,ID);assert.deepEqual(JSON.parse(calls.at(-1).body),{productId:ID,quantity:2,expectedVersion:1});
  mode="conflict";const conflict=await post();assert.equal(conflict.status,409);const conflictBody=await conflict.json();assert.equal(conflictBody.code,"CART_VERSION_CHANGED");assert.equal(JSON.stringify(conflictBody).includes("SECRET"),false);
