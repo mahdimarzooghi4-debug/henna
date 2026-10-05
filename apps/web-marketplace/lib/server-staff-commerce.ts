@@ -177,6 +177,12 @@ function routeFor(
       parsePath: path,
       page: 1,
     };
+  if (scope === "support" && path === "return-sla")
+    return {
+      upstream: "/commerce/commands/ASSESS_RETURN_SLA",
+      parsePath: path,
+      page: 1,
+    };
   return null;
 }
 
@@ -219,6 +225,11 @@ export async function forwardStaffCommerce(
       const parsed: unknown = JSON.parse(body);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
         return failure(400);
+      if (scope === "support" && route.parsePath === "return-sla") {
+        if (Object.keys(parsed as Record<string, unknown>).length !== 0)
+          return failure(400);
+        body = "{}";
+      }
     } catch {
       return failure(400);
     }
