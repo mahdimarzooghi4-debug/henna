@@ -343,6 +343,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    return new{orders=orders.Count,cancelled=orders.Count(o=>o.State=="CANCELLED"),collected=orders.Count(o=>o.State=="COLLECTED"),openIncidents=cases.Count(i=>i.State is "UNDER_REVIEW" or "AWAITING_RETURN"),preparedSettlements=settlements.Count,grossRial=orders.Where(o=>o.State!="CANCELLED").Aggregate(0L,(n,o)=>checked(n+o.TotalRial))};
   }
   var allowed=new[]{"OFFER","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION","FEE_VERSION","HOUSEHOLD"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
+  if(view=="SUPPORT")await Permission(actor,"SUPPORT",ct);
   var admin=await roles.HasRoleAsync(actor,HanaRoles.Admin,ct);
   var supportAccess=new[]{"ORDER","INCIDENT","TICKET"}.Contains(kind)&&await HasPermission(actor,"SUPPORT",ct);
   var financeAccess=new[]{"PROGRAM","CREDIT","SETTLEMENT","WITHDRAWAL","FEE_VERSION"}.Contains(kind)&&await HasPermission(actor,"FINANCE",ct);
