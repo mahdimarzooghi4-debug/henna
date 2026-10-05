@@ -72,7 +72,8 @@ internal static class AllocationLearningProposalEndpoints
                 .ThenBy(x => x.Id).Skip((p - 1) * 20).Take(20).Select(x => new {
                     x.Id, x.DatasetVersion, x.SourceInstructionReference, x.FormulaVersion,
                     x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education, x.AssessedAtUtc,
-                    x.EvidenceReference, x.RecordedByAccountId
+                    x.EvidenceReference,
+                    trainingEligible = x.RecordedByAccountId == null && x.EvidenceReference == null
                 }).ToListAsync(ct);
             return Results.Ok(new { items, page = p, active = false });
         });
