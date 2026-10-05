@@ -15,7 +15,7 @@ const png = Buffer.from(
 let web, browser, logs = "";
 let orderState = "PAID", orderVersion = 1, contactAt = null, doorVisitAt = null;
 let supportState = "UNDER_REVIEW", supportRefund = 0;
-let offerVersion = 1, notificationRead = false;
+let offerVersion = 1, notificationRead = false, ticketState = "OPEN";
 let firstDecision = null, decisionAttempts = 0;
 
 function json(data, status = 200) {
@@ -64,7 +64,7 @@ function notification() {
     createdAtUtc: "2026-10-05T03:50:00Z", read: notificationRead,
   };
 }
-function ticket(state = "OPEN") {
+function ticket(state = ticketState) {
   return {
     id: EVIDENCE, subject: "پیگیری فروشنده", message: "نیاز به بررسی دارم",
     state, createdAtUtc: "2026-10-05T03:55:00Z",
@@ -189,6 +189,7 @@ async function main() {
       assert.deepEqual(request.postDataJSON(), {
         subject: "موضوع مرورگر", message: "متن تیکت مرورگر",
       });
+      ticketState = "OPEN";
       return route.fulfill(json(ticket()));
     }
 
@@ -240,7 +241,8 @@ async function main() {
       assert.deepEqual(request.postDataJSON(), {
         reply: "پاسخ پشتیبانی ثبت شد",
       });
-      return route.fulfill(json(ticket("ANSWERED")));
+      ticketState = "ANSWERED";
+      return route.fulfill(json(ticket()));
     }
 
     throw Error("Unexpected API request: " + request.method() + " " + path);
