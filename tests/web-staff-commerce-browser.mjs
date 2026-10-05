@@ -16,7 +16,7 @@ let web, browser, logs = "";
 let orderState = "PAID", orderVersion = 1, contactAt = null, doorVisitAt = null;
 let supportState = "UNDER_REVIEW", supportRefund = 0;
 let offerVersion = 1, notificationRead = false, ticketState = "OPEN";
-let firstDecision = null, decisionAttempts = 0;
+let firstDecision = null, decisionAttempts = 0, slaAttempts = 0;
 
 function json(data, status = 200) {
   return { status, contentType: "application/json; charset=utf-8",
@@ -253,6 +253,14 @@ async function main() {
       ticketState = "ANSWERED";
       return route.fulfill(json(ticket()));
     }
+    if (path === "/api/support/commerce/return-sla" &&
+        request.method() === "POST") {
+      slaAttempts++;
+      assert.deepEqual(request.postDataJSON(), {});
+      assert.match(request.headers()["idempotency-key"],
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      return route.fulfill(json({ assessed: 1 }));
+    }
 
     throw Error("Unexpected API request: " + request.method() + " " + path);
   });
@@ -305,6 +313,13 @@ async function main() {
   await page.getByRole("heading", {
     name: "بررسی گزارش آسیب و کسری",
   }).waitFor();
+  await page.getByRole("button", {
+    name: "ارزیابی SLA مرجوعی",
+  }).click();
+  await page.getByText("SLA مرجوعی ارزیابی شد؛ ۱ پروندهٔ معوق", {
+    exact: false,
+  }).waitFor();
+  assert.equal(slaAttempts, 1);
   const evidence = page.getByAltText("تصویر خصوصی پیوست گزارش خریدار");
   await evidence.waitFor();
   await evidence.evaluate(image => new Promise((resolve, reject) => {
@@ -349,7 +364,7 @@ async function main() {
   assert.deepEqual(pageErrors, []);
 
   await context.close();
-  console.log("Chromium staff commerce: seller orders/offers/settlements/alerts/tickets plus support incident/return/ticket lifecycle OK");
+  console.log("Chromium staff commerce: seller operations plus support incident/return/SLA/ticket lifecycle OK");
 }
 
 try { await main(); } finally {
