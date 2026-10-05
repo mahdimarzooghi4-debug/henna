@@ -316,10 +316,10 @@ async function fakeApi(route) {
       capabilities: {
         dashboard: true,
         orders: true,
-        listings: false,
-        inventory: false,
-        pricing: false,
-        settlements: false,
+        listings: true,
+        inventory: true,
+        pricing: true,
+        settlements: true,
         reports: false,
       },
     }));
@@ -724,7 +724,7 @@ async function main() {
   }).waitFor();
   assert.equal(await otherTab.getByText("هنوز متصل نشده", {
     exact: true,
-  }).count(), 5);
+  }).count(), 1);
   await otherTab.getByText("دسترسی فروشندگی فعال است.", {
     exact: true,
   }).waitFor();
