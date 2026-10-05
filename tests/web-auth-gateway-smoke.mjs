@@ -420,7 +420,7 @@ async function main() {
             activityCityId: sellerDraft.activityCityId,
             capabilities: {
               dashboard: true,
-              orders: false,
+              orders: true,
               listings: false,
               inventory: false,
               pricing: false,
@@ -1053,7 +1053,7 @@ async function main() {
     activityCityId,
     capabilities: {
       dashboard: true,
-      orders: false,
+      orders: true,
       listings: false,
       inventory: false,
       pricing: false,
