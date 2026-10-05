@@ -105,6 +105,8 @@ function routeFor(
         parsePath: path,
         page: 1,
       };
+    if (scope === "seller" && path === "report")
+      return { upstream: "/seller/report", parsePath: path, page: 1 };
     if (scope === "support" && path === "incidents")
       return { upstream: "/support/incidents", parsePath: path, page: 1 };
     if (scope === "support" && path === "tickets")
@@ -186,8 +188,10 @@ export async function forwardStaffCommerce(
 
   const binaryEvidence = scope === "support" && method === "GET" &&
     segments[0] === "evidence";
+  const nonPaged = scope === "seller" && method === "GET" &&
+    route.parsePath === "report";
   let page = 1;
-  if (method === "GET" && !binaryEvidence) {
+  if (method === "GET" && !binaryEvidence && !nonPaged) {
     const requestedPage = listPage(request);
     if (requestedPage === null) return failure(400);
     page = requestedPage;
