@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { accessTokenPattern, hanaAuthApiUrl, isSameOrigin, noStore, sessionCookieName } from "./server-auth";
 import { commerceId, commerceMessages, parseCommerce, parseOffers, parseServiceListings } from "./buyer-commerce";
-const getPaths: Record<string, string> = { cart: "/carts/current", comparison: "/carts/current/comparison", addresses: "/me/addresses", credits: "/me/credits", wallet: "/me/wallet", orders: "/orders" };
-const postPaths: Record<string, string> = { "cart-items": "/carts/current/items", addresses: "/me/addresses", quotes: "/quotes", orders: "/orders" };
+const getPaths: Record<string, string> = { cart: "/carts/current", comparison: "/carts/current/comparison", addresses: "/me/addresses", credits: "/me/credits", wallet: "/me/wallet", orders: "/orders", notifications: "/me/notifications", tickets: "/me/tickets" };
+const postPaths: Record<string, string> = { "cart-items": "/carts/current/items", addresses: "/me/addresses", quotes: "/quotes", orders: "/orders", tickets: "/support/tickets" };
 async function boundedText(response: Request | Response, max: number) {
   if (!response.body) throw Error(); const reader = response.body.getReader(); const decoder = new TextDecoder("utf-8", { fatal: true }); let bytes = 0, out = "";
   try { for (;;) { const { done, value } = await reader.read(); if (done) break; bytes += value.byteLength; if (bytes > max) { await reader.cancel(); throw Error(); } out += decoder.decode(value, { stream: true }); } return out + decoder.decode(); } finally { reader.releaseLock(); }
@@ -19,13 +19,22 @@ export async function forwardBuyerCommerce(request: NextRequest, segments: strin
   } else {
     const allowed = method === "GET" ? getPaths : postPaths;
     upstreamPath = Object.hasOwn(allowed, path) ? allowed[path] : undefined;
-    if (segments[0] === "orders" && commerceId(segments[1]) && (method === "GET" && segments.length === 2 || method === "POST" && segments.length === 3 && ["cancel", "pickup-confirmation"].includes(segments[2]))) upstreamPath = "/orders/" + segments.slice(1).join("/");
+    if (segments[0] === "orders" && commerceId(segments[1]) && (method === "GET" && segments.length === 2 || method === "POST" && segments.length === 3 && ["cancel", "pickup-confirmation"].includes(segments[2])))
+      upstreamPath = "/orders/" + segments.slice(1).join("/");
+    if (method === "POST" && segments.length === 3 &&
+        segments[0] === "notifications" && commerceId(segments[1]) &&
+        segments[2] === "read")
+      upstreamPath = "/me/notifications/" + segments[1] + "/read";
   }
   if (!upstreamPath) return fail(404);
   let requestedPage = 1;
   if (request.nextUrl.searchParams.size && !publicRead) {
     const value = request.nextUrl.searchParams.get("page");
-    if (method !== "GET" || path !== "orders" || request.nextUrl.searchParams.size !== 1 || !value || !/^[1-9][0-9]{0,4}$/.test(value) || Number(value) > 10000) return fail(400);
+    if (method !== "GET" ||
+        !["orders","notifications","tickets"].includes(path) ||
+        request.nextUrl.searchParams.size !== 1 || !value ||
+        !/^[1-9][0-9]{0,4}$/.test(value) || Number(value) > 10000)
+      return fail(400);
     requestedPage = Number(value); upstreamPath += "?page=" + requestedPage;
   }
   if (method === "POST" && !isSameOrigin(request)) return fail(403);
