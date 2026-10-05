@@ -61,10 +61,10 @@ Current capability readiness:
 
 - dashboard = true
 - orders = true only when IdentityDb + CommerceDb are configured; otherwise false
-- listings = false
-- inventory = false
-- pricing = false
-- settlements = false
+- listings = true for GOOD/BOTH sellers when CommerceDb is configured
+- inventory = same readiness as listings
+- pricing = same readiness as listings
+- settlements = true when CommerceDb is configured
 - reports = false
 
 ## Dashboard UI
@@ -168,7 +168,7 @@ It proves:
 - panel link becomes available after activation
 - `/seller` opens
 - real business/store names are rendered
-- five still-unsupported capability cards are marked «هنوز متصل نشده»
+- only still-unsupported capability cards are marked «هنوز متصل نشده»
 - commerce data is loaded only after an explicit seller action
 - order-state and return-contact commands use persisted idempotency
 - no Figma sample metrics are required for the dashboard shell
@@ -194,17 +194,36 @@ allowlist, same-origin checks for writes, bounded request/response bodies and
 UUID idempotency keys. An ambiguous 503 freezes the original key/body for a
 safe retry; a known 409 reloads server state before a new decision.
 
-## Next slices
+## Connected seller business operations
 
-Listings, inventory, pricing, settlement and reports remain disabled until each
-has a real connected contract and authorization review.
+For GOOD/BOTH sellers, the panel now connects existing commerce contracts for:
+
+- seller-owned offers
+- price and stock updates with expectedVersion
+- published GOOD catalog lookup before creating a new offer
+- read-only prepared settlements
+- internal notifications and mark-read
+- internal support ticket creation/history
+
+Settlement states are deliberately shown as `READY_FOR_BANK_TRANSFER` or
+`FINANCE_REVIEW_REQUIRED`; the UI never labels them paid. Bank transfer remains
+an external integration.
+
+Offers whose catalog product/category is later unpublished are removed from the
+public offer API, while the seller can still see the stale own offer and cannot
+silently republish it through the buyer catalog.
+
+## Remaining seller scope
+
+- reports/analytics read model
+- service-listing write model for SERVICE-only sellers
+- deactivation/suspension operator flow
+- external bank settlement confirmation
+- external logistics
 
 ## Non-scope
 
-- fake order data
-- catalog write operations
-- inventory mutation
-- pricing mutation
-- settlement data
-- reports
-- deactivation/suspension
+- fake order or finance data
+- fabricated bank payment
+- external logistics
+- national-scale readiness
