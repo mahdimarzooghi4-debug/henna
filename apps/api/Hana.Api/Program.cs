@@ -81,7 +81,8 @@ if (!string.IsNullOrWhiteSpace(learningConnectionString))
     if (hasIdentityDb) builder.Services.AddScoped<AllocationTrainingWorkflow>();
 }
 var commerceConnectionString = builder.Configuration.GetConnectionString("CommerceDb");
-if (hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString))
+var hasCommerceDb = hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString);
+if (hasCommerceDb)
 {
     builder.Services.AddDbContext<HanaCommerceDbContext>(options => options.UseNpgsql(commerceConnectionString,
         pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "commerce")));
@@ -372,9 +373,9 @@ app.MapSellerActivityArea(hasIdentityDb);
 app.MapSellerAdditionalInformation(hasIdentityDb);
 app.MapSellerApplicationStatus(hasIdentityDb);
 app.MapSellerApplicationAmendments(hasIdentityDb);
-app.MapSellerAccess(hasIdentityDb);
+app.MapSellerAccess(hasIdentityDb, hasCommerceDb);
 app.MapAdminSellerApplications(hasIdentityDb);
-app.MapCommerce(hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString));
+app.MapCommerce(hasCommerceDb);
 app.MapAllocationLearningProposals(hasIdentityDb && !string.IsNullOrWhiteSpace(learningConnectionString));
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
