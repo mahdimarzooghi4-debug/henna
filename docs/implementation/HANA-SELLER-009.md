@@ -33,13 +33,13 @@
 
 ## نقشه
 
-Figma نقشه را اختیاری نشان می‌دهد، اما در دامنه فعلی قرارداد مصوبی برای provider نقشه، precision، consent یا ذخیره latitude/longitude وجود ندارد.
+نقشه همچنان اختیاری است و completion مرحله ۵ به انتخاب نقطه وابسته نیست. رابط فعلی از همان projection مشترک حنا و tileهای OpenStreetMap استفاده می‌کند و فقط پس از اقدام صریح کاربر شبکه را مصرف می‌کند.
 
-بنابراین Seller 009:
-
-- map placeholder را در UI نشان می‌دهد؛
-- مختصات ساختگی، IP-derived یا حدسی ذخیره نمی‌کند؛
-- completion مرحله ۵ به نقشه وابسته نیست.
+- مختصات فقط با کلیک صریح کاربر روی نقشه ثبت می‌شوند؛
+- latitude/longitude با precision شش رقم اعشار در قرارداد مرحله فعالیت ذخیره و بعد از reload بازیابی می‌شوند؛
+- امکان حذف دوباره مختصات وجود دارد؛
+- IP-derived location، reverse geocoding، background tracking و مختصات ساختگی وجود ندارند؛
+- نقطه ثبت‌شده صرفاً محل فعالیت است و هیچ پوشش ارسال/لجستیک یا شعاع خدمت را اثبات نمی‌کند.
 
 ## Data model
 
@@ -106,7 +106,7 @@ Desktop و Mobile با layout responsive:
 - انتخاب province
 - انتخاب city وابسته به province
 - آدرس
-- placeholder نقشهٔ اختیاری
+- نقشهٔ تعاملی اختیاری برای انتخاب صریح مختصات
 - ساعات فعالیت
 - checkbox ارسال توسط فروشنده
 - checkbox تحویل حضوری
@@ -149,13 +149,13 @@ Journey:
 
 - geography واقعی UI استفاده می‌شود
 - هر دو روش Figma قابل انتخاب‌اند
-- map placeholder قابلیت جعلی نمی‌سازد
+- map فقط پس از اقدام کاربر باز می‌شود و انتخاب نقطه را با مختصات واقعی در draft ذخیره می‌کند
 - step 5 ذخیره و بعد از reload hydrate می‌شود
 - final submit همچنان تا Step 6 قابل دسترس نیست
 
 ## خارج از دامنه
 
-- interactive map / geocoding / latitude-longitude
+- reverse geocoding / background location
 - delivery-radius engine
 - logistics coverage entitlement
 - Step 6 اطلاعات تکمیلی و مدارک
