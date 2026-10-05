@@ -54,6 +54,7 @@ export function parseCommerce(path: string, method: "GET" | "POST", x: unknown, 
     if (path === "incidents") return page(x,incident,expectedPage);
     if (/^orders\/[^/]+\/incidents$/.test(path)||/^item-returns\/[^/]+\/confirm-collection$/.test(path)) return incident(x);
     if (path === "evidence") {const r=row(x);if(typeof r.sha256!=="string"||!/^[0-9a-f]{64}$/i.test(r.sha256)||!["image/png","image/jpeg","image/webp"].includes(r.contentType as string))throw Error();return{evidenceId:id(r.evidenceId),sha256:r.sha256,contentType:r.contentType,size:number(r.size,12,40000)};}
+    if (/^evidence\/[^/]+\/discard$/.test(path)) {const r=row(x);if(r.deleted!==true)throw Error();return{evidenceId:id(r.evidenceId),deleted:true};}
     if (path === "cart") {
       const carts = page(x, cart); if (carts.length > 1) throw Error(); return carts[0] ?? { id: null, version: 0, items: [] };
     }
@@ -84,6 +85,7 @@ export const commerceMessages: Record<string, string> = {
   CANCEL_CUTOFF_PASSED: "پس از دریافت سفارش، لغو مستقیم امکان‌پذیر نیست.",
   ORDER_VERSION_CHANGED: "وضعیت سفارش تغییر کرده است؛ دوباره دریافت کنید.",
   INCIDENT_WINDOW_EXPIRED: "مهلت یک‌ساعته گزارش مشکل پس از دریافت سفارش تمام شده است.",
+  EVIDENCE_IN_USE: "این مدرک به یک گزارش ثبت‌شده متصل است و حذف نمی‌شود.",
   INCIDENT_QUANTITY_EXCEEDED: "تعداد گزارش از مقدار قابل بررسی بیشتر است؛ وضعیت تازه را دریافت کنید.",
   RETURN_STATE_INVALID: "این مرجوعی اکنون قابل تأیید نیست؛ وضعیت تازه را دریافت کنید.",
   ORDER_TRANSITION_INVALID: "این تغییر در وضعیت فعلی سفارش ممکن نیست.",
