@@ -6,6 +6,7 @@ const base = "http://127.0.0.1:3018";
 const ID = "60000000-0000-4000-8000-000000000041";
 let web, browser, logs = "";
 let revision = 7, reviewStatus = "UNDER_REVIEW", activatedAtUtc = null;
+let sellerSuspended = false, suspendedAtUtc = null, suspensionReason = null;
 let reviewAttempts = 0, firstReview = null;
 
 function json(data, status = 200) {
@@ -60,6 +61,9 @@ function detail() {
     address: "نشانی مرورگر",
     postalCode: "1234567890",
     reviewReason: reviewStatus === "UNDER_REVIEW" ? null : "بررسی مستند مرورگر",
+    sellerSuspended,
+    suspendedAtUtc,
+    suspensionReason,
   };
 }
 
@@ -119,7 +123,7 @@ async function main() {
       revision = 8;
       reviewStatus = "APPROVED";
       return route.fulfill(json({
-        id: ID,
+        applicationId: ID,
         revision,
         reviewStatus,
         reviewReason: "بررسی مستند مرورگر",
@@ -137,13 +141,50 @@ async function main() {
       revision = 9;
       activatedAtUtc = "2026-10-05T03:30:00Z";
       return route.fulfill(json({
-        id: ID,
+        applicationId: ID,
         revision,
         reviewStatus,
         reviewReason: "بررسی مستند مرورگر",
         activatedAtUtc,
         sellerRoleGranted: true,
         sellerAccessEnabled: true,
+        sellerPanelEnabled: true,
+      }));
+    }
+
+    if (path === "/api/admin/seller-applications/" + ID + "/suspend" &&
+        request.method() === "POST") {
+      assert.deepEqual(request.postDataJSON(), {
+        revision: 9,
+        reason: "تعلیق انطباق مرورگر",
+      });
+      revision = 10;
+      sellerSuspended = true;
+      suspendedAtUtc = "2026-10-05T03:40:00Z";
+      suspensionReason = "تعلیق انطباق مرورگر";
+      return route.fulfill(json({
+        applicationId: ID, revision, reviewStatus,
+        reviewReason: "بررسی مستند مرورگر", activatedAtUtc,
+        sellerActivated: true, sellerSuspended,
+        suspendedAtUtc, suspensionReason,
+        sellerRoleGranted: false, sellerAccessEnabled: false,
+        sellerPanelEnabled: false,
+      }));
+    }
+
+    if (path === "/api/admin/seller-applications/" + ID + "/restore" &&
+        request.method() === "POST") {
+      assert.deepEqual(request.postDataJSON(), { revision: 10 });
+      revision = 11;
+      sellerSuspended = false;
+      suspendedAtUtc = null;
+      suspensionReason = null;
+      return route.fulfill(json({
+        applicationId: ID, revision, reviewStatus,
+        reviewReason: "بررسی مستند مرورگر", activatedAtUtc,
+        sellerActivated: true, sellerSuspended,
+        suspendedAtUtc, suspensionReason,
+        sellerRoleGranted: true, sellerAccessEnabled: true,
         sellerPanelEnabled: true,
       }));
     }
@@ -184,11 +225,23 @@ async function main() {
     name: "فعال‌سازی فروشنده",
   }).click();
   await page.getByText("فروشنده فعال است", { exact: true }).waitFor();
+
+  const suspension = page.getByPlaceholder(
+    "دلیل عملیاتی یا انطباقی تعلیق را ثبت کنید.");
+  await suspension.fill("تعلیق انطباق مرورگر");
+  await page.getByRole("button", { name: "تعلیق فروشنده" }).click();
+  await page.getByText("دسترسی فروشنده معلق است", { exact: true }).waitFor();
+  await page.getByText("تعلیق انطباق مرورگر", { exact: false }).waitFor();
+  await page.getByRole("button", {
+    name: "بازگردانی دسترسی فروشنده",
+  }).click();
+  await page.getByText("فروشنده فعال است", { exact: true }).waitFor();
+
   assert.equal(reviewAttempts, 2);
   assert.deepEqual(pageErrors, []);
 
   await context.close();
-  console.log("Admin seller browser: frozen review retry and independent activation OK");
+  console.log("Admin seller browser: frozen review retry, activation, suspension and restore OK");
 }
 
 try { await main(); } finally {
