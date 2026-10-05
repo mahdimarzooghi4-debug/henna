@@ -17,6 +17,7 @@ type SellerAccess = {
     dashboard: true;
     orders: boolean;
     listings: boolean;
+    serviceListings: boolean;
     inventory: boolean;
     pricing: boolean;
     settlements: boolean;
@@ -213,7 +214,8 @@ export function SellerDashboardView() {
         {seller.capabilities.orders && <SellerCommerceOperations />}
         {seller.capabilities.orders && (
           <SellerBusinessOperations
-            offerManagementEnabled={seller.capabilities.listings}
+            offerManagementEnabled={seller.capabilities.inventory}
+            serviceListingEnabled={seller.capabilities.serviceListings}
             settlementsEnabled={seller.capabilities.settlements}
             reportsEnabled={seller.capabilities.reports}
           />
