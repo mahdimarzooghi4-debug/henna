@@ -372,6 +372,39 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   var stores=await sellers.RegistrationDrafts.AsNoTracking().Where(s=>sellerIds.Contains(s.AccountId)).ToDictionaryAsync(s=>s.AccountId,s=>s.BusinessName??s.StoreName,ct);
   return new{items=offers.Select(o=>new{o.Id,o.SellerId,o.ProductId,o.CategoryId,o.PriceRial,o.Stock,o.Version,o.Published,StoreName=stores[o.SellerId]}),page,pageSize=20};
  }
+ public async Task<object> SellerReportAsync(Guid actor,CancellationToken ct=default) {
+  await Seller(actor,ct);
+  var orderRows=await db.Documents.AsNoTracking()
+   .Where(d=>d.Kind=="ORDER"&&EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{SellerId=actor})))
+   .ToListAsync(ct);
+  var orders=orderRows.Select(d=>JsonSerializer.Deserialize<Order>(d.Body)!).ToList();
+  var incidentRows=await db.Documents.AsNoTracking()
+   .Where(d=>d.Kind=="INCIDENT"&&EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{SellerId=actor})))
+   .ToListAsync(ct);
+  var incidents=incidentRows.Select(d=>JsonSerializer.Deserialize<Incident>(d.Body)!).ToList();
+  var settlementRows=await db.Documents.AsNoTracking()
+   .Where(d=>d.Kind=="SETTLEMENT"&&d.OwnerId==actor).ToListAsync(ct);
+  var settlements=settlementRows.Select(d=>JsonSerializer.Deserialize<Settlement>(d.Body)!).ToList();
+  var active=orders.Where(o=>o.State!="CANCELLED").ToList();
+  return new {
+   orders=orders.Count,
+   paid=orders.Count(o=>o.State=="PAID"),
+   preparing=orders.Count(o=>o.State=="PREPARING"),
+   readyForPickup=orders.Count(o=>o.State=="READY_FOR_PICKUP"),
+   collected=orders.Count(o=>o.State=="COLLECTED"),
+   cancelled=orders.Count(o=>o.State=="CANCELLED"),
+   grossRial=active.Aggregate(0L,(total,o)=>checked(total+o.TotalRial)),
+   openIncidents=incidents.Count(i=>i.State is "UNDER_REVIEW" or "AWAITING_RETURN"),
+   incidentRefundRial=incidents.Aggregate(0L,(total,i)=>checked(total+i.RefundRial)),
+   preparedSettlements=settlements.Count,
+   settlementGrossRial=settlements.Aggregate(0L,(total,x)=>checked(total+x.GrossRial)),
+   settlementRefundRial=settlements.Aggregate(0L,(total,x)=>checked(total+x.RefundRial)),
+   settlementPenaltyRial=settlements.Aggregate(0L,(total,x)=>checked(total+x.PenaltyRial)),
+   settlementFeeRial=settlements.Aggregate(0L,(total,x)=>checked(total+x.FixedFeeRial)),
+   settlementNetRial=settlements.Aggregate(0L,(total,x)=>checked(total+x.NetRial)),
+   financeReviewRequired=settlements.Count(x=>x.State=="FINANCE_REVIEW_REQUIRED")
+  };
+ }
  public async Task<CommerceContent?> PublicContent(string slug,CancellationToken ct) {
   if(slug.Length>100)return null;
   var rows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="CONTENT"&&EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{Slug=slug,Published=true}))).Take(1).ToListAsync(ct);
