@@ -85,8 +85,21 @@ public sealed class AllocationTrainingWorkflowTests
             AssessedAtUtc = clock.UtcNow.AddDays(-1), RecordedAtUtc = clock.UtcNow
         });
         await db.SaveChangesAsync();
-        var importedLabel = await workflow.ReviewNeedAsync(reviewer, importedSnapshot, .5m,
-            "synthetic-import-rubric", LearningPartition.Training);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            workflow.ReviewNeedAsync(reviewer, importedSnapshot, .5m,
+                "synthetic-import-rubric", LearningPartition.Training));
+
+        // Defense in depth: even a privileged direct DB insertion cannot make an
+        // attributed/manual snapshot training-eligible.
+        var importedLabel = Guid.NewGuid();
+        db.NeedLabels.Add(new() {
+            Id = importedLabel, SnapshotId = importedSnapshot,
+            ReviewerAccountId = reviewer, NeedScore = .5m,
+            RubricVersion = "synthetic-rubric-1",
+            Partition = (int)LearningPartition.Validation,
+            ReviewedAtUtc = clock.UtcNow
+        });
+        await db.SaveChangesAsync();
         var mixed = labels.Take(39).Append(importedLabel).ToArray();
         await Assert.ThrowsAsync<ArgumentException>(() =>
             workflow.TrainAsync(actor, mixed, 4000, clock.UtcNow));
