@@ -13,8 +13,10 @@ function textValue(value: unknown, max: number): value is string {
   return typeof value === "string" && value.trim().length > 0 &&
     value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 }
-function money(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+function integer(value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER):
+  value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) &&
+    value >= min && value <= max;
 }
 function utc(value: unknown): value is string {
   return typeof value === "string" && value.length <= 50 &&
@@ -24,6 +26,9 @@ function utc(value: unknown): value is string {
 export type OrganizationSummaryItem = {
   id: string;
   name: string;
+  managerCount: number;
+  beneficiaryCount: number;
+  programCount: number;
 };
 
 export type OrganizationProgramItem = {
@@ -39,56 +44,70 @@ export type OrganizationProgramItem = {
 export type OrganizationDashboardData = {
   organizations: OrganizationSummaryItem[];
   programs: OrganizationProgramItem[];
-  truncated: boolean;
+  unreadNotifications: number;
+  openTickets: number;
 };
 
-export function parseOrganizationResourcePage(
+export function parseOrganizationDashboard(
   raw: unknown,
-  expectedPage: number,
-): OrganizationSummaryItem[] | null {
+): OrganizationDashboardData | null {
   const data = row(raw);
-  if (!data || data.page !== expectedPage || data.pageSize !== 20 ||
-      !Array.isArray(data.items) || data.items.length > 20) return null;
-  const out: OrganizationSummaryItem[] = [];
-  for (const value of data.items) {
-    const item = row(value);
-    if (!item || !id(item.Id) || !textValue(item.Name, 200))
-      return null;
-    out.push({ id: item.Id, name: item.Name.trim() });
-  }
-  return out;
-}
+  if (!data || !Array.isArray(data.organizations) ||
+      data.organizations.length > 100 ||
+      !Array.isArray(data.programs) || data.programs.length > 1000 ||
+      !integer(data.unreadNotifications) || !integer(data.openTickets))
+    return null;
 
-export function parseOrganizationProgramPage(
-  raw: unknown,
-  expectedPage: number,
-  allowedOrganizations: Set<string>,
-): OrganizationProgramItem[] | null {
-  const data = row(raw);
-  if (!data || data.page !== expectedPage || data.pageSize !== 20 ||
-      !Array.isArray(data.items) || data.items.length > 20) return null;
-  const out: OrganizationProgramItem[] = [];
-  for (const value of data.items) {
+  const organizations: OrganizationSummaryItem[] = [];
+  const allowed = new Set<string>();
+  for (const value of data.organizations) {
     const item = row(value);
-    if (!item || !id(item.Id) || !id(item.OrganizationId) ||
-        !allowedOrganizations.has(item.OrganizationId) ||
-        !textValue(item.Name, 120) || !money(item.FundedRial) ||
-        !money(item.UnallocatedRial) ||
-        item.UnallocatedRial > item.FundedRial ||
-        !utc(item.ExpiresAtUtc) || !Array.isArray(item.CategoryIds) ||
-        item.CategoryIds.length < 1 || item.CategoryIds.length > 100 ||
-        !item.CategoryIds.every(id)) return null;
-    out.push({
-      id: item.Id,
-      organizationId: item.OrganizationId,
-      name: item.Name.trim(),
-      fundedRial: item.FundedRial,
-      unallocatedRial: item.UnallocatedRial,
-      expiresAtUtc: item.ExpiresAtUtc,
-      categoryCount: item.CategoryIds.length,
+    if (!item || !id(item.id) || !textValue(item.name, 200) ||
+        !integer(item.managerCount) || !integer(item.beneficiaryCount) ||
+        !integer(item.programCount)) return null;
+    allowed.add(item.id);
+    organizations.push({
+      id: item.id,
+      name: item.name.trim(),
+      managerCount: item.managerCount,
+      beneficiaryCount: item.beneficiaryCount,
+      programCount: item.programCount,
     });
   }
-  return out;
+  if (organizations.length === 0) return null;
+
+  const programs: OrganizationProgramItem[] = [];
+  for (const value of data.programs) {
+    const item = row(value);
+    if (!item || !id(item.id) || !id(item.organizationId) ||
+        !allowed.has(item.organizationId) || !textValue(item.name, 120) ||
+        !integer(item.fundedRial) || !integer(item.unallocatedRial) ||
+        item.unallocatedRial > item.fundedRial ||
+        !utc(item.expiresAtUtc) || !integer(item.categoryCount, 1, 100))
+      return null;
+    programs.push({
+      id: item.id,
+      organizationId: item.organizationId,
+      name: item.name.trim(),
+      fundedRial: item.fundedRial,
+      unallocatedRial: item.unallocatedRial,
+      expiresAtUtc: item.expiresAtUtc,
+      categoryCount: item.categoryCount,
+    });
+  }
+
+  for (const organization of organizations) {
+    if (organization.programCount !==
+        programs.filter(p => p.organizationId === organization.id).length)
+      return null;
+  }
+
+  return {
+    organizations,
+    programs,
+    unreadNotifications: data.unreadNotifications,
+    openTickets: data.openTickets,
+  };
 }
 
 export function organizationRial(value: number) {
