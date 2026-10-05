@@ -107,6 +107,8 @@ function routeFor(
       };
     if (scope === "support" && path === "incidents")
       return { upstream: "/support/incidents", parsePath: path, page: 1 };
+    if (scope === "support" && path === "tickets")
+      return { upstream: "/support/tickets", parsePath: path, page: 1 };
     if (scope === "support" && segments.length === 2 &&
         segments[0] === "evidence" && commerceId(segments[1]))
       return {
@@ -150,6 +152,23 @@ function routeFor(
       segments[2] === "decision")
     return {
       upstream: "/support/incidents/" + segments[1] + "/decision",
+      parsePath: path,
+      page: 1,
+    };
+  if (scope === "support" && segments.length === 3 &&
+      segments[0] === "returns" && commerceId(segments[1]) &&
+      segments[2] === "unavailability")
+    return {
+      upstream: "/support/item-returns/" + segments[1] +
+        "/unavailability-decision",
+      parsePath: path,
+      page: 1,
+    };
+  if (scope === "support" && segments.length === 3 &&
+      segments[0] === "tickets" && commerceId(segments[1]) &&
+      segments[2] === "reply")
+    return {
+      upstream: "/support/tickets/" + segments[1] + "/reply",
       parsePath: path,
       page: 1,
     };
