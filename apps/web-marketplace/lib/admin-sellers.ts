@@ -61,6 +61,9 @@ export type AdminSellerDetail = AdminSellerListItem & {
   address: string;
   postalCode: string;
   reviewReason: string | null;
+  sellerSuspended: boolean;
+  suspendedAtUtc: string | null;
+  suspensionReason: string | null;
 };
 
 export type AdminSellerMutation = {
@@ -74,6 +77,9 @@ export type AdminSellerMutation = {
   sellerRoleGranted?: boolean;
   sellerAccessEnabled?: boolean;
   sellerPanelEnabled?: boolean;
+  sellerSuspended?: boolean;
+  suspendedAtUtc?: string | null;
+  suspensionReason?: string | null;
 };
 
 function reviewStatus(value: unknown):
@@ -175,7 +181,14 @@ export function parseAdminSellerDetail(
       !optionalText(x.businessEmail, 320) ||
       !text(x.responseHours, 500) || !text(x.phoneMasked, 20) ||
       !text(x.city, 200) || !text(x.address, 1000) ||
-      !text(x.postalCode, 30) || !optionalText(x.reviewReason, 500))
+      !text(x.postalCode, 30) || !optionalText(x.reviewReason, 500) ||
+      typeof x.sellerSuspended !== "boolean" ||
+      !optionalUtc(x.suspendedAtUtc) ||
+      !optionalText(x.suspensionReason, 500) ||
+      (x.sellerSuspended &&
+        (x.suspendedAtUtc === null || x.suspensionReason === null)) ||
+      (!x.sellerSuspended &&
+        (x.suspendedAtUtc !== null || x.suspensionReason !== null)))
     return null;
   return {
     ...list,
@@ -203,6 +216,9 @@ export function parseAdminSellerDetail(
     address: x.address.trim(),
     postalCode: x.postalCode.trim(),
     reviewReason: x.reviewReason,
+    sellerSuspended: x.sellerSuspended,
+    suspendedAtUtc: x.suspendedAtUtc,
+    suspensionReason: x.suspensionReason,
   };
 }
 
@@ -217,11 +233,14 @@ export function parseAdminSellerMutation(
       !(x.reviewReason === undefined ||
         optionalText(x.reviewReason, 500)) ||
       !(x.reviewedAtUtc === undefined || optionalUtc(x.reviewedAtUtc)) ||
-      !(x.activatedAtUtc === undefined || optionalUtc(x.activatedAtUtc)))
+      !(x.activatedAtUtc === undefined || optionalUtc(x.activatedAtUtc)) ||
+      !(x.suspendedAtUtc === undefined || optionalUtc(x.suspendedAtUtc)) ||
+      !(x.suspensionReason === undefined ||
+        optionalText(x.suspensionReason, 500)))
     return null;
   for (const key of [
     "sellerActivated", "sellerRoleGranted",
-    "sellerAccessEnabled", "sellerPanelEnabled",
+    "sellerAccessEnabled", "sellerPanelEnabled", "sellerSuspended",
   ] as const) {
     if (x[key] !== undefined && typeof x[key] !== "boolean") return null;
   }
@@ -236,6 +255,9 @@ export function parseAdminSellerMutation(
     sellerRoleGranted: x.sellerRoleGranted as boolean | undefined,
     sellerAccessEnabled: x.sellerAccessEnabled as boolean | undefined,
     sellerPanelEnabled: x.sellerPanelEnabled as boolean | undefined,
+    sellerSuspended: x.sellerSuspended as boolean | undefined,
+    suspendedAtUtc: x.suspendedAtUtc as string | null | undefined,
+    suspensionReason: x.suspensionReason as string | null | undefined,
   };
 }
 
