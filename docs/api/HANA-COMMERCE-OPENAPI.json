@@ -9418,7 +9418,6 @@
       },
       "SellerOperationalReport": {
         "type": "object",
-        "additionalProperties": false,
         "properties": {
           "orders": {
             "type": "integer",
