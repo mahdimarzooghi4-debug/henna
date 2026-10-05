@@ -144,7 +144,7 @@ async function main(){
   await page.getByPlaceholder("متن").fill("متن آزمایشی");
   await page.getByRole("button",{name:"ذخیره محتوا"}).click();
   await page.getByText("محتوا با نسخه جدید ذخیره شد.",{exact:true}).waitFor();
-  await page.getByText("شرایط استفاده",{exact:false}).waitFor();
+  await page.getByRole("main").getByText("شرایط استفاده",{exact:true}).waitFor();
 
   await page.getByPlaceholder("UUID حساب مشمول").fill(ACCOUNT);
   await page.getByPlaceholder("UUID خانوار").fill(HOUSEHOLD);
