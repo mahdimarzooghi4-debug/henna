@@ -7,12 +7,13 @@ import { chooseIncidentPhoto } from "./incident-photo.ts";
 import type { MobileCommerceClient } from "./mobile-commerce.ts";
 import { normalizeDigits } from "./phone.ts";
 import { colors } from "./theme";
+import { pendingCommerceStore } from "./native-pending-commerce.ts";
 const rtl={textAlign:"right",writingDirection:"rtl",fontFamily:"Vazirmatn_400Regular"} as const;
 const labels={UNDER_REVIEW:"در حال بررسی پشتیبانی",REJECTED:"گزارش رد شده",AWAITING_RETURN:"منتظر تحویل کالای مرجوعی",RESOLVED:"رسیدگی انجام شده",COLLECTED:"کالای مرجوعی تحویل شده",CUSTOMER_UNAVAILABLE_VERIFIED:"عدم دسترسی به خریدار تأیید شده"};
 /** Operational incident views reuse existing commerce tokens; no matching Figma frame was found. */
 export function BuyerIncidentsScreen({api,orderId,onBack,onLogin}:{api:MobileCommerceClient;orderId:string|null;onBack:()=>void;onLogin:()=>void}){
  const [state,setState]=useState(initialNativeIncidentsState),[now,setNow]=useState(Date.now),[picking,setPicking]=useState(false),[photoError,setPhotoError]=useState("");const mounted=useRef(true),pickingRef=useRef(false);
- const [controller]=useState(()=>new NativeIncidentsController(api,Crypto.randomUUID,setState,orderId));
+ const [controller]=useState(()=>new NativeIncidentsController(api,Crypto.randomUUID,setState,orderId,Date.now,pendingCommerceStore));
  useEffect(()=>{mounted.current=true;controller.start();const app=AppState.addEventListener("change",s=>{if(s==="active"&&!pickingRef.current)void controller.refresh();});const timer=setInterval(()=>setNow(Date.now()),1000);return()=>{mounted.current=false;app.remove();clearInterval(timer);controller.stop();};},[controller]);
  const locked=state.busy||!!state.intent||picking;
  useEffect(()=>{const sub=BackHandler.addEventListener("hardwareBackPress",()=>{if(!locked)onBack();return true;});return()=>sub.remove();},[locked,onBack]);
