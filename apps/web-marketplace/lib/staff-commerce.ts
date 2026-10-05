@@ -70,6 +70,46 @@ export type StaffIncident = {
   refundRial: number;
 };
 
+export type StaffOffer = {
+  id: string;
+  productId: string;
+  categoryId: string;
+  priceRial: number;
+  stock: number;
+  version: number;
+  published: boolean;
+};
+
+export type StaffSettlement = {
+  id: string;
+  orderId: string;
+  grossRial: number;
+  refundRial: number;
+  penaltyRial: number;
+  fixedFeeRial: number;
+  feeVersion: string;
+  netRial: number;
+  state: "READY_FOR_BANK_TRANSFER" | "FINANCE_REVIEW_REQUIRED";
+  createdAtUtc: string;
+};
+
+export type StaffNotification = {
+  id: string;
+  code: string;
+  resourceId: string;
+  createdAtUtc: string;
+  read: boolean;
+};
+
+export type StaffTicket = {
+  id: string;
+  subject: string;
+  message: string;
+  state: "OPEN" | "ANSWERED";
+  createdAtUtc: string;
+  reply: string | null;
+};
+
 const order = (value: unknown): StaffOrder => {
   const data = row(value);
   const states = ["PAID", "PREPARING", "READY_FOR_PICKUP",
@@ -128,6 +168,63 @@ const incident = (value: unknown): StaffIncident => {
   };
 };
 
+const offer = (value: unknown): StaffOffer => {
+  const data = row(value);
+  if (typeof data.Published !== "boolean") throw Error();
+  return {
+    id: id(data.Id),
+    productId: id(data.ProductId),
+    categoryId: id(data.CategoryId),
+    priceRial: integer(data.PriceRial, 1),
+    stock: integer(data.Stock, 0, 1000000),
+    version: integer(data.Version, 1),
+    published: data.Published,
+  };
+};
+
+const settlement = (value: unknown): StaffSettlement => {
+  const data = row(value);
+  if (!["READY_FOR_BANK_TRANSFER", "FINANCE_REVIEW_REQUIRED"]
+      .includes(String(data.State))) throw Error();
+  return {
+    id: id(data.Id),
+    orderId: id(data.OrderId),
+    grossRial: integer(data.GrossRial),
+    refundRial: integer(data.RefundRial),
+    penaltyRial: integer(data.PenaltyRial),
+    fixedFeeRial: integer(data.FixedFeeRial),
+    feeVersion: text(data.FeeVersion, 120),
+    netRial: integer(data.NetRial),
+    state: data.State as StaffSettlement["state"],
+    createdAtUtc: time(data.CreatedAtUtc),
+  };
+};
+
+const notification = (value: unknown): StaffNotification => {
+  const data = row(value);
+  if (typeof data.Read !== "boolean") throw Error();
+  return {
+    id: id(data.Id),
+    code: text(data.Code, 120),
+    resourceId: id(data.ResourceId),
+    createdAtUtc: time(data.CreatedAtUtc),
+    read: data.Read,
+  };
+};
+
+const ticket = (value: unknown): StaffTicket => {
+  const data = row(value);
+  if (!["OPEN", "ANSWERED"].includes(String(data.State))) throw Error();
+  return {
+    id: id(data.Id),
+    subject: text(data.Subject, 120),
+    message: text(data.Message, 2000),
+    state: data.State as StaffTicket["state"],
+    createdAtUtc: time(data.CreatedAtUtc),
+    reply: data.Reply === null ? null : text(data.Reply, 2000),
+  };
+};
+
 const page = <T>(
   value: unknown,
   parse: (entry: unknown) => T,
@@ -154,8 +251,22 @@ export function parseStaffCommerce(
       return page(value, order, expectedPage);
     if (scope === "seller" && path === "returns" && method === "GET")
       return page(value, incident, expectedPage);
+    if (scope === "seller" && path === "offers" && method === "GET")
+      return page(value, offer, expectedPage);
+    if (scope === "seller" && path === "settlements" && method === "GET")
+      return page(value, settlement, expectedPage);
+    if (scope === "seller" && path === "notifications" && method === "GET")
+      return page(value, notification, expectedPage);
+    if (scope === "seller" && path === "tickets" && method === "GET")
+      return page(value, ticket, expectedPage);
     if (scope === "support" && path === "incidents" && method === "GET")
       return page(value, incident, expectedPage);
+    if (scope === "seller" && path === "offers" && method === "POST")
+      return offer(value);
+    if (scope === "seller" && path === "tickets" && method === "POST")
+      return ticket(value);
+    if (scope === "seller" && /^notifications\/[^/]+\/read$/.test(path) &&
+        method === "POST") return notification(value);
     if (scope === "seller" && /^orders\/[^/]+\/state$/.test(path) &&
         method === "POST") return order(value);
     if (scope === "seller" &&
