@@ -10,6 +10,8 @@ const row = (value: unknown): Row | null =>
 const int = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER):
   value is number => typeof value === "number" &&
   Number.isSafeInteger(value) && value >= min && value <= max;
+const signedInt = (value: unknown): value is number =>
+  typeof value === "number" && Number.isSafeInteger(value);
 const text = (value: unknown, max: number): value is string =>
   typeof value === "string" && value.trim().length > 0 &&
   value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
@@ -199,7 +201,7 @@ const parseSettlement = (value: unknown): AdminSettlement | null => {
   return x && adminOperationId(x.Id) && adminOperationId(x.OrderId) &&
     adminOperationId(x.SellerId) && int(x.GrossRial) &&
     int(x.RefundRial) && int(x.PenaltyRial) && int(x.FixedFeeRial) &&
-    text(x.FeeVersion,120) && int(x.NetRial) && text(x.State,80) &&
+    text(x.FeeVersion,120) && signedInt(x.NetRial) && text(x.State,80) &&
     utc(x.CreatedAtUtc)
     ? { id:x.Id, orderId:x.OrderId, sellerId:x.SellerId,
       grossRial:x.GrossRial, refundRial:x.RefundRial,
