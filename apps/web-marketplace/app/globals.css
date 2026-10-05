@@ -1734,6 +1734,12 @@ a { color: inherit; }
   margin: 0;
   color: var(--hana-muted);
 }
+.support-panel__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
 .support-panel__logo {
   display: block;
   width: 142px;
@@ -1821,6 +1827,13 @@ a { color: inherit; }
   .support-panel__header,
   .support-incident__summary {
     flex-direction: column;
+  }
+  .support-panel__header-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .support-panel__header-actions > button {
+    flex: 1 1 auto;
   }
   .seller-commerce__facts,
   .support-incident__body,
