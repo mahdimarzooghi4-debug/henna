@@ -65,7 +65,7 @@
 
 ## مسیرهای REST
 
-مسیرهای `/carts/current`, `/carts/current/items`, `/carts/current/comparison`, `/quotes`, `/orders`, `/orders/{id}`, `/orders/{id}/cancel`, `/orders/{id}/pickup-confirmation`, `/me/addresses`, `/me/credits`, `/me/wallet`, `/me/withdrawals`, `/me/notifications`, `/seller/offers`, `/seller/orders`, `/seller/incidents`, `/seller/settlements`, `/support/incidents`, `/support/incidents/{id}/decision` و مسیرهای رسیدگی/بازپس‌گیری به همان سرویس اتمیک متصل‌اند. شناسه مسیر بر ورودی کلاینت تحمیل نمی‌شود: تناقض شناسه مسیر و body رد می‌شود. `/me` و فهرست سفارش خریدار فقط داده خود کاربر را می‌دهند، حتی اگر آن کاربر مجوز مدیریتی دیگری داشته باشد. مسیرهای فروشگاه به فروشنده فعال و داده همان فروشگاه محدودند. `/seller/incidents` بر اساس `SellerId` پیش از صفحه‌بندی scope می‌شود. مسیر `/support/incidents` فقط با مجوز جاری SUPPORT یا ADMIN باز می‌شود و به نمای شخصی actor fallback نمی‌کند.
+مسیرهای `/carts/current`, `/carts/current/items`, `/carts/current/comparison`, `/quotes`, `/orders`, `/orders/{id}`, `/orders/{id}/cancel`, `/orders/{id}/pickup-confirmation`, `/me/addresses`, `/me/credits`, `/me/wallet`, `/me/withdrawals`, `/me/notifications`, `/me/notifications/{id}/read`, `/me/tickets`, `/seller/offers`, `/seller/orders`, `/seller/incidents`, `/seller/settlements`, `/support/incidents`, `/support/incidents/{id}/decision`, `/support/tickets` و `/organization/dashboard` و مسیرهای رسیدگی/بازپس‌گیری به همان سرویس اتمیک متصل‌اند. شناسه مسیر بر ورودی کلاینت تحمیل نمی‌شود: تناقض شناسه مسیر و body رد می‌شود. `/me` و فهرست سفارش خریدار فقط داده خود کاربر را می‌دهند، حتی اگر آن کاربر مجوز مدیریتی دیگری داشته باشد. مسیرهای فروشگاه به فروشنده فعال و داده همان فروشگاه محدودند. `/seller/incidents` بر اساس `SellerId` پیش از صفحه‌بندی scope می‌شود. مسیر `/support/incidents` فقط با مجوز جاری SUPPORT یا ADMIN باز می‌شود و به نمای شخصی actor fallback نمی‌کند.
 
 
 ## خانوار و مدرک
@@ -77,14 +77,14 @@ SAVE_EVIDENCE تصویر PNG/JPEG/WebP تا ۴۰KB با کنترل امضای ف
 
 ## نمایش پیشنهادها و کنترل برداشت
 
-`GET /api/v1/offers?productId={uuid}&page=1` بدون نشست، پیشنهادهای منتشرشده فروشندگان دارای نقش و فعال‌سازی فعلی را با صفحه‌بندی ۲۰تایی می‌دهد. لغو فعال‌سازی، پیشنهاد را از خروجی عمومی خارج می‌کند. `ASSESS_WITHDRAWAL_SLA` درخواست‌های منتظر احراز را پس از ۷۲ ساعت یک بار علامت‌گذاری و اعلان داخلی ایجاد می‌کند؛ اعلام انجام انتقال بانکی نیست.
+`GET /api/v1/offers?productId={uuid}&page=1` بدون نشست، پیشنهادهای منتشرشده فروشندگان دارای نقش و فعال‌سازی فعلی را با صفحه‌بندی ۲۰تایی می‌دهد. لغو فعال‌سازی یا خارج‌شدن کالا/دسته از انتشار، پیشنهاد را از خروجی عمومی خارج می‌کند. `ASSESS_WITHDRAWAL_SLA` درخواست‌های منتظر احراز را پس از ۷۲ ساعت یک بار علامت‌گذاری و اعلان داخلی ایجاد می‌کند؛ اعلام انجام انتقال بانکی نیست.
 
 اعتبارسنجی آخرین تغییرات در GitHub Actions انجام می‌شود؛ backend، web و mobile در اجرای 37207785928 موفق بودند. اجرای Android بومی مستقل از تغییر بک‌اند است. این شاخه هنوز در main ادغام نشده و دیپلوی نشده است.
 
 
 ## قرارداد تایپ‌شده خرید
 
-`docs/api/HANA-COMMERCE-OPENAPI.json` قرارداد OpenAPI 3.1 برای ۳۴ فرمان و ۶۸ مسیر خرید است. schemaهای درخواست، خروجی، دسترسی، شناسه نسخه و idempotency در آن مشخص‌اند. فرمان‌ها و منابع ذخیره‌شده PascalCase هستند؛ خروجی public دارای مدل مستقیم HTTP، camelCase است. این فایل مخصوص بک‌اند خرید است و جای قرارداد سایر دامنه‌ها را نمی‌گیرد. `python tools/contracts/commerce_openapi.py --check` پوشش تمام فرمان‌های واقعی و به‌روز بودن قرارداد را کنترل می‌کند.
+`docs/api/HANA-COMMERCE-OPENAPI.json` قرارداد OpenAPI 3.1 برای ۳۴ فرمان و ۷۱ مسیر خرید است. schemaهای درخواست، خروجی، دسترسی، شناسه نسخه و idempotency در آن مشخص‌اند. فرمان‌ها و منابع ذخیره‌شده PascalCase هستند؛ خروجی public دارای مدل مستقیم HTTP، camelCase است. این فایل مخصوص بک‌اند خرید است و جای قرارداد سایر دامنه‌ها را نمی‌گیرد. `python tools/contracts/commerce_openapi.py --check` پوشش تمام فرمان‌های واقعی و به‌روز بودن قرارداد را کنترل می‌کند.
 
 
 ## اتصال وب خریدار
@@ -103,11 +103,26 @@ SAVE_EVIDENCE تصویر PNG/JPEG/WebP تا ۴۰KB با کنترل امضای ف
 
 پنل پشتیبانی فهرست گزارش‌ها را فقط با مجوز SUPPORT/ADMIN می‌خواند، تصویر
 خصوصی را از proxy همان‌مبدأ و بدون افشای bearer نمایش می‌دهد و
-`APPROVE/REJECT` را با دلیل به سرور می‌فرستد. نتیجه نمایش‌داده‌شده از پاسخ
-واقعی سرور است؛ UI مبلغ بازپرداخت یا state را محلی جعل نمی‌کند.
+`APPROVE/REJECT` را با دلیل به سرور می‌فرستد. پس از ثبت تماس و مراجعه به‌موقع
+فروشنده، پشتیبانی می‌تواند عدم حضور خریدار را با دلیل مستند ثبت کند؛ قواعد مهلت
+و وجود settlement روی سرور کنترل می‌شوند. inbox تیکت و پاسخ داخلی پشتیبانی نیز
+متصل است. نتیجه نمایش‌داده‌شده از پاسخ واقعی سرور است؛ UI مبلغ بازپرداخت یا
+state را محلی جعل نمی‌کند.
 
 هر دو پنل از BFF دارای allowlist محدود، cookie امن HttpOnly، کنترل same-origin
 برای mutation، اندازه محدود body/response و DTOهای bounded استفاده می‌کنند.
 در پاسخ نامشخص 503، کلید و بدنه اصلی برای retry ثابت می‌مانند؛ در conflict
 قطعی 409، داده سرور دوباره بارگیری می‌شود. این اتصال، پیامک، PSP یا لجستیک
 خارجی اضافه نمی‌کند و به معنی آمادگی کل محصول یا ظرفیت ملی نیست.
+
+
+## پرتال سازمانی واقعی
+
+`GET /api/v1/organization/dashboard` فقط برای عضویت فعال MANAGER سازمان
+در دسترس است و داده را به همان سازمان‌ها محدود می‌کند. نقش ADMIN به‌تنهایی
+جای عضویت tenant را نمی‌گیرد. خروجی، نام/آمار کلی سازمان، طرح‌های همان سازمان،
+اعلان خوانده‌نشده و تیکت باز مدیر را می‌دهد و شناسه مشمولان،
+`registrationReference` و `fundingReference` را به وب نمی‌فرستد.
+
+صفحه `/organization` دیگر هیچ تعداد طرح، بودجه یا وضعیت اتصال ساختگی ندارد.
+همگام‌سازی افراد و منبع مالی بیرونی همچنان نیازمند داده و اتصال واقعی است.
