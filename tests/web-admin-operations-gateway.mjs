@@ -59,7 +59,16 @@ async function main(){
         Id:ID,AccountId:ACCOUNT,HouseholdKey:HOUSEHOLD,
         EvidenceReference:"reviewed-ci",
       }]}));
-    if(req.url==="/api/v1/commerce/commands/SET_STAFF_PERMISSION"&&req.method==="POST"){
+    if(req.url==="/api/v1/commerce/commands/SET_SELLER_ACCESS"&&req.method==="POST"){
+      assert.deepEqual(JSON.parse(body),{
+        accountId:ACCOUNT,active:false,reason:"reviewed suspension",
+      });
+      return res.end(JSON.stringify({
+        accountId:ACCOUNT,active:false,reason:"reviewed suspension",
+        secret:"never-forward",
+      }));
+    }
+        if(req.url==="/api/v1/commerce/commands/SET_STAFF_PERMISSION"&&req.method==="POST"){
       assert.deepEqual(JSON.parse(body),{
         accountId:ACCOUNT,permission:"SUPPORT",active:false,
       });
@@ -188,7 +197,18 @@ async function main(){
       "Content-Type":"application/json","Idempotency-Key":ID},
     body:JSON.stringify(body),
   });
-  const linked=await command("LINK_HOUSEHOLD",{
+  const sellerAccess=await command("SET_SELLER_ACCESS",{
+    accountId:ACCOUNT,active:false,reason:"reviewed suspension",
+    ignored:"secret",
+  });
+  assert.equal(sellerAccess.status,200);
+  const sellerAccessBody=await sellerAccess.json();
+  assert.deepEqual(sellerAccessBody,{
+    accountId:ACCOUNT,active:false,reason:"reviewed suspension",
+  });
+  assert.equal(JSON.stringify(sellerAccessBody).includes("secret"),false);
+
+    const linked=await command("LINK_HOUSEHOLD",{
     accountId:ACCOUNT,householdKey:HOUSEHOLD,evidenceReference:"reviewed-ci",
     ignored:"secret",
   });
