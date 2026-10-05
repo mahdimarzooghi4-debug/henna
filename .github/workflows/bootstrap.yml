@@ -258,6 +258,63 @@ jobs:
           cat /tmp/hana-learning-ready.log
           exit 1
 
+      - name: Rehearse PostgreSQL backup and restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PGPASSWORD=hana_ci_only
+          source_db=hana_ci
+          restore_db=hana_ci_restore
+          backup=/tmp/hana-ci.backup
+          source_data=/tmp/hana-ci-source-data.sql
+          restored_data=/tmp/hana-ci-restored-data.sql
+
+          pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+            --dbname="$source_db" --format=custom --no-owner --no-privileges \
+            --file="$backup"
+          test -s "$backup"
+
+          dropdb --if-exists --host=127.0.0.1 --port=5432 \
+            --username=hana_ci "$restore_db"
+          createdb --host=127.0.0.1 --port=5432 --username=hana_ci "$restore_db"
+          pg_restore --host=127.0.0.1 --port=5432 --username=hana_ci \
+            --dbname="$restore_db" --no-owner --no-privileges --exit-on-error \
+            "$backup"
+
+          # Compare deterministic logical data, including sequence values.
+          pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+            --dbname="$source_db" --data-only --inserts --no-owner --no-privileges \
+            > "$source_data"
+          pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+            --dbname="$restore_db" --data-only --inserts --no-owner --no-privileges \
+            > "$restored_data"
+          cmp "$source_data" "$restored_data"
+
+          restored='Host=127.0.0.1;Port=5432;Database=hana_ci_restore;Username=hana_ci;Password=hana_ci_only'
+          ASPNETCORE_ENVIRONMENT=Development \
+          ASPNETCORE_URLS=http://127.0.0.1:5190 \
+          ConnectionStrings__IdentityDb="$restored" \
+          ConnectionStrings__CommerceDb="$restored" \
+          ConnectionStrings__AllocationLearningDb="$restored" \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj \
+            --configuration Release --no-build --no-launch-profile \
+            > /tmp/hana-restored-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5190/health/live > /dev/null; then
+              curl --fail --silent http://127.0.0.1:5190/health/ready \
+                -o /tmp/hana-restored-ready.json
+              grep -q '"ready":true' /tmp/hana-restored-ready.json
+              grep -q '"commerce"' /tmp/hana-restored-ready.json
+              grep -q '"allocation-learning"' /tmp/hana-restored-ready.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hana-restored-api.log
+          exit 1
+
       - name: Smoke test explicit trusted proxy handling
         shell: bash
         run: |
