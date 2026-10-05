@@ -478,6 +478,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-auth-smoke.mjs
       - name: Test native checkout partial basket and original-intent recovery
         run: node --experimental-strip-types --test tests/mobile-checkout-controller-smoke.mjs
+      - name: Test durable mobile commerce intent recovery and photo cleanup
+        run: node --experimental-strip-types --test tests/mobile-pending-commerce.mjs
       - name: Native order history and lifecycle controller
         run: node --experimental-strip-types --test tests/mobile-orders-controller-smoke.mjs
       - name: Native incident photo and return lifecycle
