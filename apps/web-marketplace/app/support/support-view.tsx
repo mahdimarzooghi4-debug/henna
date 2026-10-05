@@ -47,6 +47,8 @@ export function SupportCommerceView() {
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState<Record<string, boolean>>({});
+  const [uncertainDecision, setUncertainDecision] =
+    useState<Record<string, "APPROVE" | "REJECT" | undefined>>({});
   const [results, setResults] = useState<Record<string, DecisionResult>>({});
   const intents = useRef<Record<string, StaffIntent | null>>({});
 
@@ -100,6 +102,7 @@ export function SupportCommerceView() {
       }>("support", intent);
       intents.current[path] = null;
       setUncertain(current => ({ ...current, [path]: false }));
+      setUncertainDecision(current => ({ ...current, [incident.id]: undefined }));
       setResults(current => ({
         ...current,
         [incident.id]: {
@@ -115,11 +118,16 @@ export function SupportCommerceView() {
     } catch (error) {
       if (error instanceof StaffCommerceError && error.status === 503) {
         setUncertain(current => ({ ...current, [path]: true }));
+        setUncertainDecision(current => ({
+          ...current,
+          [incident.id]: decision,
+        }));
         setNotice(
           "نتیجه تصمیم هنوز قطعی نیست. برای retry امن همان تصمیم را با همان دلیل دوباره بزنید؛ کلید و بدنه حفظ شده‌اند.");
       } else {
         intents.current[path] = null;
         setUncertain(current => ({ ...current, [path]: false }));
+        setUncertainDecision(current => ({ ...current, [incident.id]: undefined }));
         setNotice(message(error));
         if (error instanceof StaffCommerceError && error.status === 409)
           await load(page);
@@ -183,6 +191,7 @@ export function SupportCommerceView() {
         {state.kind === "ready" && state.items.map(incident => {
           const path = `incidents/${incident.id}/decision`;
           const frozen = Boolean(uncertain[path]);
+          const frozenDecision = uncertainDecision[incident.id];
           const result = results[incident.id];
           return (
             <article className="support-incident" key={incident.id}>
@@ -247,20 +256,24 @@ export function SupportCommerceView() {
                       <div className="support-incident__actions">
                         <button type="button" className="primary-button"
                           disabled={!reasons[incident.id]?.trim() ||
-                            busyPath !== null}
+                            busyPath !== null ||
+                            (frozen && frozenDecision !== "APPROVE")}
                           onClick={() => void decide(incident, "APPROVE")}>
                           {busyPath === path
                             ? "در حال ثبت…"
-                            : frozen
-                              ? "تکرار امن همان تصمیم"
+                            : frozen && frozenDecision === "APPROVE"
+                              ? "تکرار امن همان تأیید"
                               : "تأیید گزارش"}
                         </button>
                         <button type="button"
                           className="support-incident__reject"
                           disabled={!reasons[incident.id]?.trim() ||
-                            busyPath !== null}
+                            busyPath !== null ||
+                            (frozen && frozenDecision !== "REJECT")}
                           onClick={() => void decide(incident, "REJECT")}>
-                          رد گزارش
+                          {frozen && frozenDecision === "REJECT"
+                            ? "تکرار امن همان رد"
+                            : "رد گزارش"}
                         </button>
                       </div>
                     </>
