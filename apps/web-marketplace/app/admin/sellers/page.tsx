@@ -299,6 +299,7 @@ export default function AdminSellersPage() {
             <div className="admin-sellers__list">
               {list.items.map(item => (
                 <button type="button" key={item.id}
+                  data-application-id={item.id}
                   className={selected === item.id
                     ? "admin-sellers__item admin-sellers__item--selected"
                     : "admin-sellers__item"}
