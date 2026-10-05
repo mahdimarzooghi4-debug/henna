@@ -147,7 +147,12 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   }
   return new{accountId=target,active,reason};
  }
- private async Task Seller(Guid actor,CancellationToken ct) { if(!await roles.HasRoleAsync(actor,HanaRoles.Seller,ct)||!await sellers.SellerActivations.AnyAsync(x=>x.ApplicationAccountId==actor,ct)) throw new CommerceForbidden(); }
+ private async Task Seller(Guid actor,CancellationToken ct) {
+  if(!await roles.HasRoleAsync(actor,HanaRoles.Seller,ct)||
+   !await sellers.SellerActivations.AnyAsync(x=>x.ApplicationAccountId==actor,ct)||
+   await sellers.SellerSuspensions.AnyAsync(x=>x.ApplicationAccountId==actor&&x.RestoredAtUtc==null,ct))
+   throw new CommerceForbidden();
+ }
  private async Task SellerOffering(Guid actor,string kind,CancellationToken ct) {
   await Seller(actor,ct);
   var offering=await sellers.RegistrationDrafts.AsNoTracking()
@@ -385,8 +390,14 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   c=c with{Published=x.GetProperty("published").GetBoolean(),Version=checked(c.Version+1)};await Put(c.Id,Guid.Empty,"CONTENT",c,ct);return c;
  }
  private async Task<Guid[]> ActiveSellers(CancellationToken ct) {
-  var assigned=await identity.RoleAssignments.AsNoTracking().Where(r=>r.Role==HanaRoles.Seller).Select(r=>r.AccountId).ToArrayAsync(ct);
-  return await sellers.SellerActivations.AsNoTracking().Where(s=>assigned.Contains(s.ApplicationAccountId)).Select(s=>s.ApplicationAccountId).ToArrayAsync(ct);
+  var assigned=await identity.RoleAssignments.AsNoTracking()
+   .Where(r=>r.Role==HanaRoles.Seller).Select(r=>r.AccountId).ToArrayAsync(ct);
+  var suspended=await sellers.SellerSuspensions.AsNoTracking()
+   .Where(x=>x.RestoredAtUtc==null).Select(x=>x.ApplicationAccountId).ToArrayAsync(ct);
+  return await sellers.SellerActivations.AsNoTracking()
+   .Where(s=>assigned.Contains(s.ApplicationAccountId)&&
+    !suspended.Contains(s.ApplicationAccountId))
+   .Select(s=>s.ApplicationAccountId).ToArrayAsync(ct);
  }
  public async Task<object> OrganizationDashboardAsync(Guid actor,CancellationToken ct=default) {
   var ownMembershipRows=await db.Documents.AsNoTracking().Where(d=>d.Kind=="MEMBERSHIP"&&d.OwnerId==actor).ToListAsync(ct);
@@ -526,7 +537,9 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(id!=null)query=query.Where(d=>d.Id==id);
   if(view=="BUYER")query=query.Where(d=>d.OwnerId==actor);
   if(view=="SELLER") {await Seller(actor,ct);query=kind is "ORDER" or "INCIDENT"?query.Where(d=>EF.Functions.JsonContains(d.Body,JsonSerializer.Serialize(new{SellerId=actor}))):query.Where(d=>d.OwnerId==actor);}
-  var sellerAccess=await roles.HasRoleAsync(actor,HanaRoles.Seller,ct)&&await sellers.SellerActivations.AnyAsync(s=>s.ApplicationAccountId==actor,ct);
+  var sellerAccess=await roles.HasRoleAsync(actor,HanaRoles.Seller,ct)&&
+   await sellers.SellerActivations.AnyAsync(s=>s.ApplicationAccountId==actor,ct)&&
+   !await sellers.SellerSuspensions.AnyAsync(s=>s.ApplicationAccountId==actor&&s.RestoredAtUtc==null,ct);
   var memberships=await db.Documents.AsNoTracking().Where(d=>d.Kind=="MEMBERSHIP"&&d.OwnerId==actor).ToListAsync(ct);
   var organizations=memberships.Select(d=>JsonSerializer.Deserialize<OrganizationMembership>(d.Body)!).Where(m=>m.Role=="MANAGER").Select(m=>m.OrganizationId).ToArray();
   if(!admin&&kind!="OFFER") {
