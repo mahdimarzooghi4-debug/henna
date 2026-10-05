@@ -8,7 +8,8 @@ const product={id:A,categoryId:A,name:"کالای آزمایشی خریدار",k
 const cart={id:A,version:1,items:[{productId:B,quantity:1}]};
 const qi={offerId:A,productId:A,quantity:2,unitPriceRial:1000,offerVersion:1};
 const quote={id:QUOTE,sellerId:SELLER,purchaseType:"PERSONAL",fulfillmentMode:"PICKUP",items:[qi],unavailable:[{productId:B,quantity:1}],itemsTotalRial:2000,expiresAtUtc:new Date(Date.now()+600000).toISOString(),used:false};
-let pagedHistory=false,historyPages=[],order=null,firstAttempt=null,orderAttempts=0,web,browser,logs="";
+let pagedHistory=false,historyPages=[],order=null,firstAttempt=null,orderAttempts=0;
+let quoteAttempts=0,firstQuoteAttempt=null,web,browser,logs="";
 const json=(body,status=200)=>({status,contentType:"application/json",headers:{"Cache-Control":"no-store"},body:JSON.stringify(body)});
 const tilePng=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=","base64");
 async function main(){
@@ -27,7 +28,14 @@ async function main(){
   }
   assert.equal(r.headers()["content-type"],"application/json");assert.match(r.headers()["idempotency-key"],/^[a-f0-9-]{36}$/i);const body=r.postDataJSON();
   if(path==="cart-items"){assert.equal(body.expectedVersion,cart.version);cart.version++;const existing=cart.items.find(i=>i.productId===body.productId);if(existing)existing.quantity=body.quantity;else cart.items.push({productId:body.productId,quantity:body.quantity});return route.fulfill(json(cart));}
-  if(path==="quotes"){assert.deepEqual(body,{sellerId:SELLER,addressId:ADDRESS,purchaseType:"PERSONAL",fulfillmentMode:"PICKUP"});return route.fulfill(json(quote));}
+  if(path==="quotes"){
+   quoteAttempts++;
+   assert.deepEqual(body,{sellerId:SELLER,addressId:ADDRESS,purchaseType:"PERSONAL",fulfillmentMode:"PICKUP"});
+   const attempt={key:r.headers()["idempotency-key"],body:r.postData()};
+   if(!firstQuoteAttempt){firstQuoteAttempt=attempt;return route.fulfill(json({message:"ambiguous quote"},503));}
+   assert.deepEqual(attempt,firstQuoteAttempt,"quote reload retry must retain exact command");
+   return route.fulfill(json(quote));
+  }
   if(path==="orders"){
    orderAttempts++;const attempt={key:r.headers()["idempotency-key"],body:r.postData()};
    assert.deepEqual(body,{quoteId:QUOTE,creditGrantId:GRANT,unavailableDisposition:"KEEP",confirmUnavailable:true});
@@ -52,7 +60,17 @@ async function main(){
  assert.notEqual(await lat.inputValue(),"");assert.notEqual(await lon.inputValue(),"");
  assert.equal(requests.some(u=>u.startsWith("https://tile.openstreetmap.org/")),true);
  await page.getByText("ثبت نشانی جدید",{exact:true}).click();
- await page.getByRole("button",{name:"انتخاب این فروشگاه"}).click();await page.getByRole("button",{name:"دریافت پیش‌فاکتور"}).click();await page.getByRole("heading",{name:"بازبینی و ثبت سفارش"}).waitFor();
+ await page.getByRole("button",{name:"انتخاب این فروشگاه"}).click();
+ await page.getByRole("button",{name:"دریافت پیش‌فاکتور"}).click();
+ const quoteRetry=page.getByRole("button",{name:"بررسی نتیجه درخواست قبلی"});
+ await quoteRetry.waitFor();
+ assert.equal(quoteAttempts,1);
+ await page.reload();
+ const restoredQuoteRetry=page.getByRole("button",{name:"بررسی نتیجه درخواست قبلی"});
+ await restoredQuoteRetry.waitFor();
+ await restoredQuoteRetry.click();
+ await page.getByRole("heading",{name:"بازبینی و ثبت سفارش"}).waitFor();
+ assert.equal(quoteAttempts,2);
  await page.getByLabel("اعتبار حمایتی",{exact:true}).selectOption(GRANT);const submit=page.getByRole("button",{name:"ثبت سفارش و کسر مبلغ"});assert.equal(await submit.isDisabled(),true);await page.getByLabel("در سبد بمانند").check();await page.getByLabel("خرید فقط اقلام موجود را تأیید می‌کنم").check();assert.equal(await submit.isEnabled(),true);await submit.click();const retry=page.getByRole("button",{name:"بررسی نتیجه درخواست قبلی"});await retry.waitFor();assert.equal(orderAttempts,1);assert.equal(await page.getByLabel("اعتبار حمایتی",{exact:true}).isDisabled(),true);
  await page.clock.install();await page.clock.fastForward(610000);await page.getByText("پیش‌فاکتور منقضی شده؛ پیش‌فاکتور تازه بگیرید.").waitFor();assert.equal(await retry.isEnabled(),true);await retry.click();await page.waitForURL(base+"/orders/"+ORDER);await page.getByRole("heading",{name:"ثبت شده و پرداخت شده"}).waitFor();assert.equal(orderAttempts,2);
  await page.getByRole("button",{name:"لغو سفارش و بازگشت مبلغ"}).click();await page.getByRole("heading",{name:"لغو شده"}).waitFor();await page.getByText("مبلغ سفارش به منشأ پرداخت برگشت داده شده است.").waitFor();assert.equal(await page.getByRole("button",{name:"لغو سفارش و بازگشت مبلغ"}).count(),0);
