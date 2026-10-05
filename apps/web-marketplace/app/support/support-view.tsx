@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SupportTickets } from "./support-tickets";
 import {
   StaffCommerceError,
   staffGet,
@@ -44,6 +45,8 @@ export function SupportCommerceView() {
   const [page, setPage] = useState(1);
   const [state, setState] = useState<Load>({ kind: "loading" });
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [unavailabilityReasons, setUnavailabilityReasons] =
+    useState<Record<string, string>>({});
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState<Record<string, boolean>>({});
@@ -137,6 +140,51 @@ export function SupportCommerceView() {
     }
   }, [load, page, reasons]);
 
+  const verifyUnavailable = useCallback(async (incident: StaffIncident) => {
+    const path = `returns/${incident.id}/unavailability`;
+    const reason = unavailabilityReasons[incident.id]?.trim() ?? "";
+    if (!reason) {
+      setNotice("ثبت دلیل مستند عدم حضور خریدار الزامی است.");
+      return;
+    }
+    const intent = staffIntent(intents.current[path] ?? null, path, { reason });
+    intents.current[path] = intent;
+    setBusyPath(path);
+    setNotice(null);
+    try {
+      const response = await staffPost<{
+        incident: StaffIncident;
+        reason: string;
+      }>("support", intent);
+      intents.current[path] = null;
+      setUncertain(current => ({ ...current, [path]: false }));
+      setResults(current => ({
+        ...current,
+        [incident.id]: {
+          state: response.incident.state,
+          refundRial: response.incident.refundRial,
+          reason: response.reason,
+        },
+      }));
+      setNotice("عدم حضور خریدار با نتیجه واقعی سرور تأیید شد.");
+      await load(page);
+    } catch (error) {
+      if (error instanceof StaffCommerceError && error.status === 503) {
+        setUncertain(current => ({ ...current, [path]: true }));
+        setNotice(
+          "نتیجه ثبت عدم حضور هنوز قطعی نیست؛ همان دلیل و کلید برای تکرار امن حفظ شده‌اند.");
+      } else {
+        intents.current[path] = null;
+        setUncertain(current => ({ ...current, [path]: false }));
+        setNotice(message(error));
+        if (error instanceof StaffCommerceError && error.status === 409)
+          await load(page);
+      }
+    } finally {
+      setBusyPath(null);
+    }
+  }, [load, page, unavailabilityReasons]);
+
   if (state.kind === "denied") {
     return (
       <main className="support-panel support-panel--gate">
@@ -228,6 +276,8 @@ export function SupportCommerceView() {
                     <div><dt>تعداد گزارش‌شده</dt><dd>{incident.quantity}</dd></div>
                     <div><dt>بازپرداخت ثبت‌شده</dt><dd>{staffRial(incident.refundRial)}</dd></div>
                     <div><dt>مهلت مرجوعی</dt><dd>{staffTime(incident.returnDueAtUtc)}</dd></div>
+                    <div><dt>تماس اول فروشنده</dt><dd>{staffTime(incident.firstContactAtUtc)}</dd></div>
+                    <div><dt>مراجعه فروشنده</dt><dd>{staffTime(incident.doorVisitAtUtc)}</dd></div>
                   </dl>
 
                   {result && (
@@ -278,6 +328,49 @@ export function SupportCommerceView() {
                       </div>
                     </>
                   )}
+
+                  {incident.state === "AWAITING_RETURN" &&
+                    incident.firstContactAtUtc !== null &&
+                    incident.doorVisitAtUtc !== null &&
+                    incident.collectedAtUtc === null && (() => {
+                      const verifyPath =
+                        `returns/${incident.id}/unavailability`;
+                      const verifyFrozen = Boolean(uncertain[verifyPath]);
+                      return (
+                        <div className="support-unavailability">
+                          <p>
+                            فروشنده تماس و مراجعه را ثبت کرده است. تأیید عدم حضور
+                            فقط پس از بررسی مستندات و کنترل مهلت توسط سرور مجاز است.
+                          </p>
+                          <label className="field">
+                            <span className="field__label">
+                              دلیل مستند تأیید عدم حضور
+                            </span>
+                            <textarea
+                              className="field__input support-incident__reason"
+                              maxLength={1000}
+                              value={unavailabilityReasons[incident.id] ?? ""}
+                              disabled={verifyFrozen || busyPath !== null}
+                              onChange={event =>
+                                setUnavailabilityReasons(current => ({
+                                  ...current,
+                                  [incident.id]: event.target.value,
+                                }))}
+                              placeholder="نتیجه بررسی تماس، مراجعه و شواهد را ثبت کنید." />
+                          </label>
+                          <button type="button" className="primary-button"
+                            disabled={!unavailabilityReasons[incident.id]?.trim() ||
+                              busyPath !== null}
+                            onClick={() => void verifyUnavailable(incident)}>
+                            {busyPath === verifyPath
+                              ? "در حال ثبت…"
+                              : verifyFrozen
+                                ? "تکرار امن همان تأیید"
+                                : "تأیید عدم حضور خریدار"}
+                          </button>
+                        </div>
+                      );
+                    })()}
                 </div>
               </div>
             </article>
@@ -297,6 +390,8 @@ export function SupportCommerceView() {
           </button>
         </div>
       </section>
+
+      {state.kind === "ready" && <SupportTickets />}
     </main>
   );
 }
