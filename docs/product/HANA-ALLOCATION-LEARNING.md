@@ -1,7 +1,7 @@
 # Henna allocation learning — foundation
 
-Status: experimental offline supervised learner, evaluation and internal PostgreSQL recording;
-no production-trained model, public research ingestion/export endpoint, live event producer, pilot activation
+Status: Henna-owned experimental offline supervised learner with internal PostgreSQL recording and evaluation;
+no external/internal network model API, no production-trained model, no automatic production activation
 or production deployment yet.
 
 The Domain simulator compares a versioned baseline with proposed six-dimension weights.
@@ -10,14 +10,19 @@ in one funding pool governed by one source instruction. Units are rials. These p
 must never be posted to a wallet; settlement rounding and eligibility remain separate.
 It does not alter the existing allocation calculator or historic allocations.
 
-The Application proposal-provider interface now has an offline experimental statistical
-implementation. It needs independently reviewed labels; no external model credential is required.
-Any provider output is an untrusted draft, not an approved coefficient version.
+The learner is a Henna-owned in-process statistical implementation. The replaceable
+model-provider abstraction has been removed so a remote model cannot be introduced as a
+configuration change. It needs independently reviewed labels and no model credential or
+network inference endpoint exists. Any learner output is an untrusted draft, not an approved
+coefficient version.
 
 ## Data and evaluation to add before training
 
-The internal recorder now persists pseudonymous assessment snapshots, source instruction,
+The internal recorder persists pseudonymous assessment snapshots, source instruction,
 formula/dataset version, allocation result, timestamps and structured outcome observations.
+Only snapshots recorded internally by Henna without attributed/manual-import provenance are
+training-eligible. Human-attributed assessment capture remains research/audit material and is
+explicitly excluded from labels and training.
 Retention controls and connection to actual allocation/purchase event producers remain to implement.
 Keep identity mapping and health details outside model datasets. Access must be authorized.
 Track credit usage alongside stock availability, delivery/access constraints, essential-needs
@@ -36,9 +41,10 @@ rollback and pilot limits remain to implement before allowing activation. Mainta
 coefficient version for each allocation run; never silently recalculate earlier grants.
 Human approval of a coefficient does not override the funding source's instructions.
 
-Start with a simple statistical model when adequate reviewed data exists. A language model
-may explain reports, but must not infer diagnoses, replace eligibility review, or decide
-payments. No production model is claimed to be trained by this foundation.
+Start with a simple Henna-owned statistical model when adequate reviewed first-party data
+exists. No language-model or remote inference dependency is part of this architecture.
+No model may infer eligibility, replace human review, decide payments, or activate itself.
+No production model is claimed to be trained by this foundation.
 
 ## Internal recording
 
@@ -134,8 +140,9 @@ checks and pilot activation remain future work.
 
 ## Reviewed labels and completed training-run audit
 
-The internal `AllocationTrainingWorkflow` connects persisted reviewed labels to the learner
-and proposal queue. It is registered when both databases are configured. There is no HTTP label
+The internal `AllocationTrainingWorkflow` connects persisted first-party Henna snapshots,
+reviewed labels, the local learner and proposal queue. It rejects any attributed/manual
+assessment before labeling and again before training. It is registered when both databases are configured. There is no HTTP label
 or training route yet; internal callers must resolve an active session before supplying an actor.
 The workflow checks that the supplied actor currently has a server-side ADMIN assignment.
 
@@ -180,7 +187,7 @@ to verify review interactions, access denial, empty state and mobile reflow agai
 
 ## Administrative reviewed labels and experimental training
 
-The `/admin/allocation-training` page uses server-only cookie-to-bearer gateways and the same live session/ADMIN checks as proposal review. Routes under `/api/v1/admin/allocation-proposals/research` list paginated stored assessment features (without household identifiers), append reviewed labels, list up to 500 labels for an exact rubric version, and run the existing audited training workflow. The server chooses the training cutoff in the web gateway; the API validates UTC and rejects future cutoffs. Review identity and review timestamp come from the authenticated server context. Duplicate labels return conflict. No production assessment ingestion or synthetic seeding was added.
+The `/admin/allocation-training` page uses server-only cookie-to-bearer gateways and the same live session/ADMIN checks as proposal review. It marks only first-party Henna snapshots as training-eligible; attributed/manual rows are visible only as non-training research evidence. Routes under `/api/v1/admin/allocation-proposals/research` list paginated stored assessment features (without household identifiers), append reviewed labels, list up to 500 labels for an exact rubric version, and run the existing audited training workflow. The server chooses the training cutoff in the web gateway; the API validates UTC and rejects future cutoffs. Review identity and review timestamp come from the authenticated server context. Duplicate labels return conflict. No production assessment ingestion or synthetic seeding was added.
 
 Operators select actual persisted labels, with at least 30 training and 10 independent validation households, one dataset/source/baseline/rubric. These are engineering minimums, not evidence of statistical adequacy. Improving candidates stay pending review; non-improvement creates only a training audit. No coefficient activation, payments, or wallet mutation occurs. Training remains bounded and synchronous; a timeout can occur after a committed run, so investigate the recorded proposal before retrying. Production queueing, idempotent job submission and rollout remain future work.
 
@@ -195,3 +202,21 @@ Snapshots remain append-only. The browser retains one snapshot UUID across retri
 ## Completed training run history
 
 `/admin/allocation-training-runs` lists paginated completed runs and reads a report derived from each frozen input snapshot. Authenticated current ADMIN authorization and no-store responses apply to list and detail. The report exposes dataset/model/rubric/source, scenario amount, training/validation counts, cutoff and optional metrics, without raw household features, reviewer identifiers or input JSON. Proposal links open the specific proposal for review. NO_IMPROVEMENT is visible as an audited completed result with no candidate. Missing history does not prove an earlier timed-out request never ran; persistent jobs/idempotent training submission are still future work.
+
+
+## Henna-owned AI boundary
+
+ADR-042 is normative for this subsystem. The learner code, versioning, training and
+candidate weights belong to Henna and run locally inside Henna processes. CreditLearning
+source code may not contain HTTP/gRPC model clients, model-provider SDKs or direct network
+model URLs. CI enforces this with `tools/ci/guard_henna_ai_local_only.py`.
+
+Administrative HTTP routes are control-plane workflows for authenticated humans; they are
+not model APIs and the learner never calls them. Training consumes persisted first-party
+Henna records directly from PostgreSQL. Each frozen training run records
+`HENNA_OWNED_LOCAL`, `networkModelApi=false` and
+`dataOrigin=HENNA_FIRST_PARTY`.
+
+This design supports learning over time without autonomous online self-modification:
+new Henna data can enter reviewed datasets, but every new candidate still passes held-out
+evaluation and independent human review before any future activation mechanism may use it.
