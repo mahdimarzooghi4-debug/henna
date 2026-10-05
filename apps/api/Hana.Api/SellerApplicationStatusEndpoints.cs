@@ -66,8 +66,13 @@ internal static class SellerApplicationStatusEndpoints
                             "وضعیت پیگیری پس از ثبت نهایی درخواست در دسترس است."
                     });
 
+                var suspended = await db.SellerSuspensions.AsNoTracking()
+                    .AnyAsync(x =>
+                        x.ApplicationAccountId == accountId.Value &&
+                        x.RestoredAtUtc == null,
+                        cancellationToken);
                 var sellerAccessEnabled =
-                    draft.ActivatedAtUtc is not null &&
+                    draft.ActivatedAtUtc is not null && !suspended &&
                     await services
                         .GetRequiredService<RoleAuthorizationService>()
                         .HasRoleAsync(
