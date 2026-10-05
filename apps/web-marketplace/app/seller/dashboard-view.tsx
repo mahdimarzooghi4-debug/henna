@@ -146,17 +146,24 @@ export function SellerDashboardView() {
         </div>
 
         <nav className="seller-panel__nav">
-          {sellerNavigation.map(([label, enabled]) => enabled
-            ? <Link key={label} href="/seller"
+          {sellerNavigation.map(([label, enabled]) => {
+            if (label === "اطلاعات کسب‌وکار")
+              return <Link key={label} href="/seller/register/status"
                 className="seller-panel__nav-item seller-panel__nav-item--active">
                 {label}
-              </Link>
-            : <span key={label}
-                className="seller-panel__nav-item seller-panel__nav-item--disabled"
-                aria-disabled="true">
-                {label}
-                <small>متصل نشده</small>
-              </span>)}
+              </Link>;
+            return enabled
+              ? <Link key={label} href="/seller"
+                  className="seller-panel__nav-item seller-panel__nav-item--active">
+                  {label}
+                </Link>
+              : <span key={label}
+                  className="seller-panel__nav-item seller-panel__nav-item--disabled"
+                  aria-disabled="true">
+                  {label}
+                  <small>متصل نشده</small>
+                </span>;
+          })}
         </nav>
       </aside>
 
