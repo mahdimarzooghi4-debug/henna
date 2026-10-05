@@ -131,6 +131,23 @@ async function main() {
           reason: input.reason,
         }));
       }
+      if (req.method === "GET" && req.url === "/api/v1/support/tickets?page=1")
+        return res.end(JSON.stringify({ items: [rawTicket()],
+          page: 1, pageSize: 20 }));
+      if (req.method === "POST" &&
+          req.url === "/api/v1/support/tickets/" + ID + "/reply")
+        return res.end(JSON.stringify(rawTicket("ANSWERED")));
+      if (req.method === "POST" &&
+          req.url === "/api/v1/support/item-returns/" + ID +
+            "/unavailability-decision")
+        return res.end(JSON.stringify({
+          incident: {
+            ...rawIncident("CUSTOMER_UNAVAILABLE_VERIFIED"),
+            FirstContactAtUtc: "2026-10-05T03:20:00Z",
+            DoorVisitAtUtc: "2026-10-05T03:30:00Z",
+          },
+          reason: JSON.parse(body).reason,
+        }));
       res.statusCode = 404;
       res.end(JSON.stringify({ error: "missing" }));
     });
@@ -251,6 +268,20 @@ async function main() {
     {decision:"REJECT",reason:"CI reviewed"});
   assert.equal(decided.status, 200);
   assert.equal((await decided.json()).incident.state, "REJECTED");
+
+  const supportTickets = await supportGet("tickets?page=1");
+  assert.equal(supportTickets.status, 200);
+  assert.equal(JSON.stringify(await supportTickets.json()).includes("SECRET"), false);
+  const replied = await post("support", `tickets/${ID}/reply`,
+    {reply:"CI reply"});
+  assert.equal(replied.status, 200);
+  assert.equal((await replied.json()).state, "ANSWERED");
+
+  const unavailable = await post("support", `returns/${ID}/unavailability`,
+    {reason:"CI verified visit"});
+  assert.equal(unavailable.status, 200);
+  assert.equal((await unavailable.json()).incident.state,
+    "CUSTOMER_UNAVAILABLE_VERIFIED");
 
   broken = true;
   assert.equal((await supportGet("incidents?page=1")).status, 503);
