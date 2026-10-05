@@ -202,14 +202,15 @@ async function main() {
   assert.ok(parseAdminSellerDetail(detail(), ID),
     "browser detail fixture must satisfy the production DTO before rendering");
 
-  await page.goto(base + "/admin/sellers?application=" + ID);
+  await page.goto(base + "/admin/sellers");
   await page.getByRole("heading", {
     name: "بررسی و فعال‌سازی فروشندگان",
   }).waitFor();
+  await page.locator(`[data-application-id="${ID}"]`).click();
   await page.getByPlaceholder(
     "نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید.").waitFor();
   assert.ok(detailReads >= 1,
-    "deep-linked application detail must be read from the API");
+    "selected application detail must be read from the API");
   await page.locator(".admin-sellers__facts")
     .getByText("مالک مرورگر", { exact: true }).waitFor();
 
