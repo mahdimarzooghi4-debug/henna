@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit",
-    "export:android": "expo export --platform android --output-dir ../../.expo-export"
+    "export:android": "expo export --platform android --output-dir ../../.expo-export",
+    "export:ios": "expo export --platform ios --output-dir ../../.expo-export-ios"
   },
   "dependencies": {
     "@expo-google-fonts/vazirmatn": "0.4.1",
