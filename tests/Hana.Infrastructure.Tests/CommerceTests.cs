@@ -322,9 +322,14 @@ public sealed class CommerceTests
   var issue=await Command(buyer,"REPORT_INCIDENT",new{orderId,orderItemId=order.GetProperty("Items")[0].GetProperty("Id").GetGuid(),type="MISSING_ITEM",quantity=1,evidenceId});
   var shortageIncidentId=issue.GetProperty("Id").GetGuid();var decisionKey=Guid.NewGuid();var decisionBody=new{decision="APPROVE",reason="CI verified shortage"};var supportDecision=await PostPath(other,"/api/v1/support/incidents/"+shortageIncidentId+"/decision",decisionBody,decisionKey);Assert.Equal(HttpStatusCode.OK,supportDecision.StatusCode);var supportReplay=await PostPath(other,"/api/v1/support/incidents/"+shortageIncidentId+"/decision",decisionBody,decisionKey);Assert.Equal(HttpStatusCode.OK,supportReplay.StatusCode);
  }
- db.ChangeTracker.Clear();Assert.Equal(100,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);Assert.Equal(1,JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==tinyCredit)).Body)!.AvailableRial);
+ db.ChangeTracker.Clear();
+ // The earlier concurrent idempotency scenario permanently bought one rial.
+ // The tiny three-item order refunds only its own two cash rials plus its
+ // single credit rial, so cash must return to 99, not the pre-burst 100.
+ Assert.Equal(99,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);
+ Assert.Equal(1,JsonSerializer.Deserialize<CreditGrant>((await db.Documents.SingleAsync(d=>d.Id==tinyCredit)).Body)!.AvailableRial);
  var withdrawal=await Command(buyer,"REQUEST_WITHDRAWAL",new{amountRial=70,ibanVerificationRequestReference="ci-ownership-check-request"});var releaseKey=Guid.NewGuid();var release=new{withdrawalId=withdrawal.GetProperty("Id").GetGuid()};await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);await Command(buyer,"CANCEL_WITHDRAWAL",release,releaseKey);
- db.ChangeTracker.Clear();Assert.Equal(100,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);
+ db.ChangeTracker.Clear();Assert.Equal(99,JsonSerializer.Deserialize<CashWallet>((await db.Documents.SingleAsync(d=>d.Kind=="WALLET"&&d.OwnerId==buyer)).Body)!.BalanceRial);
 
  // Timed jobs escalate once without pretending to transfer funds, and settlement preparation does not fabricate payment.
  withdrawal=await Command(buyer,"REQUEST_WITHDRAWAL",new{amountRial=70,ibanVerificationRequestReference="ci-pending-verification"});
