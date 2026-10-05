@@ -47,12 +47,16 @@ const resourceMap:Record<string,{kind:string;parse:AdminResourceKind}> = {
   "fee-policies":{kind:"FEE_VERSION",parse:"fee-policies"},
   withdrawals:{kind:"WITHDRAWAL",parse:"withdrawals"},
   settlements:{kind:"SETTLEMENT",parse:"settlements"},
+  programs:{kind:"PROGRAM",parse:"programs"},
+  credits:{kind:"CREDIT",parse:"credits"},
+  households:{kind:"HOUSEHOLD",parse:"households"},
 };
 const actions=new Set([
   "SET_STAFF_PERMISSION","SAVE_CONTENT","PUBLISH_CONTENT",
   "CREATE_ORGANIZATION","GRANT_ORGANIZATION_MEMBER",
   "REVOKE_ORGANIZATION_MEMBER","SET_FEE_POLICY",
   "BUILD_SETTLEMENTS","ASSESS_WITHDRAWAL_SLA",
+  "CREATE_PROGRAM","ALLOCATE_CREDIT","LINK_HOUSEHOLD",
 ]);
 
 function validate(action:string,raw:unknown):Record<string,unknown>|null{
@@ -62,6 +66,52 @@ function validate(action:string,raw:unknown):Record<string,unknown>|null{
     return adminOperationId(x.accountId)&&["FINANCE","SUPPORT"].includes(String(x.permission))&&
       typeof x.active==="boolean"
       ? {accountId:x.accountId,permission:x.permission,active:x.active}:null;
+  if(action==="LINK_HOUSEHOLD"){
+    const evidence=cleanText(x.evidenceReference,1000);
+    return adminOperationId(x.accountId)&&adminOperationId(x.householdKey)&&evidence
+      ? {accountId:x.accountId,householdKey:x.householdKey,
+        evidenceReference:evidence}:null;
+  }
+  if(action==="CREATE_PROGRAM"){
+    const name=cleanText(x.name,120),funding=cleanText(x.fundingReference,1000);
+    const categories=Array.isArray(x.categoryIds)?x.categoryIds:null;
+    const organization=x.organizationId;
+    if(!name||!funding||!Number.isSafeInteger(x.fundedRial)||
+       Number(x.fundedRial)<1||typeof x.expiresAtUtc!=="string"||
+       x.expiresAtUtc.length>50||!Number.isFinite(Date.parse(x.expiresAtUtc))||
+       !categories||categories.length<1||categories.length>100||
+       categories.some(id=>!adminOperationId(id))||
+       new Set(categories).size!==categories.length||
+       !(organization===null||adminOperationId(organization))) return null;
+    return {name,fundingReference:funding,fundedRial:x.fundedRial,
+      expiresAtUtc:x.expiresAtUtc,categoryIds:categories,
+      organizationId:organization};
+  }
+  if(action==="ALLOCATE_CREDIT"){
+    if(!adminOperationId(x.programId)||!Number.isSafeInteger(x.poolRial)||
+       Number(x.poolRial)<1||!Array.isArray(x.beneficiaries)||
+       x.beneficiaries.length<1||x.beneficiaries.length>500) return null;
+    const beneficiaries=[];
+    for(const raw of x.beneficiaries){
+      if(!raw||typeof raw!=="object"||Array.isArray(raw)) return null;
+      const item=raw as Record<string,unknown>;
+      const scores=item.scores;
+      if(!adminOperationId(item.accountId)||!adminOperationId(item.householdKey)||
+         typeof item.geographicFactor!=="number"||
+         !Number.isFinite(item.geographicFactor)||item.geographicFactor<=0||
+         !scores||typeof scores!=="object"||Array.isArray(scores)) return null;
+      const sr=scores as Record<string,unknown>;
+      const cleanScores:Record<string,number>={};
+      for(const name of ["health","hardship","age","size","care","education"]){
+        const score=sr[name];
+        if(!Number.isSafeInteger(score)||Number(score)<0||Number(score)>3)return null;
+        cleanScores[name]=Number(score);
+      }
+      beneficiaries.push({accountId:item.accountId,householdKey:item.householdKey,
+        geographicFactor:item.geographicFactor,scores:cleanScores});
+    }
+    return {programId:x.programId,poolRial:x.poolRial,beneficiaries};
+  }
   if(action==="SAVE_CONTENT"){
     const slug=cleanText(x.slug,100),title=cleanText(x.title,200),body=cleanText(x.text,10000);
     return slug&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&title&&body&&
@@ -119,7 +169,7 @@ export async function forwardAdminOperations(
        !request.headers.get("content-type")?.startsWith("application/json"))
       return fail(400,"درخواست مدیریتی معتبر نیست.");
     try{
-      const parsed=validate(segments[1],JSON.parse(await boundedText(request,16384)));
+      const parsed=validate(segments[1],JSON.parse(await boundedText(request,65536)));
       if(!parsed)return fail(400,"اطلاعات عملیات معتبر نیست.");
       body=JSON.stringify(parsed);
     }catch{return fail(400,"اطلاعات عملیات معتبر نیست.");}
