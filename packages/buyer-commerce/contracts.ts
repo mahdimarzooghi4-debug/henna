@@ -12,6 +12,7 @@ const attempt = <T>(f: () => T): T | null => { try { return f(); } catch { retur
 export type CartItem = { productId: string; quantity: number };
 export type BuyerCart = { id: string | null; version: number; items: CartItem[] };
 export type BuyerOffer = { id: string; sellerId: string; productId: string; priceRial: number; stock: number; version: number; storeName: string };
+export type BuyerServiceListing = { id: string; sellerId: string; productId: string; priceRial: number; availabilityNote: string; version: number; storeName: string };
 export type QuoteItem = { offerId: string; productId: string; quantity: number; unitPriceRial: number; offerVersion: number };
 export type BuyerComparison = { sellerId: string; storeName: string; available: QuoteItem[]; unavailable: CartItem[]; itemsTotalRial: number };
 export type BuyerAddress = { id: string; cityId: string; text: string; latitude: number; longitude: number };
@@ -47,6 +48,9 @@ const order = (x: unknown): BuyerOrder => {
 const page = <T>(x: unknown, parse: (x: unknown) => T, expectedPage = 1): T[] => { const r = row(x); if (!Number.isInteger(expectedPage) || expectedPage < 1 || expectedPage > 10000 || r.page !== expectedPage || r.pageSize !== 20) throw Error(); return list(r.items, parse, 20); };
 export function parseOffers(x: unknown, productId: string): BuyerOffer[] | null {
   return attempt(() => page(x, v => { const r = row(v); if (r.published !== true || r.productId !== productId) throw Error(); return { id: id(r.id), sellerId: id(r.sellerId), productId: id(r.productId), priceRial: number(r.priceRial, 1), stock: number(r.stock, 0, 1000000), version: number(r.version, 1), storeName: text(r.storeName, 200) }; }));
+}
+export function parseServiceListings(x: unknown, productId: string): BuyerServiceListing[] | null {
+  return attempt(() => page(x, v => { const r = row(v); if (r.published !== true || r.productId !== productId) throw Error(); return { id: id(r.id), sellerId: id(r.sellerId), productId: id(r.productId), priceRial: number(r.priceRial, 1), availabilityNote: text(r.availabilityNote, 500), version: number(r.version, 1), storeName: text(r.storeName, 200) }; }));
 }
 export function parseCommerce(path: string, method: "GET" | "POST", x: unknown, expectedPage = 1): unknown | null {
   return attempt(() => {
