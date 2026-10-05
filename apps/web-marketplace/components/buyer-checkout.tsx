@@ -6,6 +6,11 @@ import { parseBuyerProduct, type BuyerProduct } from "../lib/buyer-catalog";
 import { BuyerCommerceStatus } from "./buyer-commerce-status";
 import { CoordinateMapPicker } from "./coordinate-map-picker";
 import type { MapPoint } from "../../../packages/buyer-commerce/map-tiles";
+import {
+  clearWebCommerceIntent,
+  persistWebCommerceIntent,
+  restoreWebCommerceIntent,
+} from "../lib/web-pending-commerce";
 type Reference = { id: string; name: string };
 type CheckoutData = { cart: BuyerCart; comparisons: BuyerComparison[]; addresses: BuyerAddress[]; credits: BuyerCredit[]; balanceRial: number };
 export function BuyerCheckout() {
@@ -22,7 +27,19 @@ export function BuyerCheckout() {
       setData({ cart, comparisons, addresses, credits, balanceRial: wallet.balanceRial }); setAddressId(addresses[0]?.id ?? "");
     } catch (e) { setError(e instanceof Error ? e : new BuyerCommerceError(503)); }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    try {
+      const restored=restoreWebCommerceIntent("checkout");
+      if(restored){
+        intent.current=restored;
+        setMessage("درخواست خریدِ تأییدنشده از قبل بازیابی شد؛ همان درخواست را بررسی کنید.");
+      }
+    } catch {
+      setError(new BuyerCommerceError(503));
+      setMessage("وضعیت درخواست خرید قبلی قابل اعتماد نیست؛ درخواست تازه‌ای ارسال نمی‌شود.");
+    }
+    void load();
+  }, [load]);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => {
     if (!data) return; const abort = new AbortController();
@@ -43,10 +60,22 @@ export function BuyerCheckout() {
   async function run(path: string, body: unknown, onSuccess: (x: unknown) => void) {
     if (lock.current) return; lock.current = true; setBusy(true); setMessage("");
     intent.current = commerceIntent(intent.current, path, body);
-    try { const result = await buyerPost(intent.current); intent.current = null; onSuccess(result); }
+    try {
+      persistWebCommerceIntent("checkout",intent.current);
+      const result = await buyerPost(intent.current);
+      clearWebCommerceIntent(intent.current.key);
+      intent.current = null;
+      onSuccess(result);
+    }
     catch (e) {
-      if (e instanceof BuyerCommerceError && e.status !== 503) intent.current = null;
-      setMessage(e instanceof Error ? e.message : "ثبت درخواست تأیید نشد؛ همان درخواست را دوباره بررسی کنید.");
+      if (e instanceof BuyerCommerceError && e.status !== 503) {
+        if(intent.current)clearWebCommerceIntent(intent.current.key);
+        intent.current = null;
+      } else if (!(e instanceof BuyerCommerceError)) {
+        setError(new BuyerCommerceError(503));
+      }
+      setMessage(e instanceof Error ? e.message :
+        "ثبت درخواست تأیید نشد؛ همان درخواست را دوباره بررسی کنید.");
       if (e instanceof BuyerCommerceError && e.status === 401) setError(e);
     } finally { lock.current = false; setBusy(false); }
   }
@@ -105,6 +134,7 @@ export function BuyerCheckout() {
       </section>}
       {message && <p className="commerce-notice" role="alert">{message}</p>}{intent.current && <section className="commerce-card"><p>نتیجه درخواست قبلی هنوز تأیید نشده است. برای جلوگیری از ثبت دوباره، همان درخواست را بررسی کنید.</p><button className="commerce-button" disabled={busy} onClick={() => void retryPending()}>بررسی نتیجه درخواست قبلی</button><Link href="/orders" className="commerce-button commerce-button--secondary">سفارش‌های من</Link></section>}
     </>}
-    <Link href="/cart" className="commerce-button commerce-button--secondary">بازگشت به سبد مرجع</Link>
+    {!intent.current &&
+      <Link href="/cart" className="commerce-button commerce-button--secondary">بازگشت به سبد مرجع</Link>}
   </main>;
 }
