@@ -99,6 +99,25 @@ test("staff DTOs are bounded and omit private owner fields", () => {
     "seller", "tickets", "GET", page([ticket]));
   assert.equal(tickets?.[0].subject, "کمک");
   assert.equal(JSON.stringify(tickets).includes("SECRET"), false);
+
+  const report = parseStaffCommerce("seller", "report", "GET", {
+    orders: 5, paid: 1, preparing: 1, readyForPickup: 1, collected: 1,
+    cancelled: 1, grossRial: 9000, openIncidents: 1,
+    incidentRefundRial: 1000, preparedSettlements: 2,
+    settlementGrossRial: 7000, settlementRefundRial: 1000,
+    settlementPenaltyRial: 500, settlementFeeRial: 200,
+    settlementNetRial: 5300, financeReviewRequired: 1,
+    buyerIds: ["SECRET-BUYER"],
+  });
+  assert.equal(report?.settlementNetRial, 5300);
+  assert.equal(JSON.stringify(report).includes("SECRET"), false);
+  assert.equal(parseStaffCommerce("seller", "report", "GET", {
+    orders: 1, paid: 1, preparing: 1, readyForPickup: 0, collected: 0,
+    cancelled: 0, grossRial: 1, openIncidents: 0, incidentRefundRial: 0,
+    preparedSettlements: 0, settlementGrossRial: 0, settlementRefundRial: 0,
+    settlementPenaltyRial: 0, settlementFeeRial: 0,
+    settlementNetRial: 0, financeReviewRequired: 0,
+  }), null);
 });
 
 test("staff command responses validate the exact shipping shapes", () => {
