@@ -5715,7 +5715,7 @@
     },
     "/api/v1/commerce/resources/{kind}": {
       "get": {
-        "description": "Kind-specific scoped aggregates; AUDIT and SUMMARY require ADMIN.",
+        "description": "Kind-specific scoped aggregates; AUDIT, SUMMARY and INTEGRITY require ADMIN. INTEGRITY checks internal persisted invariants only and is not external bank/logistics reconciliation.",
         "security": [
           {
             "session": []
@@ -5750,7 +5750,8 @@
                 "FEE_VERSION",
                 "HOUSEHOLD",
                 "AUDIT",
-                "SUMMARY"
+                "SUMMARY",
+                "INTEGRITY"
               ]
             }
           },
@@ -6265,6 +6266,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/AuditPage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CommerceIntegrity"
                     }
                   ]
                 }
@@ -10170,6 +10174,124 @@
           "priceRial",
           "availabilityNote",
           "expectedVersion"
+        ]
+      },
+      "CommerceIntegrityViolation": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "resourceKind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "code",
+          "resourceKind",
+          "resourceId"
+        ]
+      },
+      "CommerceIntegrityCounts": {
+        "type": "object",
+        "properties": {
+          "wallets": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "programs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "orders": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "incidents": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "settlements": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "withdrawals": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "evidence": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "wallets",
+          "credits",
+          "programs",
+          "orders",
+          "incidents",
+          "settlements",
+          "withdrawals",
+          "evidence"
+        ]
+      },
+      "CommerceIntegrity": {
+        "type": "object",
+        "properties": {
+          "healthy": {
+            "type": "boolean"
+          },
+          "checkedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC timestamp with zero offset."
+          },
+          "violationCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommerceIntegrityViolation"
+            },
+            "maxItems": 200
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CommerceIntegrityCounts"
+          }
+        },
+        "required": [
+          "healthy",
+          "checkedAtUtc",
+          "violationCount",
+          "truncated",
+          "violations",
+          "counts"
         ]
       }
     }
