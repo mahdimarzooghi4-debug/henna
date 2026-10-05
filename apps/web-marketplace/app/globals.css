@@ -2754,3 +2754,17 @@ a { color: inherit; }
     flex-direction: column;
   }
 }
+
+
+.organization-portal__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .organization-portal__header-actions,
+  .organization-portal__header-actions > * {
+    width: 100%;
+  }
+}
