@@ -1,4 +1,4 @@
-# Seller 016 — Activated Seller Panel Shell
+# Seller 016 — Activated Seller Panel and Commerce Operations
 
 ## Figma basis
 
@@ -60,7 +60,7 @@ The backend returns only real persisted context:
 Current capability readiness:
 
 - dashboard = true
-- orders = false
+- orders = true
 - listings = false
 - inventory = false
 - pricing = false
@@ -69,7 +69,9 @@ Current capability readiness:
 
 ## Dashboard UI
 
-The shell follows the Seller Dashboard Figma structure:
+The shell follows the Seller Dashboard Figma structure. The repository has no
+separate approved Figma frame for order/return operations, so those operational
+views reuse the current Henna tokens without claiming pixel-level Figma fidelity:
 
 - seller identity/sidebar
 - business-management heading
@@ -94,6 +96,13 @@ Seller 016 deliberately does not render Figma sample values such as:
 Unavailable modules show:
 
 `هنوز متصل نشده`
+
+Orders are now backed by real commerce reads and commands. The seller can load
+its own server-scoped orders, move `PAID → PREPARING → READY_FOR_PICKUP`,
+and load its own incident/return list. For an approved damaged-item return the
+seller can register first contact and then a door visit with a traceable
+evidence reference. The buyer remains the only actor that confirms physical
+return collection.
 
 This prevents design data from being confused with production state.
 
@@ -134,7 +143,9 @@ Seller activation integration now verifies:
 - activation response reports panel enabled
 - Seller access returns real business name
 - dashboard capability enabled
-- orders capability remains disabled
+- orders capability enabled only after the commerce contract is connected
+- seller order/incident lists are scoped by SellerId before pagination
+- support incident reads require current SUPPORT permission
 
 ### Web gateway
 
@@ -157,7 +168,9 @@ It proves:
 - panel link becomes available after activation
 - `/seller` opens
 - real business/store names are rendered
-- six unsupported operational modules are marked «هنوز متصل نشده»
+- five still-unsupported capability cards are marked «هنوز متصل نشده»
+- commerce data is loaded only after an explicit seller action
+- order-state and return-contact commands use persisted idempotency
 - no Figma sample metrics are required for the dashboard shell
 
 ## Platform scope
@@ -173,13 +186,18 @@ Release gates remain:
 
 iOS remains out of scope.
 
+## Connected commerce BFF
+
+Browser code never receives the bearer token. Seller commerce uses the
+HttpOnly-cookie BFF under `/api/seller/commerce/*`, with an explicit route
+allowlist, same-origin checks for writes, bounded request/response bodies and
+UUID idempotency keys. An ambiguous 503 freezes the original key/body for a
+safe retry; a known 409 reloads server state before a new decision.
+
 ## Next slices
 
-The shell intentionally leaves operational modules disabled until each obtains a real backend contract.
-
-Likely next vertical slice:
-
-- Seller Orders read model and list/detail flow
+Listings, inventory, pricing, settlement and reports remain disabled until each
+has a real connected contract and authorization review.
 
 ## Non-scope
 
