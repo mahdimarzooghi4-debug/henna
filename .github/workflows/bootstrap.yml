@@ -440,6 +440,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Browser test buyer cart quote and order lifecycle (CI-only API doubles)
         run: node tests/web-buyer-commerce-browser.mjs
+      - name: Browser test buyer notifications and support lifecycle
+        run: node tests/web-buyer-support-browser.mjs
       - name: Browser test seller and support commerce lifecycle
         run: node tests/web-staff-commerce-browser.mjs
       - name: Browser test admin seller review and activation
