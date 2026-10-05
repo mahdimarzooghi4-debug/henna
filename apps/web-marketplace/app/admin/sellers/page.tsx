@@ -60,6 +60,7 @@ export default function AdminSellersPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailState>({ kind: "idle" });
   const [reason, setReason] = useState("");
+  const [suspensionReason, setSuspensionReason] = useState("");
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [uncertain, setUncertain] = useState<{
@@ -234,6 +235,25 @@ export default function AdminSellersPage() {
     );
   };
 
+  const suspend = () => {
+    if (detail.kind !== "ready" || !suspensionReason.trim()) return;
+    void mutate(
+      detail.value.id + "/suspend",
+      {
+        revision: detail.value.revision,
+        reason: suspensionReason.trim(),
+      },
+    );
+  };
+
+  const restore = () => {
+    if (detail.kind !== "ready") return;
+    void mutate(
+      detail.value.id + "/restore",
+      { revision: detail.value.revision },
+    );
+  };
+
   if (list.kind === "denied") {
     return (
       <main className="admin-sellers admin-sellers--gate">
@@ -250,6 +270,8 @@ export default function AdminSellersPage() {
   const selectedDetail = detail.kind === "ready" ? detail.value : null;
   const reviewFrozen = uncertain?.path.endsWith("/review") ?? false;
   const activateFrozen = uncertain?.path.endsWith("/activate") ?? false;
+  const suspendFrozen = uncertain?.path.endsWith("/suspend") ?? false;
+  const restoreFrozen = uncertain?.path.endsWith("/restore") ?? false;
 
   return (
     <main className="admin-sellers">
@@ -308,6 +330,7 @@ export default function AdminSellersPage() {
                     setSelected(item.id);
                     setNotice("");
                     setUncertain(null);
+                    setSuspensionReason("");
                   }}>
                   <strong>{item.businessName ?? item.storeName}</strong>
                   <span>{reviewLabel[item.reviewStatus]}</span>
@@ -451,11 +474,66 @@ export default function AdminSellersPage() {
                 </section>
               )}
 
-              {selectedDetail.activatedAtUtc && (
-                <div className="support-incident__result">
-                  <strong>فروشنده فعال است</strong>
-                  <p>{adminSellerTime(selectedDetail.activatedAtUtc)}</p>
-                </div>
+              {selectedDetail.activatedAtUtc && !selectedDetail.sellerSuspended && (
+                <>
+                  <div className="support-incident__result">
+                    <strong>فروشنده فعال است</strong>
+                    <p>{adminSellerTime(selectedDetail.activatedAtUtc)}</p>
+                  </div>
+                  <section className="admin-sellers__activation">
+                    <strong>تعلیق دسترسی فروشنده</strong>
+                    <p>
+                      تعلیق، نقش SELLER و دسترسی عملیاتی را قطع می‌کند؛
+                      سفارش‌ها، گزارش‌ها و سابقه مالی حذف نمی‌شوند.
+                    </p>
+                    <label className="field">
+                      <span className="field__label">دلیل مستند تعلیق</span>
+                      <textarea className="field__input support-incident__reason"
+                        maxLength={500}
+                        value={suspensionReason}
+                        disabled={suspendFrozen || busyPath !== null}
+                        onChange={event =>
+                          setSuspensionReason(event.target.value)}
+                        placeholder="دلیل عملیاتی یا انطباقی تعلیق را ثبت کنید." />
+                    </label>
+                    <button type="button"
+                      className="support-incident__reject"
+                      disabled={!suspensionReason.trim() || busyPath !== null}
+                      onClick={suspend}>
+                      {busyPath?.endsWith("/suspend")
+                        ? "در حال تعلیق…"
+                        : suspendFrozen
+                          ? "تکرار امن همان تعلیق"
+                          : "تعلیق فروشنده"}
+                    </button>
+                  </section>
+                </>
+              )}
+
+              {selectedDetail.sellerSuspended && (
+                <section className="admin-sellers__activation">
+                  <div className="support-incident__result">
+                    <strong>دسترسی فروشنده معلق است</strong>
+                    <p>
+                      {selectedDetail.suspensionReason}
+                      {" · "}
+                      {adminSellerTime(selectedDetail.suspendedAtUtc)}
+                    </p>
+                  </div>
+                  <p>
+                    بازگردانی، فقط نقش و دسترسی فروشنده را فعال می‌کند و
+                    سابقه تعلیق را نگه می‌دارد.
+                  </p>
+                  <button type="button" className="primary-button"
+                    disabled={busyPath !== null}
+                    onClick={restore}>
+                    {busyPath?.endsWith("/restore")
+                      ? "در حال بازگردانی…"
+                      : restoreFrozen
+                        ? "تکرار امن همان بازگردانی"
+                        : "بازگردانی دسترسی فروشنده"}
+                  </button>
+                </section>
               )}
             </>
           )}
