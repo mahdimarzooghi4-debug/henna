@@ -137,6 +137,8 @@ internal static class AdminSellerApplicationEndpoints
                     application.ActivityProvinceId,
                     application.ActivityCityId,
                     application.ActivityAddress,
+                    application.ActivityLatitude,
+                    application.ActivityLongitude,
                     application.ActivityHours,
                     application.SellerDelivery,
                     application.Pickup,
