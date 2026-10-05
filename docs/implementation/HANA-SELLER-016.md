@@ -243,7 +243,11 @@ activated sellers:
   role re-grant cannot bypass the hold;
 - restore requires the current revision and a separate idempotency key, closes
   the open suspension and re-grants SELLER without deleting suspension history;
-- registration status reports seller access disabled while the hold is open.
+- registration status reports seller access disabled while the hold is open;
+- replay of the historic activation idempotency key is suspension-aware: while
+  a hold is open it returns sellerActivated=true but sellerRoleGranted /
+  sellerAccessEnabled / sellerPanelEnabled=false, and after restore it reports
+  the current enabled state. Historical activation can never override a hold.
 
 ## Remaining seller scope
 
