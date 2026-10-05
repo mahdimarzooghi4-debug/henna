@@ -351,6 +351,8 @@ export async function loadSellerDraft(
         activityCityId: activityCityId as string | null,
         activityCityName: activityCityName as string | null,
         activityAddress: activityAddress as string | null,
+        activityLatitude: activityLatitude as number | null,
+        activityLongitude: activityLongitude as number | null,
         activityHours: activityHours as string | null,
         sellerDelivery: sellerDelivery as boolean | null,
         pickup: pickup as boolean | null,
