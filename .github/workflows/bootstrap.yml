@@ -512,6 +512,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-device-location.mjs
       - name: Bundle consumer app for Android
         run: npm run mobile:export:android
+      - name: Bundle consumer app for iOS
+        run: npm run mobile:export:ios
 
   android-native-links:
     # An installed, offline, CI-only Expo APK in Android Emulator.
