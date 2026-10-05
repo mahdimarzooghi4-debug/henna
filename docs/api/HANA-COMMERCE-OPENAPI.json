@@ -5730,6 +5730,7 @@
               "type": "string",
               "enum": [
                 "OFFER",
+                "SERVICE_LISTING",
                 "CART",
                 "ADDRESS",
                 "QUOTE",
@@ -5786,6 +5787,30 @@
                           "type": "array",
                           "items": {
                             "$ref": "#/components/schemas/Offer"
+                          }
+                        },
+                        "page": {
+                          "type": "integer",
+                          "format": "int64",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "const": 20
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "page",
+                        "pageSize"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ServiceListing"
                           }
                         },
                         "page": {
@@ -6480,6 +6505,321 @@
                 "required": []
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/commerce/commands/SAVE_SERVICE_LISTING": {
+      "post": {
+        "description": "Active SERVICE/BOTH SELLER; persisted idempotency, all monetary values in IRR.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceListing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SAVE_SERVICE_LISTINGInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/seller/service-listings": {
+      "post": {
+        "description": "Active SERVICE/BOTH SELLER; alias of SAVE_SERVICE_LISTING. A supplied body ID must match the route ID.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceListing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "listingId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "productId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "priceRial": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 1
+                  },
+                  "availabilityNote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "listingId",
+                  "productId",
+                  "priceRial",
+                  "availabilityNote",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "description": "Scoped before pagination. /me and /orders show the buyer; /seller requires active SELLER.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceListing"
+                      }
+                    },
+                    "page": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 1
+                    },
+                    "pageSize": {
+                      "const": 20
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/service-listings": {
+      "get": {
+        "description": "Published service listings belonging to currently activated sellers. This is not a booking or logistics promise.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PublicServiceListing"
+                      }
+                    },
+                    "page": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 1
+                    },
+                    "pageSize": {
+                      "const": 20
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
           }
         }
       }
@@ -9698,6 +10038,138 @@
         },
         "required": [
           "evidenceId"
+        ]
+      },
+      "ServiceListing": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "SellerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ProductId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "CategoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "PriceRial": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "AvailabilityNote": {
+            "type": "string"
+          },
+          "Version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "Published": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "Id",
+          "SellerId",
+          "ProductId",
+          "CategoryId",
+          "PriceRial",
+          "AvailabilityNote",
+          "Version",
+          "Published"
+        ]
+      },
+      "PublicServiceListing": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sellerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priceRial": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "availabilityNote": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "storeName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "id",
+          "sellerId",
+          "productId",
+          "categoryId",
+          "priceRial",
+          "availabilityNote",
+          "version",
+          "published",
+          "storeName"
+        ]
+      },
+      "SAVE_SERVICE_LISTINGInput": {
+        "type": "object",
+        "properties": {
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priceRial": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "availabilityNote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        },
+        "required": [
+          "listingId",
+          "productId",
+          "priceRial",
+          "availabilityNote",
+          "expectedVersion"
         ]
       }
     }
