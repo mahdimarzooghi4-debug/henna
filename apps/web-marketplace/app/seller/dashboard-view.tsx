@@ -14,7 +14,7 @@ type SellerAccess = {
   offeringType: "GOOD" | "SERVICE" | "BOTH";
   capabilities: {
     dashboard: true;
-    orders: true;
+    orders: boolean;
     listings: false;
     inventory: false;
     pricing: false;
@@ -25,7 +25,7 @@ type SellerAccess = {
 
 const navigation = [
   ["داشبورد", true],
-  ["سفارش‌ها", true],
+  ["سفارش‌ها", false],
   ["کالاها و خدمات", false],
   ["کتابخانه تصاویر", false],
   ["موجودی و دسترس‌پذیری", false],
@@ -118,6 +118,8 @@ export function SellerDashboardView() {
   }
 
   const seller = state.value;
+  const sellerNavigation = navigation.map(([label, enabled]) =>
+    [label, label === "سفارش‌ها" ? seller.capabilities.orders : enabled] as const);
   return (
     <main className="seller-panel">
       <aside className="seller-panel__sidebar"
@@ -131,7 +133,7 @@ export function SellerDashboardView() {
         </div>
 
         <nav className="seller-panel__nav">
-          {navigation.map(([label, enabled]) => enabled
+          {sellerNavigation.map(([label, enabled]) => enabled
             ? <Link key={label} href="/seller"
                 className="seller-panel__nav-item seller-panel__nav-item--active">
                 {label}
@@ -196,7 +198,7 @@ export function SellerDashboardView() {
           </dl>
         </section>
 
-        <SellerCommerceOperations />
+        {seller.capabilities.orders && <SellerCommerceOperations />}
 
         <section className="seller-panel__capabilities"
           aria-labelledby="seller-capabilities-heading">
@@ -234,8 +236,9 @@ export function SellerDashboardView() {
           <strong>دسترسی فروشندگی فعال است.</strong>
           <p>
             فعال‌شدن نقش فروشنده فقط دسترسی این پنل را باز کرده است.
-            سفارش و مرجوعی به backend واقعی حنا متصل‌اند. موجودی،
-            قیمت‌گذاری و تسویه در برش‌های مستقل بعدی فعال می‌شوند.
+            {seller.capabilities.orders
+              ? "سفارش و مرجوعی به backend واقعی حنا متصل‌اند. موجودی، قیمت‌گذاری و تسویه در برش‌های مستقل بعدی فعال می‌شوند."
+              : "CommerceDb در این محیط آماده نیست؛ سفارش و مرجوعی عمداً غیرفعال مانده‌اند و داده نمونه نمایش داده نمی‌شود."}
           </p>
         </section>
       </section>
