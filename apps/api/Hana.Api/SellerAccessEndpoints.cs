@@ -83,10 +83,13 @@ internal static class SellerAccessEndpoints
                     {
                         dashboard = true,
                         orders = commerceConfigured,
-                        listings = false,
-                        inventory = false,
-                        pricing = false,
-                        settlements = false,
+                        listings = commerceConfigured &&
+                            activation.OfferingType is "GOOD" or "BOTH",
+                        inventory = commerceConfigured &&
+                            activation.OfferingType is "GOOD" or "BOTH",
+                        pricing = commerceConfigured &&
+                            activation.OfferingType is "GOOD" or "BOTH",
+                        settlements = commerceConfigured,
                         reports = false
                     }
                 });
