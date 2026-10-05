@@ -51,6 +51,26 @@ const incident = {
   PenaltyApplied: false,
   RefundRial: 0,
 };
+const offer = {
+  Id: ID, SellerId: "SECRET-SELLER", ProductId: PRODUCT,
+  CategoryId: ITEM, PriceRial: 1500, Stock: 4, Version: 2, Published: true,
+};
+const settlement = {
+  Id: ID, OrderId: ORDER, SellerId: "SECRET-SELLER",
+  GrossRial: 1000, RefundRial: 0, PenaltyRial: 1000,
+  FixedFeeRial: 500, FeeVersion: "fee-v1", NetRial: -500,
+  State: "FINANCE_REVIEW_REQUIRED",
+  CreatedAtUtc: "2026-10-05T03:30:00Z",
+};
+const notification = {
+  Id: ID, AccountId: "SECRET-SELLER", Code: "SELLER_ORDER_STATE",
+  ResourceId: ORDER, CreatedAtUtc: "2026-10-05T03:40:00Z", Read: false,
+};
+const ticket = {
+  Id: ID, AccountId: "SECRET-SELLER", Subject: "کمک",
+  Message: "متن درخواست", State: "OPEN",
+  CreatedAtUtc: "2026-10-05T03:50:00Z", Reply: null,
+};
 
 test("staff DTOs are bounded and omit private owner fields", () => {
   const orders = parseStaffCommerce("seller", "orders", "GET", page([order]));
@@ -65,6 +85,20 @@ test("staff DTOs are bounded and omit private owner fields", () => {
   assert.equal(parseStaffCommerce(
     "seller", "orders", "GET",
     page([{...order, TotalRial: 1}])), null);
+
+  const offers = parseStaffCommerce("seller", "offers", "GET", page([offer]));
+  assert.equal(offers?.[0].stock, 4);
+  assert.equal(JSON.stringify(offers).includes("SECRET"), false);
+  const settlements = parseStaffCommerce(
+    "seller", "settlements", "GET", page([settlement]));
+  assert.equal(settlements?.[0].netRial, -500);
+  const notifications = parseStaffCommerce(
+    "seller", "notifications", "GET", page([notification]));
+  assert.equal(notifications?.[0].read, false);
+  const tickets = parseStaffCommerce(
+    "seller", "tickets", "GET", page([ticket]));
+  assert.equal(tickets?.[0].subject, "کمک");
+  assert.equal(JSON.stringify(tickets).includes("SECRET"), false);
 });
 
 test("staff command responses validate the exact shipping shapes", () => {
@@ -87,6 +121,15 @@ test("staff command responses validate the exact shipping shapes", () => {
   assert.equal(parseStaffCommerce(
     "support", `incidents/${ID}/decision`, "POST",
     { incident: {...incident, State: "REJECTED"}, reason: "" }), null);
+
+  assert.equal(parseStaffCommerce(
+    "seller", "offers", "POST", {...offer, Version: 3})?.version, 3);
+  assert.equal(parseStaffCommerce(
+    "seller", "tickets", "POST", {...ticket, State: "ANSWERED",
+      Reply: "پاسخ"})?.state, "ANSWERED");
+  assert.equal(parseStaffCommerce(
+    "seller", `notifications/${ID}/read`, "POST",
+    {...notification, Read: true})?.read, true);
 });
 
 test("ambiguous retry intent preserves key and body until input changes", () => {
