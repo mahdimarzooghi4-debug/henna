@@ -102,6 +102,9 @@ export function SellerBusinessOperations({
   const [tickets, setTickets] = useState<Load<StaffTicket>>({ kind: "idle" });
   const [productNames, setProductNames] = useState<Record<string, string>>({});
   const [drafts, setDrafts] = useState<Record<string, OfferDraft>>({});
+  const [serviceDrafts, setServiceDrafts] = useState<Record<string, {
+    price: string; availability: string;
+  }>>({});
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogResults, setCatalogResults] = useState<BuyerProduct[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
@@ -198,6 +201,16 @@ export function SellerBusinessOperations({
       const items = await staffGet<StaffServiceListing[]>(
         "seller", "service-listings?page=" + page, signal);
       setServiceListings({ kind: "ready", items });
+      setServiceDrafts(current => {
+        const next = { ...current };
+        for (const item of items) {
+          if (!next[item.id]) next[item.id] = {
+            price: String(item.priceRial),
+            availability: item.availabilityNote,
+          };
+        }
+        return next;
+      });
       const missing = [...new Set(items.map(item => item.productId))]
         .filter(productId => !(productId in productNames));
       if (missing.length) {
@@ -424,9 +437,10 @@ export function SellerBusinessOperations({
   }
 
   async function saveExistingService(item: StaffServiceListing) {
-    const priceRial = Number(servicePrice || item.priceRial);
-    const availabilityNote = serviceAvailability.trim() ||
-      item.availabilityNote;
+    const draft = serviceDrafts[item.id];
+    const priceRial = Number(draft?.price ?? item.priceRial);
+    const availabilityNote =
+      (draft?.availability ?? item.availabilityNote).trim();
     if (!Number.isSafeInteger(priceRial) || priceRial < 1 ||
         !availabilityNote || availabilityNote.length > 500) {
       setNotice("قیمت یا توضیح دسترس‌پذیری خدمت معتبر نیست.");
@@ -442,8 +456,6 @@ export function SellerBusinessOperations({
     pendingService.current = payload;
     await mutate<StaffServiceListing>("service-listings", payload, async () => {
       pendingService.current = null;
-      setServicePrice("");
-      setServiceAvailability("");
       await loadServiceListings(serviceListingsPage);
     }, "قیمت و دسترس‌پذیری خدمت از سرور به‌روزرسانی شد.");
   }
