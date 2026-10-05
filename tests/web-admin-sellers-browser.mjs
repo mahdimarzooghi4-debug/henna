@@ -156,11 +156,9 @@ async function main() {
   await page.getByRole("heading", {
     name: "بررسی و فعال‌سازی فروشندگان",
   }).waitFor();
-  await page.getByRole("button", {
-    name: /کسب‌وکار مرورگر/,
-  }).click();
-  await page.locator(".admin-sellers__detail")
-    .getByRole("heading", { name: "کسب‌وکار مرورگر", exact: true }).waitFor();
+  await page.locator(".admin-sellers__item").first().click();
+  await page.getByPlaceholder(
+    "نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید.").waitFor();
   await page.locator(".admin-sellers__facts")
     .getByText("مالک مرورگر", { exact: true }).waitFor();
 
