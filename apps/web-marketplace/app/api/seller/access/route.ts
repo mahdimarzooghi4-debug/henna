@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     const capabilities = payload.capabilities as Record<string, unknown>;
     if (capabilities.dashboard !== true ||
-      capabilities.reports !== false ||
+      typeof capabilities.reports !== "boolean" ||
       typeof capabilities.orders !== "boolean" ||
       typeof capabilities.listings !== "boolean" ||
       typeof capabilities.inventory !== "boolean" ||
@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
     const goodsEnabled = payload.offeringType === "GOOD" ||
       payload.offeringType === "BOTH";
     if (capabilities.settlements !== capabilities.orders ||
+      capabilities.reports !== capabilities.orders ||
       capabilities.inventory !== capabilities.listings ||
       capabilities.pricing !== capabilities.listings ||
       capabilities.listings !== (capabilities.orders && goodsEnabled))
