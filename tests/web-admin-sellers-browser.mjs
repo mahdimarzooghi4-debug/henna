@@ -207,10 +207,10 @@ async function main() {
   const detailResponsePromise=page.waitForResponse(response =>
     new URL(response.url()).pathname ===
       "/api/admin/seller-applications/" + ID &&
-    response.request().method() === "GET");
+    response.request().method() === "GET" &&
+    response.status() === 200);
   await page.locator(`[data-application-id="${ID}"]`).click();
   const detailResponse=await detailResponsePromise;
-  assert.equal(detailResponse.status(),200);
   const detailBody=await detailResponse.json();
   assert.ok(parseAdminSellerDetail({
     ...detailBody,applicationId:ID,
