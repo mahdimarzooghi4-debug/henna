@@ -42,6 +42,7 @@ function errorMessage(error: unknown) {
 }
 
 export function SellerCommerceOperations() {
+  const [activated, setActivated] = useState(false);
   const [ordersPage, setOrdersPage] = useState(1);
   const [returnsPage, setReturnsPage] = useState(1);
   const [orders, setOrders] = useState<Load<StaffOrder>>({ kind: "loading" });
@@ -79,16 +80,18 @@ export function SellerCommerceOperations() {
   }, []);
 
   useEffect(() => {
+    if (!activated) return;
     const controller = new AbortController();
     void loadOrders(ordersPage, controller.signal);
     return () => controller.abort();
-  }, [loadOrders, ordersPage]);
+  }, [activated, loadOrders, ordersPage]);
 
   useEffect(() => {
+    if (!activated) return;
     const controller = new AbortController();
     void loadReturns(returnsPage, controller.signal);
     return () => controller.abort();
-  }, [loadReturns, returnsPage]);
+  }, [activated, loadReturns, returnsPage]);
 
   const mutate = useCallback(async (
     path: string,
@@ -127,6 +130,26 @@ export function SellerCommerceOperations() {
       setBusyPath(null);
     }
   }, [loadOrders, loadReturns, ordersPage, returnsPage]);
+
+  if (!activated) {
+    return (
+      <section className="seller-commerce" aria-label="عملیات سفارش و مرجوعی">
+        <div className="seller-commerce__heading">
+          <div>
+            <p className="seller-panel__eyebrow">عملیات واقعی فروشگاه</p>
+            <h2>سفارش‌ها و مرجوعی‌ها</h2>
+            <p>
+              اطلاعات عملیاتی فقط با اقدام صریح شما از سرور حنا خوانده می‌شود.
+            </p>
+          </div>
+          <button type="button" className="seller-commerce__refresh"
+            onClick={() => setActivated(true)}>
+            بارگیری عملیات
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="seller-commerce" aria-label="عملیات سفارش و مرجوعی">
