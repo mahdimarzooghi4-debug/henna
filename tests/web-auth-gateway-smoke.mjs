@@ -421,10 +421,10 @@ async function main() {
             capabilities: {
               dashboard: true,
               orders: true,
-              listings: false,
-              inventory: false,
-              pricing: false,
-              settlements: false,
+              listings: true,
+              inventory: true,
+              pricing: true,
+              settlements: true,
               reports: false,
             },
           }));
@@ -1054,10 +1054,10 @@ async function main() {
     capabilities: {
       dashboard: true,
       orders: true,
-      listings: false,
-      inventory: false,
-      pricing: false,
-      settlements: false,
+      listings: true,
+      inventory: true,
+      pricing: true,
+      settlements: true,
       reports: false,
     },
   });
