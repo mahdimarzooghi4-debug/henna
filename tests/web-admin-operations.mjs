@@ -4,6 +4,7 @@ import {
   adminOperationIntent,
   parseAdminClientResourceList,
   parseAdminCommandResponse,
+  parseAdminIntegrity,
   parseAdminResourcePage,
   parseAdminSummary,
 } from "../apps/web-marketplace/lib/admin-operations.ts";
@@ -23,6 +24,24 @@ test("admin summary and privileged resource DTOs fail closed",()=>{
   assert.equal(parseAdminSummary({
     orders:1,cancelled:2,collected:0,openIncidents:0,
     preparedSettlements:0,grossRial:1,
+  }),null);
+
+  const integrity=parseAdminIntegrity({
+    healthy:false,checkedAtUtc:"2026-10-05T12:00:00Z",
+    violationCount:1,truncated:false,
+    violations:[{code:"ORDER_TOTAL_MISMATCH",resourceKind:"ORDER",resourceId:ID}],
+    counts:{wallets:1,credits:2,programs:1,orders:3,incidents:1,
+      settlements:1,withdrawals:1,evidence:1},
+    secret:"never-use",
+  });
+  assert.equal(integrity?.healthy,false);
+  assert.equal(integrity?.violations[0].code,"ORDER_TOTAL_MISMATCH");
+  assert.equal(JSON.stringify(integrity).includes("secret"),false);
+  assert.equal(parseAdminIntegrity({
+    healthy:true,checkedAtUtc:"2026-10-05T12:00:00Z",
+    violationCount:1,truncated:false,violations:[],
+    counts:{wallets:0,credits:0,programs:0,orders:0,incidents:0,
+      settlements:0,withdrawals:0,evidence:0},
   }),null);
 
   const permissions=parseAdminResourcePage("permissions",{
