@@ -132,12 +132,19 @@ S['SellerOperationalReport']=obj({
  'financeReviewRequired':integer()
 })
 S['AuditPage']=obj({'items':arr(obj({'id':uuid,'actorId':uuid,'commandId':uuid,'resourceId':uuid,'event':text(64),'createdAtUtc':utc})),'page':integer(1)})
+S['CommerceIntegrityViolation']=obj({'code':text(80),'resourceKind':text(40),'resourceId':uuid})
+S['CommerceIntegrityCounts']=obj({k:integer() for k in ('wallets','credits','programs','orders','incidents','settlements','withdrawals','evidence')})
+S['CommerceIntegrity']=obj({
+ 'healthy':boolean,'checkedAtUtc':utc,'violationCount':integer(),
+ 'truncated':boolean,'violations':arr(ref('CommerceIntegrityViolation'),maxItems=200),
+ 'counts':ref('CommerceIntegrityCounts')
+})
 S['OrganizationDashboard']=obj({
  'organizations':arr(obj({'id':uuid,'name':text(200),'managerCount':integer(),'beneficiaryCount':integer(),'programCount':integer()})),
  'programs':arr(obj({'id':uuid,'organizationId':uuid,'name':text(120),'fundedRial':integer(),'unallocatedRial':integer(),'expiresAtUtc':utc,'categoryCount':integer(1,100)})),
  'unreadNotifications':integer(),'openTickets':integer()
 })
-paths['/api/v1/commerce/resources/{kind}']={'get':operation('get',{'anyOf':[envelope(n) for n in resource_models.values()]+[ref('OperationalSummary'),ref('AuditPage')]},'Kind-specific scoped aggregates; AUDIT and SUMMARY require ADMIN.',parameters=[{'name':'kind','in':'path','required':True,'schema':enum(*resource_models,'AUDIT','SUMMARY')},{'name':'id','in':'query','schema':uuid},page])}
+paths['/api/v1/commerce/resources/{kind}']={'get':operation('get',{'anyOf':[envelope(n) for n in resource_models.values()]+[ref('OperationalSummary'),ref('AuditPage'),ref('CommerceIntegrity')]},'Kind-specific scoped aggregates; AUDIT, SUMMARY and INTEGRITY require ADMIN. INTEGRITY checks internal persisted invariants only and is not external bank/logistics reconciliation.',parameters=[{'name':'kind','in':'path','required':True,'schema':enum(*resource_models,'AUDIT','SUMMARY','INTEGRITY')},{'name':'id','in':'query','schema':uuid},page])}
 spec={'openapi':'3.1.0','info':{'title':'Henna internal pilot commerce API','version':'2026-10-04','description':'Backend contract only; SMS, PSP and logistics excluded. Command and stored resource records retain PascalCase; public typed records use camelCase. Runtime OpenAPI can remain generic for JsonElement endpoints.'},'paths':paths,'components':{'securitySchemes':{'session':{'type':'http','scheme':'bearer','description':'Current server-backed opaque session; not a user-provided account ID.'}},'schemas':S}}
 output=json.dumps(spec,ensure_ascii=False,indent=2)+'\n'
 target=ROOT/'docs/api/HANA-COMMERCE-OPENAPI.json'
