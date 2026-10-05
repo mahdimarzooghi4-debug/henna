@@ -357,8 +357,18 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(page is <1 or >10000)throw new ArgumentException("Page.");var active=await ActiveSellers(ct);
   var query=db.Documents.AsNoTracking().Where(d=>d.Kind=="OFFER"&&active.Contains(d.OwnerId)&&EF.Functions.JsonContains(d.Body,"{\"Published\":true}"));
   if(productId!=null){var selector=JsonSerializer.Serialize(new{ProductId=productId});query=query.Where(d=>EF.Functions.JsonContains(d.Body,selector));}
-  var rows=await query.OrderBy(d=>d.Id).Skip((page-1)*20).Take(20).ToListAsync(ct);
-  var offers=rows.Select(d=>JsonSerializer.Deserialize<Offer>(d.Body)!).ToList();var sellerIds=offers.Select(o=>o.SellerId).Distinct().ToArray();
+  // An offer can outlive publication of its catalog product. Public browse
+  // must never keep exposing that stale commercial row after moderation.
+  var candidateRows=await query.OrderBy(d=>d.Id).ToListAsync(ct);
+  var candidates=candidateRows.Select(d=>JsonSerializer.Deserialize<Offer>(d.Body)!).ToList();
+  var productIds=candidates.Select(o=>o.ProductId).Distinct().ToArray();
+  var publishedProducts=await catalog.Products.AsNoTracking()
+   .Where(p=>productIds.Contains(p.Id)&&p.State==PublicationStates.Published&&
+    p.Kind==CatalogProductKinds.Good&&p.Category.State==PublicationStates.Published)
+   .Select(p=>p.Id).ToArrayAsync(ct);
+  var offers=candidates.Where(o=>publishedProducts.Contains(o.ProductId))
+   .Skip((page-1)*20).Take(20).ToList();
+  var sellerIds=offers.Select(o=>o.SellerId).Distinct().ToArray();
   var stores=await sellers.RegistrationDrafts.AsNoTracking().Where(s=>sellerIds.Contains(s.AccountId)).ToDictionaryAsync(s=>s.AccountId,s=>s.BusinessName??s.StoreName,ct);
   return new{items=offers.Select(o=>new{o.Id,o.SellerId,o.ProductId,o.CategoryId,o.PriceRial,o.Stock,o.Version,o.Published,StoreName=stores[o.SellerId]}),page,pageSize=20};
  }
