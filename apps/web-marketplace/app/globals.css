@@ -1519,7 +1519,29 @@ a { color: inherit; }
 .site-header--commerce .site-header__inner { width: min(1280px, calc(100% - 40px)); padding: 0; }
 @media (max-width: 760px) {
   .site-header--commerce { height: 80px; }
-  .site-header--commerce .site-header__brand { height: 48px; }
+  .site-header--commerce .site-header__inner {
+    gap: 12px;
+    overflow: hidden;
+  }
+  .site-header--commerce .site-header__brand {
+    width: 145px;
+    height: 48px;
+    flex: 0 0 145px;
+  }
+  .site-header--commerce .site-header__links {
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+  .site-header--commerce .site-header__links::-webkit-scrollbar {
+    display: none;
+  }
+  .site-header--commerce .site-header__back {
+    white-space: nowrap;
+  }
 }
 
 
