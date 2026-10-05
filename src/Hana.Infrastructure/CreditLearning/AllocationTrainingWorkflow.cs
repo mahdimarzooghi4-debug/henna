@@ -74,6 +74,9 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         var snapshots = await db.Assessments.AsNoTracking().Where(x => snapshotIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, ct);
         var rows = labels.Select(x => snapshots[x.SnapshotId]).ToArray();
+        if (rows.Any(x => x.RecordedByAccountId is not null || x.EvidenceReference is not null))
+            throw new ArgumentException(
+                "Only first-party Henna snapshots recorded inside the platform are training-eligible.");
         var baseline = AllocationWeightProfile.Baseline;
         if (rows.Any(x => x.FormulaVersion != baseline.Version) ||
             rows.Select(x => x.DatasetVersion).Distinct().Count() != 1 ||
@@ -88,8 +91,10 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         // The run freezes actual labels/features, including their review identities and IDs.
         var run = new AllocationTrainingRunRecord { Id = Guid.NewGuid(), RequestedByAccountId = requester,
             DatasetVersion = rows[0].DatasetVersion, ModelVersion = ExperimentalAllocationWeightLearner.ModelVersion,
-            InputsJson = JsonSerializer.Serialize(new { labelIds = ids, snapshotIds,
-                examples, baseline, poolRial, sourceInstructionReference = rows[0].SourceInstructionReference }),
+            InputsJson = JsonSerializer.Serialize(new { engine = "HENNA_OWNED_LOCAL",
+                networkModelApi = false, dataOrigin = "HENNA_FIRST_PARTY",
+                labelIds = ids, snapshotIds, examples, baseline, poolRial,
+                sourceInstructionReference = rows[0].SourceInstructionReference }),
             CutoffUtc = cutoffUtc, RecordedAtUtc = clock.UtcNow };
         LearnedAllocationWeights learned;
         try { learned = ExperimentalAllocationWeightLearner.Train(examples, baseline, cutoffUtc, ct); }
