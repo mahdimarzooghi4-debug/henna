@@ -262,30 +262,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export PGPASSWORD=hana_ci_only
           source_db=hana_ci
           restore_db=hana_ci_restore
           backup=/tmp/hana-ci.backup
           source_data=/tmp/hana-ci-source-data.sql
           restored_data=/tmp/hana-ci-restored-data.sql
+          pg17() {
+            docker run --rm --network host \
+              -e PGPASSWORD=hana_ci_only \
+              -v /tmp:/backup \
+              postgres:17 "$@"
+          }
 
-          pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+          pg17 pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
             --dbname="$source_db" --format=custom --no-owner --no-privileges \
-            --file="$backup"
+            --file=/backup/hana-ci.backup
           test -s "$backup"
 
-          dropdb --if-exists --host=127.0.0.1 --port=5432 \
+          pg17 dropdb --if-exists --host=127.0.0.1 --port=5432 \
             --username=hana_ci "$restore_db"
-          createdb --host=127.0.0.1 --port=5432 --username=hana_ci "$restore_db"
-          pg_restore --host=127.0.0.1 --port=5432 --username=hana_ci \
+          pg17 createdb --host=127.0.0.1 --port=5432 \
+            --username=hana_ci "$restore_db"
+          pg17 pg_restore --host=127.0.0.1 --port=5432 --username=hana_ci \
             --dbname="$restore_db" --no-owner --no-privileges --exit-on-error \
-            "$backup"
+            /backup/hana-ci.backup
 
           # Compare deterministic logical data, including sequence values.
-          pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+          pg17 pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
             --dbname="$source_db" --data-only --inserts --no-owner --no-privileges \
             > "$source_data"
-          pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+          pg17 pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
             --dbname="$restore_db" --data-only --inserts --no-owner --no-privileges \
             > "$restored_data"
           cmp "$source_data" "$restored_data"
