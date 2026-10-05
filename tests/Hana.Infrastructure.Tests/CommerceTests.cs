@@ -190,12 +190,15 @@ public sealed class CommerceTests
  // Suspension changes SELLER RBAC atomically, keeps activation/history, and
  // removes both goods/services from public browse until explicit reactivation.
  var suspensionKey=Guid.NewGuid();
- var suspensionBody=new{accountId=seller,active=false,reason="CI compliance suspension"};
- var suspended=await Post(operatorClient,"SET_SELLER_ACCESS",suspensionBody,suspensionKey);
+ var currentSellerRevision=(await sellers.RegistrationDrafts.AsNoTracking()
+  .SingleAsync(x=>x.AccountId==seller)).Revision;
+ var suspensionPath="/api/v1/admin/seller-applications/"+seller+"/suspend";
+ var suspensionBody=new{revision=currentSellerRevision,reason="CI compliance suspension"};
+ var suspended=await PostPath(operatorClient,suspensionPath,suspensionBody,suspensionKey);
  Assert.Equal(HttpStatusCode.OK,suspended.StatusCode);
- Assert.False((await suspended.Content.ReadFromJsonAsync<JsonElement>())
-  .GetProperty("active").GetBoolean());
- var suspendedReplay=await Post(operatorClient,"SET_SELLER_ACCESS",suspensionBody,suspensionKey);
+ Assert.True((await suspended.Content.ReadFromJsonAsync<JsonElement>())
+  .GetProperty("sellerSuspended").GetBoolean());
+ var suspendedReplay=await PostPath(operatorClient,suspensionPath,suspensionBody,suspensionKey);
  Assert.Equal(HttpStatusCode.OK,suspendedReplay.StatusCode);
  Assert.Equal(HttpStatusCode.Forbidden,(await storeClient.GetAsync("/api/v1/seller/access")).StatusCode);
  Assert.Empty((await (await anonymous.GetAsync("/api/v1/offers?productId="+product))
@@ -209,9 +212,14 @@ public sealed class CommerceTests
   .Where(x=>x.ApplicationAccountId==seller).ToListAsync());
 
  var reactivateKey=Guid.NewGuid();
- var reactivated=await Post(operatorClient,"SET_SELLER_ACCESS",
-  new{accountId=seller,active=true,reason="CI compliance cleared"},reactivateKey);
+ var restoreRevision=(await sellers.RegistrationDrafts.AsNoTracking()
+  .SingleAsync(x=>x.AccountId==seller)).Revision;
+ var reactivated=await PostPath(operatorClient,
+  "/api/v1/admin/seller-applications/"+seller+"/restore",
+  new{revision=restoreRevision},reactivateKey);
  Assert.Equal(HttpStatusCode.OK,reactivated.StatusCode);
+ Assert.False((await reactivated.Content.ReadFromJsonAsync<JsonElement>())
+  .GetProperty("sellerSuspended").GetBoolean());
  Assert.Equal(HttpStatusCode.OK,(await storeClient.GetAsync("/api/v1/seller/access")).StatusCode);
  Assert.Single((await (await anonymous.GetAsync("/api/v1/offers?productId="+product))
   .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
