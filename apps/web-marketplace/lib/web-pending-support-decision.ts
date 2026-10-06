@@ -2,6 +2,7 @@ import { commerceId } from "../../../packages/buyer-commerce/contracts.ts";
 import type { StaffIntent } from "./staff-commerce";
 
 const storageKey = "hana.support.pending-decision.v1";
+const changeEvent = "hana:support-pending-decision-changed";
 const maxStored = 6000;
 
 function row(value: unknown): Record<string, unknown> | null {
@@ -119,6 +120,7 @@ export function persistSupportDecisionIntent(intent: StaffIntent) {
   if (record.length > maxStored)
     throw Error("Pending support decision is too large.");
   store.setItem(storageKey, record);
+  window.dispatchEvent(new Event(changeEvent));
 }
 
 export function clearSupportDecisionIntent(expectedKey: string) {
@@ -133,5 +135,12 @@ export function clearSupportDecisionIntent(expectedKey: string) {
   try { restored = parse(raw); } catch { return false; }
   if (!restored || restored.key !== expectedKey) return false;
   store.removeItem(storageKey);
+  window.dispatchEvent(new Event(changeEvent));
   return true;
+}
+
+export function subscribeSupportDecisionIntent(listener: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(changeEvent, listener);
+  return () => window.removeEventListener(changeEvent, listener);
 }
