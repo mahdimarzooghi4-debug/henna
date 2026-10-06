@@ -21,6 +21,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<string>("EvidenceReference").HasMaxLength(240).HasColumnType("character varying(240)");
             e.Property<string>("FormulaVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
             e.Property<Guid?>("RuntimeProposalId").HasColumnType("uuid");
+            e.Property<long?>("RuntimeProfileSequence").HasColumnType("bigint");
             e.Property<string>("DatasetVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
             e.Property<string>("SourceInstructionReference").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
             e.Property<decimal>("GeographicFactor").HasColumnType("numeric");
@@ -34,7 +35,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<DateTimeOffset>("AssessedAtUtc").HasColumnType("timestamp with time zone");
             e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
-            e.HasIndex("FormulaVersion", "RuntimeProposalId");
+            e.HasIndex("FormulaVersion", "RuntimeProposalId", "RuntimeProfileSequence");
             e.HasIndex("HouseholdKey", "AssessedAtUtc");
             e.HasIndex("RuntimeProposalId");
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
@@ -45,6 +46,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
                 t.HasCheckConstraint("ck_assessment_scores", "\"Health\" BETWEEN 0 AND 3 AND \"Hardship\" BETWEEN 0 AND 3 AND \"Age\" BETWEEN 0 AND 3 AND \"Size\" BETWEEN 0 AND 3 AND \"Care\" BETWEEN 0 AND 3 AND \"Education\" BETWEEN 0 AND 3");
                 t.HasCheckConstraint("ck_assessment_provenance", "(\"RecordedByAccountId\" IS NULL AND \"EvidenceReference\" IS NULL) OR (\"RecordedByAccountId\" IS NOT NULL AND \"RecordedByAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND \"EvidenceReference\" IS NOT NULL AND length(btrim(\"EvidenceReference\")) > 0)");
                 t.HasCheckConstraint("ck_assessment_amount", "\"AllocatedRial\" >= 0 AND \"GeographicFactor\" > 0");
+                t.HasCheckConstraint("ck_assessment_runtime_sequence", "\"RuntimeProfileSequence\" IS NULL OR \"RuntimeProfileSequence\" >= 0");
             });
         });
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationOutcomeRecord", e =>
