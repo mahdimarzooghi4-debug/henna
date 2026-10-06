@@ -51,6 +51,7 @@ public sealed class AllocationProposalApiTests
         foreach (var id in snapshots)
             learning.Assessments.Add(new() { Id = id, HouseholdKey = Guid.NewGuid(),
                 FormulaVersion = AllocationWeightProfile.Baseline.Version,
+                RuntimeProfileSequence = 0,
                 DatasetVersion = dataset, SourceInstructionReference = source,
                 GeographicFactor = 1m, Health = id == snapshots[0] ? 3 : 0,
                 Hardship = id == snapshots[1] ? 3 : 0, AllocatedRial = 500,
