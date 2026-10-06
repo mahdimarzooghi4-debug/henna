@@ -127,6 +127,70 @@ public sealed class HennaAllocationLearningCaptureTests
         await capture.CapturePendingAsync();
         Assert.Equal(1,
             await learning.Assessments.CountAsync(x => x.Id == grantId));
+
+        // A promoted runtime formula remains first-party evidence and must be
+        // captured, but it does not silently become training-eligible until
+        // lineage-aware training explicitly supports that baseline.
+        var promotedGrantId = Guid.NewGuid();
+        var promotedHousehold = Guid.NewGuid();
+        var promotedFormula = "henna-learned-ci-promoted";
+        commerce.Journal.Add(new()
+        {
+            Id = Guid.NewGuid(),
+            ActorId = actor,
+            CommandId = Guid.NewGuid(),
+            ResourceId = Guid.NewGuid(),
+            Event = "ALLOCATE_CREDIT",
+            CreatedAtUtc = now,
+            Body = JsonSerializer.Serialize(new
+            {
+                input = new
+                {
+                    programId,
+                    poolRial = 5_000,
+                    beneficiaries = new[]
+                    {
+                        new
+                        {
+                            accountId = account,
+                            householdKey = promotedHousehold,
+                            geographicFactor = 1.1m,
+                            scores = new
+                            {
+                                health = 2,
+                                hardship = 3,
+                                age = 1,
+                                size = 1,
+                                care = 0,
+                                education = 1
+                            }
+                        }
+                    }
+                },
+                result = new
+                {
+                    grants = new[]
+                    {
+                        new CreditGrant(
+                            promotedGrantId, account, programId,
+                            5_000, 5_000, now.AddDays(30),
+                            [category], promotedHousehold)
+                    },
+                    unallocatedRial = 0,
+                    formulaVersion = promotedFormula
+                }
+            })
+        });
+        await commerce.SaveChangesAsync();
+        await capture.CapturePendingAsync();
+        learning.ChangeTracker.Clear();
+
+        var promotedSnapshot = await learning.Assessments.AsNoTracking()
+            .SingleAsync(x => x.Id == promotedGrantId);
+        Assert.Equal(promotedFormula, promotedSnapshot.FormulaVersion);
+        Assert.False(
+            AllocationTrainingWorkflow.IsTrainingEligibleFirstPartySnapshot(
+                promotedSnapshot));
     }
 
     [Fact]
