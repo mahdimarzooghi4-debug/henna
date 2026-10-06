@@ -38,11 +38,22 @@ public sealed class AllocationProposalConflictException(string message) : Except
 /// <summary>Review only. No activation, eligibility decision, or wallet mutation.</summary>
 public sealed class AllocationProposalService(HanaAllocationLearningDbContext db, IClock clock)
 {
+    public Task<Guid> SubmitAsync(Guid creatorAccountId, AllocationWeightProfile candidate,
+        string modelVersion, string rationale, IReadOnlyList<Guid> snapshotIds, long poolRial,
+        string datasetVersion, string sourceInstructionReference,
+        CancellationToken cancellationToken = default) =>
+        SubmitAsync(creatorAccountId, candidate, modelVersion, rationale, snapshotIds,
+            poolRial, datasetVersion, sourceInstructionReference,
+            AllocationWeightProfile.Baseline, cancellationToken);
+
     public async Task<Guid> SubmitAsync(Guid creatorAccountId, AllocationWeightProfile candidate,
         string modelVersion, string rationale, IReadOnlyList<Guid> snapshotIds, long poolRial,
-        string datasetVersion, string sourceInstructionReference, CancellationToken cancellationToken = default)
+        string datasetVersion, string sourceInstructionReference,
+        AllocationWeightProfile baseline,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(snapshotIds);
         ValidateText(candidate.Version, 120);
         ValidateText(modelVersion, 120);
@@ -55,10 +66,10 @@ public sealed class AllocationProposalService(HanaAllocationLearningDbContext db
             throw new ArgumentException("An actor, positive pool and 1–500 distinct snapshots are required.");
         var rows = await db.Assessments.AsNoTracking().Where(x => ids.Contains(x.Id))
             .OrderBy(x => x.Id).ToListAsync(cancellationToken);
-        var baseline = AllocationWeightProfile.Baseline;
         if (rows.Count != ids.Length || rows.Any(x => x.FormulaVersion != baseline.Version ||
             x.DatasetVersion != datasetVersion || x.SourceInstructionReference != sourceInstructionReference))
-            throw new ArgumentException("Snapshots must match the supported baseline, dataset and funding instruction.");
+            throw new ArgumentException(
+                "Snapshots must match the supplied runtime baseline, dataset and funding instruction.");
         var cases = rows.Select(x => new AllocationLearningCase(x.HouseholdKey,
             new(x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education), x.GeographicFactor)).ToArray();
         var simulation = AllocationLearningSimulator.ComparePool(poolRial, cases, baseline, candidate,
