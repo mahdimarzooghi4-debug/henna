@@ -45,7 +45,7 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         var snapshot = await db.Assessments.AsNoTracking().SingleOrDefaultAsync(x => x.Id == snapshotId, ct);
         if (snapshot is null)
             throw new ArgumentException("Assessment snapshot is missing.");
-        if (snapshot.RecordedByAccountId is not null || snapshot.EvidenceReference is not null)
+        if (!IsTrainingEligibleFirstPartySnapshot(snapshot))
             throw new ArgumentException(
                 "Only first-party Henna snapshots can receive training labels.");
         if (snapshot.AssessedAtUtc > clock.UtcNow)
@@ -77,7 +77,7 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         var snapshots = await db.Assessments.AsNoTracking().Where(x => snapshotIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, ct);
         var rows = labels.Select(x => snapshots[x.SnapshotId]).ToArray();
-        if (rows.Any(x => x.RecordedByAccountId is not null || x.EvidenceReference is not null))
+        if (rows.Any(x => !IsTrainingEligibleFirstPartySnapshot(x)))
             throw new ArgumentException(
                 "Only first-party Henna snapshots recorded inside the platform are training-eligible.");
         var baseline = AllocationWeightProfile.Baseline;
@@ -119,6 +119,25 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return run;
+    }
+
+    public static bool IsTrainingEligibleFirstPartySnapshot(
+        AllocationAssessmentRecord snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        const string sourcePrefix = "henna-program:";
+        if (snapshot.RecordedByAccountId is not null ||
+            snapshot.EvidenceReference is not null ||
+            snapshot.FormulaVersion != AllocationWeightProfile.Baseline.Version ||
+            snapshot.DatasetVersion != HennaAllocationLearningCapture.DatasetVersion ||
+            !snapshot.SourceInstructionReference.StartsWith(
+                sourcePrefix, StringComparison.Ordinal))
+            return false;
+
+        return Guid.TryParse(
+                snapshot.SourceInstructionReference[sourcePrefix.Length..],
+                out var programId) &&
+            programId != Guid.Empty;
     }
 
     private async Task RequireAdmin(Guid actor, CancellationToken ct)

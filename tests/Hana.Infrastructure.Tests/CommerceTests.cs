@@ -209,6 +209,15 @@ public sealed class CommerceTests
  var suspendedReplay=await PostPath(operatorClient,suspensionPath,suspensionBody,suspensionKey);
  Assert.Equal(HttpStatusCode.OK,suspendedReplay.StatusCode);
  Assert.Equal(HttpStatusCode.Forbidden,(await storeClient.GetAsync("/api/v1/seller/access")).StatusCode);
+ identity.ChangeTracker.Clear();
+ Assert.False(await identity.RoleAssignments.AsNoTracking().AnyAsync(
+  x=>x.AccountId==seller&&x.Role==HanaRoles.Seller));
+ // A mistaken RBAC re-grant must not bypass the independent open-suspension
+ // boundary in seller access, public browse, or commerce mutations.
+ identity.RoleAssignments.Add(new(){
+  AccountId=seller,Role=HanaRoles.Seller,GrantedAtUtc=clock.UtcNow});
+ await identity.SaveChangesAsync();
+ Assert.Equal(HttpStatusCode.Forbidden,(await storeClient.GetAsync("/api/v1/seller/access")).StatusCode);
  Assert.Empty((await (await anonymous.GetAsync("/api/v1/offers?productId="+product))
   .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
  Assert.Empty((await (await anonymous.GetAsync("/api/v1/service-listings?productId="+serviceProduct))

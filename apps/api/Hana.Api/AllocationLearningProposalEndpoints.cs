@@ -68,13 +68,17 @@ internal static class AllocationLearningProposalEndpoints
             var p = page ?? 1;
             if (p is < 1 or > 10000) return Results.BadRequest();
             var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
-            var items = await db.Assessments.AsNoTracking().OrderByDescending(x => x.AssessedAtUtc)
-                .ThenBy(x => x.Id).Skip((p - 1) * 20).Take(20).Select(x => new {
-                    x.Id, x.DatasetVersion, x.SourceInstructionReference, x.FormulaVersion,
-                    x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education, x.AssessedAtUtc,
-                    x.EvidenceReference,
-                    trainingEligible = x.RecordedByAccountId == null && x.EvidenceReference == null
-                }).ToListAsync(ct);
+            var rows = await db.Assessments.AsNoTracking()
+                .OrderByDescending(x => x.AssessedAtUtc)
+                .ThenBy(x => x.Id).Skip((p - 1) * 20).Take(20)
+                .ToListAsync(ct);
+            var items = rows.Select(x => new {
+                x.Id, x.DatasetVersion, x.SourceInstructionReference, x.FormulaVersion,
+                x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education, x.AssessedAtUtc,
+                x.EvidenceReference,
+                trainingEligible =
+                    AllocationTrainingWorkflow.IsTrainingEligibleFirstPartySnapshot(x)
+            }).ToList();
             return Results.Ok(new { items, page = p, active = false });
         });
         routes.MapGet("/research/labels", async (string rubricVersion, IServiceProvider services, CancellationToken ct) =>

@@ -4,6 +4,7 @@ using Hana.Domain.Credit;
 using Hana.Infrastructure.Commerce;
 using Hana.Infrastructure.CreditLearning;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Xunit;
 
 namespace Hana.Infrastructure.Tests;
@@ -126,6 +127,188 @@ public sealed class HennaAllocationLearningCaptureTests
         await capture.CapturePendingAsync();
         Assert.Equal(1,
             await learning.Assessments.CountAsync(x => x.Id == grantId));
+    }
+
+    [Fact]
+    public async Task ConcurrentCaptureIsIdempotentAndConflictingSnapshotReuseFailsClosed()
+    {
+        var rootConnection = Environment.GetEnvironmentVariable(
+            "ConnectionStrings__IdentityDb");
+        if (string.IsNullOrWhiteSpace(rootConnection)) return;
+
+        var database = "henna_learning_capture_" +
+            Guid.NewGuid().ToString("N");
+        await using (var admin = new NpgsqlConnection(rootConnection))
+        {
+            await admin.OpenAsync();
+            await using var create = new NpgsqlCommand(
+                "CREATE DATABASE " + database, admin);
+            await create.ExecuteNonQueryAsync();
+        }
+
+        var connection = new NpgsqlConnectionStringBuilder(rootConnection)
+        {
+            Database = database
+        }.ConnectionString;
+
+        static HanaCommerceDbContext Commerce(string value) => new(
+            new DbContextOptionsBuilder<HanaCommerceDbContext>()
+                .UseNpgsql(value, pg =>
+                    pg.MigrationsHistoryTable(
+                        "__EFMigrationsHistory", "commerce"))
+                .Options);
+        static HanaAllocationLearningDbContext Learning(string value) => new(
+            new DbContextOptionsBuilder<HanaAllocationLearningDbContext>()
+                .UseNpgsql(value, pg =>
+                    pg.MigrationsHistoryTable(
+                        "__EFMigrationsHistory", "allocation_learning"))
+                .Options);
+
+        await using var seedCommerce = Commerce(connection);
+        await using var seedLearning = Learning(connection);
+        await seedCommerce.Database.MigrateAsync();
+        await seedLearning.Database.MigrateAsync();
+
+        var now = new DateTimeOffset(
+            2026, 10, 6, 6, 0, 0, TimeSpan.Zero);
+        var actor = Guid.NewGuid();
+        var account = Guid.NewGuid();
+        var household = Guid.NewGuid();
+        var programId = Guid.NewGuid();
+        var grantId = Guid.NewGuid();
+        var category = Guid.NewGuid();
+
+        seedCommerce.Documents.Add(new()
+        {
+            Id = programId,
+            OwnerId = actor,
+            Kind = "PROGRAM",
+            Body = JsonSerializer.Serialize(new CreditProgram(
+                programId, "Concurrent CI", "reviewed-concurrent-source",
+                10_000, 4_000, now.AddDays(30), [category], null)),
+            Revision = 1
+        });
+        seedCommerce.Journal.Add(new()
+        {
+            Id = Guid.NewGuid(),
+            ActorId = actor,
+            CommandId = Guid.NewGuid(),
+            ResourceId = Guid.NewGuid(),
+            Event = "ALLOCATE_CREDIT",
+            CreatedAtUtc = now.AddMinutes(-1),
+            Body = JsonSerializer.Serialize(new
+            {
+                input = new
+                {
+                    programId,
+                    poolRial = 6_000,
+                    beneficiaries = new[]
+                    {
+                        new
+                        {
+                            accountId = account,
+                            householdKey = household,
+                            geographicFactor = 1.25m,
+                            scores = new
+                            {
+                                health = 3,
+                                hardship = 2,
+                                age = 1,
+                                size = 2,
+                                care = 1,
+                                education = 0
+                            }
+                        }
+                    }
+                },
+                result = new
+                {
+                    grants = new[]
+                    {
+                        new CreditGrant(
+                            grantId, account, programId, 6_000, 6_000,
+                            now.AddDays(30), [category], household)
+                    },
+                    unallocatedRial = 0,
+                    formulaVersion = AllocationWeightProfile.Baseline.Version
+                }
+            })
+        });
+        await seedCommerce.SaveChangesAsync();
+
+        await using var commerceA = Commerce(connection);
+        await using var commerceB = Commerce(connection);
+        await using var learningA = Learning(connection);
+        await using var learningB = Learning(connection);
+        var captured = await Task.WhenAll(
+            new HennaAllocationLearningCapture(
+                commerceA, learningA, new FixedClock(now))
+                .CapturePendingAsync(),
+            new HennaAllocationLearningCapture(
+                commerceB, learningB, new FixedClock(now))
+                .CapturePendingAsync());
+
+        Assert.Equal(1, captured.Sum());
+        seedLearning.ChangeTracker.Clear();
+        Assert.Equal(1, await seedLearning.Assessments.AsNoTracking()
+            .CountAsync(x => x.Id == grantId));
+
+        // Reusing the same snapshot/grant ID with different first-party
+        // contents is data corruption, not an idempotent replay.
+        seedCommerce.Journal.Add(new()
+        {
+            Id = Guid.NewGuid(),
+            ActorId = actor,
+            CommandId = Guid.NewGuid(),
+            ResourceId = Guid.NewGuid(),
+            Event = "ALLOCATE_CREDIT",
+            CreatedAtUtc = now,
+            Body = JsonSerializer.Serialize(new
+            {
+                input = new
+                {
+                    programId,
+                    poolRial = 5_999,
+                    beneficiaries = new[]
+                    {
+                        new
+                        {
+                            accountId = account,
+                            householdKey = household,
+                            geographicFactor = 1.25m,
+                            scores = new
+                            {
+                                health = 3,
+                                hardship = 2,
+                                age = 1,
+                                size = 2,
+                                care = 1,
+                                education = 0
+                            }
+                        }
+                    }
+                },
+                result = new
+                {
+                    grants = new[]
+                    {
+                        new CreditGrant(
+                            grantId, account, programId, 5_999, 5_999,
+                            now.AddDays(30), [category], household)
+                    },
+                    unallocatedRial = 0,
+                    formulaVersion = AllocationWeightProfile.Baseline.Version
+                }
+            })
+        });
+        await seedCommerce.SaveChangesAsync();
+
+        await using var commerceC = Commerce(connection);
+        await using var learningC = Learning(connection);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new HennaAllocationLearningCapture(
+                commerceC, learningC, new FixedClock(now))
+                .CapturePendingAsync());
     }
 
     private sealed class FixedClock(DateTimeOffset now) : IClock

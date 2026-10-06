@@ -46,16 +46,7 @@ public sealed class HennaAllocationLearningCapture(
                 var rows = await BuildRowsAsync(journal, cancellationToken);
                 if (rows.Count == 0) continue;
 
-                var ids = rows.Select(x => x.Id).ToArray();
-                var existing = await learning.Assessments.AsNoTracking()
-                    .Where(x => ids.Contains(x.Id))
-                    .Select(x => x.Id)
-                    .ToArrayAsync(cancellationToken);
-                var existingSet = existing.ToHashSet();
-                var pending = rows.Where(x => !existingSet.Contains(x.Id)).ToArray();
-                if (pending.Length == 0) continue;
-
-                foreach (var row in pending)
+                foreach (var row in rows)
                 {
                     var inserted = await learning.Database.ExecuteSqlInterpolatedAsync(
                         $"""
@@ -74,6 +65,14 @@ public sealed class HennaAllocationLearningCapture(
                         ON CONFLICT ("Id") DO NOTHING
                         """,
                         cancellationToken);
+                    if (inserted == 0)
+                    {
+                        var stored = await learning.Assessments.AsNoTracking()
+                            .SingleAsync(x => x.Id == row.Id, cancellationToken);
+                        if (!SameSnapshot(stored, row))
+                            throw new InvalidOperationException(
+                                "Allocation learning snapshot identity was reused with different first-party data.");
+                    }
                     added = checked(added + inserted);
                     if (added >= maximumNewEvents) break;
                 }
@@ -84,6 +83,26 @@ public sealed class HennaAllocationLearningCapture(
         return added;
     }
 
+    private static bool SameSnapshot(
+        AllocationAssessmentRecord stored,
+        AllocationAssessmentRecord expected) =>
+        stored.Id == expected.Id &&
+        stored.HouseholdKey == expected.HouseholdKey &&
+        stored.RecordedByAccountId == expected.RecordedByAccountId &&
+        stored.EvidenceReference == expected.EvidenceReference &&
+        stored.FormulaVersion == expected.FormulaVersion &&
+        stored.DatasetVersion == expected.DatasetVersion &&
+        stored.SourceInstructionReference == expected.SourceInstructionReference &&
+        stored.GeographicFactor == expected.GeographicFactor &&
+        stored.Health == expected.Health &&
+        stored.Hardship == expected.Hardship &&
+        stored.Age == expected.Age &&
+        stored.Size == expected.Size &&
+        stored.Care == expected.Care &&
+        stored.Education == expected.Education &&
+        stored.AllocatedRial == expected.AllocatedRial &&
+        stored.AssessedAtUtc == expected.AssessedAtUtc;
+
     private async Task<List<AllocationAssessmentRecord>> BuildRowsAsync(
         CommerceJournal journal,
         CancellationToken ct)
@@ -92,6 +111,14 @@ public sealed class HennaAllocationLearningCapture(
         var root = payload.RootElement;
         var input = root.GetProperty("input");
         var result = root.GetProperty("result");
+        var formulaVersion = result.GetProperty("formulaVersion").GetString();
+        if (formulaVersion is null ||
+            !string.Equals(
+                formulaVersion,
+                AllocationWeightProfile.Baseline.Version,
+                StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                "Allocation journal formula version is not training-eligible.");
         var programId = input.GetProperty("programId").GetGuid();
 
         var programDocument = await commerce.Documents.AsNoTracking()
@@ -132,7 +159,7 @@ public sealed class HennaAllocationLearningCapture(
                 // capture. Attributed/manual intake is never training-eligible.
                 RecordedByAccountId = null,
                 EvidenceReference = null,
-                FormulaVersion = AllocationWeightProfile.Baseline.Version,
+                FormulaVersion = formulaVersion,
                 DatasetVersion = DatasetVersion,
                 SourceInstructionReference = "henna-program:" + program.Id,
                 GeographicFactor = beneficiary.GeographicFactor,

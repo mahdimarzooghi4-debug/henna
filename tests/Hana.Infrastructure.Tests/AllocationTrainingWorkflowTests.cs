@@ -34,7 +34,8 @@ public sealed class AllocationTrainingWorkflowTests
         var workflow = new AllocationTrainingWorkflow(db, roles, clock, new AllocationProposalService(db, clock));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => workflow.ReviewNeedAsync(
             Guid.NewGuid(), Guid.NewGuid(), .5m, "rubric", LearningPartition.Training));
-        var dataset = "data-" + Guid.NewGuid(); var source = "source-" + Guid.NewGuid();
+        var dataset = HennaAllocationLearningCapture.DatasetVersion;
+        var source = "henna-program:" + Guid.NewGuid();
         var snapshotIds = Enumerable.Range(0, 48).Select(_ => Guid.NewGuid()).ToArray();
         var labels = new List<Guid>();
         for (var i = 0; i < snapshotIds.Length; i++)
@@ -88,6 +89,30 @@ public sealed class AllocationTrainingWorkflowTests
         await Assert.ThrowsAsync<ArgumentException>(() =>
             workflow.ReviewNeedAsync(reviewer, importedSnapshot, .5m,
                 "synthetic-import-rubric", LearningPartition.Training));
+
+        // Null attribution alone is not enough. A row must also carry the
+        // immutable first-party Henna dataset and program identity.
+        var unattributedResearchSnapshot = Guid.NewGuid();
+        db.Assessments.Add(new() {
+            Id = unattributedResearchSnapshot, HouseholdKey = Guid.NewGuid(),
+            FormulaVersion = AllocationWeightProfile.Baseline.Version,
+            DatasetVersion = "research-unattributed-" + Guid.NewGuid(),
+            SourceInstructionReference = "manual-research",
+            GeographicFactor = 1m, Health = 1, Hardship = 1, Age = 1,
+            Size = 1, Care = 1, Education = 1, AllocatedRial = 100,
+            AssessedAtUtc = clock.UtcNow.AddDays(-1), RecordedAtUtc = clock.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var unattributed = await db.Assessments.AsNoTracking()
+            .SingleAsync(x => x.Id == unattributedResearchSnapshot);
+        Assert.False(
+            AllocationTrainingWorkflow.IsTrainingEligibleFirstPartySnapshot(
+                unattributed));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            workflow.ReviewNeedAsync(
+                reviewer, unattributedResearchSnapshot, .5m,
+                "synthetic-unattributed-rubric",
+                LearningPartition.Training));
 
         // Defense in depth: even a privileged direct DB insertion cannot make an
         // attributed/manual snapshot training-eligible.
