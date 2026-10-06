@@ -134,7 +134,7 @@ public sealed class AllocationLearningAutomationPlanner(
         return new AllocationLearningAutomationPlan(
             status,
             TriggerPolicyConfigured: policy.IsConfigured,
-            AutomaticTrainingEnabled: false,
+            AutomaticTrainingEnabled: policy.IsWorkerConfigured,
             MissingPolicyRequirements: policy.MissingRequirements(),
             Cohorts: cohorts);
     }
