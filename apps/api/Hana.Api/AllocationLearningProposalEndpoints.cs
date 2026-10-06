@@ -80,12 +80,14 @@ internal static class AllocationLearningProposalEndpoints
                 .OrderByDescending(x => x.AssessedAtUtc)
                 .ThenBy(x => x.Id).Skip((p - 1) * 20).Take(20)
                 .ToListAsync(ct);
+            var lineage = await AllocationTrainingLineageResolver.ResolveEligibleAsync(
+                db, rows, ct);
             var items = rows.Select(x => new {
                 x.Id, x.DatasetVersion, x.SourceInstructionReference, x.FormulaVersion,
+                x.RuntimeProposalId,
                 x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education, x.AssessedAtUtc,
                 x.EvidenceReference,
-                trainingEligible =
-                    AllocationTrainingWorkflow.IsTrainingEligibleFirstPartySnapshot(x)
+                trainingEligible = lineage.ContainsKey(x.Id)
             }).ToList();
             return Results.Ok(new { items, page = p, active = false });
         });
