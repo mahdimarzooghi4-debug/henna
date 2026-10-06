@@ -72,13 +72,14 @@ public sealed class AllocationTrainingWorkflowTests
             AutomationAccountId: actor,
             MinimumTrainingLabels: 36,
             MinimumValidationLabels: 12,
-            PoolRial: 4800);
+            PoolRial: 4800,
+            PollIntervalMinutes: 5);
         var configuredPlanner = new AllocationLearningAutomationPlanner(
             db, configuredPolicy);
         var automation = await configuredPlanner.BuildAsync();
         Assert.Equal("AUTOMATION_EXECUTOR_REQUIRED", automation.Status);
         Assert.True(automation.TriggerPolicyConfigured);
-        Assert.False(automation.AutomaticTrainingEnabled);
+        Assert.True(automation.AutomaticTrainingEnabled);
         Assert.Empty(automation.MissingPolicyRequirements);
         var cohort = Assert.Single(automation.Cohorts.Where(x =>
             x.DatasetVersion == dataset &&
