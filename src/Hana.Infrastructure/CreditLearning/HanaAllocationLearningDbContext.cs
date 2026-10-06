@@ -75,6 +75,7 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.GeographicFactor).HasColumnType("numeric");
             e.HasIndex(x => new { x.HouseholdKey, x.AssessedAtUtc });
             e.HasIndex(x => new { x.FormulaVersion, x.RuntimeProposalId });
+            e.HasIndex(x => x.RuntimeProposalId);
             e.HasOne<AllocationProposalRecord>().WithMany()
                 .HasForeignKey(x => x.RuntimeProposalId)
                 .OnDelete(DeleteBehavior.Restrict);
