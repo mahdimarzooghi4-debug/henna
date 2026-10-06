@@ -49,8 +49,11 @@ test("retention DTOs reject active, malformed or non-canonical responses", () =>
   assert.equal(parseAllocationRetentionPreview({
     ...preview, previewDigest: "A".repeat(64),
   }), null);
+  assert.deepEqual(parseAllocationRetentionPreview({
+    ...preview, cutoffUtc: "2026-10-05T10:30:00+00:00",
+  })?.cutoffUtc, "2026-10-05T10:30:00+00:00");
   assert.equal(parseAllocationRetentionPreview({
-    ...preview, cutoffUtc: "2026-10-05T10:30:00Z",
+    ...preview, cutoffUtc: "2026-10-05T14:30:00+04:00",
   }), null);
 
   const result = {
