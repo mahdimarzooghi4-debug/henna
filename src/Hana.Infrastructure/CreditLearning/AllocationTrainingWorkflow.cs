@@ -213,12 +213,6 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         }
     }
 
-    public static bool IsTrainingEligibleFirstPartySnapshot(
-        AllocationAssessmentRecord snapshot) =>
-        AllocationTrainingLineageResolver.HasFirstPartyHennaProvenance(snapshot) &&
-        snapshot.RuntimeProposalId is null &&
-        snapshot.FormulaVersion == AllocationWeightProfile.Baseline.Version;
-
     private async Task RequireAdmin(Guid actor, CancellationToken ct)
     {
         if (actor == Guid.Empty || !await roles.HasRoleAsync(actor, HanaRoles.Admin, ct))
