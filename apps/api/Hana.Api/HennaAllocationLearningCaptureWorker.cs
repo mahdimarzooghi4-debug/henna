@@ -28,6 +28,15 @@ internal sealed class HennaAllocationLearningCaptureWorker(
                     logger.LogInformation(
                         "Captured {Count} first-party Henna allocation snapshots.",
                         added);
+
+                var outcomeCapture = scope.ServiceProvider
+                    .GetRequiredService<HennaAllocationOutcomeCapture>();
+                var outcomes = await outcomeCapture.CaptureCreditUsageAsync(
+                    cancellationToken: stoppingToken);
+                if (outcomes > 0)
+                    logger.LogInformation(
+                        "Captured {Count} first-party Henna allocation credit outcomes.",
+                        outcomes);
             }
             catch (OperationCanceledException)
                 when (stoppingToken.IsCancellationRequested)
