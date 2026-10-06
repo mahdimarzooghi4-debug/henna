@@ -87,7 +87,7 @@ public sealed class AllocationReviewedOutcomeService(
              "ReviewedByAccountId","EvidenceReference","RecordedAtUtc")
             VALUES
             ({input.EventId},{input.SnapshotId},{periodStart},{periodEnd},
-             {null},{input.EssentialNeedsCoverage},{input.StockBarrier},
+             {(decimal?)null},{input.EssentialNeedsCoverage},{input.StockBarrier},
              {input.DeliveryBarrier},{input.AccessBarrier},{evidence},
              {reviewer},{evidenceReference},{now})
             ON CONFLICT ("Id") DO NOTHING
