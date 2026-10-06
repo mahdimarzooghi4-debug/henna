@@ -386,6 +386,12 @@ public sealed class AllocationProposalApiTests
                 new { reason = "Duplicate activation authorization" }))
             .StatusCode);
 
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await reviewerClient.PostAsJsonAsync(
+                productionControlUrl + "/authorize-rollback",
+                new { reason = "Authorization alone is not an active runtime" }))
+            .StatusCode);
+
         var runtimeUrl = $"{url}/{pilotProposalId}/runtime";
         var baselineRuntime = await creatorClient.GetAsync(
             url + "/runtime-profile");
