@@ -37,6 +37,7 @@ public sealed class AllocationLearningAutomationExecutor(
             .ThenBy(x => x.SourceInstructionReference, StringComparer.Ordinal)
             .ThenBy(x => x.FormulaVersion, StringComparer.Ordinal)
             .ThenBy(x => x.RuntimeProposalId)
+            .ThenBy(x => x.RuntimeProfileSequence)
             .ThenBy(x => x.RubricVersion, StringComparer.Ordinal)
             .ToArray();
 
