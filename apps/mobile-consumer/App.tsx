@@ -31,6 +31,7 @@ import { BuyerBrowseScreen } from "./src/buyer-browse-screen";
 import {
   parseBuyerLink, type BuyerLinkEvent, type BuyerLinkRoute,
 } from "./src/buyer-link";
+import { BuyerLinkInbox } from "./src/buyer-link-inbox";
 import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from "./src/phone";
 import { MobileAuthClient } from "./src/mobile-auth";
 import { otpRequestTransition } from "./src/otp-request-transition";
@@ -49,6 +50,13 @@ const tokenKey = "hana.consumer.session.v1";
 const secureOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
+
+const nativeBuyerLinkInbox = new BuyerLinkInbox();
+// Subscribe before React mounts. iOS can deliver a custom-scheme URL while the
+// JS bundle is starting, before App's effect attaches its normal listener.
+Linking.addEventListener("url", ({ url }) => {
+  nativeBuyerLinkInbox.offer(url);
+});
 
 // Expo SecureStore uses iOS Keychain / Android Keystore-backed encrypted storage.
 // Keep the bearer OUT of React state, console, AsyncStorage and Expo public config.
@@ -526,51 +534,73 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    let receivedLiveLink = false;
+    let stopIncomingLinks = () => {};
+    let incomingSequence = 0;
+
     const apply = (url: string | null, incoming: boolean) => {
       const route = parseBuyerLink(url);
       if (incoming && route === null) return; // Never navigate on untrusted URL.
       setLink({ token: ++sequence.current, route: route ?? blankBrowseLink });
       if (incoming) setScreen("browse");
     };
-    const listener = Linking.addEventListener("url", ({ url }) => {
-      if (!active || parseBuyerLink(url) === null) return;
+
+    const applyPending = (pending: Awaited<ReturnType<typeof pendingCommerceStore.route>>) => {
+      if (pending?.selectedOrderId) setSelectedOrder(pending.selectedOrderId);
+      if (pending?.incidentOrderId) {
+        setIncidentOrder(pending.incidentOrderId);
+        incidentReturn.current = "orders";
+      }
+      if (pending) setScreen(pending.screen);
+      setLink({ token: ++sequence.current, route: blankBrowseLink });
+    };
+
+    const handleIncoming = (url: string) => {
+      const request = ++incomingSequence;
       void pendingCommerceStore.route()
         .then((pending) => {
-          if (!active || pending) return;
-          receivedLiveLink = true;
+          if (!active || request !== incomingSequence) return;
+          if (pending) {
+            applyPending(pending);
+            return;
+          }
           apply(url, true);
         })
         .catch(() => {
           // A storage failure cannot prove there is no financial retry.
           // Keep the current screen rather than letting a link hide it.
         });
-    });
+    };
+
     void Promise.all([
       Linking.getInitialURL().catch(() => null),
       pendingCommerceStore.route(),
-    ]).then(([url, pending]) => {
-      if (!active || receivedLiveLink) return;
+    ]).then(([initialUrl, pending]) => {
+      if (!active) return;
       if (pending) {
-        if (pending.selectedOrderId) setSelectedOrder(pending.selectedOrderId);
-        if (pending.incidentOrderId) {
-          setIncidentOrder(pending.incidentOrderId);
-          incidentReturn.current = "orders";
-        }
-        setScreen(pending.screen);
-        setLink({ token: ++sequence.current, route: blankBrowseLink });
+        nativeBuyerLinkInbox.clear();
+        applyPending(pending);
       } else {
-        apply(url, false);
+        // Prefer an OS URL captured while React was mounting; otherwise use
+        // the normal native initial URL. This closes the iOS cold-start gap
+        // without weakening the durable-commerce fail-closed rule.
+        apply(nativeBuyerLinkInbox.take() ?? initialUrl, false);
       }
+      stopIncomingLinks = nativeBuyerLinkInbox.subscribe(handleIncoming);
       void pendingCommerceStore.cleanupPhotos().catch(() => {});
     }).catch(() => {
-      if (active && !receivedLiveLink) {
-        // Public browsing remains usable, while commerce controllers fail
-        // closed if SecureStore cannot prove whether a retry is pending.
-        apply(null, false);
-      }
+      if (!active) return;
+      // Public browsing remains usable, while commerce controllers fail
+      // closed if SecureStore cannot prove whether a retry is pending.
+      nativeBuyerLinkInbox.clear();
+      apply(null, false);
+      stopIncomingLinks = nativeBuyerLinkInbox.subscribe(handleIncoming);
     });
-    return () => { active = false; listener.remove(); };
+
+    return () => {
+      active = false;
+      incomingSequence++;
+      stopIncomingLinks();
+    };
   }, []);
 
   return (
