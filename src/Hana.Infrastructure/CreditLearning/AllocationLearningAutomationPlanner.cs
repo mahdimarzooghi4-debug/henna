@@ -8,6 +8,7 @@ public sealed record AllocationLearningAutomationCohort(
     string SourceInstructionReference,
     string FormulaVersion,
     Guid? RuntimeProposalId,
+    long? RuntimeProfileSequence,
     string RubricVersion,
     int TrainingLabelCount,
     int ValidationLabelCount,
@@ -64,6 +65,7 @@ public sealed class AllocationLearningAutomationPlanner(
                 x.snapshot.SourceInstructionReference,
                 x.snapshot.FormulaVersion,
                 x.snapshot.RuntimeProposalId,
+                x.snapshot.RuntimeProfileSequence,
                 x.label.RubricVersion
             })
             .Select(group =>
@@ -105,6 +107,7 @@ public sealed class AllocationLearningAutomationPlanner(
                     group.Key.SourceInstructionReference,
                     group.Key.FormulaVersion,
                     group.Key.RuntimeProposalId,
+                    group.Key.RuntimeProfileSequence,
                     group.Key.RubricVersion,
                     trainingLabelCount,
                     validationLabelCount,
@@ -127,6 +130,7 @@ public sealed class AllocationLearningAutomationPlanner(
             .ThenBy(x => x.SourceInstructionReference, StringComparer.Ordinal)
             .ThenBy(x => x.FormulaVersion, StringComparer.Ordinal)
             .ThenBy(x => x.RuntimeProposalId)
+            .ThenBy(x => x.RuntimeProfileSequence)
             .ThenBy(x => x.RubricVersion, StringComparer.Ordinal)
             .ToArray();
 
