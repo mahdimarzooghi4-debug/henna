@@ -16,7 +16,9 @@ let web, browser, logs = "";
 let orderState = "PAID", orderVersion = 1, contactAt = null, doorVisitAt = null;
 let supportState = "UNDER_REVIEW", supportRefund = 0;
 let offerVersion = 1, notificationRead = false, ticketState = "OPEN";
-let firstDecision = null, decisionAttempts = 0, slaAttempts = 0;
+let firstDecision = null, decisionAttempts = 0;
+let firstSla = null, slaAttempts = 0;
+let firstUnavailability = null, unavailabilityAttempts = 0;
 let firstSellerState = null, sellerStateAttempts = 0;
 let firstOfferMutation = null, offerMutationAttempts = 0;
 
@@ -260,9 +262,22 @@ async function main() {
     }
     if (path === "/api/support/commerce/returns/" + INCIDENT +
         "/unavailability" && request.method() === "POST") {
+      unavailabilityAttempts++;
+      const current = {
+        key: request.headers()["idempotency-key"],
+        body: request.postData(),
+      };
       assert.deepEqual(request.postDataJSON(), {
         reason: "تماس و مراجعه مستند بررسی شد",
       });
+      assert.match(current.key,
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      if (unavailabilityAttempts === 1) {
+        firstUnavailability = current;
+        return route.fulfill(json({ message: "unknown outcome" }, 503));
+      }
+      assert.deepEqual(current, firstUnavailability,
+        "support unavailability retry after reload must retain exact key and body");
       supportState = "CUSTOMER_UNAVAILABLE_VERIFIED";
       return route.fulfill(json({
         incident: incident(),
@@ -280,9 +295,19 @@ async function main() {
     if (path === "/api/support/commerce/return-sla" &&
         request.method() === "POST") {
       slaAttempts++;
+      const current = {
+        key: request.headers()["idempotency-key"],
+        body: request.postData(),
+      };
       assert.deepEqual(request.postDataJSON(), {});
-      assert.match(request.headers()["idempotency-key"],
+      assert.match(current.key,
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      if (slaAttempts === 1) {
+        firstSla = current;
+        return route.fulfill(json({ message: "unknown outcome" }, 503));
+      }
+      assert.deepEqual(current, firstSla,
+        "support SLA retry after reload must retain exact key and body");
       return route.fulfill(json({ assessed: 1 }));
     }
 
@@ -368,10 +393,20 @@ async function main() {
   await page.getByRole("button", {
     name: "ارزیابی SLA مرجوعی",
   }).click();
+  await page.getByText("نتیجه ارزیابی SLA هنوز قطعی نیست.", {
+    exact: false,
+  }).waitFor();
+  await page.reload();
+  await page.getByRole("heading", {
+    name: "بررسی گزارش آسیب و کسری",
+  }).waitFor();
+  await page.getByRole("button", {
+    name: "تکرار امن ارزیابی SLA",
+  }).click();
   await page.getByText("SLA مرجوعی ارزیابی شد؛ ۱ پروندهٔ معوق", {
     exact: false,
   }).waitFor();
-  assert.equal(slaAttempts, 1);
+  assert.equal(slaAttempts, 2);
   const evidence = page.getByAltText("تصویر خصوصی پیوست گزارش خریدار");
   await evidence.waitFor();
   await evidence.evaluate(image => new Promise((resolve, reject) => {
@@ -413,9 +448,27 @@ async function main() {
   await page.getByRole("button", {
     name: "تأیید عدم حضور خریدار",
   }).click();
+  await page.getByText("نتیجه ثبت عدم حضور هنوز قطعی نیست.", {
+    exact: false,
+  }).waitFor();
+
+  await page.reload();
+  await page.getByRole("heading", {
+    name: "بررسی گزارش آسیب و کسری",
+  }).waitFor();
+  const restoredUnavailableReason = page.getByPlaceholder(
+    "نتیجه بررسی تماس، مراجعه و شواهد را ثبت کنید.");
+  await restoredUnavailableReason.waitFor();
+  assert.equal(await restoredUnavailableReason.inputValue(),
+    "تماس و مراجعه مستند بررسی شد");
+  assert.equal(await restoredUnavailableReason.isDisabled(), true);
+  await page.getByRole("button", {
+    name: "تکرار امن همان تأیید",
+  }).click();
   await page.getByText("عدم حضور خریدار تأیید شده", {
     exact: true,
   }).first().waitFor();
+  assert.equal(unavailabilityAttempts, 2);
 
   const supportReply = page.getByLabel("پاسخ پشتیبانی");
   await supportReply.fill("پاسخ پشتیبانی ثبت شد");
