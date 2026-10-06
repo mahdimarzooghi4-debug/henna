@@ -18,6 +18,7 @@ let supportState = "UNDER_REVIEW", supportRefund = 0;
 let offerVersion = 1, notificationRead = false, ticketState = "OPEN";
 let firstDecision = null, decisionAttempts = 0, slaAttempts = 0;
 let firstSellerState = null, sellerStateAttempts = 0;
+let firstOfferMutation = null, offerMutationAttempts = 0;
 
 function json(data, status = 200) {
   return { status, contentType: "application/json; charset=utf-8",
@@ -190,14 +191,25 @@ async function main() {
       }));
     }
     if (path === "/api/seller/commerce/offers" && request.method() === "POST") {
+      offerMutationAttempts++;
       const body = request.postDataJSON();
+      const current = {
+        key: request.headers()["idempotency-key"],
+        body: request.postData(),
+      };
       assert.equal(body.offerId, EVIDENCE);
       assert.equal(body.productId, PRODUCT);
       assert.equal(body.expectedVersion, offerVersion);
       assert.equal(body.priceRial, 1900);
       assert.equal(body.stock, 7);
-      assert.match(request.headers()["idempotency-key"],
+      assert.match(current.key,
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      if (offerMutationAttempts === 1) {
+        firstOfferMutation = current;
+        return route.fulfill(json({ message: "unknown outcome" }, 503));
+      }
+      assert.deepEqual(current, firstOfferMutation,
+        "business retry after reload must retain exact key and body");
       offerVersion++;
       return route.fulfill(json(offer()));
     }
@@ -325,9 +337,23 @@ async function main() {
   await offerCard.getByLabel("قیمت، ریال").fill("1900");
   await offerCard.getByLabel("موجودی").fill("7");
   await offerCard.getByRole("button", { name: "ذخیره" }).click();
-  await page.getByText("قیمت و موجودی پیشنهاد از سرور به‌روزرسانی شد.", {
+  await page.getByText("نتیجه درخواست هنوز قطعی نیست.", {
+    exact: false,
+  }).waitFor();
+  await page.reload();
+  await page.getByRole("heading", {
+    name: "پیشخوان مدیریت کسب‌وکار",
+  }).waitFor();
+  await page.getByRole("button", {
+    name: "تکرار امن درخواست تکمیلی قبلی",
+  }).waitFor();
+  await page.getByRole("button", {
+    name: "تکرار امن درخواست تکمیلی قبلی",
+  }).click();
+  await page.getByText("درخواست قبلی با همان کلید و بدنه با موفقیت تأیید شد.", {
     exact: true,
   }).waitFor();
+  assert.equal(offerMutationAttempts, 2);
   await page.getByRole("button", { name: "علامت خوانده" }).click();
   await page.getByText("خوانده‌شده", { exact: true }).waitFor();
   await page.getByLabel("موضوع").fill("موضوع مرورگر");
