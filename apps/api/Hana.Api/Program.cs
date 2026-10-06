@@ -112,7 +112,11 @@ if (hasLearningDb)
     builder.Services.AddScoped<AllocationLearningRecorder>();
     builder.Services.AddScoped<AllocationProposalService>();
     builder.Services.AddScoped<AllocationLearningAutomationPlanner>();
-    if (hasIdentityDb) builder.Services.AddScoped<AllocationTrainingWorkflow>();
+    if (hasIdentityDb)
+    {
+        builder.Services.AddScoped<AllocationTrainingWorkflow>();
+        builder.Services.AddScoped<AllocationLearningAutomationExecutor>();
+    }
 }
 var commerceConnectionString = builder.Configuration.GetConnectionString("CommerceDb");
 var hasCommerceDb = hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString);
