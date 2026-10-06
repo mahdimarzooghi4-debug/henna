@@ -375,6 +375,170 @@ public sealed class HennaAllocationLearningCaptureTests
                 .CapturePendingAsync());
     }
 
+
+    [Fact]
+    public async Task PromotedRuntimeJournalCarriesVerifiedTrainingLineage()
+    {
+        var rootConnection = Environment.GetEnvironmentVariable(
+            "ConnectionStrings__IdentityDb");
+        if (string.IsNullOrWhiteSpace(rootConnection)) return;
+
+        var database = "henna_promoted_capture_" +
+            Guid.NewGuid().ToString("N");
+        await using (var admin = new NpgsqlConnection(rootConnection))
+        {
+            await admin.OpenAsync();
+            await using var create = new NpgsqlCommand(
+                "CREATE DATABASE " + database, admin);
+            await create.ExecuteNonQueryAsync();
+        }
+
+        var connection = new NpgsqlConnectionStringBuilder(rootConnection)
+        {
+            Database = database
+        }.ConnectionString;
+
+        await using var commerce = new HanaCommerceDbContext(
+            new DbContextOptionsBuilder<HanaCommerceDbContext>()
+                .UseNpgsql(connection, pg =>
+                    pg.MigrationsHistoryTable(
+                        "__EFMigrationsHistory", "commerce"))
+                .Options);
+        await using var learning = new HanaAllocationLearningDbContext(
+            new DbContextOptionsBuilder<HanaAllocationLearningDbContext>()
+                .UseNpgsql(connection, pg =>
+                    pg.MigrationsHistoryTable(
+                        "__EFMigrationsHistory", "allocation_learning"))
+                .Options);
+        await commerce.Database.MigrateAsync();
+        await learning.Database.MigrateAsync();
+
+        var now = new DateTimeOffset(
+            2026, 10, 6, 9, 0, 0, TimeSpan.Zero);
+        var actor = Guid.NewGuid();
+        var account = Guid.NewGuid();
+        var household = Guid.NewGuid();
+        var programId = Guid.NewGuid();
+        var grantId = Guid.NewGuid();
+        var category = Guid.NewGuid();
+        var proposalId = Guid.NewGuid();
+        var promoted = new AllocationWeightProfile(
+            "henna-promoted-capture-" + Guid.NewGuid().ToString("N"),
+            .35m, .20m, .18m, .12m, .10m, .05m);
+
+        learning.Proposals.Add(new()
+        {
+            Id = proposalId,
+            CreatedByAccountId = actor,
+            CandidateVersion = promoted.Version,
+            ModelVersion = "ci-promoted-parent",
+            Rationale = "CI promoted parent.",
+            BaselineVersion = AllocationWeightProfile.Baseline.Version,
+            DatasetVersion = HennaAllocationLearningCapture.DatasetVersion,
+            SourceInstructionReference = "henna-program:" + programId,
+            PoolRial = 5000,
+            WeightsJson = JsonSerializer.Serialize(promoted),
+            SnapshotIdsJson = "[]",
+            SimulationJson = "{}",
+            CreatedAtUtc = now.AddHours(-2)
+        });
+        learning.RuntimeProfileEvents.Add(new()
+        {
+            Id = Guid.NewGuid(),
+            ProposalId = proposalId,
+            ActorAccountId = actor,
+            Sequence = 1,
+            EventType = "RUNTIME_PROMOTED",
+            EffectiveProposalId = proposalId,
+            EffectiveProfileVersion = promoted.Version,
+            EffectiveWeightsJson = JsonSerializer.Serialize(promoted),
+            PreviousProposalId = null,
+            PreviousProfileVersion = AllocationWeightProfile.Baseline.Version,
+            PreviousWeightsJson = JsonSerializer.Serialize(
+                AllocationWeightProfile.Baseline),
+            Reason = "CI runtime promotion.",
+            RecordedAtUtc = now.AddHours(-1)
+        });
+        await learning.SaveChangesAsync();
+
+        commerce.Documents.Add(new()
+        {
+            Id = programId,
+            OwnerId = actor,
+            Kind = "PROGRAM",
+            Body = JsonSerializer.Serialize(new CreditProgram(
+                programId, "CI promoted", "reviewed-promoted-source",
+                10_000, 5_000, now.AddDays(30), [category], null)),
+            Revision = 1
+        });
+        commerce.Journal.Add(new()
+        {
+            Id = Guid.NewGuid(),
+            ActorId = actor,
+            CommandId = Guid.NewGuid(),
+            ResourceId = Guid.NewGuid(),
+            Event = "ALLOCATE_CREDIT",
+            CreatedAtUtc = now,
+            Body = JsonSerializer.Serialize(new
+            {
+                input = new
+                {
+                    programId,
+                    poolRial = 5_000,
+                    beneficiaries = new[]
+                    {
+                        new
+                        {
+                            accountId = account,
+                            householdKey = household,
+                            geographicFactor = 1.1m,
+                            scores = new
+                            {
+                                health = 3,
+                                hardship = 1,
+                                age = 1,
+                                size = 1,
+                                care = 0,
+                                education = 0
+                            }
+                        }
+                    }
+                },
+                result = new
+                {
+                    grants = new[]
+                    {
+                        new CreditGrant(
+                            grantId, account, programId,
+                            5_000, 5_000, now.AddDays(30),
+                            [category], household)
+                    },
+                    unallocatedRial = 0,
+                    formulaVersion = promoted.Version,
+                    runtimeProposalId = proposalId
+                }
+            })
+        });
+        await commerce.SaveChangesAsync();
+
+        var capture = new HennaAllocationLearningCapture(
+            commerce, learning, new FixedClock(now));
+        Assert.Equal(1, await capture.CapturePendingAsync());
+        learning.ChangeTracker.Clear();
+
+        var snapshot = await learning.Assessments.AsNoTracking()
+            .SingleAsync(x => x.Id == grantId);
+        Assert.Equal(promoted.Version, snapshot.FormulaVersion);
+        Assert.Equal(proposalId, snapshot.RuntimeProposalId);
+
+        var lineage = await AllocationTrainingLineageResolver
+            .ResolveEligibleAsync(learning, new[] { snapshot });
+        var resolved = Assert.Single(lineage);
+        Assert.Equal(snapshot.Id, resolved.Key);
+        Assert.Equal(proposalId, resolved.Value.RuntimeProposalId);
+        Assert.Equal(promoted, resolved.Value.Baseline);
+    }
+
     private sealed class FixedClock(DateTimeOffset now) : IClock
     {
         public DateTimeOffset UtcNow => now;
