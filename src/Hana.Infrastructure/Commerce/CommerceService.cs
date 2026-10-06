@@ -11,7 +11,8 @@ using Hana.Infrastructure.Seller;
 using Microsoft.EntityFrameworkCore;
 namespace Hana.Infrastructure.Commerce;
 public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContext catalog,HanaSellerDbContext sellers,
- HanaGeographyDbContext geography,HanaIdentityDbContext identity,RoleAuthorizationService roles,IClock clock)
+ HanaGeographyDbContext geography,HanaIdentityDbContext identity,RoleAuthorizationService roles,IClock clock,
+ IAllocationRuntimeProfileProvider allocationRuntimeProfile)
 {
  private Guid transactionActor,transactionCommand;
  public async Task<JsonElement> ExecuteAsync(Guid actor,Guid command,string action,JsonElement input,CancellationToken ct=default)
@@ -208,15 +209,16 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  }
  private async Task<object> Allocate(Guid actor,JsonElement x,CancellationToken ct) {
   await Permission(actor,"FINANCE",ct);var program=await Get<CreditProgram>(Id(x,"programId"),"PROGRAM",ct);if(program.ExpiresAtUtc<=clock.UtcNow)throw new CommerceConflict("PROGRAM_EXPIRED");
+  var runtime=await allocationRuntimeProfile.CurrentAsync(ct);var profile=runtime.Profile;
   var beneficiaries=x.GetProperty("beneficiaries").EnumerateArray().ToArray();if(beneficiaries.Length is <1 or >500)throw new ArgumentException("Beneficiaries.");var pool=Money(x,"poolRial");if(pool>program.UnallocatedRial)throw new CommerceConflict("PROGRAM_FUNDS_INSUFFICIENT");
   var links=await All<CommerceHouseholdLink>("HOUSEHOLD",ct);
   var householdIds=new HashSet<Guid>();
   var existingGrants=await All<CreditGrant>("CREDIT",ct);
-  var weights=new List<(Guid Account,Guid Household,decimal Weight)>();foreach(var b in beneficiaries){var account=Id(b,"accountId");var household=Id(b,"householdKey");if(!links.Any(l=>l.AccountId==account&&l.HouseholdKey==household))throw new CommerceConflict("HOUSEHOLD_LINK_REQUIRED");if(!householdIds.Add(household))throw new ArgumentException("Duplicate household.");if(existingGrants.Any(g=>g.ProgramId==program.Id&&(g.AccountId==account||g.HouseholdKey==household)))throw new CommerceConflict("HOUSEHOLD_ALREADY_ALLOCATED");if(program.OrganizationId is Guid orgId && !(await All<OrganizationMembership>("MEMBERSHIP",ct)).Any(m=>m.OrganizationId==orgId&&m.AccountId==account&&m.Role=="BENEFICIARY"))throw new CommerceForbidden();if(!await identity.Accounts.AnyAsync(a=>a.Id==account,ct))throw new CommerceMissing();var s=b.GetProperty("scores");var scores=new HouseholdNeedScores(Count(s,"health",0,3),Count(s,"hardship",0,3),Count(s,"age",0,3),Count(s,"size",0,3),Count(s,"care",0,3),Count(s,"education",0,3));var g=b.GetProperty("geographicFactor").GetDecimal();if(g<=0)throw new ArgumentException("Geography.");weights.Add((account,household,NeedsBasedAllocationV1.CalculateHouseholdFactor(scores)*g));}
+  var weights=new List<(Guid Account,Guid Household,decimal Weight)>();foreach(var b in beneficiaries){var account=Id(b,"accountId");var household=Id(b,"householdKey");if(!links.Any(l=>l.AccountId==account&&l.HouseholdKey==household))throw new CommerceConflict("HOUSEHOLD_LINK_REQUIRED");if(!householdIds.Add(household))throw new ArgumentException("Duplicate household.");if(existingGrants.Any(g=>g.ProgramId==program.Id&&(g.AccountId==account||g.HouseholdKey==household)))throw new CommerceConflict("HOUSEHOLD_ALREADY_ALLOCATED");if(program.OrganizationId is Guid orgId && !(await All<OrganizationMembership>("MEMBERSHIP",ct)).Any(m=>m.OrganizationId==orgId&&m.AccountId==account&&m.Role=="BENEFICIARY"))throw new CommerceForbidden();if(!await identity.Accounts.AnyAsync(a=>a.Id==account,ct))throw new CommerceMissing();var s=b.GetProperty("scores");var scores=new HouseholdNeedScores(Count(s,"health",0,3),Count(s,"hardship",0,3),Count(s,"age",0,3),Count(s,"size",0,3),Count(s,"care",0,3),Count(s,"education",0,3));var g=b.GetProperty("geographicFactor").GetDecimal();if(g<=0)throw new ArgumentException("Geography.");weights.Add((account,household,profile.Factor(scores)*g));}
   if(weights.Select(w=>w.Account).Distinct().Count()!=weights.Count)throw new ArgumentException("Duplicate beneficiary.");var sum=weights.Sum(w=>w.Weight);long assigned=0;var grants=new List<CreditGrant>();
   foreach(var w in weights){var amount=checked((long)decimal.Floor(pool*w.Weight/sum));assigned=checked(assigned+amount);var grant=new CreditGrant(Guid.NewGuid(),w.Account,program.Id,amount,amount,program.ExpiresAtUtc,program.CategoryIds,w.Household);await Put(grant.Id,w.Account,"CREDIT",grant,ct);Transfer(grant.Id,"PROGRAM_AVAILABLE:"+program.Id,"HOUSEHOLD_CREDIT:"+grant.Id,amount,"SUPPORT");grants.Add(grant);}
   var owner=(await db.Documents.SingleAsync(d=>d.Id==program.Id,ct)).OwnerId;await Put(program.Id,owner,"PROGRAM",program with{UnallocatedRial=program.UnallocatedRial-assigned},ct);
-  return new{grants,unallocatedRial=pool-assigned,formulaVersion=AllocationWeightProfile.Baseline.Version};
+  return new{grants,unallocatedRial=pool-assigned,formulaVersion=profile.Version,runtimeProposalId=runtime.ProposalId};
  }
  private async Task<(CommerceDocument? Document,CashWallet Wallet)> Wallet(Guid actor,CancellationToken ct) {var d=await db.Documents.SingleOrDefaultAsync(d=>d.Kind=="WALLET"&&d.OwnerId==actor,ct);return(d,d==null?new(actor,0):JsonSerializer.Deserialize<CashWallet>(d.Body)!);}
  private async Task SetWallet(Guid actor,long balance,CancellationToken ct) {if(balance<0)throw new CommerceConflict("WALLET_FUNDS_INSUFFICIENT");var w=await Wallet(actor,ct);await Put(w.Document?.Id??Guid.NewGuid(),actor,"WALLET",new CashWallet(actor,balance),ct);}
