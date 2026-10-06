@@ -112,13 +112,14 @@ public sealed class HennaAllocationLearningCapture(
         var input = root.GetProperty("input");
         var result = root.GetProperty("result");
         var formulaVersion = result.GetProperty("formulaVersion").GetString();
-        if (formulaVersion is null ||
-            !string.Equals(
-                formulaVersion,
-                AllocationWeightProfile.Baseline.Version,
-                StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(formulaVersion) ||
+            formulaVersion.Length > 120)
             throw new InvalidOperationException(
-                "Allocation journal formula version is not training-eligible.");
+                "Allocation journal formula version is invalid.");
+        // Capture every first-party runtime version. Training eligibility is
+        // intentionally stricter and remains gated separately; a newly
+        // promoted profile must not silently enter training until lineage-aware
+        // training rules explicitly support it.
         var programId = input.GetProperty("programId").GetGuid();
 
         var programDocument = await commerce.Documents.AsNoTracking()
