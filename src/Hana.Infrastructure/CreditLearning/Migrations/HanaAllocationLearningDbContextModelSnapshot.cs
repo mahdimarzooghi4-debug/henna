@@ -250,6 +250,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.HasKey("Id");
             e.HasIndex("EvaluationFingerprint", "RecordedAtUtc", "Id");
             e.HasIndex("ProposalId", "EvaluationFingerprint").IsUnique();
+            e.HasIndex("RuntimeProposalId");
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
                 .WithMany().HasForeignKey("ProposalId").OnDelete(DeleteBehavior.Restrict).IsRequired();
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
