@@ -53,10 +53,32 @@ public sealed class AllocationTrainingWorkflowTests
             snapshotIds[i], new[] { .35m, .20m, .18m, .12m, .10m, .05m }[i % 6], "synthetic-rubric-1",
             i < 36 ? LearningPartition.Training : LearningPartition.Validation));
 
-        var automation = await new AllocationLearningAutomationPlanner(db).BuildAsync();
-        Assert.Equal("TRIGGER_POLICY_REQUIRED", automation.Status);
-        Assert.False(automation.TriggerPolicyConfigured);
+        var missingPolicy = new AllocationLearningAutomationPolicy(
+            Enabled: false,
+            AutomationAccountId: null,
+            MinimumTrainingLabels: null,
+            MinimumValidationLabels: null,
+            PoolRial: null);
+        var waitingAutomation = await new AllocationLearningAutomationPlanner(
+            db, missingPolicy).BuildAsync();
+        Assert.Equal("TRIGGER_POLICY_REQUIRED", waitingAutomation.Status);
+        Assert.False(waitingAutomation.TriggerPolicyConfigured);
+        Assert.False(waitingAutomation.AutomaticTrainingEnabled);
+        Assert.Contains("ENABLED", waitingAutomation.MissingPolicyRequirements);
+        Assert.Contains("POOL_RIAL", waitingAutomation.MissingPolicyRequirements);
+
+        var configuredPolicy = new AllocationLearningAutomationPolicy(
+            Enabled: true,
+            AutomationAccountId: actor,
+            MinimumTrainingLabels: 36,
+            MinimumValidationLabels: 12,
+            PoolRial: 4800);
+        var automation = await new AllocationLearningAutomationPlanner(
+            db, configuredPolicy).BuildAsync();
+        Assert.Equal("AUTOMATION_EXECUTOR_REQUIRED", automation.Status);
+        Assert.True(automation.TriggerPolicyConfigured);
         Assert.False(automation.AutomaticTrainingEnabled);
+        Assert.Empty(automation.MissingPolicyRequirements);
         var cohort = Assert.Single(automation.Cohorts);
         Assert.Equal(dataset, cohort.DatasetVersion);
         Assert.Equal(source, cohort.SourceInstructionReference);
@@ -67,6 +89,13 @@ public sealed class AllocationTrainingWorkflowTests
         Assert.Equal(12, cohort.DistinctValidationHouseholds);
         Assert.False(cohort.HouseholdPartitionOverlap);
         Assert.Equal(labels.OrderBy(x => x), cohort.LabelIds);
+        Assert.True(cohort.MeetsConfiguredTrigger);
+        Assert.NotNull(cohort.RequestId);
+        var sameRequest = AllocationLearningAutomationIdentity.RequestId(
+            cohort, configuredPolicy.PoolRial!.Value);
+        Assert.Equal(cohort.RequestId, sameRequest);
+        Assert.NotEqual(cohort.RequestId,
+            AllocationLearningAutomationIdentity.RequestId(cohort, 4801));
 
         var runKey = Guid.NewGuid();
         var run = await workflow.TrainAsync(
