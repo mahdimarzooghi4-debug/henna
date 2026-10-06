@@ -261,18 +261,17 @@ public sealed class AllocationRuntimePromotionService(
         CancellationToken ct)
     {
         var latest = await db.RuntimeProfileEvents.AsNoTracking()
-            .OrderByDescending(x => x.RecordedAtUtc)
-            .ThenByDescending(x => x.Id)
+            .OrderByDescending(x => x.Sequence)
             .FirstOrDefaultAsync(ct);
 
         if (latest is null)
-            return new(null, AllocationWeightProfile.Baseline);
+            return new(0L, null, AllocationWeightProfile.Baseline);
 
         var profile = JsonSerializer.Deserialize<AllocationWeightProfile>(
             latest.EffectiveWeightsJson)
             ?? throw new InvalidOperationException(
                 "Runtime allocation profile payload is invalid.");
-        return new(latest.EffectiveProposalId, profile);
+        return new(latest.Sequence, latest.EffectiveProposalId, profile);
     }
 
     private async Task RequireAdmin(Guid actor, CancellationToken ct)
