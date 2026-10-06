@@ -73,7 +73,9 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
             ids.Distinct().Count() != ids.Length || poolRial <= 0)
             throw new ArgumentException("Distinct reviewed labels and a positive pool are required.");
 
-        IDbContextTransaction? requestTransaction = null;
+        await using var requestTransaction = requestId is not null
+            ? await db.Database.BeginTransactionAsync(ct)
+            : null;
         if (requestId is { } retryId)
         {
             if (retryId == Guid.Empty)
@@ -82,7 +84,6 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
             // Cross-replica serialization belongs in PostgreSQL, not process
             // memory. Hold a transaction-scoped advisory lock for this
             // deterministic request identity before checking/inserting.
-            requestTransaction = await db.Database.BeginTransactionAsync(ct);
             await db.Database.ExecuteSqlInterpolatedAsync(
                 $"SELECT pg_advisory_xact_lock({TrainingRequestLockKey(retryId)})",
                 ct);
@@ -94,7 +95,6 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
                 if (!SameTrainingRequest(existing, requester, ids, poolRial))
                     throw new AllocationTrainingIdempotencyConflictException();
                 await requestTransaction.CommitAsync(ct);
-                await requestTransaction.DisposeAsync();
                 return existing;
             }
         }
@@ -139,26 +139,30 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
             db.TrainingRuns.Add(run);
             await db.SaveChangesAsync(ct);
             if (requestTransaction is not null)
-            {
                 await requestTransaction.CommitAsync(ct);
-                await requestTransaction.DisposeAsync();
-            }
             return run;
         }
         // Candidate, simulation and training audit commit together or all roll back.
         var ownsProposalTransaction = requestTransaction is null;
         var transaction = requestTransaction ??
             await db.Database.BeginTransactionAsync(ct);
-        run.ProposalId = await proposals.SubmitAsync(requester, learned.Candidate, run.ModelVersion,
+        try
+        {
+            run.ProposalId = await proposals.SubmitAsync(requester, learned.Candidate, run.ModelVersion,
             "Experimental learner: held-out error improved; requires independent human review.",
             snapshotIds, poolRial, rows[0].DatasetVersion, rows[0].SourceInstructionReference, ct);
-        run.Status = "PROPOSED";
-        run.MetricsJson = JsonSerializer.Serialize(learned.Metrics);
-        db.TrainingRuns.Add(run);
-        await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
-        await transaction.DisposeAsync();
-        return run;
+            run.Status = "PROPOSED";
+            run.MetricsJson = JsonSerializer.Serialize(learned.Metrics);
+            db.TrainingRuns.Add(run);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return run;
+        }
+        finally
+        {
+            if (ownsProposalTransaction)
+                await transaction.DisposeAsync();
+        }
     }
 
     private static long TrainingRequestLockKey(Guid requestId)
