@@ -9,6 +9,7 @@ import {
   clearSellerCommerceIntent,
   persistSellerCommerceIntent,
   restoreSellerCommerceIntent,
+  sellerCommerceIntentArea,
 } from "../apps/web-marketplace/lib/web-pending-staff-commerce.ts";
 
 const ID = "60000000-0000-4000-8000-000000000001";
@@ -239,6 +240,50 @@ test("seller pending intent survives reload and rejects overwrite or tamper", ()
     store.setItem(storageKey, JSON.stringify(tampered));
     assert.throws(() => restoreSellerCommerceIntent(),
       /not canonical|invalid/);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+
+test("seller business intent shares the same durable lock", () => {
+  const previousWindow = globalThis.window;
+  const store = memorySessionStorage();
+  Object.defineProperty(globalThis, "window", {
+    value: { sessionStorage: store },
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const offerIntent = staffIntent(null, "offers", {
+      offerId: ID,
+      productId: PRODUCT,
+      priceRial: 1900,
+      stock: 7,
+      expectedVersion: 2,
+    });
+    assert.equal(sellerCommerceIntentArea(offerIntent), "business");
+    persistSellerCommerceIntent(offerIntent);
+    assert.deepEqual(restoreSellerCommerceIntent(), offerIntent);
+
+    const orderIntent = staffIntent(null, `orders/${ORDER}/state`, {
+      expectedVersion: 1,
+      state: "PREPARING",
+    });
+    assert.equal(sellerCommerceIntentArea(orderIntent), "operations");
+    assert.throws(() => persistSellerCommerceIntent(orderIntent),
+      /must be resolved first/);
+
+    assert.equal(clearSellerCommerceIntent(offerIntent.key), true);
+    const ticketIntent = staffIntent(null, "tickets", {
+      subject: "پیگیری",
+      message: "درخواست بررسی",
+    });
+    persistSellerCommerceIntent(ticketIntent);
+    assert.equal(sellerCommerceIntentArea(
+      restoreSellerCommerceIntent()), "business");
+    assert.equal(clearSellerCommerceIntent(ticketIntent.key), true);
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
