@@ -39,6 +39,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationProposalConflictException) { return Results.Conflict(); }
             catch (AllocationTrainingIdempotencyConflictException) { return Results.Conflict(); }
             catch (AllocationAssessmentIdempotencyConflictException) { return Results.Conflict(); }
+            catch (AllocationPilotConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -242,6 +243,98 @@ internal static class AllocationLearningProposalEndpoints
             if (!found) return Results.NotFound();
             return Results.Ok(new { id, status = input.Decision, active = false });
         });
+
+        routes.MapGet("/{id:guid}/pilot", async (Guid id, IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            if (!await db.Proposals.AsNoTracking().AnyAsync(x => x.Id == id, ct))
+                return Results.NotFound();
+            var events = await db.PilotEvents.AsNoTracking()
+                .Where(x => x.ProposalId == id)
+                .OrderBy(x => x.RecordedAtUtc)
+                .ThenBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.EventType,
+                    x.ActorAccountId,
+                    x.ScopeReference,
+                    x.Reason,
+                    x.RecordedAtUtc
+                })
+                .ToListAsync(ct);
+            var status = events.LastOrDefault()?.EventType ?? "NOT_AUTHORIZED";
+            return Results.Ok(new
+            {
+                proposalId = id,
+                status,
+                events,
+                active = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapPost("/{id:guid}/pilot/authorize", async (
+            Guid id, AuthorizePilotRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var eventId = await services.GetRequiredService<AllocationPilotService>()
+                .AuthorizeAsync(
+                    id,
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.ScopeReference,
+                    input.Reason,
+                    ct);
+            return Results.Ok(new
+            {
+                id = eventId,
+                proposalId = id,
+                status = "PILOT_AUTHORIZED",
+                active = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapPost("/{id:guid}/pilot/complete", async (
+            Guid id, PilotDecisionRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var eventId = await services.GetRequiredService<AllocationPilotService>()
+                .CompleteAsync(
+                    id,
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.Reason,
+                    ct);
+            return Results.Ok(new
+            {
+                id = eventId,
+                proposalId = id,
+                status = "PILOT_COMPLETED",
+                active = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapPost("/{id:guid}/pilot/abort", async (
+            Guid id, PilotDecisionRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var eventId = await services.GetRequiredService<AllocationPilotService>()
+                .AbortAsync(
+                    id,
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.Reason,
+                    ct);
+            return Results.Ok(new
+            {
+                id = eventId,
+                proposalId = id,
+                status = "PILOT_ABORTED",
+                active = false,
+                runtimeApplied = false
+            });
+        });
     }
 }
 
@@ -251,6 +344,8 @@ internal sealed record SubmitProposalRequest(string CandidateVersion, string Mod
     ProposalWeights? Weights, Guid[]? SnapshotIds, long PoolRial, string DatasetVersion,
     string SourceInstructionReference);
 internal sealed record ReviewProposalRequest(string Decision, string Reason);
+internal sealed record AuthorizePilotRequest(string ScopeReference, string Reason);
+internal sealed record PilotDecisionRequest(string Reason);
 
 internal sealed record NeedLabelRequest(Guid SnapshotId, decimal NeedScore, string RubricVersion, int Partition);
 internal sealed record TrainAllocationRequest(Guid[]? LabelIds, long PoolRial, DateTimeOffset CutoffUtc);
