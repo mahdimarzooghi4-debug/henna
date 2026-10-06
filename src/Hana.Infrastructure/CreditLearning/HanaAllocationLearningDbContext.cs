@@ -48,6 +48,7 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
     public DbSet<AllocationProposalReviewRecord> Reviews => Set<AllocationProposalReviewRecord>();
     public DbSet<ReviewedNeedLabelRecord> NeedLabels => Set<ReviewedNeedLabelRecord>();
     public DbSet<AllocationTrainingRunRecord> TrainingRuns => Set<AllocationTrainingRunRecord>();
+    public DbSet<AllocationPilotEventRecord> PilotEvents => Set<AllocationPilotEventRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -138,6 +139,32 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.MetricsJson).HasColumnType("jsonb");
             e.HasIndex(x => new { x.RecordedAtUtc, x.Id });
             e.HasIndex(x => x.ProposalId).IsUnique();
+            e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationPilotEventRecord>(e =>
+        {
+            e.ToTable("pilot_events", t =>
+            {
+                t.HasCheckConstraint("ck_pilot_event_type",
+                    "\"EventType\" IN ('PILOT_AUTHORIZED','PILOT_COMPLETED','PILOT_ABORTED')");
+                t.HasCheckConstraint("ck_pilot_event_scope",
+                    "(\"EventType\" = 'PILOT_AUTHORIZED' AND \"ScopeReference\" IS NOT NULL AND length(btrim(\"ScopeReference\")) > 0) OR (\"EventType\" IN ('PILOT_COMPLETED','PILOT_ABORTED') AND \"ScopeReference\" IS NULL)");
+                t.HasCheckConstraint("ck_pilot_event_reason",
+                    "length(btrim(\"Reason\")) > 0");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.EventType).HasMaxLength(24).IsRequired();
+            e.Property(x => x.ScopeReference).HasMaxLength(240);
+            e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => new { x.ProposalId, x.RecordedAtUtc, x.Id });
+            e.HasIndex(x => x.ProposalId).IsUnique()
+                .HasFilter("\"EventType\" = 'PILOT_AUTHORIZED'")
+                .HasDatabaseName("UX_pilot_events_authorized");
+            e.HasIndex(x => x.ProposalId).IsUnique()
+                .HasFilter("\"EventType\" IN ('PILOT_COMPLETED','PILOT_ABORTED')")
+                .HasDatabaseName("UX_pilot_events_terminal");
             e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
