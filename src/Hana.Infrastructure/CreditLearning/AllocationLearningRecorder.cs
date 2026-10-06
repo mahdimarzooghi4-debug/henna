@@ -89,6 +89,11 @@ public sealed class AllocationLearningRecorder(HanaAllocationLearningDbContext d
             assessedAtUtc.Offset != TimeSpan.Zero || assessedAtUtc > now)
             throw new ArgumentException("A complete past UTC allocation snapshot is required.");
         var scores = assessment.Scores;
+        // PostgreSQL timestamptz persists microseconds. Canonicalize before
+        // both insert and replay comparison so an identical HTTP payload does
+        // not conflict only because .NET retained a sub-microsecond tick.
+        var persistedAssessedAtUtc = assessedAtUtc.AddTicks(
+            -(assessedAtUtc.Ticks % 10));
         return new AllocationAssessmentRecord {
             Id = snapshotId, HouseholdKey = assessment.HouseholdKey,
             RecordedByAccountId = recordedByAccountId, EvidenceReference = evidenceReference?.Trim(),
@@ -98,7 +103,7 @@ public sealed class AllocationLearningRecorder(HanaAllocationLearningDbContext d
             Health = scores.Health, Hardship = scores.EconomicHardship,
             Age = scores.AgeAndDependency, Size = scores.HouseholdSize,
             Care = scores.CareAndSupport, Education = scores.Education,
-            AssessedAtUtc = assessedAtUtc, RecordedAtUtc = now };
+            AssessedAtUtc = persistedAssessedAtUtc, RecordedAtUtc = now };
     }
 
     private static bool SameAssessment(
