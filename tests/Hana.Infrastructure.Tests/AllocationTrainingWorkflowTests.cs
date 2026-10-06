@@ -236,7 +236,7 @@ public sealed class AllocationTrainingWorkflowTests
         var unattributed = await db.Assessments.AsNoTracking()
             .SingleAsync(x => x.Id == unattributedResearchSnapshot);
         Assert.False(
-            AllocationTrainingWorkflow.IsTrainingEligibleFirstPartySnapshot(
+            AllocationTrainingLineageResolver.HasFirstPartyHennaProvenance(
                 unattributed));
         await Assert.ThrowsAsync<ArgumentException>(() =>
             workflow.ReviewNeedAsync(
