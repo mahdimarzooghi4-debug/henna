@@ -2,6 +2,7 @@ import { commerceId } from "../../../packages/buyer-commerce/contracts.ts";
 import type { StaffIntent } from "./staff-commerce";
 
 const storageKey = "hana.support.pending-operations.v1";
+const changeEvent = "hana:support-pending-operation-changed";
 const maxStored = 6000;
 
 function row(value: unknown): Record<string, unknown> | null {
@@ -26,7 +27,8 @@ function cleanReason(value: unknown) {
 
 export type SupportOperationDetails =
   | { kind: "return-sla" }
-  | { kind: "unavailability"; incidentId: string; reason: string };
+  | { kind: "unavailability"; incidentId: string; reason: string }
+  | { kind: "ticket-reply"; ticketId: string; reply: string };
 
 export function supportOperationIntentDetails(
   intent: Pick<StaffIntent, "path" | "body">,
@@ -42,15 +44,29 @@ export function supportOperationIntentDetails(
     return exactKeys(value, []) ? { kind: "return-sla" } : null;
 
   const match = /^returns\/([0-9a-f-]+)\/unavailability$/i.exec(intent.path);
-  if (!match || !commerceId(match[1]) ||
-      !exactKeys(value, ["reason"]) || !cleanReason(value.reason))
-    return null;
+  if (match && commerceId(match[1]) &&
+      exactKeys(value, ["reason"]) && cleanReason(value.reason))
+    return {
+      kind: "unavailability",
+      incidentId: match[1],
+      reason: value.reason as string,
+    };
 
-  return {
-    kind: "unavailability",
-    incidentId: match[1],
-    reason: value.reason as string,
-  };
+  const ticket = /^tickets\/([0-9a-f-]+)\/reply$/i.exec(intent.path);
+  if (ticket && commerceId(ticket[1]) &&
+      exactKeys(value, ["reply"]) &&
+      typeof value.reply === "string" &&
+      value.reply.length > 0 &&
+      value.reply.length <= 2000 &&
+      value.reply.trim() === value.reply &&
+      !/[\u0000-\u001f\u007f]/.test(value.reply))
+    return {
+      kind: "ticket-reply",
+      ticketId: ticket[1],
+      reply: value.reply,
+    };
+
+  return null;
 }
 
 function parse(raw: string | null): StaffIntent | null {
@@ -119,6 +135,7 @@ export function persistSupportOperationIntent(intent: StaffIntent) {
   if (record.length > maxStored)
     throw Error("Pending support operation is too large.");
   store.setItem(storageKey, record);
+  window.dispatchEvent(new Event(changeEvent));
 }
 
 export function clearSupportOperationIntent(expectedKey: string) {
@@ -133,5 +150,12 @@ export function clearSupportOperationIntent(expectedKey: string) {
   try { restored = parse(raw); } catch { return false; }
   if (!restored || restored.key !== expectedKey) return false;
   store.removeItem(storageKey);
+  window.dispatchEvent(new Event(changeEvent));
   return true;
+}
+
+export function subscribeSupportOperationIntent(listener: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(changeEvent, listener);
+  return () => window.removeEventListener(changeEvent, listener);
 }
