@@ -77,7 +77,7 @@ public sealed class AllocationTrainingWorkflowTests
         var configuredPlanner = new AllocationLearningAutomationPlanner(
             db, configuredPolicy);
         var automation = await configuredPlanner.BuildAsync();
-        Assert.Equal("AUTOMATION_EXECUTOR_REQUIRED", automation.Status);
+        Assert.Equal("AUTOMATION_ENABLED", automation.Status);
         Assert.True(automation.TriggerPolicyConfigured);
         Assert.True(automation.AutomaticTrainingEnabled);
         Assert.Empty(automation.MissingPolicyRequirements);
