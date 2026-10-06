@@ -112,7 +112,31 @@ public sealed class AllocationProposalApiTests
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(captureUrl, Capture(Guid.NewGuid(), now.AddDays(1)))).StatusCode);
         var captured = await creatorClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddMinutes(-1)));
         Assert.Equal(HttpStatusCode.Created, captured.StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await creatorClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddMinutes(-1)))).StatusCode);
+        var replayedCapture = await creatorClient.PostAsJsonAsync(
+            captureUrl, Capture(capturedId, now.AddMinutes(-1)));
+        Assert.Equal(HttpStatusCode.OK, replayedCapture.StatusCode);
+        using (var replayJson = JsonDocument.Parse(
+            await replayedCapture.Content.ReadAsStringAsync()))
+            Assert.True(replayJson.RootElement.GetProperty("replayed").GetBoolean());
+
+        var divergentCapture = new {
+            snapshotId = capturedId,
+            householdKey,
+            datasetVersion = dataset,
+            sourceInstructionReference = source,
+            evidenceReference = "approved-record-" + capturedId,
+            geographicFactor = 1.1m,
+            allocatedRial = 701L,
+            assessedAtUtc = now.AddMinutes(-1),
+            scores = new {
+                health = 1, hardship = 2, age = 0,
+                size = 1, care = 0, education = 3
+            }
+        };
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await creatorClient.PostAsJsonAsync(
+                captureUrl, divergentCapture)).StatusCode);
+
         var storedAssessment = await learning.Assessments.AsNoTracking().SingleAsync(x => x.Id == capturedId);
         Assert.Equal(creator, storedAssessment.RecordedByAccountId);
         Assert.Equal(householdKey, storedAssessment.HouseholdKey);
