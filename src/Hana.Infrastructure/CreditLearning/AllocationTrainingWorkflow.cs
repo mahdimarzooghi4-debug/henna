@@ -32,6 +32,9 @@ public sealed class AllocationTrainingRunRecord
 }
 
 /// <summary>Authorized experimental workflow. No live activation.</summary>
+public sealed class AllocationTrainingIdempotencyConflictException()
+    : Exception("Allocation training idempotency key was reused with different input.");
+
 public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext db,
     RoleAuthorizationService roles, IClock clock, AllocationProposalService proposals)
 {
@@ -60,15 +63,31 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
 
     public async Task<AllocationTrainingRunRecord> TrainAsync(Guid requester,
         IReadOnlyList<Guid> labelIds, long poolRial, DateTimeOffset cutoffUtc,
-        CancellationToken ct = default)
+        Guid? requestId = null, CancellationToken ct = default)
     {
         await RequireAdmin(requester, ct);
         ArgumentNullException.ThrowIfNull(labelIds);
         var ids = labelIds.OrderBy(x => x).ToArray();
         if (ids.Length is < 40 or > 500 || ids.Any(x => x == Guid.Empty) ||
-            ids.Distinct().Count() != ids.Length || poolRial <= 0 ||
-            cutoffUtc.Offset != TimeSpan.Zero || cutoffUtc > clock.UtcNow)
-            throw new ArgumentException("Distinct reviewed labels, a positive pool and past UTC cutoff are required.");
+            ids.Distinct().Count() != ids.Length || poolRial <= 0)
+            throw new ArgumentException("Distinct reviewed labels and a positive pool are required.");
+
+        if (requestId is { } retryId)
+        {
+            if (retryId == Guid.Empty)
+                throw new ArgumentException("Training request id is invalid.");
+            var existing = await db.TrainingRuns.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == retryId, ct);
+            if (existing is not null)
+            {
+                if (!SameTrainingRequest(existing, requester, ids, poolRial))
+                    throw new AllocationTrainingIdempotencyConflictException();
+                return existing;
+            }
+        }
+
+        if (cutoffUtc.Offset != TimeSpan.Zero || cutoffUtc > clock.UtcNow)
+            throw new ArgumentException("A past UTC cutoff is required.");
         var labels = await db.NeedLabels.AsNoTracking().Where(x => ids.Contains(x.Id))
             .OrderBy(x => x.Id).ToArrayAsync(ct);
         if (labels.Length != ids.Length || labels.Any(x => x.ReviewedAtUtc > cutoffUtc))
@@ -92,7 +111,7 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
                 x.ReviewerAccountId, x.RubricVersion, x.ReviewedAtUtc, (LearningPartition)x.Partition);
         }).ToArray();
         // The run freezes actual labels/features, including their review identities and IDs.
-        var run = new AllocationTrainingRunRecord { Id = Guid.NewGuid(), RequestedByAccountId = requester,
+        var run = new AllocationTrainingRunRecord { Id = requestId ?? Guid.NewGuid(), RequestedByAccountId = requester,
             DatasetVersion = rows[0].DatasetVersion, ModelVersion = ExperimentalAllocationWeightLearner.ModelVersion,
             InputsJson = JsonSerializer.Serialize(new { engine = "HENNA_OWNED_LOCAL",
                 networkModelApi = false, dataOrigin = "HENNA_FIRST_PARTY",
@@ -119,6 +138,34 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return run;
+    }
+
+    private static bool SameTrainingRequest(
+        AllocationTrainingRunRecord existing,
+        Guid requester,
+        IReadOnlyList<Guid> sortedLabelIds,
+        long poolRial)
+    {
+        if (existing.RequestedByAccountId != requester) return false;
+        try
+        {
+            using var inputs = JsonDocument.Parse(existing.InputsJson);
+            var root = inputs.RootElement;
+            if (!root.TryGetProperty("poolRial", out var storedPool) ||
+                storedPool.GetInt64() != poolRial ||
+                !root.TryGetProperty("labelIds", out var storedLabels) ||
+                storedLabels.ValueKind != JsonValueKind.Array)
+                return false;
+            var ids = storedLabels.EnumerateArray()
+                .Select(x => x.GetGuid())
+                .OrderBy(x => x)
+                .ToArray();
+            return ids.SequenceEqual(sortedLabelIds);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     public static bool IsTrainingEligibleFirstPartySnapshot(
