@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   adminSellerId,
@@ -13,6 +13,13 @@ import {
   type AdminSellerIntent,
   type AdminSellerListItem,
 } from "../../../lib/admin-sellers";
+import {
+  adminSellerPendingDetails,
+  adminSellerSuccessMessage,
+  clearAdminSellerIntent,
+  persistAdminSellerIntent,
+  restoreAdminSellerIntent,
+} from "../../../lib/web-pending-admin-sellers";
 
 type ListState =
   | { kind: "loading" }
@@ -64,11 +71,13 @@ export default function AdminSellersPage() {
   const [suspensionReason, setSuspensionReason] = useState("");
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [storageFailure, setStorageFailure] = useState<string | null>(null);
+  const [pendingIntent, setPendingIntent] =
+    useState<AdminSellerIntent | null>(null);
   const [uncertain, setUncertain] = useState<{
     path: string;
     decision?: "APPROVED" | "NEEDS_INFORMATION" | "REJECTED";
   } | null>(null);
-  const intents = useRef<Record<string, AdminSellerIntent | null>>({});
 
   const loadList = useCallback(async (
     requestedPage: number,
@@ -142,12 +151,35 @@ export default function AdminSellersPage() {
   }, []);
 
   const selectApplication = useCallback((id: string) => {
-    if (!adminSellerId(id)) return;
+    if (!adminSellerId(id) || pendingIntent) return;
     setSelected(id);
     setNotice("");
     setUncertain(null);
     setSuspensionReason("");
     void loadDetail(id);
+  }, [loadDetail, pendingIntent]);
+
+  useEffect(() => {
+    try {
+      const restored = restoreAdminSellerIntent();
+      if (!restored) return;
+      const details = adminSellerPendingDetails(restored);
+      if (!details) throw Error();
+      setPendingIntent(restored);
+      setSelected(details.applicationId);
+      setUncertain({
+        path: restored.path,
+        decision: details.kind === "review" ? details.decision : undefined,
+      });
+      void loadDetail(details.applicationId);
+      if (details.kind === "review") setReason(details.reason);
+      if (details.kind === "suspend") setSuspensionReason(details.reason);
+      setNotice(
+        "یک عملیات فروشنده نتیجه قطعی ندارد. همان کلید و بدنه برای تکرار امن پس از reload بازیابی شد.");
+    } catch {
+      setStorageFailure(
+        "وضعیت retry امن عملیات فروشنده قابل اعتماد نیست. mutation جدید برای جلوگیری از ارسال تکراری متوقف شد.");
+    }
   }, [loadDetail]);
 
   useEffect(() => {
@@ -169,19 +201,20 @@ export default function AdminSellersPage() {
       selectApplication(list.items[0].id);
   }, [list, selectApplication, selected]);
 
-  const mutate = useCallback(async (
-    path: string,
-    input: unknown,
-    decision?: "APPROVED" | "NEEDS_INFORMATION" | "REJECTED",
+  const sendIntent = useCallback(async (
+    intent: AdminSellerIntent,
   ) => {
-    if (!selected) return;
-    const intent = adminSellerIntent(intents.current[path] ?? null, path, input);
-    intents.current[path] = intent;
-    setBusyPath(path);
+    const details = adminSellerPendingDetails(intent);
+    if (!details) {
+      setStorageFailure(
+        "retry ذخیره‌شده عملیات فروشنده معتبر نیست. mutation جدید متوقف شد.");
+      return;
+    }
+    setBusyPath(intent.path);
     setNotice("");
     try {
       const response = await fetch(
-        "/api/admin/seller-applications/" + path,
+        "/api/admin/seller-applications/" + intent.path,
         {
           method: "POST",
           body: intent.body,
@@ -197,33 +230,76 @@ export default function AdminSellersPage() {
       const raw = await json(response);
       const parsed = parseAdminSellerMutation({
         ...(raw as Record<string, unknown>),
-        applicationId: selected,
-      }, selected);
+        applicationId: details.applicationId,
+      }, details.applicationId);
       if (!parsed)
         throw new AdminSellerError(503, "پاسخ عملیات قابل اعتماد نیست.");
-      intents.current[path] = null;
+      if (!clearAdminSellerIntent(intent.key)) {
+        setStorageFailure(
+          "پاسخ سرور دریافت شد، اما پاک‌سازی retry محلی تأیید نشد. mutation جدید متوقف است.");
+        return;
+      }
+      setPendingIntent(null);
       setUncertain(null);
-      setNotice(path.endsWith("/activate")
-        ? "نقش فروشنده و دسترسی پنل با پاسخ واقعی سرور فعال شد."
-        : "نتیجه بررسی و نسخه جدید پرونده در سرور ثبت شد.");
-      await Promise.all([loadDetail(selected), loadList(page)]);
+      setNotice(adminSellerSuccessMessage(details));
+      await Promise.all([
+        loadDetail(details.applicationId),
+        loadList(page),
+      ]);
     } catch (error) {
       if (error instanceof AdminSellerError && error.status === 503) {
-        setUncertain({ path, decision });
+        setPendingIntent(intent);
+        setUncertain({
+          path: intent.path,
+          decision: details.kind === "review"
+            ? details.decision : undefined,
+        });
         setNotice(
-          "نتیجه این عملیات هنوز قطعی نیست؛ فقط همان عملیات با همان بدنه و کلید قابل تکرار است.");
+          "نتیجه این عملیات هنوز قطعی نیست. همان action، کلید و بدنه پس از reload نیز برای تکرار امن حفظ شده‌اند.");
       } else {
-        intents.current[path] = null;
+        if (!clearAdminSellerIntent(intent.key)) {
+          setStorageFailure(
+            "نتیجه سرور قطعی است، اما پاک‌سازی retry محلی تأیید نشد. mutation جدید متوقف است.");
+          return;
+        }
+        setPendingIntent(null);
         setUncertain(null);
         setNotice(error instanceof Error
           ? error.message : "ثبت عملیات ممکن نشد.");
         if (error instanceof AdminSellerError && error.status === 409)
-          await Promise.all([loadDetail(selected), loadList(page)]);
+          await Promise.all([
+            loadDetail(details.applicationId),
+            loadList(page),
+          ]);
       }
     } finally {
       setBusyPath(null);
     }
-  }, [loadDetail, loadList, page, selected]);
+  }, [loadDetail, loadList, page]);
+
+  const mutate = useCallback(async (
+    path: string,
+    input: unknown,
+    decision?: "APPROVED" | "NEEDS_INFORMATION" | "REJECTED",
+  ) => {
+    if (!selected || pendingIntent) return;
+    const intent = adminSellerIntent(null, path, input);
+    try {
+      persistAdminSellerIntent(intent);
+    } catch {
+      setStorageFailure(
+        "ذخیره retry امن عملیات فروشنده تأیید نشد؛ هیچ mutationی به سرور ارسال نشد.");
+      return;
+    }
+    setPendingIntent(intent);
+    setUncertain({ path, decision });
+    await sendIntent(intent);
+  }, [pendingIntent, selected, sendIntent]);
+
+  const retryPending = useCallback(async () => {
+    if (!pendingIntent) return;
+    await sendIntent(pendingIntent);
+  }, [pendingIntent, sendIntent]);
 
   const review = (
     decision: "APPROVED" | "NEEDS_INFORMATION" | "REJECTED",
@@ -267,6 +343,18 @@ export default function AdminSellersPage() {
     );
   };
 
+  if (storageFailure) {
+    return (
+      <main className="admin-sellers admin-sellers--gate">
+        <img src="/hana-logo.png" alt="حنا" className="admin-sellers__logo" />
+        <section className="admin-sellers__panel">
+          <h1>مدیریت درخواست‌های فروشندگی</h1>
+          <p role="alert">{storageFailure}</p>
+        </section>
+      </main>
+    );
+  }
+
   if (list.kind === "denied") {
     return (
       <main className="admin-sellers admin-sellers--gate">
@@ -307,6 +395,15 @@ export default function AdminSellersPage() {
       {notice && <p className="form-status admin-sellers__notice" role="status">
         {notice}
       </p>}
+      {pendingIntent && (
+        <button type="button" className="primary-button"
+          disabled={busyPath !== null}
+          onClick={() => void retryPending()}>
+          {busyPath !== null
+            ? "در حال تکرار امن…"
+            : "تکرار امن عملیات فروشنده قبلی"}
+        </button>
+      )}
 
       <div className="admin-sellers__grid">
         <section className="admin-sellers__panel">
@@ -338,7 +435,7 @@ export default function AdminSellersPage() {
                   className={selected === item.id
                     ? "admin-sellers__item admin-sellers__item--selected"
                     : "admin-sellers__item"}
-                  disabled={busyPath !== null}
+                  disabled={busyPath !== null || pendingIntent !== null}
                   onClick={() => selectApplication(item.id)}>
                   <strong>{item.businessName ?? item.storeName}</strong>
                   <span>{reviewLabel[item.reviewStatus]}</span>
@@ -348,7 +445,7 @@ export default function AdminSellersPage() {
             </div>
           )}
           <div className="seller-commerce__pager">
-            <button type="button" disabled={page === 1 || busyPath !== null}
+            <button type="button" disabled={page === 1 || busyPath !== null || pendingIntent !== null}
               onClick={() => {
                 setSelected(null);
                 setPage(value => Math.max(1, value - 1));
@@ -357,7 +454,7 @@ export default function AdminSellersPage() {
             </button>
             <button type="button"
               disabled={list.kind !== "ready" ||
-                list.items.length < 20 || busyPath !== null}
+                list.items.length < 20 || busyPath !== null || pendingIntent !== null}
               onClick={() => {
                 setSelected(null);
                 setPage(value => value + 1);
@@ -441,7 +538,7 @@ export default function AdminSellersPage() {
                     <textarea className="field__input support-incident__reason"
                       value={reason}
                       maxLength={500}
-                      disabled={reviewFrozen || busyPath !== null}
+                      disabled={reviewFrozen || busyPath !== null || pendingIntent !== null}
                       onChange={event => setReason(event.target.value)}
                       placeholder="نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید." />
                   </label>
@@ -455,7 +552,7 @@ export default function AdminSellersPage() {
                         className={decision === "REJECTED"
                           ? "support-incident__reject"
                           : "primary-button"}
-                        disabled={!reason.trim() || busyPath !== null ||
+                        disabled={!reason.trim() || busyPath !== null || pendingIntent !== null ||
                           (reviewFrozen &&
                             uncertain?.decision !== decision)}
                         onClick={() => review(decision)}>
@@ -478,7 +575,7 @@ export default function AdminSellersPage() {
                     این اقدام نقش SELLER را در همان تراکنش فعال‌سازی ثبت می‌کند.
                   </p>
                   <button type="button" className="primary-button"
-                    disabled={busyPath !== null}
+                    disabled={busyPath !== null || pendingIntent !== null}
                     onClick={activate}>
                     {busyPath?.endsWith("/activate")
                       ? "در حال فعال‌سازی…"
@@ -506,14 +603,14 @@ export default function AdminSellersPage() {
                       <textarea className="field__input support-incident__reason"
                         maxLength={500}
                         value={suspensionReason}
-                        disabled={suspendFrozen || busyPath !== null}
+                        disabled={suspendFrozen || busyPath !== null || pendingIntent !== null}
                         onChange={event =>
                           setSuspensionReason(event.target.value)}
                         placeholder="دلیل عملیاتی یا انطباقی تعلیق را ثبت کنید." />
                     </label>
                     <button type="button"
                       className="support-incident__reject"
-                      disabled={!suspensionReason.trim() || busyPath !== null}
+                      disabled={!suspensionReason.trim() || busyPath !== null || pendingIntent !== null}
                       onClick={suspend}>
                       {busyPath?.endsWith("/suspend")
                         ? "در حال تعلیق…"
@@ -540,7 +637,7 @@ export default function AdminSellersPage() {
                     سابقه تعلیق را نگه می‌دارد.
                   </p>
                   <button type="button" className="primary-button"
-                    disabled={busyPath !== null}
+                    disabled={busyPath !== null || pendingIntent !== null}
                     onClick={restore}>
                     {busyPath?.endsWith("/restore")
                       ? "در حال بازگردانی…"
