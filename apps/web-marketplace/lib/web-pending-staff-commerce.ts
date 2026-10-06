@@ -2,6 +2,7 @@ import { commerceId } from "../../../packages/buyer-commerce/contracts.ts";
 import type { StaffIntent } from "./staff-commerce";
 
 const storageKey = "hana.seller.commerce-operations.pending.v1";
+const changeEvent = "hana:seller-pending-commerce-changed";
 const maxStored = 12000;
 
 function row(value: unknown): Record<string, unknown> | null {
@@ -169,6 +170,7 @@ export function persistSellerCommerceIntent(intent: StaffIntent) {
   if (record.length > maxStored)
     throw Error("Pending seller commerce state is too large.");
   store.setItem(storageKey, record);
+  window.dispatchEvent(new Event(changeEvent));
 }
 
 export function clearSellerCommerceIntent(expectedKey: string) {
@@ -183,5 +185,12 @@ export function clearSellerCommerceIntent(expectedKey: string) {
   try { restored = parse(raw); } catch { return false; }
   if (!restored || restored.key !== expectedKey) return false;
   store.removeItem(storageKey);
+  window.dispatchEvent(new Event(changeEvent));
   return true;
+}
+
+export function subscribeSellerCommerceIntent(listener: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(changeEvent, listener);
+  return () => window.removeEventListener(changeEvent, listener);
 }
