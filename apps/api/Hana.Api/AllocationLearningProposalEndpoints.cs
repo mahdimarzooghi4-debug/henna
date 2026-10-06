@@ -135,8 +135,18 @@ internal static class AllocationLearningProposalEndpoints
             AllocationRetentionPurgeRequest input, HttpContext http,
             IServiceProvider services, CancellationToken ct) =>
         {
+            var keyHeader = http.Request.Headers["Idempotency-Key"].ToString();
+            if (!Guid.TryParse(keyHeader, out var requestId) ||
+                requestId == Guid.Empty)
+                return Results.ValidationProblem(
+                    new Dictionary<string, string[]>
+                    {
+                        ["idempotencyKey"] = ["کلید حذف retention معتبر نیست."]
+                    });
+
             var result = await services.GetRequiredService<AllocationRetentionService>()
                 .PurgeAsync(
+                    requestId,
                     (Guid)http.Items["AllocationReviewerAccount"]!,
                     input.CutoffUtc,
                     input.PreviewDigest,
