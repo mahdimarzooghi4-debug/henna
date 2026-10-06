@@ -23,6 +23,7 @@ import {
   clearSupportOperationIntent,
   persistSupportOperationIntent,
   restoreSupportOperationIntent,
+  subscribeSupportOperationIntent,
   supportOperationIntentDetails,
 } from "../../lib/web-pending-support-operations";
 
@@ -121,13 +122,24 @@ export function SupportCommerceView() {
           });
         setNotice(details.kind === "return-sla"
           ? "یک ارزیابی SLA نتیجه قطعی ندارد. همان کلید و بدنه برای تکرار امن بازیابی شد."
-          : "یک تأیید عدم حضور نتیجه قطعی ندارد. همان دلیل، کلید و بدنه برای تکرار امن بازیابی شد.");
+          : details.kind === "unavailability"
+            ? "یک تأیید عدم حضور نتیجه قطعی ندارد. همان دلیل، کلید و بدنه برای تکرار امن بازیابی شد."
+            : "یک پاسخ تیکت نتیجه قطعی ندارد. تا تعیین تکلیف همان پاسخ، سایر mutationهای پشتیبانی قفل هستند.");
       }
     } catch {
       setStorageFailure(
         "وضعیت retry امن پشتیبانی قابل اعتماد نیست. عملیات جدید برای جلوگیری از ارسال تکراری متوقف شد.");
     }
   }, []);
+
+  useEffect(() => subscribeSupportOperationIntent(() => {
+    try {
+      setPendingOperationIntent(restoreSupportOperationIntent());
+    } catch {
+      setStorageFailure(
+        "وضعیت retry امن پشتیبانی قابل اعتماد نیست. عملیات جدید برای جلوگیری از ارسال تکراری متوقف شد.");
+    }
+  }), []);
 
   useEffect(() => {
     const controller = new AbortController();
