@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SupportTickets } from "./support-tickets";
 import {
   StaffCommerceError,
@@ -19,6 +19,12 @@ import {
   restoreSupportDecisionIntent,
   supportDecisionIntentDetails,
 } from "../../lib/web-pending-support-decision";
+import {
+  clearSupportOperationIntent,
+  persistSupportOperationIntent,
+  restoreSupportOperationIntent,
+  supportOperationIntentDetails,
+} from "../../lib/web-pending-support-operations";
 
 type Load =
   | { kind: "loading" }
@@ -58,11 +64,12 @@ export function SupportCommerceView() {
   const [storageFailure, setStorageFailure] = useState<string | null>(null);
   const [pendingDecisionIntent, setPendingDecisionIntent] =
     useState<StaffIntent | null>(null);
+  const [pendingOperationIntent, setPendingOperationIntent] =
+    useState<StaffIntent | null>(null);
   const [uncertain, setUncertain] = useState<Record<string, boolean>>({});
   const [uncertainDecision, setUncertainDecision] =
     useState<Record<string, "APPROVE" | "REJECT" | undefined>>({});
   const [results, setResults] = useState<Record<string, DecisionResult>>({});
-  const intents = useRef<Record<string, StaffIntent | null>>({});
 
   const load = useCallback(async (
     requestedPage: number,
@@ -86,19 +93,39 @@ export function SupportCommerceView() {
 
   useEffect(() => {
     try {
-      const restored = restoreSupportDecisionIntent();
-      if (!restored) return;
-      const details = supportDecisionIntentDetails(restored);
-      if (!details) throw Error();
-      setPendingDecisionIntent(restored);
-      setReasons({ [details.incidentId]: details.reason });
-      setUncertain({ [restored.path]: true });
-      setUncertainDecision({ [details.incidentId]: details.decision });
-      setNotice(
-        "یک تصمیم پشتیبانی نتیجه قطعی ندارد. همان دلیل، تصمیم و کلید برای تکرار امن بازیابی شد.");
+      const restoredDecision = restoreSupportDecisionIntent();
+      const restoredOperation = restoreSupportOperationIntent();
+      if (restoredDecision && restoredOperation)
+        throw Error("Multiple unresolved support mutations.");
+
+      if (restoredDecision) {
+        const details = supportDecisionIntentDetails(restoredDecision);
+        if (!details) throw Error();
+        setPendingDecisionIntent(restoredDecision);
+        setReasons({ [details.incidentId]: details.reason });
+        setUncertain({ [restoredDecision.path]: true });
+        setUncertainDecision({ [details.incidentId]: details.decision });
+        setNotice(
+          "یک تصمیم پشتیبانی نتیجه قطعی ندارد. همان دلیل، تصمیم و کلید برای تکرار امن بازیابی شد.");
+        return;
+      }
+
+      if (restoredOperation) {
+        const details = supportOperationIntentDetails(restoredOperation);
+        if (!details) throw Error();
+        setPendingOperationIntent(restoredOperation);
+        setUncertain({ [restoredOperation.path]: true });
+        if (details.kind === "unavailability")
+          setUnavailabilityReasons({
+            [details.incidentId]: details.reason,
+          });
+        setNotice(details.kind === "return-sla"
+          ? "یک ارزیابی SLA نتیجه قطعی ندارد. همان کلید و بدنه برای تکرار امن بازیابی شد."
+          : "یک تأیید عدم حضور نتیجه قطعی ندارد. همان دلیل، کلید و بدنه برای تکرار امن بازیابی شد.");
+      }
     } catch {
       setStorageFailure(
-        "وضعیت retry امن تصمیم پشتیبانی قابل اعتماد نیست. ثبت تصمیم جدید متوقف شد.");
+        "وضعیت retry امن پشتیبانی قابل اعتماد نیست. عملیات جدید برای جلوگیری از ارسال تکراری متوقف شد.");
     }
   }, []);
 
@@ -116,6 +143,12 @@ export function SupportCommerceView() {
     const reason = reasons[incident.id]?.trim() ?? "";
     if (!reason) {
       setNotice("ثبت دلیل برای تصمیم پشتیبانی الزامی است.");
+      return;
+    }
+
+    if (pendingOperationIntent) {
+      setNotice(
+        "ابتدا عملیات پشتیبانی قبلی تعیین تکلیف شود؛ ثبت تصمیم جدید مجاز نیست.");
       return;
     }
 
@@ -194,7 +227,7 @@ export function SupportCommerceView() {
     } finally {
       setBusyPath(null);
     }
-  }, [load, page, pendingDecisionIntent, reasons]);
+  }, [load, page, pendingDecisionIntent, pendingOperationIntent, reasons]);
 
   const verifyUnavailable = useCallback(async (incident: StaffIncident) => {
     const path = `returns/${incident.id}/unavailability`;
@@ -203,8 +236,32 @@ export function SupportCommerceView() {
       setNotice("ثبت دلیل مستند عدم حضور خریدار الزامی است.");
       return;
     }
-    const intent = staffIntent(intents.current[path] ?? null, path, { reason });
-    intents.current[path] = intent;
+    if (pendingDecisionIntent) {
+      setNotice(
+        "ابتدا تصمیم پشتیبانی قبلی تعیین تکلیف شود؛ تأیید عدم حضور جدید مجاز نیست.");
+      return;
+    }
+
+    const restored = pendingOperationIntent
+      ? supportOperationIntentDetails(pendingOperationIntent)
+      : null;
+    if (pendingOperationIntent &&
+        (!restored || restored.kind !== "unavailability" ||
+          restored.incidentId !== incident.id || restored.reason !== reason)) {
+      setNotice(
+        "ابتدا عملیات پشتیبانی قبلی با همان ورودی تعیین تکلیف شود.");
+      return;
+    }
+
+    const intent = staffIntent(pendingOperationIntent, path, { reason });
+    try {
+      persistSupportOperationIntent(intent);
+    } catch {
+      setStorageFailure(
+        "ذخیره retry امن پشتیبانی تأیید نشد؛ هیچ عملیاتی به سرور ارسال نشد.");
+      return;
+    }
+    setPendingOperationIntent(intent);
     setBusyPath(path);
     setNotice(null);
     try {
@@ -212,7 +269,12 @@ export function SupportCommerceView() {
         incident: StaffIncident;
         reason: string;
       }>("support", intent);
-      intents.current[path] = null;
+      if (!clearSupportOperationIntent(intent.key)) {
+        setStorageFailure(
+          "پاسخ سرور دریافت شد، اما پاک‌سازی retry پشتیبانی تأیید نشد. عملیات جدید متوقف است.");
+        return;
+      }
+      setPendingOperationIntent(null);
       setUncertain(current => ({ ...current, [path]: false }));
       setResults(current => ({
         ...current,
@@ -228,9 +290,14 @@ export function SupportCommerceView() {
       if (error instanceof StaffCommerceError && error.status === 503) {
         setUncertain(current => ({ ...current, [path]: true }));
         setNotice(
-          "نتیجه ثبت عدم حضور هنوز قطعی نیست؛ همان دلیل و کلید برای تکرار امن حفظ شده‌اند.");
+          "نتیجه ثبت عدم حضور هنوز قطعی نیست. همان دلیل، کلید و بدنه پس از reload نیز برای تکرار امن حفظ شده‌اند.");
       } else {
-        intents.current[path] = null;
+        if (!clearSupportOperationIntent(intent.key)) {
+          setStorageFailure(
+            "نتیجه سرور قطعی است، اما پاک‌سازی retry پشتیبانی تأیید نشد. عملیات جدید متوقف است.");
+          return;
+        }
+        setPendingOperationIntent(null);
         setUncertain(current => ({ ...current, [path]: false }));
         setNotice(message(error));
         if (error instanceof StaffCommerceError && error.status === 409)
@@ -239,18 +306,49 @@ export function SupportCommerceView() {
     } finally {
       setBusyPath(null);
     }
-  }, [load, page, unavailabilityReasons]);
+  }, [
+    load, page, pendingDecisionIntent, pendingOperationIntent,
+    unavailabilityReasons,
+  ]);
 
   const assessReturnSla = useCallback(async () => {
     const path = "return-sla";
-    const intent = staffIntent(intents.current[path] ?? null, path, {});
-    intents.current[path] = intent;
+    if (pendingDecisionIntent) {
+      setNotice(
+        "ابتدا تصمیم پشتیبانی قبلی تعیین تکلیف شود؛ ارزیابی SLA جدید مجاز نیست.");
+      return;
+    }
+
+    const restored = pendingOperationIntent
+      ? supportOperationIntentDetails(pendingOperationIntent)
+      : null;
+    if (pendingOperationIntent &&
+        (!restored || restored.kind !== "return-sla")) {
+      setNotice(
+        "ابتدا عملیات پشتیبانی قبلی تعیین تکلیف شود؛ ارزیابی SLA جدید مجاز نیست.");
+      return;
+    }
+
+    const intent = staffIntent(pendingOperationIntent, path, {});
+    try {
+      persistSupportOperationIntent(intent);
+    } catch {
+      setStorageFailure(
+        "ذخیره retry امن پشتیبانی تأیید نشد؛ هیچ عملیاتی به سرور ارسال نشد.");
+      return;
+    }
+    setPendingOperationIntent(intent);
     setBusyPath(path);
     setNotice(null);
     try {
       const response = await staffPost<{ assessed: number }>(
         "support", intent);
-      intents.current[path] = null;
+      if (!clearSupportOperationIntent(intent.key)) {
+        setStorageFailure(
+          "پاسخ سرور دریافت شد، اما پاک‌سازی retry پشتیبانی تأیید نشد. عملیات جدید متوقف است.");
+        return;
+      }
+      setPendingOperationIntent(null);
       setUncertain(current => ({ ...current, [path]: false }));
       setNotice(
         "SLA مرجوعی ارزیابی شد؛ " +
@@ -261,9 +359,14 @@ export function SupportCommerceView() {
       if (error instanceof StaffCommerceError && error.status === 503) {
         setUncertain(current => ({ ...current, [path]: true }));
         setNotice(
-          "نتیجه ارزیابی SLA هنوز قطعی نیست؛ همان ارزیابی با همان کلید برای تکرار امن حفظ شده است.");
+          "نتیجه ارزیابی SLA هنوز قطعی نیست. همان کلید و بدنه پس از reload نیز برای تکرار امن حفظ شده‌اند.");
       } else {
-        intents.current[path] = null;
+        if (!clearSupportOperationIntent(intent.key)) {
+          setStorageFailure(
+            "نتیجه سرور قطعی است، اما پاک‌سازی retry پشتیبانی تأیید نشد. عملیات جدید متوقف است.");
+          return;
+        }
+        setPendingOperationIntent(null);
         setUncertain(current => ({ ...current, [path]: false }));
         setNotice(message(error));
         if (error instanceof StaffCommerceError && error.status === 409)
@@ -272,10 +375,13 @@ export function SupportCommerceView() {
     } finally {
       setBusyPath(null);
     }
-  }, [load, page]);
+  }, [load, page, pendingDecisionIntent, pendingOperationIntent]);
 
   const pendingDecision = pendingDecisionIntent
     ? supportDecisionIntentDetails(pendingDecisionIntent)
+    : null;
+  const pendingOperation = pendingOperationIntent
+    ? supportOperationIntentDetails(pendingOperationIntent)
     : null;
 
   if (storageFailure) {
@@ -316,11 +422,13 @@ export function SupportCommerceView() {
         </div>
         <div className="support-panel__header-actions">
           <button type="button" className="seller-commerce__refresh"
-            disabled={busyPath !== null || pendingDecisionIntent !== null}
+            disabled={busyPath !== null || pendingDecisionIntent !== null ||
+              (pendingOperationIntent !== null &&
+                pendingOperation?.kind !== "return-sla")}
             onClick={() => void assessReturnSla()}>
             {busyPath === "return-sla"
               ? "در حال ارزیابی…"
-              : uncertain["return-sla"]
+              : pendingOperation?.kind === "return-sla"
                 ? "تکرار امن ارزیابی SLA"
                 : "ارزیابی SLA مرجوعی"}
           </button>
@@ -354,7 +462,8 @@ export function SupportCommerceView() {
         {state.kind === "ready" && state.items.map(incident => {
           const path = `incidents/${incident.id}/decision`;
           const pendingHere = pendingDecision?.incidentId === incident.id;
-          const frozen = pendingDecisionIntent !== null;
+          const frozen = pendingDecisionIntent !== null ||
+            pendingOperationIntent !== null;
           const frozenDecision = pendingHere
             ? pendingDecision?.decision
             : uncertainDecision[incident.id];
@@ -453,7 +562,10 @@ export function SupportCommerceView() {
                     incident.collectedAtUtc === null && (() => {
                       const verifyPath =
                         `returns/${incident.id}/unavailability`;
-                      const verifyFrozen = Boolean(uncertain[verifyPath]);
+                      const pendingVerifyHere =
+                        pendingOperation?.kind === "unavailability" &&
+                        pendingOperation.incidentId === incident.id;
+                      const verifyFrozen = pendingOperationIntent !== null;
                       return (
                         <div className="support-unavailability">
                           <p>
@@ -468,7 +580,8 @@ export function SupportCommerceView() {
                               className="field__input support-incident__reason"
                               maxLength={1000}
                               value={unavailabilityReasons[incident.id] ?? ""}
-                              disabled={verifyFrozen || busyPath !== null}
+                              disabled={verifyFrozen || busyPath !== null ||
+                                pendingDecisionIntent !== null}
                               onChange={event =>
                                 setUnavailabilityReasons(current => ({
                                   ...current,
@@ -478,11 +591,13 @@ export function SupportCommerceView() {
                           </label>
                           <button type="button" className="primary-button"
                             disabled={!unavailabilityReasons[incident.id]?.trim() ||
-                              busyPath !== null}
+                              busyPath !== null || pendingDecisionIntent !== null ||
+                              (pendingOperationIntent !== null &&
+                                !pendingVerifyHere)}
                             onClick={() => void verifyUnavailable(incident)}>
                             {busyPath === verifyPath
                               ? "در حال ثبت…"
-                              : verifyFrozen
+                              : pendingVerifyHere
                                 ? "تکرار امن همان تأیید"
                                 : "تأیید عدم حضور خریدار"}
                           </button>
