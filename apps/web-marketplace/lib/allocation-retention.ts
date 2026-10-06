@@ -42,10 +42,12 @@ const object = (value: unknown): Record<string, unknown> | null =>
     ? value as Record<string, unknown> : null;
 const count = (value: unknown) =>
   typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+const utcTimestampPattern =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|\+00:00)$/;
 const iso = (value: unknown): value is string =>
   typeof value === "string" &&
-  !Number.isNaN(Date.parse(value)) &&
-  new Date(value).toISOString() === value;
+  utcTimestampPattern.test(value) &&
+  !Number.isNaN(Date.parse(value));
 
 export function parseAllocationRetentionPreview(
   value: unknown,
