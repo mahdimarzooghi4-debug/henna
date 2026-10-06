@@ -1,3 +1,5 @@
+import { validAllocationRetentionCutoff } from "./allocation-retention.ts";
+
 const storageKey = "hana.admin.allocation-retention.pending.v1";
 const maxStored = 12000;
 const uuidV4 =
@@ -27,12 +29,6 @@ function exactKeys(value: Record<string, unknown>, expected: string[]) {
     actual.every((key, index) => key === wanted[index]);
 }
 
-function canonicalIso(value: unknown): value is string {
-  return typeof value === "string" &&
-    !Number.isNaN(Date.parse(value)) &&
-    new Date(value).toISOString() === value;
-}
-
 export function allocationRetentionDetails(
   intent: Pick<AllocationRetentionIntent, "body">,
 ): AllocationRetentionDetails | null {
@@ -42,7 +38,8 @@ export function allocationRetentionDetails(
   const value = row(parsed);
   if (!value ||
       !exactKeys(value, ["cutoffUtc", "previewDigest", "reason"]) ||
-      !canonicalIso(value.cutoffUtc) ||
+      typeof value.cutoffUtc !== "string" ||
+      !validAllocationRetentionCutoff(value.cutoffUtc) ||
       typeof value.previewDigest !== "string" ||
       !digest.test(value.previewDigest) ||
       typeof value.reason !== "string" ||
