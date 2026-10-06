@@ -54,7 +54,7 @@ public sealed class AllocationProposalApiTests
                 DatasetVersion = dataset, SourceInstructionReference = source,
                 GeographicFactor = 1m, Health = id == snapshots[0] ? 3 : 0,
                 Hardship = id == snapshots[1] ? 3 : 0, AllocatedRial = 500,
-                AssessedAtUtc = now.AddDays(-1), RecordedAtUtc = now });
+                AssessedAtUtc = now.AddMinutes(-2), RecordedAtUtc = now });
         await learning.SaveChangesAsync();
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -107,12 +107,12 @@ public sealed class AllocationProposalApiTests
             recordedByAccountId = ordinary // Cannot override server identity.
         };
         var captureUrl = research + "/assessments";
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddDays(-1)))).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddDays(-1)))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddMinutes(-1)))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddMinutes(-1)))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(captureUrl, Capture(Guid.NewGuid(), now.AddDays(1)))).StatusCode);
-        var captured = await creatorClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddDays(-1)));
+        var captured = await creatorClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddMinutes(-1)));
         Assert.Equal(HttpStatusCode.Created, captured.StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await creatorClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddDays(-1)))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await creatorClient.PostAsJsonAsync(captureUrl, Capture(capturedId, now.AddMinutes(-1)))).StatusCode);
         var storedAssessment = await learning.Assessments.AsNoTracking().SingleAsync(x => x.Id == capturedId);
         Assert.Equal(creator, storedAssessment.RecordedByAccountId);
         Assert.Equal(householdKey, storedAssessment.HouseholdKey);
@@ -125,9 +125,9 @@ public sealed class AllocationProposalApiTests
         {
             var rows = assessmentsJson.RootElement.GetProperty("items")
                 .EnumerateArray().ToArray();
-            Assert.True(rows.Single(x => x.GetProperty("Id").GetGuid() ==
+            Assert.True(rows.Single(x => x.GetProperty("id").GetGuid() ==
                 snapshots[0]).GetProperty("trainingEligible").GetBoolean());
-            Assert.False(rows.Single(x => x.GetProperty("Id").GetGuid() ==
+            Assert.False(rows.Single(x => x.GetProperty("id").GetGuid() ==
                 capturedId).GetProperty("trainingEligible").GetBoolean());
         }
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(captureUrl, new {
