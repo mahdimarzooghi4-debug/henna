@@ -36,6 +36,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.HasKey("Id");
             e.HasIndex("FormulaVersion", "RuntimeProposalId");
             e.HasIndex("HouseholdKey", "AssessedAtUtc");
+            e.HasIndex("RuntimeProposalId");
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
                 .WithMany().HasForeignKey("RuntimeProposalId")
                 .OnDelete(DeleteBehavior.Restrict);
