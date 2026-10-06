@@ -103,6 +103,7 @@ public sealed class CommerceTests
  var allocation=await Command(admin,"ALLOCATE_CREDIT",new{programId=program.GetProperty("Id").GetGuid(),poolRial=10000,beneficiaries=new[]{new{accountId=buyer,householdKey=households[buyer],geographicFactor=1m,scores=new{health=1,hardship=1,age=1,size=1,care=1,education=1}}}});
  Assert.Equal(AllocationWeightProfile.Baseline.Version,allocation.GetProperty("formulaVersion").GetString());
  Assert.Equal(JsonValueKind.Null,allocation.GetProperty("runtimeProposalId").ValueKind);
+ Assert.Equal(0L,allocation.GetProperty("runtimeProfileSequence").GetInt64());
  var creditId=allocation.GetProperty("grants")[0].GetProperty("Id").GetGuid();
 
  var promotedProfile=new AllocationWeightProfile("ci-promoted-profile-v1",.35m,.20m,.18m,.12m,.10m,.05m);
@@ -116,6 +117,7 @@ public sealed class CommerceTests
   new{accountId=stranger,householdKey=households[stranger],geographicFactor=1m,scores=new{health=0,hardship=3,age=0,size=0,care=0,education=0}}}});
  Assert.Equal(promotedProfile.Version,promotedAllocation.GetProperty("formulaVersion").GetString());
  Assert.Equal(promotedProposalId,promotedAllocation.GetProperty("runtimeProposalId").GetGuid());
+ Assert.Equal(7L,promotedAllocation.GetProperty("runtimeProfileSequence").GetInt64());
  var promotedGrants=promotedAllocation.GetProperty("grants").EnumerateArray().ToArray();
  Assert.Equal(5164,promotedGrants[0].GetProperty("GrantedRial").GetInt64());
  Assert.Equal(4835,promotedGrants[1].GetProperty("GrantedRial").GetInt64());
