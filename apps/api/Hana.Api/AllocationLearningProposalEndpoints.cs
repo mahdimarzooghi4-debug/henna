@@ -44,6 +44,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationProductionControlConflictException) { return Results.Conflict(); }
             catch (AllocationRuntimePromotionConflictException) { return Results.Conflict(); }
             catch (AllocationRetentionConflictException) { return Results.Conflict(); }
+            catch (AllocationModelBenchmarkConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -250,6 +251,97 @@ internal static class AllocationLearningProposalEndpoints
                     x.RecordedAtUtc
                 })
                 .ToListAsync(ct);
+            return Results.Ok(new { items, page = p, active = false });
+        });
+
+        routes.MapPost("/research/benchmarks", async (
+            AllocationModelBenchmarkRequest input,
+            HttpContext http,
+            IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            if (input.EvaluationLabelIds is null)
+                return Results.BadRequest();
+            var row = await services
+                .GetRequiredService<AllocationModelBenchmarkService>()
+                .EvaluateAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.ProposalId,
+                    input.EvaluationLabelIds,
+                    input.CutoffUtc,
+                    ct);
+            var metrics = JsonSerializer.Deserialize<AllocationModelBenchmarkMetrics>(
+                row.MetricsJson)
+                ?? throw new InvalidOperationException(
+                    "Stored benchmark metrics are invalid.");
+            return Results.Ok(new
+            {
+                row.Id,
+                row.ProposalId,
+                row.ProtocolVersion,
+                row.ModelVersion,
+                row.BaselineVersion,
+                row.CandidateVersion,
+                row.DatasetVersion,
+                row.SourceInstructionReference,
+                row.RuntimeProposalId,
+                row.RuntimeProfileSequence,
+                row.EvaluationFingerprint,
+                metrics,
+                row.CutoffUtc,
+                row.RecordedAtUtc,
+                winner = (string?)null,
+                approved = false,
+                active = false
+            });
+        });
+
+        routes.MapGet("/research/benchmarks", async (
+            string? evaluationFingerprint,
+            int? page,
+            IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            if (evaluationFingerprint is not null &&
+                (evaluationFingerprint.Length != 64 ||
+                 evaluationFingerprint.Any(x => !Uri.IsHexDigit(x))))
+                return Results.BadRequest();
+
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var query = db.ModelBenchmarks.AsNoTracking().AsQueryable();
+            if (evaluationFingerprint is not null)
+                query = query.Where(x =>
+                    x.EvaluationFingerprint == evaluationFingerprint.ToLower());
+
+            var rows = await query
+                .OrderByDescending(x => x.RecordedAtUtc)
+                .ThenBy(x => x.Id)
+                .Skip((p - 1) * 20)
+                .Take(20)
+                .ToListAsync(ct);
+            var items = rows.Select(x => new
+            {
+                x.Id,
+                x.ProposalId,
+                x.ProtocolVersion,
+                x.ModelVersion,
+                x.BaselineVersion,
+                x.CandidateVersion,
+                x.DatasetVersion,
+                x.SourceInstructionReference,
+                x.RuntimeProposalId,
+                x.RuntimeProfileSequence,
+                x.EvaluationFingerprint,
+                metrics = JsonSerializer.Deserialize<AllocationModelBenchmarkMetrics>(
+                    x.MetricsJson),
+                x.CutoffUtc,
+                x.RecordedAtUtc,
+                winner = (string?)null,
+                approved = false,
+                active = false
+            }).ToList();
             return Results.Ok(new { items, page = p, active = false });
         });
 
@@ -650,6 +742,10 @@ internal sealed record AllocationRetentionPurgeRequest(
     DateTimeOffset CutoffUtc,
     string PreviewDigest,
     string Reason);
+internal sealed record AllocationModelBenchmarkRequest(
+    Guid ProposalId,
+    Guid[]? EvaluationLabelIds,
+    DateTimeOffset CutoffUtc);
 internal sealed record ProductionControlRequest(string Reason);
 internal sealed record RuntimePromotionRequest(string Reason);
 
