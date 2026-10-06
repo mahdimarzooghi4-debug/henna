@@ -58,6 +58,45 @@ public sealed class AllocationLearningStorageTests
             0m, null, null, null, null, AllocationOutcomeEvidence.Administrative)));
     }
 
+    [Fact]
+    public async Task AttributedAssessmentReplayIsIdempotentButDivergentReuseConflicts()
+    {
+        var connection = Environment.GetEnvironmentVariable("ConnectionStrings__IdentityDb");
+        if (string.IsNullOrWhiteSpace(connection)) return;
+        await using var db = CreateContext(connection);
+        await db.Database.MigrateAsync();
+
+        var now = new DateTimeOffset(2026, 10, 6, 8, 0, 0, TimeSpan.Zero);
+        var writer = new AllocationLearningRecorder(db, new FixedClock(now));
+        var snapshotId = Guid.NewGuid();
+        var household = Guid.NewGuid();
+        var reviewer = Guid.NewGuid();
+        var assessment = new AllocationLearningCase(
+            household, new(1, 2, 0, 1, 0, 3), 1.1m);
+
+        Assert.True(await writer.RecordAssessmentIdempotentlyAsync(
+            snapshotId, assessment, AllocationWeightProfile.Baseline.Version,
+            "research-dataset", "research-source", 700,
+            now.AddMinutes(-5), recordedByAccountId: reviewer,
+            evidenceReference: "evidence-ref"));
+
+        Assert.False(await writer.RecordAssessmentIdempotentlyAsync(
+            snapshotId, assessment, AllocationWeightProfile.Baseline.Version,
+            "research-dataset", "research-source", 700,
+            now.AddMinutes(-5), recordedByAccountId: reviewer,
+            evidenceReference: "evidence-ref"));
+
+        Assert.Single(await db.Assessments.AsNoTracking()
+            .Where(x => x.Id == snapshotId).ToListAsync());
+
+        await Assert.ThrowsAsync<AllocationAssessmentIdempotencyConflictException>(
+            () => writer.RecordAssessmentIdempotentlyAsync(
+                snapshotId, assessment, AllocationWeightProfile.Baseline.Version,
+                "research-dataset", "research-source", 701,
+                now.AddMinutes(-5), recordedByAccountId: reviewer,
+                evidenceReference: "evidence-ref"));
+    }
+
     private static HanaAllocationLearningDbContext CreateContext(string connection) => new(
         new DbContextOptionsBuilder<HanaAllocationLearningDbContext>().UseNpgsql(connection,
             pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "allocation_learning")).Options);
