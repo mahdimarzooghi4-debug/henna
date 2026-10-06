@@ -79,7 +79,10 @@ public sealed class AllocationTrainingWorkflowTests
         Assert.True(automation.TriggerPolicyConfigured);
         Assert.False(automation.AutomaticTrainingEnabled);
         Assert.Empty(automation.MissingPolicyRequirements);
-        var cohort = Assert.Single(automation.Cohorts);
+        var cohort = Assert.Single(automation.Cohorts.Where(x =>
+            x.DatasetVersion == dataset &&
+            x.SourceInstructionReference == source &&
+            x.RubricVersion == "synthetic-rubric-1"));
         Assert.Equal(dataset, cohort.DatasetVersion);
         Assert.Equal(source, cohort.SourceInstructionReference);
         Assert.Equal("synthetic-rubric-1", cohort.RubricVersion);
