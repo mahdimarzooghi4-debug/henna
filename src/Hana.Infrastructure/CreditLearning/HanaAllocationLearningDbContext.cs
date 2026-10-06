@@ -59,6 +59,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
         Set<AllocationRuntimeProfileEventRecord>();
     public DbSet<AllocationRetentionEventRecord> RetentionEvents =>
         Set<AllocationRetentionEventRecord>();
+    public DbSet<AllocationModelBenchmarkRecord> ModelBenchmarks =>
+        Set<AllocationModelBenchmarkRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -265,6 +267,31 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
             e.HasIndex(x => new { x.RecordedAtUtc, x.Id });
             e.HasIndex(x => new { x.CutoffUtc, x.Id });
+        });
+        model.Entity<AllocationModelBenchmarkRecord>(e =>
+        {
+            e.ToTable("model_benchmarks", t =>
+            {
+                t.HasCheckConstraint("ck_model_benchmark_fingerprint",
+                    "length(\"EvaluationFingerprint\") = 64");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProtocolVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ModelVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.BaselineVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.CandidateVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.DatasetVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceInstructionReference).HasMaxLength(120).IsRequired();
+            e.Property(x => x.EvaluationLabelIdsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.EvaluationFingerprint).HasMaxLength(64).IsRequired();
+            e.Property(x => x.MetricsJson).HasColumnType("jsonb").IsRequired();
+            e.HasIndex(x => new { x.EvaluationFingerprint, x.RecordedAtUtc, x.Id });
+            e.HasIndex(x => new { x.ProposalId, x.EvaluationFingerprint }).IsUnique();
+            e.HasOne<AllocationProposalRecord>().WithMany()
+                .HasForeignKey(x => x.ProposalId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<AllocationProposalRecord>().WithMany()
+                .HasForeignKey(x => x.RuntimeProposalId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 
