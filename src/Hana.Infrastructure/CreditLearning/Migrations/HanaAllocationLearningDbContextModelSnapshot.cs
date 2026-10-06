@@ -164,6 +164,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
             e.Property<Guid>("ProposalId").HasColumnType("uuid");
             e.Property<Guid>("ActorAccountId").HasColumnType("uuid");
+            e.Property<long>("Sequence").HasColumnType("bigint");
             e.Property<string>("EventType").IsRequired().HasMaxLength(32).HasColumnType("character varying(32)");
             e.Property<Guid?>("EffectiveProposalId").HasColumnType("uuid");
             e.Property<string>("EffectiveProfileVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
@@ -174,6 +175,8 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<string>("Reason").IsRequired().HasMaxLength(2000).HasColumnType("character varying(2000)");
             e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
+            e.HasIndex("Sequence").IsUnique()
+                .HasDatabaseName("UX_runtime_profile_sequence");
             e.HasIndex("RecordedAtUtc", "Id");
             e.HasIndex("ProposalId").IsUnique()
                 .HasFilter("\"EventType\" = 'RUNTIME_PROMOTED'")
