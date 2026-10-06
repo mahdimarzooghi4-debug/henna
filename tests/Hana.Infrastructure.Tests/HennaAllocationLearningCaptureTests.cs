@@ -515,7 +515,8 @@ public sealed class HennaAllocationLearningCaptureTests
                     },
                     unallocatedRial = 0,
                     formulaVersion = promoted.Version,
-                    runtimeProposalId = proposalId
+                    runtimeProposalId = proposalId,
+                    runtimeProfileSequence = 1L
                 }
             })
         });
@@ -530,12 +531,14 @@ public sealed class HennaAllocationLearningCaptureTests
             .SingleAsync(x => x.Id == grantId);
         Assert.Equal(promoted.Version, snapshot.FormulaVersion);
         Assert.Equal(proposalId, snapshot.RuntimeProposalId);
+        Assert.Equal(1L, snapshot.RuntimeProfileSequence);
 
         var lineage = await AllocationTrainingLineageResolver
             .ResolveEligibleAsync(learning, new[] { snapshot });
         var resolved = Assert.Single(lineage);
         Assert.Equal(snapshot.Id, resolved.Key);
         Assert.Equal(proposalId, resolved.Value.RuntimeProposalId);
+        Assert.Equal(1L, resolved.Value.RuntimeProfileSequence);
         Assert.Equal(promoted, resolved.Value.Baseline);
     }
 
