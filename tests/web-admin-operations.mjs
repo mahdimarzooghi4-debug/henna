@@ -8,6 +8,11 @@ import {
   parseAdminResourcePage,
   parseAdminSummary,
 } from "../apps/web-marketplace/lib/admin-operations.ts";
+import {
+  clearAdminOperationIntent,
+  persistAdminOperationIntent,
+  restoreAdminOperationIntent,
+} from "../apps/web-marketplace/lib/web-pending-admin-operations.ts";
 
 const ID="70000000-0000-4000-8000-000000000001";
 const ID2="70000000-0000-4000-8000-000000000002";
@@ -162,4 +167,56 @@ test("ambiguous admin retry preserves exact key and body",()=>{
     accountId:ID2,permission:"SUPPORT",active:false,
   });
   assert.notEqual(changed.key,first.key);
+});
+
+
+function memorySessionStorage() {
+  const values=new Map();
+  return {
+    get length(){return values.size;},
+    clear(){values.clear();},
+    getItem(key){return values.has(key)?values.get(key):null;},
+    key(index){return [...values.keys()][index]??null;},
+    removeItem(key){values.delete(key);},
+    setItem(key,value){values.set(String(key),String(value));},
+  };
+}
+
+test("admin pending operation survives reload and rejects overwrite or tamper",()=>{
+  const previousWindow=globalThis.window;
+  const store=memorySessionStorage();
+  Object.defineProperty(globalThis,"window",{
+    value:{sessionStorage:store},configurable:true,writable:true,
+  });
+  try{
+    const first=adminOperationIntent(null,"SET_STAFF_PERMISSION",{
+      accountId:ID2,permission:"SUPPORT",active:false,
+    });
+    persistAdminOperationIntent(first);
+    assert.deepEqual(restoreAdminOperationIntent(),first);
+
+    const changed=adminOperationIntent(null,"SET_STAFF_PERMISSION",{
+      accountId:ID2,permission:"SUPPORT",active:true,
+    });
+    assert.throws(()=>persistAdminOperationIntent(changed),
+      /must be resolved first/);
+    assert.equal(clearAdminOperationIntent(changed.key),false);
+    assert.deepEqual(restoreAdminOperationIntent(),first);
+
+    const storageKey=store.key(0);
+    const tampered=JSON.parse(store.getItem(storageKey));
+    tampered.body=JSON.stringify({
+      accountId:ID2,permission:"OWNER",active:false,
+    });
+    store.setItem(storageKey,JSON.stringify(tampered));
+    assert.throws(()=>restoreAdminOperationIntent(),/invalid/);
+
+    store.clear();
+    persistAdminOperationIntent(first);
+    assert.equal(clearAdminOperationIntent(first.key),true);
+    assert.equal(restoreAdminOperationIntent(),null);
+  }finally{
+    if(previousWindow===undefined)delete globalThis.window;
+    else globalThis.window=previousWindow;
+  }
 });
