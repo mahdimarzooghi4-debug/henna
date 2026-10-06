@@ -20,6 +20,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<Guid?>("RecordedByAccountId").HasColumnType("uuid");
             e.Property<string>("EvidenceReference").HasMaxLength(240).HasColumnType("character varying(240)");
             e.Property<string>("FormulaVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<Guid?>("RuntimeProposalId").HasColumnType("uuid");
             e.Property<string>("DatasetVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
             e.Property<string>("SourceInstructionReference").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
             e.Property<decimal>("GeographicFactor").HasColumnType("numeric");
@@ -33,7 +34,11 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<DateTimeOffset>("AssessedAtUtc").HasColumnType("timestamp with time zone");
             e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
+            e.HasIndex("FormulaVersion", "RuntimeProposalId");
             e.HasIndex("HouseholdKey", "AssessedAtUtc");
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
+                .WithMany().HasForeignKey("RuntimeProposalId")
+                .OnDelete(DeleteBehavior.Restrict);
             e.ToTable("assessments", "allocation_learning", t =>
             {
                 t.HasCheckConstraint("ck_assessment_scores", "\"Health\" BETWEEN 0 AND 3 AND \"Hardship\" BETWEEN 0 AND 3 AND \"Age\" BETWEEN 0 AND 3 AND \"Size\" BETWEEN 0 AND 3 AND \"Care\" BETWEEN 0 AND 3 AND \"Education\" BETWEEN 0 AND 3");
