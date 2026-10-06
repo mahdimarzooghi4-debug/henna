@@ -44,8 +44,8 @@ public sealed class AllocationTrainingWorkflowTests
             var feature = i % 6;
             var scores = Enumerable.Range(0, 6).Select(k => k == feature ? 3 : 0).ToArray();
             db.Assessments.Add(new() { Id = snapshotIds[i], HouseholdKey = Guid.NewGuid(),
-                FormulaVersion = AllocationWeightProfile.Baseline.Version, DatasetVersion = dataset,
-                SourceInstructionReference = source, GeographicFactor = 1m, Health = scores[0],
+                FormulaVersion = AllocationWeightProfile.Baseline.Version, RuntimeProfileSequence = 0,
+                DatasetVersion = dataset, SourceInstructionReference = source, GeographicFactor = 1m, Health = scores[0],
                 Hardship = scores[1], Age = scores[2], Size = scores[3], Care = scores[4], Education = scores[5],
                 AllocatedRial = 100, AssessedAtUtc = clock.UtcNow.AddDays(-1), RecordedAtUtc = clock.UtcNow });
         }
@@ -329,11 +329,12 @@ public sealed class AllocationTrainingWorkflowTests
         var runtimeProposalId = Guid.NewGuid();
         var promotedAt = clock.UtcNow.AddHours(-2);
 
+        long runtimeSequence;
         await using (var tx = await db.Database.BeginTransactionAsync())
         {
             await db.Database.ExecuteSqlRawAsync(
                 "SELECT pg_advisory_xact_lock(48710261005)");
-            var sequence = checked((await db.RuntimeProfileEvents
+            runtimeSequence = checked((await db.RuntimeProfileEvents
                 .Select(x => (long?)x.Sequence).MaxAsync() ?? 0L) + 1L);
             db.Proposals.Add(new()
             {
@@ -356,7 +357,7 @@ public sealed class AllocationTrainingWorkflowTests
                 Id = Guid.NewGuid(),
                 ProposalId = runtimeProposalId,
                 ActorAccountId = actor,
-                Sequence = sequence,
+                Sequence = runtimeSequence,
                 EventType = "RUNTIME_PROMOTED",
                 EffectiveProposalId = runtimeProposalId,
                 EffectiveProfileVersion = promoted.Version,
@@ -386,6 +387,7 @@ public sealed class AllocationTrainingWorkflowTests
                 HouseholdKey = Guid.NewGuid(),
                 FormulaVersion = promoted.Version,
                 RuntimeProposalId = runtimeProposalId,
+                RuntimeProfileSequence = runtimeSequence,
                 DatasetVersion = dataset,
                 SourceInstructionReference = source,
                 GeographicFactor = 1m,
@@ -425,6 +427,7 @@ public sealed class AllocationTrainingWorkflowTests
         var cohort = Assert.Single(plan.Cohorts.Where(x =>
             x.FormulaVersion == promoted.Version &&
             x.RuntimeProposalId == runtimeProposalId &&
+            x.RuntimeProfileSequence == runtimeSequence &&
             x.SourceInstructionReference == source &&
             x.RubricVersion == "iterative-rubric-v1"));
         Assert.True(cohort.MeetsConfiguredTrigger);
@@ -450,6 +453,9 @@ public sealed class AllocationTrainingWorkflowTests
         Assert.Equal(runtimeProposalId,
             frozen.RootElement.GetProperty("baselineRuntimeProposalId")
                 .GetGuid());
+        Assert.Equal(runtimeSequence,
+            frozen.RootElement.GetProperty("baselineRuntimeProfileSequence")
+                .GetInt64());
     }
 
 }
