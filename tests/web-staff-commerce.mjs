@@ -196,6 +196,7 @@ test("ambiguous retry intent preserves key and body until input changes", () => 
 
 function memorySessionStorage() {
   const values = new Map();
+  const events = new EventTarget();
   return {
     get length() { return values.size; },
     clear() { values.clear(); },
@@ -203,6 +204,9 @@ function memorySessionStorage() {
     key(index) { return [...values.keys()][index] ?? null; },
     removeItem(key) { values.delete(key); },
     setItem(key, value) { values.set(String(key), String(value)); },
+    addEventListener: events.addEventListener.bind(events),
+    removeEventListener: events.removeEventListener.bind(events),
+    dispatchEvent: events.dispatchEvent.bind(events),
   };
 }
 
@@ -210,7 +214,7 @@ test("seller pending intent survives reload and rejects overwrite or tamper", ()
   const previousWindow = globalThis.window;
   const store = memorySessionStorage();
   Object.defineProperty(globalThis, "window", {
-    value: { sessionStorage: store },
+    value: Object.assign({ sessionStorage: store }, store),
     configurable: true,
     writable: true,
   });
@@ -251,7 +255,7 @@ test("seller business intent shares the same durable lock", () => {
   const previousWindow = globalThis.window;
   const store = memorySessionStorage();
   Object.defineProperty(globalThis, "window", {
-    value: { sessionStorage: store },
+    value: Object.assign({ sessionStorage: store }, store),
     configurable: true,
     writable: true,
   });
