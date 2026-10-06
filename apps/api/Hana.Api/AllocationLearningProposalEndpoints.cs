@@ -41,6 +41,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationAssessmentIdempotencyConflictException) { return Results.Conflict(); }
             catch (AllocationPilotConflictException) { return Results.Conflict(); }
             catch (AllocationProductionControlConflictException) { return Results.Conflict(); }
+            catch (AllocationRuntimePromotionConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -417,6 +418,73 @@ internal static class AllocationLearningProposalEndpoints
                 runtimeApplied = false
             });
         });
+
+        routes.MapGet("/runtime-profile", async (
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var current = await services
+                .GetRequiredService<IAllocationRuntimeProfileProvider>()
+                .CurrentAsync(ct);
+            return Results.Ok(new
+            {
+                proposalId = current.ProposalId,
+                profileVersion = current.Profile.Version,
+                weights = current.Profile,
+                active = current.ProposalId is not null,
+                runtimeApplied = current.ProposalId is not null
+            });
+        });
+
+        routes.MapPost("/{id:guid}/runtime/promote", async (
+            Guid id, RuntimePromotionRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var eventId = await services
+                .GetRequiredService<AllocationRuntimePromotionService>()
+                .PromoteAsync(
+                    id,
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.Reason,
+                    ct);
+            var current = await services
+                .GetRequiredService<IAllocationRuntimeProfileProvider>()
+                .CurrentAsync(ct);
+            return Results.Ok(new
+            {
+                id = eventId,
+                proposalId = id,
+                status = "RUNTIME_PROMOTED",
+                profileVersion = current.Profile.Version,
+                active = current.ProposalId == id,
+                runtimeApplied = current.ProposalId == id
+            });
+        });
+
+        routes.MapPost("/{id:guid}/runtime/rollback", async (
+            Guid id, RuntimePromotionRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var eventId = await services
+                .GetRequiredService<AllocationRuntimePromotionService>()
+                .RollbackAsync(
+                    id,
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.Reason,
+                    ct);
+            var current = await services
+                .GetRequiredService<IAllocationRuntimeProfileProvider>()
+                .CurrentAsync(ct);
+            return Results.Ok(new
+            {
+                id = eventId,
+                proposalId = id,
+                status = "RUNTIME_ROLLED_BACK",
+                effectiveProposalId = current.ProposalId,
+                profileVersion = current.Profile.Version,
+                active = current.ProposalId is not null,
+                runtimeApplied = current.ProposalId is not null
+            });
+        });
     }
 }
 
@@ -429,6 +497,7 @@ internal sealed record ReviewProposalRequest(string Decision, string Reason);
 internal sealed record AuthorizePilotRequest(string ScopeReference, string Reason);
 internal sealed record PilotDecisionRequest(string Reason);
 internal sealed record ProductionControlRequest(string Reason);
+internal sealed record RuntimePromotionRequest(string Reason);
 
 internal sealed record NeedLabelRequest(Guid SnapshotId, decimal NeedScore, string RubricVersion, int Partition);
 internal sealed record TrainAllocationRequest(Guid[]? LabelIds, long PoolRial, DateTimeOffset CutoffUtc);
