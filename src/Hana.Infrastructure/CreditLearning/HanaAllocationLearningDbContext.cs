@@ -37,6 +37,8 @@ public sealed class AllocationOutcomeRecord
     public bool? DeliveryBarrier { get; set; }
     public bool? AccessBarrier { get; set; }
     public int Evidence { get; set; }
+    public Guid? ReviewedByAccountId { get; set; }
+    public string? EvidenceReference { get; set; }
     public DateTimeOffset RecordedAtUtc { get; set; }
 }
 
@@ -92,11 +94,16 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
                 t.HasCheckConstraint("ck_outcome_interval", "\"PeriodEndUtc\" > \"PeriodStartUtc\"");
                 t.HasCheckConstraint("ck_outcome_values", "(\"CreditUsedRial\" IS NULL OR (\"CreditUsedRial\" >= 0 AND \"CreditUsedRial\" = trunc(\"CreditUsedRial\"))) AND (\"EssentialNeedsCoverage\" IS NULL OR \"EssentialNeedsCoverage\" BETWEEN 0 AND 1) AND \"Evidence\" BETWEEN 1 AND 3");
                 t.HasCheckConstraint("ck_outcome_observed", "\"CreditUsedRial\" IS NOT NULL OR \"EssentialNeedsCoverage\" IS NOT NULL OR \"StockBarrier\" IS NOT NULL OR \"DeliveryBarrier\" IS NOT NULL OR \"AccessBarrier\" IS NOT NULL");
+                t.HasCheckConstraint("ck_outcome_review_provenance",
+                    "(\"Evidence\" = 3 AND \"ReviewedByAccountId\" IS NOT NULL AND \"ReviewedByAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND \"EvidenceReference\" IS NOT NULL AND length(btrim(\"EvidenceReference\")) > 0) OR (\"Evidence\" <> 3 AND \"ReviewedByAccountId\" IS NULL AND \"EvidenceReference\" IS NULL)");
+                t.HasCheckConstraint("ck_outcome_reviewed_nonfinancial",
+                    "\"Evidence\" <> 3 OR \"CreditUsedRial\" IS NULL");
             });
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.CreditUsedRial).HasColumnType("numeric");
             e.Property(x => x.EssentialNeedsCoverage).HasColumnType("numeric");
+            e.Property(x => x.EvidenceReference).HasMaxLength(240);
             e.HasOne<AllocationAssessmentRecord>().WithMany().HasForeignKey(x => x.SnapshotId)
                 .OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.SnapshotId, x.PeriodEndUtc });
