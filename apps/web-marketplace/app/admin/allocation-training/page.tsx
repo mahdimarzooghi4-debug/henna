@@ -144,6 +144,7 @@ export default function AllocationTrainingPage() {
     <h1>آموزش آزمایشی تخصیص</h1>
     <Link href="/admin/allocation-training-runs">پیگیری سوابق و نتیجه آموزش</Link>
     <Link href="/admin/allocation-assessments">ثبت ارزیابی مستند خانوار</Link>
+    <Link href="/admin/allocation-retention">Retention داده‌های پژوهشی</Link>
     <aside className={styles.note}>هوش حنا فقط از snapshotهای first-party ثبت‌شده داخل خود حنا آموزش می‌بیند؛ ارزیابی‌های منتسب/ورودی دستی فقط برای سابقه پژوهشی‌اند و وارد training نمی‌شوند. حداقل ۳۰ خانوار برای آموزش و ۱۰ خانوار متفاوت برای ارزیابی لازم است. ضرایب پس از آموزش خودکار فعال نمی‌شوند.</aside>
     {storageFailure && <p role="alert" className={styles.error}>{storageFailure}</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}{notice && <p role="status">{notice}</p>}
