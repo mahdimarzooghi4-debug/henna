@@ -208,12 +208,15 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             });
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Sequence).IsRequired();
             e.Property(x => x.EventType).HasMaxLength(32).IsRequired();
             e.Property(x => x.EffectiveProfileVersion).HasMaxLength(120).IsRequired();
             e.Property(x => x.EffectiveWeightsJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.PreviousProfileVersion).HasMaxLength(120).IsRequired();
             e.Property(x => x.PreviousWeightsJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => x.Sequence).IsUnique()
+                .HasDatabaseName("UX_runtime_profile_sequence");
             e.HasIndex(x => new { x.RecordedAtUtc, x.Id });
             e.HasIndex(x => x.ProposalId).IsUnique()
                 .HasFilter("\"EventType\" = 'RUNTIME_PROMOTED'")
