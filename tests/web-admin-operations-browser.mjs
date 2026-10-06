@@ -143,7 +143,15 @@ async function main(){
   await page.getByLabel("فعال").uncheck();
   await page.getByRole("button",{name:"ثبت مجوز"}).click();
   await page.getByText("نتیجه درخواست قطعی نیست",{exact:false}).waitFor();
-  await page.getByRole("button",{name:"ثبت مجوز"}).click();
+
+  await page.reload();
+  await page.getByRole("heading",{name:"عملیات ادمین"}).waitFor();
+  await page.getByRole("button",{
+    name:"تکرار امن عملیات مدیریتی قبلی",
+  }).waitFor();
+  await page.getByRole("button",{
+    name:"تکرار امن عملیات مدیریتی قبلی",
+  }).click();
   await page.getByText("مجوز تخصصی کاربر ثبت شد.",{exact:true}).waitFor();
   assert.equal(permissionAttempts,2);
 
