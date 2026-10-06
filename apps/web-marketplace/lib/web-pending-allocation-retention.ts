@@ -45,15 +45,16 @@ export function allocationRetentionDetails(
       typeof value.reason !== "string" ||
       !value.reason.trim() ||
       value.reason.length > 2000 ||
-      value.reason !== value.reason.trim() ||
-      JSON.stringify(value) !== intent.body)
+      value.reason !== value.reason.trim())
     return null;
 
-  return {
+  const details = {
     cutoffUtc: value.cutoffUtc,
     previewDigest: value.previewDigest,
     reason: value.reason,
   };
+  if (JSON.stringify(details) !== intent.body) return null;
+  return details;
 }
 
 function parse(raw: string | null): AllocationRetentionIntent | null {
