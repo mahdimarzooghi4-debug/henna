@@ -117,11 +117,27 @@ def wait_screen(*phrases, timeout=110):
 
 
 def tap_label(label):
+    dismiss_known_emulator_anr()
     execute("adb", "shell", "uiautomator", "dump", "/sdcard/hana-window.xml")
     root=ET.fromstring(execute("adb", "exec-out", "cat", "/sdcard/hana-window.xml"))
     node=next(n for n in root.iter() if n.attrib.get("content-desc")==label)
     x1,y1,x2,y2=map(int,re.findall(r"\d+",node.attrib["bounds"]))
     execute("adb","shell","input","tap",str((x1+x2)//2),str((y1+y2)//2))
+
+
+def tap_until_screen(label, *phrases, attempts=3):
+    """Retry only a lost emulator tap; the destination UI remains strict."""
+    last_error = None
+    for _ in range(attempts):
+        try:
+            tap_label(label)
+            return wait_screen(*phrases, timeout=25)
+        except (AssertionError, StopIteration) as exc:
+            last_error = exc
+            dismiss_known_emulator_anr()
+    raise AssertionError(
+        f"Native navigation via {label!r} did not reach {phrases!r}"
+    ) from last_error
 
 
 def open_uri(uri, package):
@@ -182,23 +198,19 @@ def main():
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(BROWSE, package)
     wait_screen("کالاها را در حنا مرور کنید", TERM)
-    tap_label("سبد خرید")
-    wait_screen("سبد مرجع خرید", "پاسخ سرور تأیید نشد")
+    tap_until_screen("سبد خرید", "سبد مرجع خرید", "پاسخ سرور تأیید نشد")
     print("HANA_NATIVE_CART_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
-    tap_label("مقایسه فروشگاه‌ها و ادامه خرید")
-    wait_screen("مقایسهٔ پیشنهادها", "پاسخ سرور تأیید نشد")
+    tap_until_screen("مقایسه فروشگاه‌ها و ادامه خرید", "مقایسهٔ پیشنهادها", "پاسخ سرور تأیید نشد")
     print("HANA_NATIVE_CHECKOUT_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("سبد مرجع خرید")
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
-    tap_label("سفارش‌های من")
-    wait_screen("سفارش‌های من", "پاسخ سرور تأیید نشد")
+    tap_until_screen("سفارش‌های من", "سفارش‌های من", "پاسخ سرور تأیید نشد")
     print("HANA_NATIVE_ORDERS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
-    tap_label("گزارش‌ها و مرجوعی‌های من")
-    wait_screen("گزارش‌ها و مرجوعی‌های من", "پاسخ سرور تأیید نشد")
+    tap_until_screen("گزارش‌ها و مرجوعی‌های من", "گزارش‌ها و مرجوعی‌های من", "پاسخ سرور تأیید نشد")
     print("HANA_NATIVE_INCIDENTS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
