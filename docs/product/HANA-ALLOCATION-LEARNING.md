@@ -129,6 +129,31 @@ All responses explicitly return `active: false`. APPROVED means review accepted,
 activated. There is no activation route, wallet write, retroactive recalculation or frontend
 review screen in this increment. Stage review and a controlled pilot remain separate work.
 
+## Independent model benchmark foundation
+
+Model selection must not reuse the Validation partition that already participates in
+candidate acceptance. Reviewed need labels now support a third, independent
+`Evaluation` partition. Evaluation labels are accepted through the same human-reviewed
+label contract and first-party runtime-lineage checks, but `TrainAsync` rejects them
+explicitly so they cannot influence fitting or candidate selection.
+
+The benchmark protocol `henna-allocation-benchmark-v1` evaluates an immutable proposal
+candidate against its exact runtime baseline using only Evaluation labels from one
+dataset, source instruction, runtime lineage and rubric. It currently records the same
+need-score mean-squared-error measure for baseline and candidate, plus the arithmetic
+difference; it defines no approval threshold, fairness claim, automatic winner or
+production decision. The evaluation-set fingerprint excludes the candidate profile, so
+different candidate/model versions evaluated on the exact same frozen label set and
+baseline share one comparable fingerprint.
+
+Benchmark evidence is append-only and records proposal/model/candidate versions, runtime
+lineage, exact evaluation-label IDs, evaluation fingerprint, metrics, cutoff and evaluator
+identity. Re-evaluating the same proposal on the same frozen evaluation set is
+deterministic/idempotent. The admin API exposes benchmark execution and listing, always
+with `winner=null`, `approved=false` and `active=false`. This creates the comparison
+foundation needed before choosing a production model family; no model family has been
+selected by this increment.
+
 ## Experimental supervised weight learner
 
 `ExperimentalAllocationWeightLearner` fits the six weights to independently reviewed
@@ -157,8 +182,7 @@ household weights are learned. Held-out performance does not prove fairness or c
 Synthetic tests demonstrate fitting, repeatability, validation separation and fail-closed
 handling. They are not training on actual Henna beneficiaries. The learner has no network endpoint and is never registered as a model service. The authenticated
 administrative train route is only a control-plane trigger for the local in-process workflow;
-the learner itself reads no API. The workflow submits successful candidates to the proposal queue. Representative/time-separated evaluation, fairness
-checks and pilot activation remain future work.
+the learner itself reads no API. The workflow submits successful candidates to the proposal queue. The independent Evaluation partition and benchmark evidence path now exist. Representative/time-separated cohort construction, approved fairness group definitions/checks and statistical adequacy criteria still require explicit product/data decisions before benchmark results can justify model selection.
 
 ## Reviewed labels and completed training-run audit
 
