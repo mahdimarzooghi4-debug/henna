@@ -66,6 +66,7 @@ public sealed class AllocationRetentionService(
     }
 
     public async Task<AllocationRetentionResult> PurgeAsync(
+        Guid requestId,
         Guid actor,
         DateTimeOffset cutoffUtc,
         string previewDigest,
@@ -74,6 +75,8 @@ public sealed class AllocationRetentionService(
     {
         await RequireAdmin(actor, ct);
         ValidateCutoff(cutoffUtc);
+        if (requestId == Guid.Empty)
+            throw new ArgumentException("A non-empty retention request id is required.");
         if (string.IsNullOrWhiteSpace(previewDigest) ||
             previewDigest.Length != 64 ||
             previewDigest.Any(x => !Uri.IsHexDigit(x)))
@@ -85,6 +88,29 @@ public sealed class AllocationRetentionService(
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlRawAsync(
             $"SELECT pg_advisory_xact_lock({RetentionLockKey})", ct);
+
+        var normalizedDigest = previewDigest.ToLowerInvariant();
+        var normalizedReason = reason.Trim();
+        var existing = await db.RetentionEvents.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == requestId, ct);
+        if (existing is not null)
+        {
+            if (existing.ActorAccountId != actor ||
+                existing.Scope != AttributedResearchScope ||
+                existing.CutoffUtc != cutoffUtc ||
+                !string.Equals(existing.PreviewDigest, normalizedDigest,
+                    StringComparison.Ordinal) ||
+                existing.Reason != normalizedReason)
+                throw new AllocationRetentionConflictException(
+                    "Retention request id was reused with different input.");
+
+            await tx.CommitAsync(ct);
+            return new(
+                existing.Id,
+                existing.DeletedSnapshotCount,
+                existing.DeletedOutcomeCount,
+                existing.PreviewDigest);
+        }
 
         var preview = await BuildPreviewAsync(cutoffUtc, ct);
         if (!string.Equals(
@@ -115,24 +141,23 @@ public sealed class AllocationRetentionService(
             throw new AllocationRetentionConflictException(
                 "Assessment set changed during retention purge.");
 
-        var eventId = Guid.NewGuid();
         db.RetentionEvents.Add(new()
         {
-            Id = eventId,
+            Id = requestId,
             ActorAccountId = actor,
             Scope = AttributedResearchScope,
             CutoffUtc = cutoffUtc,
-            PreviewDigest = preview.PreviewDigest.ToLowerInvariant(),
+            PreviewDigest = normalizedDigest,
             DeletedSnapshotCount = deletedSnapshots,
             DeletedOutcomeCount = deletedOutcomes,
-            Reason = reason.Trim(),
+            Reason = normalizedReason,
             RecordedAtUtc = clock.UtcNow
         });
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
         return new(
-            eventId,
+            requestId,
             deletedSnapshots,
             deletedOutcomes,
             preview.PreviewDigest.ToLowerInvariant());
