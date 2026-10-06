@@ -219,7 +219,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(weights.Select(w=>w.Account).Distinct().Count()!=weights.Count)throw new ArgumentException("Duplicate beneficiary.");var sum=weights.Sum(w=>w.Weight);long assigned=0;var grants=new List<CreditGrant>();
   foreach(var w in weights){var amount=checked((long)decimal.Floor(pool*w.Weight/sum));assigned=checked(assigned+amount);var grant=new CreditGrant(Guid.NewGuid(),w.Account,program.Id,amount,amount,program.ExpiresAtUtc,program.CategoryIds,w.Household);await Put(grant.Id,w.Account,"CREDIT",grant,ct);Transfer(grant.Id,"PROGRAM_AVAILABLE:"+program.Id,"HOUSEHOLD_CREDIT:"+grant.Id,amount,"SUPPORT");grants.Add(grant);}
   var owner=(await db.Documents.SingleAsync(d=>d.Id==program.Id,ct)).OwnerId;await Put(program.Id,owner,"PROGRAM",program with{UnallocatedRial=program.UnallocatedRial-assigned},ct);
-  return new{grants,unallocatedRial=pool-assigned,formulaVersion=profile.Version,runtimeProposalId=runtime.ProposalId};
+  return new{grants,unallocatedRial=pool-assigned,formulaVersion=profile.Version,runtimeProposalId=runtime.ProposalId,runtimeProfileSequence=runtime.Sequence};
  }
  private async Task<(CommerceDocument? Document,CashWallet Wallet)> Wallet(Guid actor,CancellationToken ct) {var d=await db.Documents.SingleOrDefaultAsync(d=>d.Kind=="WALLET"&&d.OwnerId==actor,ct);return(d,d==null?new(actor,0):JsonSerializer.Deserialize<CashWallet>(d.Body)!);}
  private async Task SetWallet(Guid actor,long balance,CancellationToken ct) {if(balance<0)throw new CommerceConflict("WALLET_FUNDS_INSUFFICIENT");var w=await Wallet(actor,ct);await Put(w.Document?.Id??Guid.NewGuid(),actor,"WALLET",new CashWallet(actor,balance),ct);}
