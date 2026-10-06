@@ -40,6 +40,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationTrainingIdempotencyConflictException) { return Results.Conflict(); }
             catch (AllocationAssessmentIdempotencyConflictException) { return Results.Conflict(); }
             catch (AllocationPilotConflictException) { return Results.Conflict(); }
+            catch (AllocationProductionControlConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -335,6 +336,87 @@ internal static class AllocationLearningProposalEndpoints
                 runtimeApplied = false
             });
         });
+
+        routes.MapGet("/{id:guid}/production-control", async (
+            Guid id, IServiceProvider services, CancellationToken ct) =>
+        {
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            if (!await db.Proposals.AsNoTracking().AnyAsync(x => x.Id == id, ct))
+                return Results.NotFound();
+
+            var events = await db.ProductionControlEvents.AsNoTracking()
+                .Where(x => x.ProposalId == id)
+                .OrderBy(x => x.RecordedAtUtc)
+                .ThenBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.EventType,
+                    x.ActorAccountId,
+                    x.Reason,
+                    x.RecordedAtUtc
+                })
+                .ToListAsync(ct);
+
+            var activationAuthorized = events.Any(
+                x => x.EventType == "PRODUCTION_ACTIVATION_AUTHORIZED");
+            var rollbackAuthorized = events.Any(
+                x => x.EventType == "PRODUCTION_ROLLBACK_AUTHORIZED");
+
+            return Results.Ok(new
+            {
+                proposalId = id,
+                activationAuthorized,
+                rollbackAuthorized,
+                events,
+                active = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapPost("/{id:guid}/production-control/authorize-activation", async (
+            Guid id, ProductionControlRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var eventId = await services
+                .GetRequiredService<AllocationProductionControlService>()
+                .AuthorizeActivationAsync(
+                    id,
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.Reason,
+                    ct);
+
+            return Results.Ok(new
+            {
+                id = eventId,
+                proposalId = id,
+                status = "PRODUCTION_ACTIVATION_AUTHORIZED",
+                active = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapPost("/{id:guid}/production-control/authorize-rollback", async (
+            Guid id, ProductionControlRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var eventId = await services
+                .GetRequiredService<AllocationProductionControlService>()
+                .AuthorizeRollbackAsync(
+                    id,
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.Reason,
+                    ct);
+
+            return Results.Ok(new
+            {
+                id = eventId,
+                proposalId = id,
+                status = "PRODUCTION_ROLLBACK_AUTHORIZED",
+                active = false,
+                runtimeApplied = false
+            });
+        });
     }
 }
 
@@ -346,6 +428,7 @@ internal sealed record SubmitProposalRequest(string CandidateVersion, string Mod
 internal sealed record ReviewProposalRequest(string Decision, string Reason);
 internal sealed record AuthorizePilotRequest(string ScopeReference, string Reason);
 internal sealed record PilotDecisionRequest(string Reason);
+internal sealed record ProductionControlRequest(string Reason);
 
 internal sealed record NeedLabelRequest(Guid SnapshotId, decimal NeedScore, string RubricVersion, int Partition);
 internal sealed record TrainAllocationRequest(Guid[]? LabelIds, long PoolRial, DateTimeOffset CutoffUtc);
