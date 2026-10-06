@@ -21,10 +21,32 @@ function integer(value: unknown, min: number, max: number) {
     value >= min && value <= max;
 }
 
-function evidenceReference(value: unknown) {
+function boundedText(value: unknown, max: number) {
   return typeof value === "string" && value.length > 0 &&
-    value.length <= 240 && value.trim() === value &&
+    value.length <= max && value.trim() === value &&
     !/[\u0000-\u001f\u007f]/.test(value);
+}
+
+function evidenceReference(value: unknown) {
+  return boundedText(value, 240);
+}
+
+export type SellerPendingArea = "operations" | "business";
+
+function pathArea(path: string): SellerPendingArea | null {
+  if (/^orders\/[0-9a-f-]+\/state$/i.test(path) ||
+      /^returns\/[0-9a-f-]+\/(contact|visit)$/i.test(path))
+    return "operations";
+  if (path === "offers" || path === "service-listings" ||
+      path === "tickets" || /^notifications\/[0-9a-f-]+\/read$/i.test(path))
+    return "business";
+  return null;
+}
+
+export function sellerCommerceIntentArea(
+  intent: Pick<StaffIntent, "path">,
+): SellerPendingArea | null {
+  return pathArea(intent.path);
 }
 
 function validIntent(path: string, body: unknown) {
@@ -41,6 +63,33 @@ function validIntent(path: string, body: unknown) {
   if (returned && commerceId(returned[1]))
     return exactKeys(value, ["evidenceReference"]) &&
       evidenceReference(value.evidenceReference);
+
+  if (path === "offers")
+    return exactKeys(value, [
+      "offerId", "productId", "priceRial", "stock", "expectedVersion",
+    ]) &&
+      commerceId(value.offerId) && commerceId(value.productId) &&
+      integer(value.priceRial, 1, Number.MAX_SAFE_INTEGER) &&
+      integer(value.stock, 0, 1000000) &&
+      integer(value.expectedVersion, 0, 2147483647);
+
+  if (path === "service-listings")
+    return exactKeys(value, [
+      "listingId", "productId", "priceRial", "availabilityNote",
+      "expectedVersion",
+    ]) &&
+      commerceId(value.listingId) && commerceId(value.productId) &&
+      integer(value.priceRial, 1, Number.MAX_SAFE_INTEGER) &&
+      boundedText(value.availabilityNote, 500) &&
+      integer(value.expectedVersion, 0, 2147483647);
+
+  if (path === "tickets")
+    return exactKeys(value, ["subject", "message"]) &&
+      boundedText(value.subject, 120) && boundedText(value.message, 2000);
+
+  const notification = /^notifications\/([0-9a-f-]+)\/read$/i.exec(path);
+  if (notification && commerceId(notification[1]))
+    return exactKeys(value, []);
 
   return false;
 }
