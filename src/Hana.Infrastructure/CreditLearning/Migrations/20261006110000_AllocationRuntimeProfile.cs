@@ -13,6 +13,7 @@ public sealed class AllocationRuntimeProfile : Migration
             "Id" uuid NOT NULL,
             "ProposalId" uuid NOT NULL,
             "ActorAccountId" uuid NOT NULL,
+            "Sequence" bigint NOT NULL,
             "EventType" character varying(32) NOT NULL,
             "EffectiveProposalId" uuid NULL,
             "EffectiveProfileVersion" character varying(120) NOT NULL,
@@ -37,6 +38,9 @@ public sealed class AllocationRuntimeProfile : Migration
             CONSTRAINT "ck_runtime_profile_reason"
                 CHECK (length(btrim("Reason")) > 0)
         );
+
+        CREATE UNIQUE INDEX "UX_runtime_profile_sequence"
+            ON allocation_learning.runtime_profile_events ("Sequence");
 
         CREATE INDEX "IX_runtime_profile_events_RecordedAtUtc_Id"
             ON allocation_learning.runtime_profile_events ("RecordedAtUtc", "Id");
