@@ -32,6 +32,15 @@ echo "Installed actual simulator .app: $bundle"
 TERM='%DA%A9%D8%A7%D9%84%D8%A7%DB%8C+%D9%BE%DB%8C%D9%88%D9%86%D8%AF+%D8%A2%D8%B2%D9%85%D8%A7%DB%8C%D8%B4%DB%8C'
 ID='60000000-0000-4000-8000-000000000021'
 
+# iOS presents a one-time custom-scheme trust prompt on a fresh simulator.
+# Validate that prompt and the installed app once, then terminate the app.
+# The strict detail/browse checks below are still true cold starts and must
+# recover the exact OS URL through the app's native cached-link path.
+xcrun simctl terminate "$HANA_IOS_SIM_ID" "$bundle" 2>/dev/null || true
+echo "Prime and validate one-time iOS custom-scheme trust"
+maestro --device "$HANA_IOS_SIM_ID" test -e "APP_ID=$bundle" \
+  tests/ios-buyer-scheme-primer.yaml
+
 # Cold launch via the OS; not simctl launch <bundle> or Expo Go.
 xcrun simctl terminate "$HANA_IOS_SIM_ID" "$bundle" 2>/dev/null || true
 # Maestro starts its iOS XCTest driver before executing its flow. Opening
