@@ -47,8 +47,8 @@ def hierarchy():
     )
 
 
-def dismiss_pixel_launcher_anr():
-    """Dismiss only the known emulator launcher ANR overlay, never app errors."""
+def dismiss_known_emulator_anr():
+    """Dismiss only known emulator-system ANRs, never the Henna app's errors."""
     try:
         execute("adb", "shell", "uiautomator", "dump",
                 "/sdcard/hana-system-window.xml", timeout=20)
@@ -60,7 +60,12 @@ def dismiss_pixel_launcher_anr():
             for key in ("text", "content-desc")
             if (value := node.attrib.get(key))
         }
-        if "Pixel Launcher isn't responding" not in values:
+        known = {
+            "Pixel Launcher isn't responding",
+            "com.google.android.googlesdksetup isn't responding",
+        }
+        observed = next((title for title in known if title in values), None)
+        if observed is None:
             return False
         wait = next(
             (node for node in root.iter()
@@ -77,8 +82,11 @@ def dismiss_pixel_launcher_anr():
         x1, y1, x2, y2 = coords
         execute("adb", "shell", "input", "tap",
                 str((x1 + x2) // 2), str((y1 + y2) // 2))
-        print("Dismissed Pixel Launcher ANR overlay; continuing strict app UI checks.",
-              flush=True)
+        print(
+            f"Dismissed known emulator system ANR ({observed}); "
+            "continuing strict app UI checks.",
+            flush=True,
+        )
         time.sleep(2)
         return True
     except (subprocess.TimeoutExpired, ET.ParseError, AssertionError,
@@ -95,8 +103,9 @@ def wait_screen(*phrases, timeout=110):
             if all(phrase in last for phrase in phrases):
                 print("Observed native UI: " + " / ".join(phrases), flush=True)
                 return last
-            if "Pixel Launcher isn't responding" in last:
-                dismiss_pixel_launcher_anr()
+            if ("Pixel Launcher isn't responding" in last or
+                    "com.google.android.googlesdksetup isn't responding" in last):
+                dismiss_known_emulator_anr()
                 continue
         except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
             pass
