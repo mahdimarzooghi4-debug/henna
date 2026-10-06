@@ -386,6 +386,65 @@ public sealed class AllocationProposalApiTests
                 new { reason = "Duplicate activation authorization" }))
             .StatusCode);
 
+        var runtimeUrl = $"{url}/{pilotProposalId}/runtime";
+        var baselineRuntime = await creatorClient.GetAsync(
+            url + "/runtime-profile");
+        Assert.Equal(HttpStatusCode.OK, baselineRuntime.StatusCode);
+        using (var baselineRuntimeJson = JsonDocument.Parse(
+            await baselineRuntime.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(AllocationWeightProfile.Baseline.Version,
+                baselineRuntimeJson.RootElement
+                    .GetProperty("profileVersion").GetString());
+            Assert.False(baselineRuntimeJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.False(baselineRuntimeJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await ordinaryClient.PostAsJsonAsync(
+                runtimeUrl + "/promote",
+                new { reason = "Ordinary user cannot promote runtime" }))
+            .StatusCode);
+
+        var promotedRuntime = await creatorClient.PostAsJsonAsync(
+            runtimeUrl + "/promote",
+            new { reason = "Apply explicitly authorized candidate version" });
+        Assert.Equal(HttpStatusCode.OK, promotedRuntime.StatusCode);
+        using (var promotedJson = JsonDocument.Parse(
+            await promotedRuntime.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("RUNTIME_PROMOTED",
+                promotedJson.RootElement.GetProperty("status").GetString());
+            Assert.Equal(pilotVersion,
+                promotedJson.RootElement.GetProperty("profileVersion").GetString());
+            Assert.True(promotedJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.True(promotedJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await reviewerClient.PostAsJsonAsync(
+                runtimeUrl + "/promote",
+                new { reason = "Duplicate runtime promotion" }))
+            .StatusCode);
+
+        var activeRuntime = await creatorClient.GetAsync(
+            url + "/runtime-profile");
+        using (var activeRuntimeJson = JsonDocument.Parse(
+            await activeRuntime.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(pilotProposalId,
+                activeRuntimeJson.RootElement.GetProperty("proposalId").GetGuid());
+            Assert.Equal(pilotVersion,
+                activeRuntimeJson.RootElement
+                    .GetProperty("profileVersion").GetString());
+            Assert.True(activeRuntimeJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+
         var rollbackAuthorization = await reviewerClient.PostAsJsonAsync(
             productionControlUrl + "/authorize-rollback",
             new { reason = "Explicit rollback authorization only" });
@@ -406,6 +465,42 @@ public sealed class AllocationProposalApiTests
                 productionControlUrl + "/authorize-rollback",
                 new { reason = "Duplicate rollback authorization" }))
             .StatusCode);
+
+        var rolledBackRuntime = await reviewerClient.PostAsJsonAsync(
+            runtimeUrl + "/rollback",
+            new { reason = "Apply explicitly authorized rollback" });
+        Assert.Equal(HttpStatusCode.OK, rolledBackRuntime.StatusCode);
+        using (var rolledBackJson = JsonDocument.Parse(
+            await rolledBackRuntime.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("RUNTIME_ROLLED_BACK",
+                rolledBackJson.RootElement.GetProperty("status").GetString());
+            Assert.Equal(AllocationWeightProfile.Baseline.Version,
+                rolledBackJson.RootElement
+                    .GetProperty("profileVersion").GetString());
+            Assert.False(rolledBackJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.False(rolledBackJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await creatorClient.PostAsJsonAsync(
+                runtimeUrl + "/rollback",
+                new { reason = "Duplicate runtime rollback" }))
+            .StatusCode);
+
+        var restoredRuntime = await creatorClient.GetAsync(
+            url + "/runtime-profile");
+        using (var restoredRuntimeJson = JsonDocument.Parse(
+            await restoredRuntime.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(AllocationWeightProfile.Baseline.Version,
+                restoredRuntimeJson.RootElement
+                    .GetProperty("profileVersion").GetString());
+            Assert.False(restoredRuntimeJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
 
         var productionControlDetail =
             await creatorClient.GetAsync(productionControlUrl);
