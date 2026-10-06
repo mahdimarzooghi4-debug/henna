@@ -9,6 +9,7 @@ public sealed class AllocationAssessmentRecord
     public Guid? RecordedByAccountId { get; set; }
     public string? EvidenceReference { get; set; }
     public string FormulaVersion { get; set; } = "";
+    public Guid? RuntimeProposalId { get; set; }
     public string DatasetVersion { get; set; } = "";
     public string SourceInstructionReference { get; set; } = "";
     public decimal GeographicFactor { get; set; }
@@ -73,6 +74,10 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.SourceInstructionReference).HasMaxLength(120).IsRequired();
             e.Property(x => x.GeographicFactor).HasColumnType("numeric");
             e.HasIndex(x => new { x.HouseholdKey, x.AssessedAtUtc });
+            e.HasIndex(x => new { x.FormulaVersion, x.RuntimeProposalId });
+            e.HasOne<AllocationProposalRecord>().WithMany()
+                .HasForeignKey(x => x.RuntimeProposalId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         model.Entity<AllocationOutcomeRecord>(e =>
         {
