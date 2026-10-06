@@ -1,0 +1,19 @@
+appId: ${APP_ID}
+---
+# Prime only the simulator's one-time custom-scheme confirmation. The strict
+# cold detail/browse flows run after this app is terminated again.
+- openLink: "hana://browse"
+- extendedWaitUntil:
+    visible: "^Open$"
+    timeout: 30000
+    optional: true
+- runFlow:
+    when:
+      visible: 'Open in .*حنا.*'
+    commands:
+      - tapOn:
+          text: "^Open$"
+- extendedWaitUntil:
+    visible: "کالاها را در حنا مرور کنید"
+    timeout: 120000
+- assertVisible: "کالاها را در حنا مرور کنید"

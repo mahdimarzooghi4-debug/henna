@@ -116,14 +116,42 @@ def wait_screen(*phrases, timeout=110):
     )
 
 
-def tap_label(label):
-    dismiss_known_emulator_anr()
-    execute("adb", "shell", "uiautomator", "dump", "/sdcard/hana-window.xml")
-    root=ET.fromstring(execute("adb", "exec-out", "cat", "/sdcard/hana-window.xml"))
-    node=next(n for n in root.iter() if n.attrib.get("content-desc")==label)
-    x1,y1,x2,y2=map(int,re.findall(r"\d+",node.attrib["bounds"]))
-    execute("adb","shell","input","tap",str((x1+x2)//2),str((y1+y2)//2))
-
+def tap_label(label, timeout=30):
+    """Wait for the real app control after a known system ANR is dismissed."""
+    end = time.monotonic() + timeout
+    last = "<no UI hierarchy yet>"
+    while time.monotonic() < end:
+        dismiss_known_emulator_anr()
+        try:
+            execute("adb", "shell", "uiautomator", "dump",
+                    "/sdcard/hana-window.xml", timeout=20)
+            raw = execute("adb", "exec-out", "cat",
+                          "/sdcard/hana-window.xml", timeout=20)
+            root = ET.fromstring(raw)
+            last = "\n".join(
+                value for item in root.iter()
+                for key in ("text", "content-desc")
+                if (value := item.attrib.get(key))
+            )
+            node = next(
+                (item for item in root.iter()
+                 if item.attrib.get("content-desc") == label),
+                None,
+            )
+            if node is not None:
+                coords = list(map(int, re.findall(r"\d+", node.attrib["bounds"])))
+                if len(coords) == 4:
+                    x1, y1, x2, y2 = coords
+                    execute("adb", "shell", "input", "tap",
+                            str((x1 + x2) // 2), str((y1 + y2) // 2))
+                    return
+        except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
+            pass
+        time.sleep(2)
+    raise AssertionError(
+        f"Native control {label!r} did not become visible after system ANR recovery. "
+        f"Last accessibility hierarchy:\n{last[-5000:]}"
+    )
 
 def tap_until_screen(label, *phrases, attempts=3):
     """Retry only a lost emulator tap; the destination UI remains strict."""
