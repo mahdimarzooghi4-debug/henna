@@ -6,6 +6,9 @@ const base = "http://127.0.0.1:3022";
 const id = "b8b52eee-b4c3-4ae5-a72a-8a78dd1561c0";
 const firstPartyId = "b8b52eee-b4c3-4ae5-a72a-8a78dd1561c2";
 let web, browser, logs = "", mode = "normal", decision = null, postedReason = "";
+let firstTraining = null, trainingAttempts = 0;
+const trainingLabelIds = Array.from({ length: 40 }, (_, i) =>
+  `10000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`);
 const json = (body, status = 200) => ({ status, contentType: "application/json", body: JSON.stringify(body) });
 try {
   web = spawn("npm", ["run", "start", "--workspace", "@hana/web-marketplace", "--", "--port", "3022"],
@@ -50,11 +53,37 @@ try {
         assert.equal(request.postDataJSON().needScore, .8);
         return route.fulfill(json({ id, active: false }));
       }
-      if (path.endsWith("/labels")) return route.fulfill(json({ active: false, items: Array.from({ length: 40 }, (_, i) => ({ id: `label-${i}`, snapshotId: id, needScore: .8, partition: i < 30 ? 1 : 2 })) }));
+      if (path.endsWith("/labels")) return route.fulfill(json({
+        active: false,
+        items: trainingLabelIds.map((labelId, i) => ({
+          id: labelId, snapshotId: id, needScore: .8,
+          partition: i < 30 ? 1 : 2,
+        })),
+      }));
       if (path.endsWith("/train")) {
-        assert.equal(request.postDataJSON().labelIds.length, 40);
-        assert.equal(request.postDataJSON().poolRial, 1000);
-        return route.fulfill(json({ id, proposalId: id, status: "PROPOSED", active: false }));
+        trainingAttempts++;
+        const current = {
+          key: request.headers()["idempotency-key"],
+          body: request.postData(),
+        };
+        assert.deepEqual(request.postDataJSON(), {
+          labelIds: trainingLabelIds,
+          poolRial: 1000,
+        });
+        assert.match(current.key,
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+        if (trainingAttempts === 1) {
+          firstTraining = current;
+          return route.fulfill(json({ message: "unknown outcome" }, 503));
+        }
+        assert.deepEqual(current, firstTraining,
+          "allocation training retry after reload must retain exact key and body");
+        return route.fulfill(json({
+          id: current.key,
+          proposalId: id,
+          status: "PROPOSED",
+          active: false,
+        }));
       }
     }
     if (mode === "forbidden") return route.fulfill(json({ message: "این صفحه فقط برای مدیر مجاز است." }, 403));
@@ -111,7 +140,24 @@ try {
   await page.getByRole("button", { name: "انتخاب همه موارد نمایش‌داده‌شده" }).click();
   await page.getByLabel("مبلغ شبیه‌سازی به ریال").fill("1000");
   await page.getByRole("button", { name: "شروع آموزش آزمایشی" }).click();
+  await page.getByText("نتیجه اجرای آموزش قطعی نیست.", {
+    exact: false,
+  }).waitFor();
+  assert.equal(trainingAttempts, 1);
+
+  await page.reload();
+  await page.getByRole("heading", { name: "آموزش آزمایشی تخصیص" }).waitFor();
+  await page.getByRole("button", {
+    name: "تکرار امن اجرای آموزش قبلی",
+  }).waitFor();
+  assert.equal(await page.getByRole("button", {
+    name: "ثبت امتیاز",
+  }).isDisabled(), true);
+  await page.getByRole("button", {
+    name: "تکرار امن اجرای آموزش قبلی",
+  }).click();
   await page.getByText("آموزش انجام شد؛ پیشنهاد برای بررسی انسانی ثبت شد.").waitFor();
+  assert.equal(trainingAttempts, 2);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   assert.equal((await fetch(base + "/api/admin/allocation-proposals/research/assessments")).status, 401);
   assert.equal((await fetch(base + "/api/admin/allocation-proposals/research/train", { method: "POST", headers: { Origin: "https://untrusted.test" } })).status, 403);
