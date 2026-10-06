@@ -37,13 +37,13 @@ public sealed class AllocationRetentionTests
         var admin = Guid.NewGuid();
         var ordinary = Guid.NewGuid();
         identity.Accounts.AddRange(
-            new Account
+            new AccountRecord
             {
                 Id = admin,
                 NormalizedPhone = "09111111111",
                 CreatedAtUtc = now
             },
-            new Account
+            new AccountRecord
             {
                 Id = ordinary,
                 NormalizedPhone = "09222222222",
