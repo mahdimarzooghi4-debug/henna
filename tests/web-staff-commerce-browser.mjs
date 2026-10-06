@@ -17,6 +17,7 @@ let orderState = "PAID", orderVersion = 1, contactAt = null, doorVisitAt = null;
 let supportState = "UNDER_REVIEW", supportRefund = 0;
 let offerVersion = 1, notificationRead = false, ticketState = "OPEN";
 let firstDecision = null, decisionAttempts = 0, slaAttempts = 0;
+let firstSellerState = null, sellerStateAttempts = 0;
 
 function json(data, status = 200) {
   return { status, contentType: "application/json; charset=utf-8",
@@ -149,10 +150,21 @@ async function main() {
       }));
     if (path === "/api/seller/commerce/orders/" + ORDER + "/state" &&
         request.method() === "POST") {
+      sellerStateAttempts++;
+      const current = {
+        key: request.headers()["idempotency-key"],
+        body: request.postData(),
+      };
       assert.deepEqual(request.postDataJSON(),
         { expectedVersion: 1, state: "PREPARING" });
-      assert.match(request.headers()["idempotency-key"],
+      assert.match(current.key,
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      if (sellerStateAttempts === 1) {
+        firstSellerState = current;
+        return route.fulfill(json({ message: "unknown outcome" }, 503));
+      }
+      assert.deepEqual(current, firstSellerState,
+        "seller retry after reload must retain exact key and body");
       orderState = "PREPARING";
       orderVersion = 2;
       return route.fulfill(json(order()));
@@ -275,8 +287,22 @@ async function main() {
   }).click();
   await page.getByText("کالای مرورگر", { exact: true }).waitFor();
   await page.getByRole("button", { name: "شروع آماده‌سازی" }).click();
+  await page.getByText("نتیجه این درخواست هنوز قطعی نیست.", {
+    exact: false,
+  }).waitFor();
+  await page.reload();
+  await page.getByRole("heading", {
+    name: "پیشخوان مدیریت کسب‌وکار",
+  }).waitFor();
+  await page.getByRole("button", {
+    name: "تکرار امن درخواست قبلی",
+  }).waitFor();
+  await page.getByRole("button", {
+    name: "تکرار امن درخواست قبلی",
+  }).click();
   await page.getByText("در حال آماده‌سازی", { exact: true }).first().waitFor();
   await page.getByRole("button", { name: "اعلام آماده دریافت" }).waitFor();
+  assert.equal(sellerStateAttempts, 2);
 
   const reference = page.getByPlaceholder(
     "مثلاً شماره ثبت داخلی یا یادداشت قابل پیگیری");
