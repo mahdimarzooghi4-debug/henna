@@ -3,6 +3,7 @@ using System.Text.Json;
 using Hana.Application.Time;
 using Hana.Infrastructure.Catalog;
 using Hana.Infrastructure.Commerce;
+using Hana.Infrastructure.CreditLearning;
 using Hana.Infrastructure.Geography;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
@@ -76,7 +77,7 @@ public sealed class CommerceTests
  draft.ReviewStatus="APPROVED";draft.ReviewReason=null;draft.ReviewedByAccountId=admin;draft.ReviewedAtUtc=clock.UtcNow.AddMinutes(-20);
  draft.ActivatedAtUtc=clock.UtcNow.AddMinutes(-10);draft.ActivatedByAccountId=admin;draft.UpdatedAtUtc=clock.UtcNow.AddMinutes(-10);
  await sellers.SaveChangesAsync();
- var roles=new RoleAuthorizationService(identity,new AuthSessionService(identity,clock));var service=new CommerceService(db,catalog,sellers,geo,identity,roles,clock);
+ var roles=new RoleAuthorizationService(identity,new AuthSessionService(identity,clock));var service=new CommerceService(db,catalog,sellers,geo,identity,roles,clock,new BaselineAllocationRuntimeProfileProvider());
  Task<JsonElement> Command(Guid actor,string action,object input,Guid? key=null)=>service.ExecuteAsync(actor,key??Guid.NewGuid(),action,JsonSerializer.SerializeToElement(input));
  var offerId=Guid.NewGuid();await Command(seller,"SAVE_OFFER",new{offerId,productId=product,priceRial=1000,stock=5,expectedVersion=0});
  await Assert.ThrowsAsync<CommerceForbidden>(()=>Command(buyer,"SAVE_OFFER",new{}));
