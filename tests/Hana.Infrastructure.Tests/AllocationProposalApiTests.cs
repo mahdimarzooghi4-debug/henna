@@ -150,6 +150,21 @@ public sealed class AllocationProposalApiTests
         Assert.Equal(creator, storedLabel.ReviewerAccountId);
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(research + "/train",
             new { labelIds = new[] { storedLabel.Id }, poolRial = 1000, cutoffUtc = DateTimeOffset.UtcNow })).StatusCode);
+        using (var malformedTrainingKey = new HttpRequestMessage(
+            HttpMethod.Post, research + "/train")
+        {
+            Content = JsonContent.Create(new
+            {
+                labelIds = new[] { storedLabel.Id },
+                poolRial = 1000,
+                cutoffUtc = DateTimeOffset.UtcNow
+            })
+        })
+        {
+            malformedTrainingKey.Headers.Add("Idempotency-Key", "not-a-guid");
+            Assert.Equal(HttpStatusCode.BadRequest,
+                (await creatorClient.SendAsync(malformedTrainingKey)).StatusCode);
+        }
         Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.PostAsJsonAsync(research + "/train",
             new { labelIds = new[] { storedLabel.Id }, poolRial = 1000, cutoffUtc = DateTimeOffset.UtcNow })).StatusCode);
         var version = "candidate-" + Guid.NewGuid();
