@@ -450,7 +450,7 @@ public sealed class CommerceTests
   : IAllocationRuntimeProfileProvider
  {
   public Task<AllocationRuntimeProfileSnapshot> CurrentAsync(CancellationToken ct=default)=>
-   Task.FromResult(new AllocationRuntimeProfileSnapshot(proposalId,profile));
+   Task.FromResult(new AllocationRuntimeProfileSnapshot(7L,proposalId,profile));
  }
 
 }
