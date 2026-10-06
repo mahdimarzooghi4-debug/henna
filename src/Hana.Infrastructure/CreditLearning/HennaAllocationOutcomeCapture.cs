@@ -81,7 +81,7 @@ public sealed class HennaAllocationOutcomeCapture(
             var usedRial = checked(grant.GrantedRial - grant.AvailableRial);
             // The initial untouched grant is already represented by the
             // allocation snapshot. Record only a later observed balance state.
-            if (document.Revision <= 1 || usedRial == 0)
+            if (document.Revision <= 1)
                 continue;
             if (now <= snapshot.AssessedAtUtc)
                 continue;
