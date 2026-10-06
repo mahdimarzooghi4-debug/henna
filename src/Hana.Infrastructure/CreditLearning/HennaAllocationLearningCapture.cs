@@ -52,12 +52,12 @@ public sealed class HennaAllocationLearningCapture(
                         $"""
                         INSERT INTO allocation_learning.assessments
                         ("Id","HouseholdKey","RecordedByAccountId","EvidenceReference",
-                         "FormulaVersion","DatasetVersion","SourceInstructionReference",
+                         "FormulaVersion","RuntimeProposalId","DatasetVersion","SourceInstructionReference",
                          "GeographicFactor","Health","Hardship","Age","Size","Care",
                          "Education","AllocatedRial","AssessedAtUtc","RecordedAtUtc")
                         VALUES
                         ({row.Id},{row.HouseholdKey},{row.RecordedByAccountId},
-                         {row.EvidenceReference},{row.FormulaVersion},{row.DatasetVersion},
+                         {row.EvidenceReference},{row.FormulaVersion},{row.RuntimeProposalId},{row.DatasetVersion},
                          {row.SourceInstructionReference},{row.GeographicFactor},
                          {row.Health},{row.Hardship},{row.Age},{row.Size},{row.Care},
                          {row.Education},{row.AllocatedRial},{row.AssessedAtUtc},
@@ -91,6 +91,7 @@ public sealed class HennaAllocationLearningCapture(
         stored.RecordedByAccountId == expected.RecordedByAccountId &&
         stored.EvidenceReference == expected.EvidenceReference &&
         stored.FormulaVersion == expected.FormulaVersion &&
+        stored.RuntimeProposalId == expected.RuntimeProposalId &&
         stored.DatasetVersion == expected.DatasetVersion &&
         stored.SourceInstructionReference == expected.SourceInstructionReference &&
         stored.GeographicFactor == expected.GeographicFactor &&
@@ -116,10 +117,16 @@ public sealed class HennaAllocationLearningCapture(
             formulaVersion.Length > 120)
             throw new InvalidOperationException(
                 "Allocation journal formula version is invalid.");
-        // Capture every first-party runtime version. Training eligibility is
-        // intentionally stricter and remains gated separately; a newly
-        // promoted profile must not silently enter training until lineage-aware
-        // training rules explicitly support it.
+        Guid? runtimeProposalId = null;
+        if (result.TryGetProperty("runtimeProposalId", out var runtimeProposal) &&
+            runtimeProposal.ValueKind != JsonValueKind.Null)
+        {
+            if (!runtimeProposal.TryGetGuid(out var parsedProposal) ||
+                parsedProposal == Guid.Empty)
+                throw new InvalidOperationException(
+                    "Allocation journal runtime proposal lineage is invalid.");
+            runtimeProposalId = parsedProposal;
+        }
         var programId = input.GetProperty("programId").GetGuid();
 
         var programDocument = await commerce.Documents.AsNoTracking()
@@ -161,6 +168,7 @@ public sealed class HennaAllocationLearningCapture(
                 RecordedByAccountId = null,
                 EvidenceReference = null,
                 FormulaVersion = formulaVersion,
+                RuntimeProposalId = runtimeProposalId,
                 DatasetVersion = DatasetVersion,
                 SourceInstructionReference = "henna-program:" + program.Id,
                 GeographicFactor = beneficiary.GeographicFactor,
