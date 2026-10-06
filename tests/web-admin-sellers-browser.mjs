@@ -225,8 +225,18 @@ async function main() {
   assert.equal(await page.getByRole("button", {
     name: "نیاز به اطلاعات",
   }).isDisabled(), true);
+
+  await page.reload();
+  await page.getByRole("heading", {
+    name: "بررسی و فعال‌سازی فروشندگان",
+  }).waitFor();
+  const restoredReason = page.getByPlaceholder(
+    "نتیجه بررسی هویت و اطلاعات کسب‌وکار را ثبت کنید.");
+  await restoredReason.waitFor();
+  assert.equal(await restoredReason.inputValue(), "بررسی مستند مرورگر");
+  assert.equal(await restoredReason.isDisabled(), true);
   await page.getByRole("button", {
-    name: "تکرار امن همان تصمیم",
+    name: "تکرار امن عملیات فروشنده قبلی",
   }).click();
 
   await page.getByRole("button", {
