@@ -51,6 +51,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
     public DbSet<AllocationPilotEventRecord> PilotEvents => Set<AllocationPilotEventRecord>();
     public DbSet<AllocationProductionControlEventRecord> ProductionControlEvents =>
         Set<AllocationProductionControlEventRecord>();
+    public DbSet<AllocationRuntimeProfileEventRecord> RuntimeProfileEvents =>
+        Set<AllocationRuntimeProfileEventRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -190,6 +192,35 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.HasIndex(x => x.ProposalId).IsUnique()
                 .HasFilter("\"EventType\" = 'PRODUCTION_ROLLBACK_AUTHORIZED'")
                 .HasDatabaseName("UX_production_control_rollback");
+            e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationRuntimeProfileEventRecord>(e =>
+        {
+            e.ToTable("runtime_profile_events", t =>
+            {
+                t.HasCheckConstraint("ck_runtime_profile_event_type",
+                    "\"EventType\" IN ('RUNTIME_PROMOTED','RUNTIME_ROLLED_BACK')");
+                t.HasCheckConstraint("ck_runtime_profile_versions",
+                    "length(btrim(\"EffectiveProfileVersion\")) > 0 AND length(btrim(\"PreviousProfileVersion\")) > 0");
+                t.HasCheckConstraint("ck_runtime_profile_reason",
+                    "length(btrim(\"Reason\")) > 0");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.EventType).HasMaxLength(32).IsRequired();
+            e.Property(x => x.EffectiveProfileVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.EffectiveWeightsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.PreviousProfileVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.PreviousWeightsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => new { x.RecordedAtUtc, x.Id });
+            e.HasIndex(x => x.ProposalId).IsUnique()
+                .HasFilter("\"EventType\" = 'RUNTIME_PROMOTED'")
+                .HasDatabaseName("UX_runtime_profile_promoted");
+            e.HasIndex(x => x.ProposalId).IsUnique()
+                .HasFilter("\"EventType\" = 'RUNTIME_ROLLED_BACK'")
+                .HasDatabaseName("UX_runtime_profile_rolled_back");
             e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
