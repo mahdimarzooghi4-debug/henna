@@ -73,8 +73,9 @@ public sealed class AllocationTrainingWorkflowTests
             MinimumTrainingLabels: 36,
             MinimumValidationLabels: 12,
             PoolRial: 4800);
-        var automation = await new AllocationLearningAutomationPlanner(
-            db, configuredPolicy).BuildAsync();
+        var configuredPlanner = new AllocationLearningAutomationPlanner(
+            db, configuredPolicy);
+        var automation = await configuredPlanner.BuildAsync();
         Assert.Equal("AUTOMATION_EXECUTOR_REQUIRED", automation.Status);
         Assert.True(automation.TriggerPolicyConfigured);
         Assert.False(automation.AutomaticTrainingEnabled);
@@ -100,23 +101,33 @@ public sealed class AllocationTrainingWorkflowTests
         Assert.NotEqual(cohort.RequestId,
             AllocationLearningAutomationIdentity.RequestId(cohort, 4801));
 
-        var runKey = Guid.NewGuid();
-        var run = await workflow.TrainAsync(
-            actor, labels, 4800, clock.UtcNow, runKey);
-        Assert.Equal(runKey, run.Id);
+        var executor = new AllocationLearningAutomationExecutor(
+            configuredPlanner, configuredPolicy, workflow);
+        var execution = await executor.ExecuteReadyAsync();
+        Assert.Equal("EXECUTED", execution.Status);
+        Assert.Equal(1, execution.ReadyCohortCount);
+        var executed = Assert.Single(execution.Runs);
+        var runKey = cohort.RequestId!.Value;
+        Assert.Equal(runKey, executed.RequestId);
+        Assert.Equal(runKey, executed.RunId);
+        Assert.Equal("PROPOSED", executed.Status);
+        Assert.NotNull(executed.ProposalId);
+
+        var run = await db.TrainingRuns.AsNoTracking()
+            .SingleAsync(x => x.Id == runKey);
         Assert.Equal("PROPOSED", run.Status);
         Assert.NotNull(run.ProposalId);
         Assert.NotNull(run.MetricsJson);
 
-        var replay = await workflow.TrainAsync(
-            actor, labels, 4800, clock.UtcNow, runKey);
-        Assert.Equal(run.Id, replay.Id);
+        var replayExecution = await executor.ExecuteReadyAsync();
+        var replay = Assert.Single(replayExecution.Runs);
+        Assert.Equal(run.Id, replay.RunId);
         Assert.Equal(run.ProposalId, replay.ProposalId);
         Assert.Single(await db.TrainingRuns.AsNoTracking()
             .Where(x => x.Id == runKey).ToListAsync());
         await Assert.ThrowsAsync<AllocationTrainingIdempotencyConflictException>(
             () => workflow.TrainAsync(
-                actor, labels, 4801, clock.UtcNow, runKey));
+                actor, labels, 4801, cohort.LatestReviewedAtUtc, runKey));
         var proposal = await db.Proposals.AsNoTracking().SingleAsync(x => x.Id == run.ProposalId);
         Assert.Equal(ExperimentalAllocationWeightLearner.ModelVersion, proposal.ModelVersion);
         Assert.False(await db.Reviews.AnyAsync(x => x.ProposalId == proposal.Id));
