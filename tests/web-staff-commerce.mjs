@@ -403,4 +403,24 @@ test("support SLA and unavailability share one durable operation lock", () => {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+
+    assert.equal(clearSupportOperationIntent(unavailable.key), true);
+    const ticketReply = staffIntent(
+      null,
+      `tickets/${ORDER}/reply`,
+      { reply: "پاسخ پشتیبانی تست" },
+    );
+    assert.deepEqual(supportOperationIntentDetails(ticketReply), {
+      kind: "ticket-reply",
+      ticketId: ORDER,
+      reply: "پاسخ پشتیبانی تست",
+    });
+    persistSupportOperationIntent(ticketReply);
+    assert.deepEqual(restoreSupportOperationIntent(), ticketReply);
+
+    const otherSla = staffIntent(null, "return-sla", {});
+    assert.throws(() => persistSupportOperationIntent(otherSla),
+      /must be resolved first/);
+    assert.equal(clearSupportOperationIntent(ticketReply.key), true);
+
 });
