@@ -45,8 +45,8 @@ public sealed class AllocationProposalApiTests
                 AccountId = id, Role = HanaRoles.Admin, GrantedAtUtc = now });
         }
         await identity.SaveChangesAsync();
-        var dataset = "dataset-" + Guid.NewGuid();
-        var source = "source-" + Guid.NewGuid();
+        var dataset = HennaAllocationLearningCapture.DatasetVersion;
+        var source = "henna-program:" + Guid.NewGuid();
         var snapshots = new[] { Guid.NewGuid(), Guid.NewGuid() };
         foreach (var id in snapshots)
             learning.Assessments.Add(new() { Id = id, HouseholdKey = Guid.NewGuid(),
@@ -119,6 +119,17 @@ public sealed class AllocationProposalApiTests
         Assert.Equal("approved-record-" + capturedId, storedAssessment.EvidenceReference);
         Assert.Equal(AllocationWeightProfile.Baseline.Version, storedAssessment.FormulaVersion);
         Assert.Equal(700L, storedAssessment.AllocatedRial);
+        using (var assessmentsJson = JsonDocument.Parse(
+            await (await creatorClient.GetAsync(
+                research + "/assessments")).Content.ReadAsStringAsync()))
+        {
+            var rows = assessmentsJson.RootElement.GetProperty("items")
+                .EnumerateArray().ToArray();
+            Assert.True(rows.Single(x => x.GetProperty("Id").GetGuid() ==
+                snapshots[0]).GetProperty("trainingEligible").GetBoolean());
+            Assert.False(rows.Single(x => x.GetProperty("Id").GetGuid() ==
+                capturedId).GetProperty("trainingEligible").GetBoolean());
+        }
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(captureUrl, new {
             snapshotId = Guid.NewGuid(), householdKey, datasetVersion = dataset, sourceInstructionReference = source,
             evidenceReference = "missing-scores", geographicFactor = 1m, allocatedRial = 0L,
