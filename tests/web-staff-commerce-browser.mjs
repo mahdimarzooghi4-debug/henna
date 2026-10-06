@@ -19,6 +19,7 @@ let offerVersion = 1, notificationRead = false, ticketState = "OPEN";
 let firstDecision = null, decisionAttempts = 0;
 let firstSla = null, slaAttempts = 0;
 let firstUnavailability = null, unavailabilityAttempts = 0;
+let firstTicketReply = null, ticketReplyAttempts = 0;
 let firstSellerState = null, sellerStateAttempts = 0;
 let firstOfferMutation = null, offerMutationAttempts = 0;
 
@@ -286,9 +287,22 @@ async function main() {
     }
     if (path === "/api/support/commerce/tickets/" + EVIDENCE + "/reply" &&
         request.method() === "POST") {
+      ticketReplyAttempts++;
+      const current = {
+        key: request.headers()["idempotency-key"],
+        body: request.postData(),
+      };
       assert.deepEqual(request.postDataJSON(), {
         reply: "پاسخ پشتیبانی ثبت شد",
       });
+      assert.match(current.key,
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      if (ticketReplyAttempts === 1) {
+        firstTicketReply = current;
+        return route.fulfill(json({ message: "unknown outcome" }, 503));
+      }
+      assert.deepEqual(current, firstTicketReply,
+        "support ticket retry after reload must retain exact key and body");
       ticketState = "ANSWERED";
       return route.fulfill(json(ticket()));
     }
@@ -473,7 +487,22 @@ async function main() {
   const supportReply = page.getByLabel("پاسخ پشتیبانی");
   await supportReply.fill("پاسخ پشتیبانی ثبت شد");
   await page.getByRole("button", { name: "ثبت پاسخ" }).click();
+  await page.getByText("نتیجه پاسخ هنوز قطعی نیست.", {
+    exact: false,
+  }).waitFor();
+
+  await page.reload();
+  await page.getByRole("heading", {
+    name: "بررسی گزارش آسیب و کسری",
+  }).waitFor();
+  const restoredSupportReply = page.getByLabel("پاسخ پشتیبانی");
+  await restoredSupportReply.waitFor();
+  assert.equal(await restoredSupportReply.inputValue(),
+    "پاسخ پشتیبانی ثبت شد");
+  assert.equal(await restoredSupportReply.isDisabled(), true);
+  await page.getByRole("button", { name: "تکرار امن همان پاسخ" }).click();
   await page.getByText("پاسخ ثبت‌شده", { exact: true }).waitFor();
+  assert.equal(ticketReplyAttempts, 2);
 
   assert.equal(decisionAttempts, 2);
   assert.deepEqual(pageErrors, []);
