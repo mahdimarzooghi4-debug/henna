@@ -5,6 +5,11 @@ import {
   staffIntent,
   supportEvidenceUrl,
 } from "../apps/web-marketplace/lib/staff-commerce.ts";
+import {
+  clearSellerCommerceIntent,
+  persistSellerCommerceIntent,
+  restoreSellerCommerceIntent,
+} from "../apps/web-marketplace/lib/web-pending-staff-commerce.ts";
 
 const ID = "60000000-0000-4000-8000-000000000001";
 const ORDER = "60000000-0000-4000-8000-000000000002";
@@ -185,4 +190,57 @@ test("ambiguous retry intent preserves key and body until input changes", () => 
   assert.equal(supportEvidenceUrl(PRODUCT),
     `/api/support/commerce/evidence/${PRODUCT}`);
   assert.throws(() => supportEvidenceUrl("invalid"));
+});
+
+
+function memorySessionStorage() {
+  const values = new Map();
+  return {
+    get length() { return values.size; },
+    clear() { values.clear(); },
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    key(index) { return [...values.keys()][index] ?? null; },
+    removeItem(key) { values.delete(key); },
+    setItem(key, value) { values.set(String(key), String(value)); },
+  };
+}
+
+test("seller pending intent survives reload and rejects overwrite or tamper", () => {
+  const previousWindow = globalThis.window;
+  const store = memorySessionStorage();
+  Object.defineProperty(globalThis, "window", {
+    value: { sessionStorage: store },
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const first = staffIntent(null, `orders/${ORDER}/state`,
+      { expectedVersion: 1, state: "PREPARING" });
+    persistSellerCommerceIntent(first);
+    assert.deepEqual(restoreSellerCommerceIntent(), first);
+
+    const changed = staffIntent(null, `orders/${ORDER}/state`,
+      { expectedVersion: 1, state: "READY_FOR_PICKUP" });
+    assert.throws(() => persistSellerCommerceIntent(changed),
+      /must be resolved first/);
+    assert.equal(clearSellerCommerceIntent(changed.key), false);
+    assert.deepEqual(restoreSellerCommerceIntent(), first);
+
+    assert.equal(clearSellerCommerceIntent(first.key), true);
+    assert.equal(restoreSellerCommerceIntent(), null);
+
+    persistSellerCommerceIntent(first);
+    const storageKey = store.key(0);
+    const tampered = JSON.parse(store.getItem(storageKey));
+    tampered.body = JSON.stringify({
+      expectedVersion: 1,
+      state: "COLLECTED",
+    });
+    store.setItem(storageKey, JSON.stringify(tampered));
+    assert.throws(() => restoreSellerCommerceIntent(),
+      /not canonical|invalid/);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });
