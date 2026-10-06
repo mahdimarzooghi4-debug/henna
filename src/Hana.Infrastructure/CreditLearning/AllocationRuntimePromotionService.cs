@@ -12,6 +12,7 @@ public sealed class AllocationRuntimeProfileEventRecord
     public Guid Id { get; set; }
     public Guid ProposalId { get; set; }
     public Guid ActorAccountId { get; set; }
+    public long Sequence { get; set; }
     public string EventType { get; set; } = "";
     public Guid? EffectiveProposalId { get; set; }
     public string EffectiveProfileVersion { get; set; } = "";
@@ -50,8 +51,7 @@ public sealed class AllocationRuntimeProfileProvider(
         CancellationToken ct = default)
     {
         var latest = await db.RuntimeProfileEvents.AsNoTracking()
-            .OrderByDescending(x => x.RecordedAtUtc)
-            .ThenByDescending(x => x.Id)
+            .OrderByDescending(x => x.Sequence)
             .FirstOrDefaultAsync(ct);
 
         if (latest is null)
@@ -132,12 +132,14 @@ public sealed class AllocationRuntimePromotionService(
                 "Proposal candidate version does not match its weight payload.");
 
         var current = await CurrentSnapshotAsync(ct);
+        var sequence = await NextSequenceAsync(ct);
         var id = Guid.NewGuid();
         db.RuntimeProfileEvents.Add(new()
         {
             Id = id,
             ProposalId = proposalId,
             ActorAccountId = actor,
+            Sequence = sequence,
             EventType = "RUNTIME_PROMOTED",
             EffectiveProposalId = proposalId,
             EffectiveProfileVersion = candidate.Version,
@@ -212,12 +214,14 @@ public sealed class AllocationRuntimePromotionService(
             throw new InvalidOperationException(
                 "Frozen previous runtime profile version is inconsistent.");
 
+        var sequence = await NextSequenceAsync(ct);
         var id = Guid.NewGuid();
         db.RuntimeProfileEvents.Add(new()
         {
             Id = id,
             ProposalId = proposalId,
             ActorAccountId = actor,
+            Sequence = sequence,
             EventType = "RUNTIME_ROLLED_BACK",
             EffectiveProposalId = promotion.PreviousProposalId,
             EffectiveProfileVersion = previous.Version,
@@ -242,6 +246,14 @@ public sealed class AllocationRuntimePromotionService(
         }
 
         return id;
+    }
+
+    private async Task<long> NextSequenceAsync(CancellationToken ct)
+    {
+        var last = await db.RuntimeProfileEvents.AsNoTracking()
+            .Select(x => (long?)x.Sequence)
+            .MaxAsync(ct);
+        return checked((last ?? 0L) + 1L);
     }
 
     private async Task<AllocationRuntimeProfileSnapshot> CurrentSnapshotAsync(
