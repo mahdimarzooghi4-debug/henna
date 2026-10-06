@@ -202,6 +202,29 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             });
         });
 
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationRetentionEventRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("ActorAccountId").HasColumnType("uuid");
+            e.Property<string>("Scope").IsRequired().HasMaxLength(40).HasColumnType("character varying(40)");
+            e.Property<DateTimeOffset>("CutoffUtc").HasColumnType("timestamp with time zone");
+            e.Property<string>("PreviewDigest").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+            e.Property<int>("DeletedSnapshotCount").HasColumnType("integer");
+            e.Property<int>("DeletedOutcomeCount").HasColumnType("integer");
+            e.Property<string>("Reason").IsRequired().HasMaxLength(2000).HasColumnType("character varying(2000)");
+            e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("RecordedAtUtc", "Id");
+            e.HasIndex("CutoffUtc", "Id");
+            e.ToTable("retention_events", "allocation_learning", t =>
+            {
+                t.HasCheckConstraint("ck_retention_scope", "\"Scope\" = 'ATTRIBUTED_RESEARCH'");
+                t.HasCheckConstraint("ck_retention_counts", "\"DeletedSnapshotCount\" > 0 AND \"DeletedOutcomeCount\" >= 0");
+                t.HasCheckConstraint("ck_retention_reason", "length(btrim(\"Reason\")) > 0");
+                t.HasCheckConstraint("ck_retention_digest", "length(\"PreviewDigest\") = 64");
+            });
+        });
+
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.ReviewedNeedLabelRecord", e =>
         {
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
