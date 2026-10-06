@@ -25,6 +25,7 @@ public sealed class AllocationRuntimeProfileEventRecord
 }
 
 public sealed record AllocationRuntimeProfileSnapshot(
+    long Sequence,
     Guid? ProposalId,
     AllocationWeightProfile Profile);
 
@@ -40,7 +41,7 @@ public sealed class BaselineAllocationRuntimeProfileProvider
     public Task<AllocationRuntimeProfileSnapshot> CurrentAsync(
         CancellationToken ct = default) =>
         Task.FromResult(new AllocationRuntimeProfileSnapshot(
-            null, AllocationWeightProfile.Baseline));
+            0L, null, AllocationWeightProfile.Baseline));
 }
 
 public sealed class AllocationRuntimeProfileProvider(
@@ -55,7 +56,7 @@ public sealed class AllocationRuntimeProfileProvider(
             .FirstOrDefaultAsync(ct);
 
         if (latest is null)
-            return new(null, AllocationWeightProfile.Baseline);
+            return new(0L, null, AllocationWeightProfile.Baseline);
 
         var profile = JsonSerializer.Deserialize<AllocationWeightProfile>(
             latest.EffectiveWeightsJson)
@@ -69,7 +70,7 @@ public sealed class AllocationRuntimeProfileProvider(
             throw new InvalidOperationException(
                 "Runtime allocation profile version does not match its frozen payload.");
 
-        return new(latest.EffectiveProposalId, profile);
+        return new(latest.Sequence, latest.EffectiveProposalId, profile);
     }
 }
 
