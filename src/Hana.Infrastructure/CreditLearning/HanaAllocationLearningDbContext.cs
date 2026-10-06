@@ -49,6 +49,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
     public DbSet<ReviewedNeedLabelRecord> NeedLabels => Set<ReviewedNeedLabelRecord>();
     public DbSet<AllocationTrainingRunRecord> TrainingRuns => Set<AllocationTrainingRunRecord>();
     public DbSet<AllocationPilotEventRecord> PilotEvents => Set<AllocationPilotEventRecord>();
+    public DbSet<AllocationProductionControlEventRecord> ProductionControlEvents =>
+        Set<AllocationProductionControlEventRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -165,6 +167,29 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.HasIndex(x => x.ProposalId).IsUnique()
                 .HasFilter("\"EventType\" IN ('PILOT_COMPLETED','PILOT_ABORTED')")
                 .HasDatabaseName("UX_pilot_events_terminal");
+            e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationProductionControlEventRecord>(e =>
+        {
+            e.ToTable("production_control_events", t =>
+            {
+                t.HasCheckConstraint("ck_production_control_event_type",
+                    "\"EventType\" IN ('PRODUCTION_ACTIVATION_AUTHORIZED','PRODUCTION_ROLLBACK_AUTHORIZED')");
+                t.HasCheckConstraint("ck_production_control_reason",
+                    "length(btrim(\"Reason\")) > 0");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.EventType).HasMaxLength(40).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => new { x.ProposalId, x.RecordedAtUtc, x.Id });
+            e.HasIndex(x => x.ProposalId).IsUnique()
+                .HasFilter("\"EventType\" = 'PRODUCTION_ACTIVATION_AUTHORIZED'")
+                .HasDatabaseName("UX_production_control_activation");
+            e.HasIndex(x => x.ProposalId).IsUnique()
+                .HasFilter("\"EventType\" = 'PRODUCTION_ROLLBACK_AUTHORIZED'")
+                .HasDatabaseName("UX_production_control_rollback");
             e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
