@@ -172,6 +172,31 @@ public sealed class AllocationProposalApiTests
         Assert.False(labelsJson.RootElement.GetProperty("active").GetBoolean());
         var storedLabel = await learning.NeedLabels.AsNoTracking().SingleAsync(x => x.SnapshotId == snapshots[0] && x.RubricVersion == rubric);
         Assert.Equal(creator, storedLabel.ReviewerAccountId);
+
+        var automationUrl = research + "/automation/readiness";
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.GetAsync(automationUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await ordinaryClient.GetAsync(automationUrl)).StatusCode);
+        var automationReadiness = await creatorClient.GetAsync(automationUrl);
+        Assert.Equal(HttpStatusCode.OK, automationReadiness.StatusCode);
+        using (var automationJson = JsonDocument.Parse(
+            await automationReadiness.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("TRIGGER_POLICY_REQUIRED",
+                automationJson.RootElement.GetProperty("status").GetString());
+            Assert.False(automationJson.RootElement
+                .GetProperty("triggerPolicyConfigured").GetBoolean());
+            Assert.False(automationJson.RootElement
+                .GetProperty("automaticTrainingEnabled").GetBoolean());
+            var cohort = Assert.Single(automationJson.RootElement
+                .GetProperty("cohorts").EnumerateArray().ToArray());
+            Assert.Equal(1,
+                cohort.GetProperty("trainingLabelCount").GetInt32());
+            Assert.Equal(0,
+                cohort.GetProperty("validationLabelCount").GetInt32());
+        }
+
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.PostAsJsonAsync(research + "/train",
             new { labelIds = new[] { storedLabel.Id }, poolRial = 1000, cutoffUtc = DateTimeOffset.UtcNow })).StatusCode);
         using (var malformedTrainingKey = new HttpRequestMessage(
