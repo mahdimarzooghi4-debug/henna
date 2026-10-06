@@ -12,6 +12,11 @@ export async function forwardResearch(request: NextRequest, operation: "assessme
   const token = request.cookies.get(sessionCookieName)?.value;
   if (!token || !accessTokenPattern.test(token)) return fail("ابتدا وارد شوید.", 401);
   let body: string | undefined, query = "";
+  const idempotencyKey = operation === "train"
+    ? request.headers.get("Idempotency-Key")
+    : null;
+  if (idempotencyKey !== null && !proposalId(idempotencyKey))
+    return fail("کلید اجرای آموزش معتبر نیست.", 400);
   if (write) {
     if (!request.headers.get("content-type")?.startsWith("application/json")) return fail("درخواست معتبر نیست.", 400);
     try {
@@ -48,7 +53,12 @@ export async function forwardResearch(request: NextRequest, operation: "assessme
   if (!target) return fail("سرویس در دسترس نیست.", 503);
   try {
     const response = await fetch(target, { method: write ? "POST" : "GET", body, cache: "no-store",
-      headers: { Authorization: `Bearer ${token}`, ...(write ? { "Content-Type": "application/json" } : {}) }, signal: AbortSignal.timeout(30000) });
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(write ? { "Content-Type": "application/json" } : {}),
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+      },
+      signal: AbortSignal.timeout(30000) });
     if (!response.ok) {
       const messages: Record<number, string> = { 400: "داده‌ها یا تقسیم آموزش و ارزیابی معتبر نیستند.", 401: "دوباره وارد شوید.", 403: "دسترسی مدیر لازم است.", 404: "سابقه اجرا پیدا نشد.", 409: "این ارزیابی، امتیاز یا پیشنهاد قبلاً ثبت شده است؛ داده قبلی بازنویسی نمی‌شود." };
       return fail(messages[response.status] ?? "اجرای درخواست ممکن نشد.", messages[response.status] ? response.status : 503);
