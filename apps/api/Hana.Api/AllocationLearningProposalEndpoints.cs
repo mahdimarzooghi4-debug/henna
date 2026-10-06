@@ -103,6 +103,32 @@ internal static class AllocationLearningProposalEndpoints
                 input.RubricVersion, (LearningPartition)input.Partition, ct);
             return Results.Ok(new { id, active = false });
         });
+        routes.MapGet("/research/automation/readiness", async (
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var plan = await services.GetRequiredService<AllocationLearningAutomationPlanner>()
+                .BuildAsync(ct);
+            return Results.Ok(new
+            {
+                plan.Status,
+                plan.TriggerPolicyConfigured,
+                plan.AutomaticTrainingEnabled,
+                cohorts = plan.Cohorts.Select(x => new
+                {
+                    x.DatasetVersion,
+                    x.SourceInstructionReference,
+                    x.RubricVersion,
+                    x.TrainingLabelCount,
+                    x.ValidationLabelCount,
+                    x.DistinctTrainingHouseholds,
+                    x.DistinctValidationHouseholds,
+                    x.HouseholdPartitionOverlap,
+                    x.LatestReviewedAtUtc
+                }),
+                active = false
+            });
+        });
+
         routes.MapGet("/research/runs", async (int? page, IServiceProvider services, CancellationToken ct) =>
         {
             var p = page ?? 1;
