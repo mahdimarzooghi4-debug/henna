@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   StaffCommerceError,
   staffGet,
@@ -10,6 +10,17 @@ import {
   type StaffIntent,
   type StaffTicket,
 } from "../../lib/staff-commerce";
+import {
+  restoreSupportDecisionIntent,
+  subscribeSupportDecisionIntent,
+} from "../../lib/web-pending-support-decision";
+import {
+  clearSupportOperationIntent,
+  persistSupportOperationIntent,
+  restoreSupportOperationIntent,
+  subscribeSupportOperationIntent,
+  supportOperationIntentDetails,
+} from "../../lib/web-pending-support-operations";
 
 type Load =
   | { kind: "loading" }
@@ -25,9 +36,11 @@ export function SupportTickets() {
   const [state, setState] = useState<Load>({ kind: "loading" });
   const [replies, setReplies] = useState<Record<string, string>>({});
   const [busyPath, setBusyPath] = useState<string | null>(null);
-  const [uncertainPath, setUncertainPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const intents = useRef<Record<string, StaffIntent | null>>({});
+  const [storageFailure, setStorageFailure] = useState<string | null>(null);
+  const [pendingOperationIntent, setPendingOperationIntent] =
+    useState<StaffIntent | null>(null);
+  const [decisionLocked, setDecisionLocked] = useState(false);
 
   const load = useCallback(async (requestedPage: number, signal?: AbortSignal) => {
     setState({ kind: "loading" });
@@ -42,6 +55,46 @@ export function SupportTickets() {
   }, []);
 
   useEffect(() => {
+    try {
+      const restored = restoreSupportOperationIntent();
+      setDecisionLocked(restoreSupportDecisionIntent() !== null);
+      if (!restored) return;
+      const details = supportOperationIntentDetails(restored);
+      if (!details) throw Error();
+      setPendingOperationIntent(restored);
+      if (details.kind === "ticket-reply") {
+        setReplies({ [details.ticketId]: details.reply });
+        setNotice(
+          "یک پاسخ پشتیبانی نتیجه قطعی ندارد. همان پاسخ، کلید و بدنه برای تکرار امن بازیابی شد.");
+      } else {
+        setNotice(
+          "یک عملیات پشتیبانی دیگر نتیجه قطعی ندارد؛ تا تعیین تکلیف آن پاسخ جدید ارسال نمی‌شود.");
+      }
+    } catch {
+      setStorageFailure(
+        "وضعیت retry امن پاسخ پشتیبانی قابل اعتماد نیست. ارسال پاسخ جدید متوقف شد.");
+    }
+  }, []);
+
+  useEffect(() => subscribeSupportOperationIntent(() => {
+    try {
+      setPendingOperationIntent(restoreSupportOperationIntent());
+    } catch {
+      setStorageFailure(
+        "وضعیت retry امن پاسخ پشتیبانی قابل اعتماد نیست. ارسال پاسخ جدید متوقف شد.");
+    }
+  }), []);
+
+  useEffect(() => subscribeSupportDecisionIntent(() => {
+    try {
+      setDecisionLocked(restoreSupportDecisionIntent() !== null);
+    } catch {
+      setStorageFailure(
+        "وضعیت retry امن تصمیم پشتیبانی قابل اعتماد نیست. ارسال پاسخ جدید متوقف شد.");
+    }
+  }), []);
+
+  useEffect(() => {
     const controller = new AbortController();
     void load(page, controller.signal);
     return () => controller.abort();
@@ -54,27 +107,59 @@ export function SupportTickets() {
       setNotice("متن پاسخ الزامی است.");
       return;
     }
-    const intent = staffIntent(intents.current[path] ?? null, path, {
+    if (decisionLocked) {
+      setNotice(
+        "ابتدا تصمیم پشتیبانی قبلی تعیین تکلیف شود؛ ارسال پاسخ جدید مجاز نیست.");
+      return;
+    }
+
+    const restored = pendingOperationIntent
+      ? supportOperationIntentDetails(pendingOperationIntent)
+      : null;
+    if (pendingOperationIntent &&
+        (!restored || restored.kind !== "ticket-reply" ||
+          restored.ticketId !== ticket.id || restored.reply !== text)) {
+      setNotice(
+        "ابتدا عملیات پشتیبانی قبلی با همان ورودی تعیین تکلیف شود.");
+      return;
+    }
+
+    const intent = staffIntent(pendingOperationIntent, path, {
       reply: text,
     });
-    intents.current[path] = intent;
+    try {
+      persistSupportOperationIntent(intent);
+    } catch {
+      setStorageFailure(
+        "ذخیره retry امن پاسخ پشتیبانی تأیید نشد؛ هیچ پاسخی به سرور ارسال نشد.");
+      return;
+    }
+    setPendingOperationIntent(intent);
     setBusyPath(path);
     setNotice(null);
     try {
       await staffPost<StaffTicket>("support", intent);
-      intents.current[path] = null;
-      setUncertainPath(current => current === path ? null : current);
+      if (!clearSupportOperationIntent(intent.key)) {
+        setStorageFailure(
+          "پاسخ سرور دریافت شد، اما پاک‌سازی retry پاسخ تأیید نشد. ارسال پاسخ جدید متوقف است.");
+        return;
+      }
+      setPendingOperationIntent(null);
       setReplies(current => ({ ...current, [ticket.id]: "" }));
       setNotice("پاسخ پشتیبانی در سرور ثبت شد.");
       await load(page);
     } catch (error) {
       if (error instanceof StaffCommerceError && error.status === 503) {
-        setUncertainPath(path);
+        setPendingOperationIntent(intent);
         setNotice(
-          "نتیجه پاسخ هنوز قطعی نیست؛ همان پاسخ با همان کلید برای تکرار امن حفظ شده است.");
+          "نتیجه پاسخ هنوز قطعی نیست. همان پاسخ، کلید و بدنه در این تب حفظ شده‌اند و پس از reload نیز قابل تکرار امن هستند.");
       } else {
-        intents.current[path] = null;
-        setUncertainPath(current => current === path ? null : current);
+        if (!clearSupportOperationIntent(intent.key)) {
+          setStorageFailure(
+            "نتیجه سرور قطعی است، اما پاک‌سازی retry پاسخ تأیید نشد. ارسال پاسخ جدید متوقف است.");
+          return;
+        }
+        setPendingOperationIntent(null);
         setNotice(failure(error));
         if (error instanceof StaffCommerceError && error.status === 409)
           await load(page);
@@ -83,6 +168,22 @@ export function SupportTickets() {
       setBusyPath(null);
     }
   }
+
+  if (storageFailure) {
+    return (
+      <section className="support-panel__content"
+        aria-labelledby="support-tickets-title">
+        <p className="form-status form-status--error" role="alert">
+          {storageFailure}
+        </p>
+      </section>
+    );
+  }
+
+  const pendingDetails = pendingOperationIntent
+    ? supportOperationIntentDetails(pendingOperationIntent)
+    : null;
+  const globalFrozen = decisionLocked || pendingOperationIntent !== null;
 
   return (
     <section className="support-panel__content" aria-labelledby="support-tickets-title">
@@ -102,7 +203,8 @@ export function SupportTickets() {
         <p className="seller-commerce__empty">تیکتی در این صفحه نیست.</p>}
       {state.kind === "ready" && state.items.map(ticket => {
         const path = `tickets/${ticket.id}/reply`;
-        const frozen = uncertainPath === path;
+        const pendingHere = pendingDetails?.kind === "ticket-reply" &&
+          pendingDetails.ticketId === ticket.id;
         return (
           <article className="support-ticket" key={ticket.id}>
             <div className="seller-commerce__card-head">
@@ -128,18 +230,20 @@ export function SupportTickets() {
                   <textarea className="field__input support-incident__reason"
                     maxLength={2000}
                     value={replies[ticket.id] ?? ""}
-                    disabled={frozen || busyPath !== null}
+                    disabled={globalFrozen || busyPath !== null}
                     onChange={event => setReplies(current => ({
                       ...current,
                       [ticket.id]: event.target.value,
                     }))} />
                 </label>
                 <button type="button" className="primary-button"
-                  disabled={!replies[ticket.id]?.trim() || busyPath !== null}
+                  disabled={!replies[ticket.id]?.trim() || busyPath !== null ||
+                    decisionLocked ||
+                    (pendingOperationIntent !== null && !pendingHere)}
                   onClick={() => void reply(ticket)}>
                   {busyPath === path
                     ? "در حال ثبت…"
-                    : frozen
+                    : pendingHere
                       ? "تکرار امن همان پاسخ"
                       : "ثبت پاسخ"}
                 </button>
@@ -149,13 +253,14 @@ export function SupportTickets() {
         );
       })}
       <div className="seller-commerce__pager">
-        <button type="button" disabled={page === 1 || busyPath !== null}
+        <button type="button"
+          disabled={page === 1 || busyPath !== null || globalFrozen}
           onClick={() => setPage(value => Math.max(1, value - 1))}>
           صفحه قبل
         </button>
         <button type="button"
           disabled={state.kind !== "ready" ||
-            state.items.length < 20 || busyPath !== null}
+            state.items.length < 20 || busyPath !== null || globalFrozen}
           onClick={() => setPage(value => value + 1)}>
           صفحه بعد
         </button>
