@@ -137,6 +137,57 @@ public sealed class AllocationTrainingWorkflowTests
         Assert.False(frozen.RootElement.GetProperty("networkModelApi").GetBoolean());
         Assert.Equal("HENNA_FIRST_PARTY", frozen.RootElement.GetProperty("dataOrigin").GetString());
         Assert.Equal(48, frozen.RootElement.GetProperty("examples").GetArrayLength());
+
+        var concurrentLabels = new List<Guid>();
+        for (var i = 0; i < snapshotIds.Length; i++)
+            concurrentLabels.Add(await workflow.ReviewNeedAsync(
+                reviewer,
+                snapshotIds[i],
+                new[] { .35m, .20m, .18m, .12m, .10m, .05m }[i % 6],
+                "synthetic-rubric-concurrent",
+                i < 36 ? LearningPartition.Training : LearningPartition.Validation));
+
+        var concurrentKey = Guid.NewGuid();
+        var concurrentCutoff = clock.UtcNow;
+        await using var identityA = new HanaIdentityDbContext(
+            new DbContextOptionsBuilder<HanaIdentityDbContext>()
+                .UseNpgsql(connection).Options);
+        await using var identityB = new HanaIdentityDbContext(
+            new DbContextOptionsBuilder<HanaIdentityDbContext>()
+                .UseNpgsql(connection).Options);
+        await using var dbA = new HanaAllocationLearningDbContext(
+            new DbContextOptionsBuilder<HanaAllocationLearningDbContext>()
+                .UseNpgsql(connection, pg => pg.MigrationsHistoryTable(
+                    "__EFMigrationsHistory", "allocation_learning")).Options);
+        await using var dbB = new HanaAllocationLearningDbContext(
+            new DbContextOptionsBuilder<HanaAllocationLearningDbContext>()
+                .UseNpgsql(connection, pg => pg.MigrationsHistoryTable(
+                    "__EFMigrationsHistory", "allocation_learning")).Options);
+        var workflowA = new AllocationTrainingWorkflow(
+            dbA,
+            new RoleAuthorizationService(
+                identityA, new AuthSessionService(identityA, clock)),
+            clock,
+            new AllocationProposalService(dbA, clock));
+        var workflowB = new AllocationTrainingWorkflow(
+            dbB,
+            new RoleAuthorizationService(
+                identityB, new AuthSessionService(identityB, clock)),
+            clock,
+            new AllocationProposalService(dbB, clock));
+
+        var concurrentRuns = await Task.WhenAll(
+            workflowA.TrainAsync(
+                actor, concurrentLabels, 4900, concurrentCutoff, concurrentKey),
+            workflowB.TrainAsync(
+                actor, concurrentLabels, 4900, concurrentCutoff, concurrentKey));
+        Assert.All(concurrentRuns, x => Assert.Equal(concurrentKey, x.Id));
+        Assert.Equal(
+            concurrentRuns[0].ProposalId,
+            concurrentRuns[1].ProposalId);
+        Assert.Single(await db.TrainingRuns.AsNoTracking()
+            .Where(x => x.Id == concurrentKey).ToListAsync());
+
         var baselineLabels = new List<Guid>();
         for (var i = 0; i < snapshotIds.Length; i++) baselineLabels.Add(await workflow.ReviewNeedAsync(reviewer,
             snapshotIds[i], new[] { .30m, .25m, .18m, .12m, .10m, .05m }[i % 6], "synthetic-rubric-2",
