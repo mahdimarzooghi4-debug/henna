@@ -134,6 +134,31 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             });
         });
 
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationProductionControlEventRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("ProposalId").HasColumnType("uuid");
+            e.Property<Guid>("ActorAccountId").HasColumnType("uuid");
+            e.Property<string>("EventType").IsRequired().HasMaxLength(40).HasColumnType("character varying(40)");
+            e.Property<string>("Reason").IsRequired().HasMaxLength(2000).HasColumnType("character varying(2000)");
+            e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("ProposalId", "RecordedAtUtc", "Id");
+            e.HasIndex("ProposalId").IsUnique()
+                .HasFilter("\"EventType\" = 'PRODUCTION_ACTIVATION_AUTHORIZED'")
+                .HasDatabaseName("UX_production_control_activation");
+            e.HasIndex("ProposalId").IsUnique()
+                .HasFilter("\"EventType\" = 'PRODUCTION_ROLLBACK_AUTHORIZED'")
+                .HasDatabaseName("UX_production_control_rollback");
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
+                .WithMany().HasForeignKey("ProposalId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.ToTable("production_control_events", "allocation_learning", t =>
+            {
+                t.HasCheckConstraint("ck_production_control_event_type", "\"EventType\" IN ('PRODUCTION_ACTIVATION_AUTHORIZED','PRODUCTION_ROLLBACK_AUTHORIZED')");
+                t.HasCheckConstraint("ck_production_control_reason", "length(btrim(\"Reason\")) > 0");
+            });
+        });
+
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.ReviewedNeedLabelRecord", e =>
         {
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
