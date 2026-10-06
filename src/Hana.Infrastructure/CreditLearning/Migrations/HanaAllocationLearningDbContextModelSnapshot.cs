@@ -107,6 +107,33 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             });
         });
 
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationPilotEventRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("ProposalId").HasColumnType("uuid");
+            e.Property<Guid>("ActorAccountId").HasColumnType("uuid");
+            e.Property<string>("EventType").IsRequired().HasMaxLength(24).HasColumnType("character varying(24)");
+            e.Property<string>("ScopeReference").HasMaxLength(240).HasColumnType("character varying(240)");
+            e.Property<string>("Reason").IsRequired().HasMaxLength(2000).HasColumnType("character varying(2000)");
+            e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("ProposalId", "RecordedAtUtc", "Id");
+            e.HasIndex("ProposalId").IsUnique()
+                .HasFilter("\"EventType\" = 'PILOT_AUTHORIZED'")
+                .HasDatabaseName("UX_pilot_events_authorized");
+            e.HasIndex("ProposalId").IsUnique()
+                .HasFilter("\"EventType\" IN ('PILOT_COMPLETED','PILOT_ABORTED')")
+                .HasDatabaseName("UX_pilot_events_terminal");
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
+                .WithMany().HasForeignKey("ProposalId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.ToTable("pilot_events", "allocation_learning", t =>
+            {
+                t.HasCheckConstraint("ck_pilot_event_type", "\"EventType\" IN ('PILOT_AUTHORIZED','PILOT_COMPLETED','PILOT_ABORTED')");
+                t.HasCheckConstraint("ck_pilot_event_scope", "(\"EventType\" = 'PILOT_AUTHORIZED' AND \"ScopeReference\" IS NOT NULL AND length(btrim(\"ScopeReference\")) > 0) OR (\"EventType\" IN ('PILOT_COMPLETED','PILOT_ABORTED') AND \"ScopeReference\" IS NULL)");
+                t.HasCheckConstraint("ck_pilot_event_reason", "length(btrim(\"Reason\")) > 0");
+            });
+        });
+
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.ReviewedNeedLabelRecord", e =>
         {
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
