@@ -46,6 +46,9 @@ public sealed class AllocationModelBenchmark : Migration
         CREATE UNIQUE INDEX "UX_model_benchmarks_ProposalId_EvaluationFingerprint"
             ON allocation_learning.model_benchmarks
             ("ProposalId","EvaluationFingerprint");
+
+        CREATE INDEX "IX_model_benchmarks_RuntimeProposalId"
+            ON allocation_learning.model_benchmarks ("RuntimeProposalId");
         """);
 
     protected override void Down(MigrationBuilder migrationBuilder) =>
