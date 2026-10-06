@@ -205,6 +205,27 @@ Snapshots remain append-only. The browser retains one snapshot UUID across retri
 `/admin/allocation-training-runs` lists paginated completed runs and reads a report derived from each frozen input snapshot. Authenticated current ADMIN authorization and no-store responses apply to list and detail. The report exposes dataset/model/rubric/source, scenario amount, training/validation counts, cutoff and optional metrics, without raw household features, reviewer identifiers or input JSON. Proposal links open the specific proposal for review. NO_IMPROVEMENT is visible as an audited completed result with no candidate. Missing history does not prove an earlier timed-out request never ran; persistent jobs/idempotent training submission are still future work.
 
 
+## Automated learning orchestration
+
+Henna can now discover coherent reviewed first-party cohorts automatically and, only when an
+explicit operator policy is fully configured, run the existing offline training workflow from a
+hosted background worker. The policy must explicitly provide an enabled flag, a real automation
+account, minimum training and validation label counts, the simulation pool and a polling cadence.
+No default cadence, sample trigger or pool is invented by the application.
+
+Each coherent dataset/source/rubric cohort receives a deterministic request identity derived from
+the model/baseline versions, pool and exact reviewed label IDs. Re-running the same cohort is
+therefore an idempotent replay of the same audited TrainingRun rather than a new training job.
+The cutoff is the cohort's latest reviewed timestamp, not the worker clock, so unchanged data does
+not acquire a different training fingerprint merely because another polling cycle occurred.
+
+The automation account is re-authorized as ADMIN by the normal training workflow. A missing or
+invalid policy, insufficient cohort, revoked ADMIN role, training failure or infrastructure error
+fails closed. An improving automated run can create only a PENDING_REVIEW proposal; a
+NO_IMPROVEMENT run creates only its audit record. The worker has no coefficient activation,
+wallet mutation, eligibility decision or production-promotion path. Human review, pilot/rollback
+controls and explicit production activation remain separate requirements.
+
 ## Henna-owned AI boundary
 
 ADR-048 is normative for this subsystem. The learner code, versioning, training and
