@@ -59,7 +59,8 @@ public static class AllocationLearningAutomationIdentity
 
         var text = new StringBuilder(
             ExperimentalAllocationWeightLearner.ModelVersion)
-            .Append('|').Append(AllocationWeightProfile.Baseline.Version)
+            .Append('|').Append(cohort.FormulaVersion)
+            .Append('|').Append(cohort.RuntimeProposalId?.ToString() ?? "BASELINE")
             .Append('|').Append(cohort.DatasetVersion)
             .Append('|').Append(cohort.SourceInstructionReference)
             .Append('|').Append(cohort.RubricVersion)
