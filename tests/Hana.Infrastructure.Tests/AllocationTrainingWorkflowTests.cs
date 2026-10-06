@@ -52,6 +52,22 @@ public sealed class AllocationTrainingWorkflowTests
         for (var i = 0; i < snapshotIds.Length; i++) labels.Add(await workflow.ReviewNeedAsync(reviewer,
             snapshotIds[i], new[] { .35m, .20m, .18m, .12m, .10m, .05m }[i % 6], "synthetic-rubric-1",
             i < 36 ? LearningPartition.Training : LearningPartition.Validation));
+
+        var automation = await new AllocationLearningAutomationPlanner(db).BuildAsync();
+        Assert.Equal("TRIGGER_POLICY_REQUIRED", automation.Status);
+        Assert.False(automation.TriggerPolicyConfigured);
+        Assert.False(automation.AutomaticTrainingEnabled);
+        var cohort = Assert.Single(automation.Cohorts);
+        Assert.Equal(dataset, cohort.DatasetVersion);
+        Assert.Equal(source, cohort.SourceInstructionReference);
+        Assert.Equal("synthetic-rubric-1", cohort.RubricVersion);
+        Assert.Equal(36, cohort.TrainingLabelCount);
+        Assert.Equal(12, cohort.ValidationLabelCount);
+        Assert.Equal(36, cohort.DistinctTrainingHouseholds);
+        Assert.Equal(12, cohort.DistinctValidationHouseholds);
+        Assert.False(cohort.HouseholdPartitionOverlap);
+        Assert.Equal(labels.OrderBy(x => x), cohort.LabelIds);
+
         var runKey = Guid.NewGuid();
         var run = await workflow.TrainAsync(
             actor, labels, 4800, clock.UtcNow, runKey);
