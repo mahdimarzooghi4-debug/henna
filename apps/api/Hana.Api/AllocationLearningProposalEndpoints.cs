@@ -84,7 +84,7 @@ internal static class AllocationLearningProposalEndpoints
                 db, rows, ct);
             var items = rows.Select(x => new {
                 x.Id, x.DatasetVersion, x.SourceInstructionReference, x.FormulaVersion,
-                x.RuntimeProposalId,
+                x.RuntimeProposalId, x.RuntimeProfileSequence,
                 x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education, x.AssessedAtUtc,
                 x.EvidenceReference,
                 trainingEligible = lineage.ContainsKey(x.Id)
@@ -429,6 +429,7 @@ internal static class AllocationLearningProposalEndpoints
                 .CurrentAsync(ct);
             return Results.Ok(new
             {
+                runtimeSequence = current.Sequence,
                 proposalId = current.ProposalId,
                 profileVersion = current.Profile.Version,
                 weights = current.Profile,
@@ -456,6 +457,7 @@ internal static class AllocationLearningProposalEndpoints
                 id = eventId,
                 proposalId = id,
                 status = "RUNTIME_PROMOTED",
+                runtimeSequence = current.Sequence,
                 profileVersion = current.Profile.Version,
                 active = current.ProposalId == id,
                 runtimeApplied = current.ProposalId == id
@@ -482,6 +484,7 @@ internal static class AllocationLearningProposalEndpoints
                 proposalId = id,
                 status = "RUNTIME_ROLLED_BACK",
                 effectiveProposalId = current.ProposalId,
+                runtimeSequence = current.Sequence,
                 profileVersion = current.Profile.Version,
                 active = current.ProposalId is not null,
                 runtimeApplied = current.ProposalId is not null
