@@ -61,6 +61,7 @@ public static class AllocationLearningAutomationIdentity
             ExperimentalAllocationWeightLearner.ModelVersion)
             .Append('|').Append(cohort.FormulaVersion)
             .Append('|').Append(cohort.RuntimeProposalId?.ToString() ?? "BASELINE")
+            .Append('|').Append(cohort.RuntimeProfileSequence?.ToString() ?? "LEGACY")
             .Append('|').Append(cohort.DatasetVersion)
             .Append('|').Append(cohort.SourceInstructionReference)
             .Append('|').Append(cohort.RubricVersion)
