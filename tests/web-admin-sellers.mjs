@@ -6,6 +6,12 @@ import {
   parseAdminSellerList,
   parseAdminSellerMutation,
 } from "../apps/web-marketplace/lib/admin-sellers.ts";
+import {
+  adminSellerPendingDetails,
+  clearAdminSellerIntent,
+  persistAdminSellerIntent,
+  restoreAdminSellerIntent,
+} from "../apps/web-marketplace/lib/web-pending-admin-sellers.ts";
 
 const ID = "60000000-0000-4000-8000-000000000041";
 const item = {
@@ -110,4 +116,68 @@ test("admin seller retry intent retains exact key/body", () => {
     revision: 7, decision: "REJECTED", reason: "بررسی شد",
   });
   assert.notEqual(changed.key, first.key);
+});
+
+
+function memorySessionStorage() {
+  const values = new Map();
+  return {
+    get length() { return values.size; },
+    clear() { values.clear(); },
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    key(index) { return [...values.keys()][index] ?? null; },
+    removeItem(key) { values.delete(key); },
+    setItem(key, value) { values.set(String(key), String(value)); },
+  };
+}
+
+test("admin seller pending mutation survives reload and rejects overwrite or tamper", () => {
+  const previousWindow = globalThis.window;
+  const store = memorySessionStorage();
+  Object.defineProperty(globalThis, "window", {
+    value: { sessionStorage: store },
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const review = adminSellerIntent(null, ID + "/review", {
+      revision: 7,
+      decision: "APPROVED",
+      reason: "بررسی مستند",
+    });
+    assert.deepEqual(adminSellerPendingDetails(review), {
+      kind: "review",
+      applicationId: ID,
+      revision: 7,
+      decision: "APPROVED",
+      reason: "بررسی مستند",
+    });
+    persistAdminSellerIntent(review);
+    assert.deepEqual(restoreAdminSellerIntent(), review);
+
+    const activate = adminSellerIntent(null, ID + "/activate", {
+      revision: 8,
+    });
+    assert.throws(() => persistAdminSellerIntent(activate),
+      /must be resolved first/);
+    assert.equal(clearAdminSellerIntent(activate.key), false);
+
+    const storageKey = store.key(0);
+    const tampered = JSON.parse(store.getItem(storageKey));
+    tampered.body = JSON.stringify({
+      revision: 7,
+      decision: "OWNER",
+      reason: "بررسی مستند",
+    });
+    store.setItem(storageKey, JSON.stringify(tampered));
+    assert.throws(() => restoreAdminSellerIntent(), /invalid/);
+
+    store.clear();
+    persistAdminSellerIntent(review);
+    assert.equal(clearAdminSellerIntent(review.key), true);
+    assert.equal(restoreAdminSellerIntent(), null);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });
