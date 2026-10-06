@@ -159,6 +159,38 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             });
         });
 
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationRuntimeProfileEventRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("ProposalId").HasColumnType("uuid");
+            e.Property<Guid>("ActorAccountId").HasColumnType("uuid");
+            e.Property<string>("EventType").IsRequired().HasMaxLength(32).HasColumnType("character varying(32)");
+            e.Property<Guid?>("EffectiveProposalId").HasColumnType("uuid");
+            e.Property<string>("EffectiveProfileVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("EffectiveWeightsJson").IsRequired().HasColumnType("jsonb");
+            e.Property<Guid?>("PreviousProposalId").HasColumnType("uuid");
+            e.Property<string>("PreviousProfileVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("PreviousWeightsJson").IsRequired().HasColumnType("jsonb");
+            e.Property<string>("Reason").IsRequired().HasMaxLength(2000).HasColumnType("character varying(2000)");
+            e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("RecordedAtUtc", "Id");
+            e.HasIndex("ProposalId").IsUnique()
+                .HasFilter("\"EventType\" = 'RUNTIME_PROMOTED'")
+                .HasDatabaseName("UX_runtime_profile_promoted");
+            e.HasIndex("ProposalId").IsUnique()
+                .HasFilter("\"EventType\" = 'RUNTIME_ROLLED_BACK'")
+                .HasDatabaseName("UX_runtime_profile_rolled_back");
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
+                .WithMany().HasForeignKey("ProposalId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.ToTable("runtime_profile_events", "allocation_learning", t =>
+            {
+                t.HasCheckConstraint("ck_runtime_profile_event_type", "\"EventType\" IN ('RUNTIME_PROMOTED','RUNTIME_ROLLED_BACK')");
+                t.HasCheckConstraint("ck_runtime_profile_versions", "length(btrim(\"EffectiveProfileVersion\")) > 0 AND length(btrim(\"PreviousProfileVersion\")) > 0");
+                t.HasCheckConstraint("ck_runtime_profile_reason", "length(btrim(\"Reason\")) > 0");
+            });
+        });
+
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.ReviewedNeedLabelRecord", e =>
         {
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
