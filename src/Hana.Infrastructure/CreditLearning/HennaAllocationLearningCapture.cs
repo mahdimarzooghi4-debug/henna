@@ -52,12 +52,13 @@ public sealed class HennaAllocationLearningCapture(
                         $"""
                         INSERT INTO allocation_learning.assessments
                         ("Id","HouseholdKey","RecordedByAccountId","EvidenceReference",
-                         "FormulaVersion","RuntimeProposalId","DatasetVersion","SourceInstructionReference",
+                         "FormulaVersion","RuntimeProposalId","RuntimeProfileSequence","DatasetVersion","SourceInstructionReference",
                          "GeographicFactor","Health","Hardship","Age","Size","Care",
                          "Education","AllocatedRial","AssessedAtUtc","RecordedAtUtc")
                         VALUES
                         ({row.Id},{row.HouseholdKey},{row.RecordedByAccountId},
-                         {row.EvidenceReference},{row.FormulaVersion},{row.RuntimeProposalId},{row.DatasetVersion},
+                         {row.EvidenceReference},{row.FormulaVersion},{row.RuntimeProposalId},
+                         {row.RuntimeProfileSequence},{row.DatasetVersion},
                          {row.SourceInstructionReference},{row.GeographicFactor},
                          {row.Health},{row.Hardship},{row.Age},{row.Size},{row.Care},
                          {row.Education},{row.AllocatedRial},{row.AssessedAtUtc},
@@ -92,6 +93,7 @@ public sealed class HennaAllocationLearningCapture(
         stored.EvidenceReference == expected.EvidenceReference &&
         stored.FormulaVersion == expected.FormulaVersion &&
         stored.RuntimeProposalId == expected.RuntimeProposalId &&
+        stored.RuntimeProfileSequence == expected.RuntimeProfileSequence &&
         stored.DatasetVersion == expected.DatasetVersion &&
         stored.SourceInstructionReference == expected.SourceInstructionReference &&
         stored.GeographicFactor == expected.GeographicFactor &&
@@ -127,6 +129,20 @@ public sealed class HennaAllocationLearningCapture(
                     "Allocation journal runtime proposal lineage is invalid.");
             runtimeProposalId = parsedProposal;
         }
+        long? runtimeProfileSequence = null;
+        if (result.TryGetProperty("runtimeProfileSequence", out var runtimeSequence) &&
+            runtimeSequence.ValueKind != JsonValueKind.Null)
+        {
+            if (!runtimeSequence.TryGetInt64(out var parsedSequence) ||
+                parsedSequence < 0)
+                throw new InvalidOperationException(
+                    "Allocation journal runtime profile sequence is invalid.");
+            runtimeProfileSequence = parsedSequence;
+        }
+        if (runtimeProposalId is not null &&
+            runtimeProfileSequence is null)
+            throw new InvalidOperationException(
+                "Promoted allocation lineage requires a runtime profile sequence.");
         var programId = input.GetProperty("programId").GetGuid();
 
         var programDocument = await commerce.Documents.AsNoTracking()
@@ -169,6 +185,7 @@ public sealed class HennaAllocationLearningCapture(
                 EvidenceReference = null,
                 FormulaVersion = formulaVersion,
                 RuntimeProposalId = runtimeProposalId,
+                RuntimeProfileSequence = runtimeProfileSequence,
                 DatasetVersion = DatasetVersion,
                 SourceInstructionReference = "henna-program:" + program.Id,
                 GeographicFactor = beneficiary.GeographicFactor,
