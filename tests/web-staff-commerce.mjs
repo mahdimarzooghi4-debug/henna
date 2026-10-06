@@ -17,6 +17,12 @@ import {
   restoreSupportDecisionIntent,
   supportDecisionIntentDetails,
 } from "../apps/web-marketplace/lib/web-pending-support-decision.ts";
+import {
+  clearSupportOperationIntent,
+  persistSupportOperationIntent,
+  restoreSupportOperationIntent,
+  supportOperationIntentDetails,
+} from "../apps/web-marketplace/lib/web-pending-support-operations.ts";
 
 const ID = "60000000-0000-4000-8000-000000000001";
 const ORDER = "60000000-0000-4000-8000-000000000002";
@@ -344,6 +350,55 @@ test("support decision survives reload and rejects overwrite or tamper", () => {
     persistSupportDecisionIntent(first);
     assert.equal(clearSupportDecisionIntent(first.key), true);
     assert.equal(restoreSupportDecisionIntent(), null);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+
+test("support SLA and unavailability share one durable operation lock", () => {
+  const previousWindow = globalThis.window;
+  const store = memorySessionStorage();
+  Object.defineProperty(globalThis, "window", {
+    value: Object.assign({ sessionStorage: store }, store),
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const sla = staffIntent(null, "return-sla", {});
+    assert.deepEqual(supportOperationIntentDetails(sla),
+      { kind: "return-sla" });
+    persistSupportOperationIntent(sla);
+    assert.deepEqual(restoreSupportOperationIntent(), sla);
+
+    const unavailable = staffIntent(
+      null,
+      `returns/${ID}/unavailability`,
+      { reason: "تماس و مراجعه بررسی شد" },
+    );
+    assert.deepEqual(supportOperationIntentDetails(unavailable), {
+      kind: "unavailability",
+      incidentId: ID,
+      reason: "تماس و مراجعه بررسی شد",
+    });
+    assert.throws(() => persistSupportOperationIntent(unavailable),
+      /must be resolved first/);
+    assert.equal(clearSupportOperationIntent(unavailable.key), false);
+    assert.equal(clearSupportOperationIntent(sla.key), true);
+
+    persistSupportOperationIntent(unavailable);
+    assert.deepEqual(restoreSupportOperationIntent(), unavailable);
+    const storageKey = store.key(0);
+    const tampered = JSON.parse(store.getItem(storageKey));
+    tampered.body = JSON.stringify({ reason: " تماس و مراجعه بررسی شد " });
+    store.setItem(storageKey, JSON.stringify(tampered));
+    assert.throws(() => restoreSupportOperationIntent(), /invalid/);
+
+    store.clear();
+    persistSupportOperationIntent(unavailable);
+    assert.equal(clearSupportOperationIntent(unavailable.key), true);
+    assert.equal(restoreSupportOperationIntent(), null);
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
