@@ -5,6 +5,7 @@ using System.Text.Json;
 using Hana.Application.Time;
 using Hana.Domain.Credit;
 using Hana.Infrastructure.Catalog;
+using Hana.Infrastructure.CreditLearning;
 using Hana.Infrastructure.Geography;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
