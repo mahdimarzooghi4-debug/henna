@@ -195,16 +195,21 @@ public sealed class AllocationRetentionTests
 
         await Assert.ThrowsAsync<AllocationRetentionConflictException>(
             () => service.PurgeAsync(
+                Guid.NewGuid(),
                 admin,
                 cutoff,
                 new string('0', 64),
                 "Wrong preview must fail closed."));
 
+        var requestId = Guid.NewGuid();
+        const string purgeReason =
+            "Approved deletion of expired attributed research records.";
         var result = await service.PurgeAsync(
+            requestId,
             admin,
             cutoff,
             preview.PreviewDigest,
-            "Approved deletion of expired attributed research records.");
+            purgeReason);
 
         Assert.Equal(2, result.DeletedSnapshotCount);
         Assert.Equal(1, result.DeletedOutcomeCount);
@@ -239,10 +244,29 @@ public sealed class AllocationRetentionTests
         Assert.Equal(1, audit.DeletedOutcomeCount);
         Assert.Contains("Approved deletion", audit.Reason);
 
+        var replay = await service.PurgeAsync(
+            requestId,
+            admin,
+            cutoff,
+            preview.PreviewDigest,
+            purgeReason);
+        Assert.Equal(result, replay);
+        Assert.Single(await learning.RetentionEvents.AsNoTracking()
+            .Where(x => x.Id == requestId).ToListAsync());
+
+        await Assert.ThrowsAsync<AllocationRetentionConflictException>(
+            () => service.PurgeAsync(
+                requestId,
+                admin,
+                cutoff,
+                preview.PreviewDigest,
+                "Changed reason must conflict with the original request."));
+
         var after = await service.PreviewAsync(admin, cutoff);
         Assert.Equal(0, after.TotalEligibleSnapshotCount);
         await Assert.ThrowsAsync<AllocationRetentionConflictException>(
             () => service.PurgeAsync(
+                Guid.NewGuid(),
                 admin,
                 cutoff,
                 preview.PreviewDigest,
