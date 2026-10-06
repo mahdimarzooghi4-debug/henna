@@ -86,6 +86,7 @@ if (hasLearningDb)
             postgres.MigrationsHistoryTable("__EFMigrationsHistory", "allocation_learning")));
     builder.Services.AddScoped<AllocationLearningRecorder>();
     builder.Services.AddScoped<AllocationProposalService>();
+    builder.Services.AddScoped<AllocationLearningAutomationPlanner>();
     if (hasIdentityDb) builder.Services.AddScoped<AllocationTrainingWorkflow>();
 }
 var commerceConnectionString = builder.Configuration.GetConnectionString("CommerceDb");
