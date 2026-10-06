@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   adminOperationId,
   adminOperationIntent,
@@ -26,6 +26,12 @@ import {
   type AdminSummary,
   type AdminWithdrawal,
 } from "../../../lib/admin-operations";
+import {
+  adminRetrySuccessMessage,
+  clearAdminOperationIntent,
+  persistAdminOperationIntent,
+  restoreAdminOperationIntent,
+} from "../../../lib/web-pending-admin-operations";
 
 type Load<T> =
   | { kind:"loading" }
@@ -74,7 +80,8 @@ export default function AdminOperationsPage(){
   const [households,setHouseholds]=useState<Load<AdminHousehold>>(initial());
   const [notice,setNotice]=useState("");
   const [busy,setBusy]=useState<string|null>(null);
-  const intents=useRef<Record<string,AdminOperationIntent|null>>({});
+  const [storageFailure,setStorageFailure]=useState<string|null>(null);
+  const [pendingIntent,setPendingIntent]=useState<AdminOperationIntent|null>(null);
 
   const [staffAccount,setStaffAccount]=useState("");
   const [staffPermission,setStaffPermission]=useState<"FINANCE"|"SUPPORT">("SUPPORT");
@@ -186,6 +193,19 @@ export default function AdminOperationsPage(){
   },[auditPage,loadIntegrity,loadResource,loadSummary]);
 
   useEffect(()=>{
+    try{
+      const restored=restoreAdminOperationIntent();
+      if(!restored)return;
+      setPendingIntent(restored);
+      setNotice(
+        "یک عملیات مدیریتی نتیجه قطعی ندارد. همان action، کلید و بدنه برای تکرار امن بازیابی شد.");
+    }catch{
+      setStorageFailure(
+        "وضعیت retry امن عملیات ادمین قابل اعتماد نیست. mutation جدید برای جلوگیری از ارسال تکراری متوقف شد.");
+    }
+  },[]);
+
+  useEffect(()=>{
     const controller=new AbortController();
     void loadSummary(controller.signal);
     void loadIntegrity(controller.signal);
@@ -203,28 +223,70 @@ export default function AdminOperationsPage(){
     return()=>controller.abort();
   },[auditPage,loadIntegrity,loadResource,loadSummary]);
 
-  const command=useCallback(async(action:string,input:unknown,success:string)=>{
-    const intent=adminOperationIntent(intents.current[action]??null,action,input);
-    intents.current[action]=intent;setBusy(action);setNotice("");
+  const sendIntent=useCallback(async(
+    intent:AdminOperationIntent,
+    success:string,
+  )=>{
+    setBusy(intent.action);setNotice("");
     try{
-      await responseJson(await fetch(`/api/admin/operations/commands/${action}`,{
-        method:"POST",body:intent.body,cache:"no-store",credentials:"same-origin",
-        redirect:"error",headers:{"Content-Type":"application/json",
-          "Idempotency-Key":intent.key},
-      }));
-      intents.current[action]=null;
+      await responseJson(await fetch(
+        `/api/admin/operations/commands/${intent.action}`,{
+          method:"POST",body:intent.body,cache:"no-store",
+          credentials:"same-origin",redirect:"error",
+          headers:{"Content-Type":"application/json",
+            "Idempotency-Key":intent.key},
+        }));
+      if(!clearAdminOperationIntent(intent.key)){
+        setStorageFailure(
+          "پاسخ سرور دریافت شد، اما پاک‌سازی retry محلی تأیید نشد. عملیات جدید متوقف است.");
+        return;
+      }
+      setPendingIntent(null);
       setNotice(success);
       await refresh();
     }catch(error){
       if(error instanceof AdminOperationError&&error.status===503){
-        setNotice("نتیجه درخواست قطعی نیست؛ همان اقدام را بدون تغییر ورودی دوباره بزنید تا با همان کلید تکرار شود.");
+        setPendingIntent(intent);
+        setNotice(
+          "نتیجه درخواست قطعی نیست. همان action، کلید و بدنه در این تب حفظ شده‌اند و پس از reload نیز فقط همان درخواست قابل تکرار است.");
       }else{
-        intents.current[action]=null;
+        if(!clearAdminOperationIntent(intent.key)){
+          setStorageFailure(
+            "نتیجه سرور قطعی است، اما پاک‌سازی retry محلی تأیید نشد. عملیات جدید متوقف است.");
+          return;
+        }
+        setPendingIntent(null);
         setNotice(error instanceof Error?error.message:"عملیات مدیریتی ناموفق بود.");
         if(error instanceof AdminOperationError&&error.status===409) await refresh();
       }
     }finally{setBusy(null);}
   },[refresh]);
+
+  const command=useCallback(async(action:string,input:unknown,success:string)=>{
+    if(pendingIntent)return;
+    const intent=adminOperationIntent(null,action,input);
+    try{
+      persistAdminOperationIntent(intent);
+    }catch{
+      setStorageFailure(
+        "ذخیره retry امن عملیات ادمین تأیید نشد؛ هیچ mutationی به سرور ارسال نشد.");
+      return;
+    }
+    setPendingIntent(intent);
+    await sendIntent(intent,success);
+  },[pendingIntent,sendIntent]);
+
+  const retryPending=useCallback(async()=>{
+    if(!pendingIntent)return;
+    await sendIntent(pendingIntent,adminRetrySuccessMessage(pendingIntent.action));
+  },[pendingIntent,sendIntent]);
+
+  if(storageFailure)return(
+    <main className="admin-ops admin-ops--denied">
+      <img src="/hana-logo.png" alt="حنا" className="support-panel__logo"/>
+      <h1>عملیات ادمین</h1><p role="alert">{storageFailure}</p>
+    </main>
+  );
 
   if(summary.kind==="denied")return(
     <main className="admin-ops admin-ops--denied">
@@ -342,11 +404,20 @@ export default function AdminOperationsPage(){
           <Link href="/admin/allocation-training" className="auth-card__secondary">پژوهش تخصیص</Link>
           <Link href="/admin/allocation-proposals" className="auth-card__secondary">پیشنهادهای تخصیص</Link>
           <button type="button" className="seller-commerce__refresh"
-            disabled={busy!==null} onClick={()=>void refresh()}>تازه‌سازی</button>
+            disabled={busy!==null||pendingIntent!==null} onClick={()=>void refresh()}>تازه‌سازی</button>
         </div>
       </header>
 
       {notice&&<p className="form-status admin-ops__notice" role="status">{notice}</p>}
+      {pendingIntent&&(
+        <button type="button" className="primary-button"
+          disabled={busy!==null||pendingIntent!==null}
+          onClick={()=>void retryPending()}>
+          {busy===pendingIntent.action
+            ?"در حال تکرار امن…"
+            :"تکرار امن عملیات مدیریتی قبلی"}
+        </button>
+      )}
 
       <section className="admin-ops__section">
         <h2>نمای عملیاتی</h2>
@@ -430,7 +501,7 @@ export default function AdminOperationsPage(){
             </select>
             <label className="admin-ops__check"><input type="checkbox"
               checked={staffActive} onChange={e=>setStaffActive(e.target.checked)}/>فعال</label>
-            <button className="primary-button" disabled={busy!==null}>ثبت مجوز</button>
+            <button className="primary-button" disabled={busy!==null||pendingIntent!==null}>ثبت مجوز</button>
           </form>
           <Resource state={permissions} empty="مجوزی ثبت نشده است.">
             {item=><p key={item.id}><bdi dir="ltr">{item.accountId}</bdi> — {item.permission} — {item.active?"فعال":"غیرفعال"}</p>}
@@ -448,14 +519,14 @@ export default function AdminOperationsPage(){
               value={contentText} onChange={e=>setContentText(e.target.value)}/>
             <input className="field__input" inputMode="numeric" placeholder="expectedVersion"
               value={contentVersion} onChange={e=>setContentVersion(e.target.value)}/>
-            <button className="primary-button" disabled={busy!==null}>ذخیره محتوا</button>
+            <button className="primary-button" disabled={busy!==null||pendingIntent!==null}>ذخیره محتوا</button>
           </form>
           <div className="admin-ops__form">
             <input className="field__input" placeholder="UUID محتوا"
               value={contentId} onChange={e=>setContentId(e.target.value)}/>
             <label className="admin-ops__check"><input type="checkbox"
               checked={contentPublished} onChange={e=>setContentPublished(e.target.checked)}/>منتشر باشد</label>
-            <button type="button" className="primary-button" disabled={busy!==null}
+            <button type="button" className="primary-button" disabled={busy!==null||pendingIntent!==null}
               onClick={publishContent}>ثبت وضعیت انتشار</button>
           </div>
           <Resource state={contents} empty="محتوایی ثبت نشده است.">
@@ -470,7 +541,7 @@ export default function AdminOperationsPage(){
               value={organizationName} onChange={e=>setOrganizationName(e.target.value)}/>
             <input className="field__input" placeholder="مرجع ثبت/قرارداد"
               value={organizationReference} onChange={e=>setOrganizationReference(e.target.value)}/>
-            <button className="primary-button" disabled={busy!==null}>ایجاد سازمان</button>
+            <button className="primary-button" disabled={busy!==null||pendingIntent!==null}>ایجاد سازمان</button>
           </form>
           <form onSubmit={grantMembership} className="admin-ops__form">
             <input className="field__input" placeholder="UUID سازمان"
@@ -481,13 +552,13 @@ export default function AdminOperationsPage(){
               onChange={e=>setMembershipRole(e.target.value as "MANAGER"|"BENEFICIARY")}>
               <option value="MANAGER">MANAGER</option><option value="BENEFICIARY">BENEFICIARY</option>
             </select>
-            <button className="primary-button" disabled={busy!==null}>ثبت عضویت</button>
+            <button className="primary-button" disabled={busy!==null||pendingIntent!==null}>ثبت عضویت</button>
           </form>
           <div className="admin-ops__form">
             <input className="field__input" placeholder="UUID عضویت برای لغو"
               value={membershipRevoke} onChange={e=>setMembershipRevoke(e.target.value)}/>
             <button type="button" className="seller-commerce__refresh"
-              disabled={busy!==null} onClick={revokeMembership}>لغو عضویت</button>
+              disabled={busy!==null||pendingIntent!==null} onClick={revokeMembership}>لغو عضویت</button>
           </div>
           <Resource state={organizations} empty="سازمانی ثبت نشده است.">
             {item=><p key={item.id}><b>{item.name}</b> — <bdi dir="ltr">{item.id}</bdi></p>}
@@ -509,7 +580,7 @@ export default function AdminOperationsPage(){
               value={householdKey} onChange={e=>setHouseholdKey(e.target.value)}/>
             <input className="field__input" placeholder="مرجع مدرک/بررسی"
               value={householdEvidence} onChange={e=>setHouseholdEvidence(e.target.value)}/>
-            <button className="primary-button" disabled={busy!==null}>ثبت پیوند خانوار</button>
+            <button className="primary-button" disabled={busy!==null||pendingIntent!==null}>ثبت پیوند خانوار</button>
           </form>
           <form onSubmit={createProgram} className="admin-ops__form">
             <input className="field__input" placeholder="نام برنامه"
@@ -526,7 +597,7 @@ export default function AdminOperationsPage(){
               value={programCategories} onChange={e=>setProgramCategories(e.target.value)}/>
             <input className="field__input" placeholder="UUID سازمان (اختیاری)"
               value={programOrganization} onChange={e=>setProgramOrganization(e.target.value)}/>
-            <button className="primary-button" disabled={busy!==null}>ایجاد برنامه اعتبار</button>
+            <button className="primary-button" disabled={busy!==null||pendingIntent!==null}>ایجاد برنامه اعتبار</button>
           </form>
           <form onSubmit={allocateCredit} className="admin-ops__form">
             <input className="field__input" placeholder="UUID برنامه برای تخصیص"
@@ -538,7 +609,7 @@ export default function AdminOperationsPage(){
               placeholder={'[{"accountId":"UUID","householdKey":"UUID","geographicFactor":1,"scores":{"health":0,"hardship":0,"age":0,"size":0,"care":0,"education":0}}]'}
               value={allocationBeneficiaries}
               onChange={e=>setAllocationBeneficiaries(e.target.value)}/>
-            <button className="primary-button" disabled={busy!==null}>اجرای تخصیص</button>
+            <button className="primary-button" disabled={busy!==null||pendingIntent!==null}>اجرای تخصیص</button>
           </form>
           <h3>برنامه‌ها</h3>
           <Resource state={programs} empty="برنامه‌ای ثبت نشده است.">
@@ -563,15 +634,15 @@ export default function AdminOperationsPage(){
               value={feeRial} onChange={e=>setFeeRial(e.target.value)}/>
             <input className="field__input" placeholder="مرجع تصویب"
               value={feeApproval} onChange={e=>setFeeApproval(e.target.value)}/>
-            <button className="primary-button" disabled={busy!==null}>ثبت سیاست کارمزد</button>
+            <button className="primary-button" disabled={busy!==null||pendingIntent!==null}>ثبت سیاست کارمزد</button>
           </form>
           <div className="admin-ops__button-row">
-            <button type="button" className="primary-button" disabled={busy!==null}
+            <button type="button" className="primary-button" disabled={busy!==null||pendingIntent!==null}
               onClick={()=>void command("BUILD_SETTLEMENTS",{},
                 "تسویه‌های واجد شرایط فقط آماده شدند؛ انتقال بانکی انجام نشده است.")}>
               آماده‌سازی تسویه
             </button>
-            <button type="button" className="seller-commerce__refresh" disabled={busy!==null}
+            <button type="button" className="seller-commerce__refresh" disabled={busy!==null||pendingIntent!==null}
               onClick={()=>void command("ASSESS_WITHDRAWAL_SLA",{},
                 "SLA برداشت‌های معوق ارزیابی شد؛ انتقال بانکی انجام نشده است.")}>
               ارزیابی SLA برداشت
@@ -599,9 +670,9 @@ export default function AdminOperationsPage(){
           {item=><p key={item.id}><b>{item.event}</b> — {adminTime(item.createdAtUtc)} — actor <bdi dir="ltr">{item.actorId}</bdi> — resource <bdi dir="ltr">{item.resourceId}</bdi></p>}
         </Resource>
         <div className="seller-commerce__pager">
-          <button type="button" disabled={auditPage===1||busy!==null}
+          <button type="button" disabled={auditPage===1||busy!==null||pendingIntent!==null}
             onClick={()=>setAuditPage(p=>Math.max(1,p-1))}>صفحه قبل</button>
-          <button type="button" disabled={audit.kind!=="ready"||audit.items.length<20||busy!==null}
+          <button type="button" disabled={audit.kind!=="ready"||audit.items.length<20||busy!==null||pendingIntent!==null}
             onClick={()=>setAuditPage(p=>p+1)}>صفحه بعد</button>
         </div>
       </section>
