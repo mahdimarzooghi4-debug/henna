@@ -42,6 +42,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationPilotConflictException) { return Results.Conflict(); }
             catch (AllocationProductionControlConflictException) { return Results.Conflict(); }
             catch (AllocationRuntimePromotionConflictException) { return Results.Conflict(); }
+            catch (AllocationRetentionConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -108,6 +109,75 @@ internal static class AllocationLearningProposalEndpoints
                 input.RubricVersion, (LearningPartition)input.Partition, ct);
             return Results.Ok(new { id, active = false });
         });
+        routes.MapGet("/research/retention/preview", async (
+            DateTimeOffset cutoffUtc, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var preview = await services.GetRequiredService<AllocationRetentionService>()
+                .PreviewAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    cutoffUtc,
+                    ct);
+            return Results.Ok(new
+            {
+                preview.Scope,
+                preview.CutoffUtc,
+                preview.TotalEligibleSnapshotCount,
+                preview.SelectedSnapshotCount,
+                preview.SelectedOutcomeCount,
+                preview.Truncated,
+                preview.PreviewDigest,
+                active = false
+            });
+        });
+
+        routes.MapPost("/research/retention/purge", async (
+            AllocationRetentionPurgeRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var result = await services.GetRequiredService<AllocationRetentionService>()
+                .PurgeAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.CutoffUtc,
+                    input.PreviewDigest,
+                    input.Reason,
+                    ct);
+            return Results.Ok(new
+            {
+                result.EventId,
+                result.DeletedSnapshotCount,
+                result.DeletedOutcomeCount,
+                result.PreviewDigest,
+                active = false
+            });
+        });
+
+        routes.MapGet("/research/retention/events", async (
+            int? page, IServiceProvider services, CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var items = await db.RetentionEvents.AsNoTracking()
+                .OrderByDescending(x => x.RecordedAtUtc)
+                .ThenBy(x => x.Id)
+                .Skip((p - 1) * 20)
+                .Take(20)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.ActorAccountId,
+                    x.Scope,
+                    x.CutoffUtc,
+                    x.DeletedSnapshotCount,
+                    x.DeletedOutcomeCount,
+                    x.Reason,
+                    x.RecordedAtUtc
+                })
+                .ToListAsync(ct);
+            return Results.Ok(new { items, page = p, active = false });
+        });
+
         routes.MapGet("/research/automation/readiness", async (
             IServiceProvider services, CancellationToken ct) =>
         {
@@ -501,6 +571,10 @@ internal sealed record SubmitProposalRequest(string CandidateVersion, string Mod
 internal sealed record ReviewProposalRequest(string Decision, string Reason);
 internal sealed record AuthorizePilotRequest(string ScopeReference, string Reason);
 internal sealed record PilotDecisionRequest(string Reason);
+internal sealed record AllocationRetentionPurgeRequest(
+    DateTimeOffset CutoffUtc,
+    string PreviewDigest,
+    string Reason);
 internal sealed record ProductionControlRequest(string Reason);
 internal sealed record RuntimePromotionRequest(string Reason);
 
