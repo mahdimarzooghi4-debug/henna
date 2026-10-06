@@ -37,6 +37,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { return Results.Conflict(); }
             catch (UnauthorizedAccessException) { return Results.StatusCode(403); }
             catch (AllocationProposalConflictException) { return Results.Conflict(); }
+            catch (AllocationTrainingIdempotencyConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -131,9 +132,22 @@ internal static class AllocationLearningProposalEndpoints
             IServiceProvider services, CancellationToken ct) =>
         {
             if (input.LabelIds is null) return Results.BadRequest();
+            Guid? requestId = null;
+            var keyHeader = http.Request.Headers["Idempotency-Key"].ToString();
+            if (!string.IsNullOrWhiteSpace(keyHeader))
+            {
+                if (!Guid.TryParse(keyHeader, out var parsedKey) ||
+                    parsedKey == Guid.Empty)
+                    return Results.ValidationProblem(
+                        new Dictionary<string, string[]>
+                        {
+                            ["idempotencyKey"] = ["کلید اجرای آموزش معتبر نیست."]
+                        });
+                requestId = parsedKey;
+            }
             var run = await services.GetRequiredService<AllocationTrainingWorkflow>().TrainAsync(
                 (Guid)http.Items["AllocationReviewerAccount"]!, input.LabelIds, input.PoolRial,
-                input.CutoffUtc, ct);
+                input.CutoffUtc, requestId, ct);
             return Results.Ok(new { run.Id, run.Status, run.ProposalId, run.RecordedAtUtc, active = false });
         });
 
