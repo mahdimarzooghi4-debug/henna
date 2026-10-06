@@ -98,12 +98,18 @@ var allocationAutomationPool = long.TryParse(
     builder.Configuration["AllocationLearning:Automation:PoolRial"],
     out var parsedAutomationPool)
         ? parsedAutomationPool : (long?)null;
-builder.Services.AddSingleton(new AllocationLearningAutomationPolicy(
+var allocationAutomationPollMinutes = int.TryParse(
+    builder.Configuration["AllocationLearning:Automation:PollIntervalMinutes"],
+    out var parsedAutomationPollMinutes)
+        ? parsedAutomationPollMinutes : (int?)null;
+var allocationAutomationPolicy = new AllocationLearningAutomationPolicy(
     allocationAutomationEnabled,
     allocationAutomationActor,
     allocationAutomationTraining,
     allocationAutomationValidation,
-    allocationAutomationPool));
+    allocationAutomationPool,
+    allocationAutomationPollMinutes);
+builder.Services.AddSingleton(allocationAutomationPolicy);
 if (hasLearningDb)
 {
     builder.Services.AddDbContext<HanaAllocationLearningDbContext>(options =>
@@ -116,6 +122,8 @@ if (hasLearningDb)
     {
         builder.Services.AddScoped<AllocationTrainingWorkflow>();
         builder.Services.AddScoped<AllocationLearningAutomationExecutor>();
+        if (allocationAutomationPolicy.IsWorkerConfigured)
+            builder.Services.AddHostedService<AllocationLearningAutomationWorker>();
     }
 }
 var commerceConnectionString = builder.Configuration.GetConnectionString("CommerceDb");
