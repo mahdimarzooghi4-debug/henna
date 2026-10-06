@@ -79,6 +79,31 @@ var hasIdentityDb = !string.IsNullOrWhiteSpace(identityConnectionString);
 // Research storage is opt-in and has no public write/export endpoint.
 var learningConnectionString = builder.Configuration.GetConnectionString("AllocationLearningDb");
 var hasLearningDb = !string.IsNullOrWhiteSpace(learningConnectionString);
+var allocationAutomationEnabled = bool.TryParse(
+    builder.Configuration["AllocationLearning:Automation:Enabled"],
+    out var parsedAutomationEnabled) && parsedAutomationEnabled;
+var allocationAutomationActor = Guid.TryParse(
+    builder.Configuration["AllocationLearning:Automation:AccountId"],
+    out var parsedAutomationActor) && parsedAutomationActor != Guid.Empty
+        ? parsedAutomationActor : (Guid?)null;
+var allocationAutomationTraining = int.TryParse(
+    builder.Configuration["AllocationLearning:Automation:MinimumTrainingLabels"],
+    out var parsedAutomationTraining)
+        ? parsedAutomationTraining : (int?)null;
+var allocationAutomationValidation = int.TryParse(
+    builder.Configuration["AllocationLearning:Automation:MinimumValidationLabels"],
+    out var parsedAutomationValidation)
+        ? parsedAutomationValidation : (int?)null;
+var allocationAutomationPool = long.TryParse(
+    builder.Configuration["AllocationLearning:Automation:PoolRial"],
+    out var parsedAutomationPool)
+        ? parsedAutomationPool : (long?)null;
+builder.Services.AddSingleton(new AllocationLearningAutomationPolicy(
+    allocationAutomationEnabled,
+    allocationAutomationActor,
+    allocationAutomationTraining,
+    allocationAutomationValidation,
+    allocationAutomationPool));
 if (hasLearningDb)
 {
     builder.Services.AddDbContext<HanaAllocationLearningDbContext>(options =>
