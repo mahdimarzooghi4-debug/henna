@@ -16,6 +16,9 @@ public sealed class AssessmentRuntimeLineage : Migration
             ON allocation_learning.assessments
             ("FormulaVersion", "RuntimeProposalId");
 
+        CREATE INDEX "IX_assessments_RuntimeProposalId"
+            ON allocation_learning.assessments ("RuntimeProposalId");
+
         ALTER TABLE allocation_learning.assessments
             ADD CONSTRAINT "FK_assessments_proposals_RuntimeProposalId"
             FOREIGN KEY ("RuntimeProposalId")
@@ -27,6 +30,8 @@ public sealed class AssessmentRuntimeLineage : Migration
         """
         ALTER TABLE allocation_learning.assessments
             DROP CONSTRAINT "FK_assessments_proposals_RuntimeProposalId";
+
+        DROP INDEX allocation_learning."IX_assessments_RuntimeProposalId";
 
         DROP INDEX allocation_learning."IX_assessments_FormulaVersion_RuntimeProposalId";
 
