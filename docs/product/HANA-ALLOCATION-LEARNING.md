@@ -25,7 +25,7 @@ formula/dataset version, allocation result, timestamps and structured outcome ob
 Only snapshots recorded internally by Henna without attributed/manual-import provenance are
 training-eligible. Human-attributed assessment capture remains research/audit material and is
 explicitly excluded from labels and training.
-Retention controls and additional outcome producers remain to implement. First-party allocation snapshots are now captured directly from Henna's append-only commerce journal by a local DB-to-DB worker; no API or model service is involved. Runtime-promoted formula versions are also captured as first-party evidence. At the current stage, only baseline-formula snapshots are training-eligible; promoted-formula snapshots are deliberately retained but excluded from training until lineage-aware iterative training is implemented and reviewed.
+Retention controls and additional outcome producers remain to implement. First-party allocation snapshots are captured directly from Henna's append-only commerce journal by a local DB-to-DB worker; no API or model service is involved. Runtime-promoted formula versions carry both the exact formula version and the runtime proposal identity. A snapshot is training-eligible only when the stored runtime lineage proves that the same profile was actually effective at the allocation timestamp. Baseline and promoted generations are therefore both usable, but never mixed inside one training cohort.
 Keep identity mapping and health details outside model datasets. Access must be authorized.
 Track credit usage alongside stock availability, delivery/access constraints, essential-needs
 coverage and reviewed complaints. Spending alone is not a need label; unused credit does
@@ -110,9 +110,10 @@ required outside Development. Responses use `no-store`; database/auth failures f
 
 Submission requires a new globally unique candidate version, model/proposer version, rationale,
 six nonnegative weights summing to one, positive whole-rial pool, dataset version and funding
-instruction reference. Stored snapshots must all belong to the same dataset/instruction and
-the supported `AllocationWeightProfile.Baseline.Version`; duplicate household assessments are
-rejected. Historical formula versions outside this baseline require a separate version resolver.
+instruction reference. Manual proposal submission continues to use the documented baseline.
+Training-generated proposals may instead use one validated runtime-lineage profile as their
+baseline. Stored snapshots must all belong to the same dataset/instruction and exact baseline
+version used for that proposal; mixed runtime generations are rejected.
 The simulated pool is a research scenario supplied by the operator, not an authorized budget.
 
 The persisted report is generated from stored assessment data, never accepted from the client.
@@ -172,10 +173,13 @@ one snapshot/rubric pair is unique. A correction uses a new rubric version. The 
 establish the label independently under a documented rubric; code cannot establish that a
 human judgment was unbiased or prevent a reviewer copying an existing formula's output.
 
-`TrainAsync` consumes 40–500 distinct label IDs from one dataset, supported baseline and funding
-instruction. It reconstructs features from stored assessments, rejects labels beyond a supplied
-past UTC cutoff and relies on the learner to reject household overlap or mixed rubrics. A completed
-run freezes labels, features, review identities, model/baseline versions, pool and input references.
+`TrainAsync` consumes 40–500 distinct label IDs from one dataset, funding instruction and exact
+runtime lineage. It reconstructs features from stored assessments, verifies that each first-party
+snapshot's formula version and runtime proposal were actually effective at its allocation timestamp,
+rejects mixed generations, rejects labels beyond a supplied past UTC cutoff and relies on the learner
+to reject household overlap or mixed rubrics. A completed run freezes labels, features, review
+identities, the full baseline profile, baseline runtime proposal identity, model version, pool and
+input references.
 Successful training creates a PENDING_REVIEW proposal plus metrics and a linked PROPOSED audit
 in one database transaction. If evaluation reports no improvement, only a NO_IMPROVEMENT audit
 is stored. Invalid inputs or infrastructure errors abort without a completed run; they are not
@@ -209,7 +213,7 @@ to verify review interactions, access denial, empty state and mobile reflow agai
 
 The `/admin/allocation-training` page uses server-only cookie-to-bearer gateways and the same live session/ADMIN checks as proposal review. It marks only first-party Henna snapshots as training-eligible; attributed/manual rows are visible only as non-training research evidence. Routes under `/api/v1/admin/allocation-proposals/research` list paginated stored assessment features (without household identifiers), append reviewed labels, list up to 500 labels for an exact rubric version, and run the existing audited training workflow. The server chooses the training cutoff in the web gateway; the API validates UTC and rejects future cutoffs. Review identity and review timestamp come from the authenticated server context. Duplicate labels return conflict. No production assessment ingestion or synthetic seeding was added.
 
-Operators select actual persisted labels, with at least 30 training and 10 independent validation households, one dataset/source/baseline/rubric. These are engineering minimums, not evidence of statistical adequacy. Improving candidates stay pending review; non-improvement creates only a training audit. Training itself never activates coefficients, payments, or wallets. Training submission is idempotent when an Idempotency-Key is supplied, and automated orchestration uses deterministic request identities. Human review, pilot, production authorization and runtime promotion remain separate control-plane steps.
+Operators select actual persisted labels, with at least 30 training and 10 independent validation households, one dataset/source/runtime-lineage/rubric. These are engineering minimums, not evidence of statistical adequacy. Improving candidates stay pending review; non-improvement creates only a training audit. Training itself never activates coefficients, payments, or wallets. Training submission is idempotent when an Idempotency-Key is supplied, and automated orchestration uses deterministic request identities. Human review, pilot, production authorization and runtime promotion remain separate control-plane steps.
 
 
 ## Attributed assessment capture
@@ -232,8 +236,8 @@ hosted background worker. The policy must explicitly provide an enabled flag, a 
 account, minimum training and validation label counts, the simulation pool and a polling cadence.
 No default cadence, sample trigger or pool is invented by the application.
 
-Each coherent dataset/source/rubric cohort receives a deterministic request identity derived from
-the model/baseline versions, pool and exact reviewed label IDs. Re-running the same cohort is
+Each coherent dataset/source/runtime-lineage/rubric cohort receives a deterministic request identity derived from
+the model version, exact baseline formula version, runtime proposal identity, pool and exact reviewed label IDs. Re-running the same cohort is
 therefore an idempotent replay of the same audited TrainingRun rather than a new training job.
 The cutoff is the cohort's latest reviewed timestamp, not the worker clock, so unchanged data does
 not acquire a different training fingerprint merely because another polling cycle occurred.
