@@ -124,9 +124,17 @@ if (hasLearningDb)
         builder.Services.AddScoped<AllocationLearningAutomationExecutor>();
         builder.Services.AddScoped<AllocationPilotService>();
         builder.Services.AddScoped<AllocationProductionControlService>();
+        builder.Services.AddScoped<AllocationRuntimePromotionService>();
+        builder.Services.AddScoped<IAllocationRuntimeProfileProvider,
+            AllocationRuntimeProfileProvider>();
         if (allocationAutomationPolicy.IsWorkerConfigured)
             builder.Services.AddHostedService<AllocationLearningAutomationWorker>();
     }
+}
+else
+{
+    builder.Services.AddScoped<IAllocationRuntimeProfileProvider,
+        BaselineAllocationRuntimeProfileProvider>();
 }
 var commerceConnectionString = builder.Configuration.GetConnectionString("CommerceDb");
 var hasCommerceDb = hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString);
