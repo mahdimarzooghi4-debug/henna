@@ -7,6 +7,8 @@ const id = "b8b52eee-b4c3-4ae5-a72a-8a78dd1561c0";
 const firstPartyId = "b8b52eee-b4c3-4ae5-a72a-8a78dd1561c2";
 let web, browser, logs = "", mode = "normal", decision = null, postedReason = "";
 let firstTraining = null, trainingAttempts = 0;
+let firstRetention = null, retentionAttempts = 0, retentionEvent = null;
+const retentionDigest = "a".repeat(64);
 const trainingLabelIds = Array.from({ length: 40 }, (_, i) =>
   `10000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`);
 const json = (body, status = 200) => ({ status, contentType: "application/json", body: JSON.stringify(body) });
@@ -36,6 +38,63 @@ try {
       return route.fulfill(json({ active:false,items:[run] }));
     }
     if (path.includes("/research/")) {
+      if (path.endsWith("/retention/preview")) {
+        const cutoffUtc = new URL(request.url()).searchParams.get("cutoffUtc");
+        assert.equal(new Date(cutoffUtc).toISOString(), cutoffUtc);
+        return route.fulfill(json({
+          scope: "ATTRIBUTED_RESEARCH",
+          cutoffUtc,
+          totalEligibleSnapshotCount: 7,
+          selectedSnapshotCount: 5,
+          selectedOutcomeCount: 2,
+          truncated: true,
+          previewDigest: retentionDigest,
+          active: false,
+        }));
+      }
+      if (path.endsWith("/retention/events")) {
+        return route.fulfill(json({
+          items: retentionEvent ? [retentionEvent] : [],
+          page: 1,
+          active: false,
+        }));
+      }
+      if (path.endsWith("/retention/purge")) {
+        retentionAttempts++;
+        const current = {
+          key: request.headers()["idempotency-key"],
+          body: request.postData(),
+        };
+        assert.match(current.key,
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+        const body = request.postDataJSON();
+        assert.equal(body.previewDigest, retentionDigest);
+        assert.equal(body.reason, "حذف پژوهشی مصوب در تست مرورگر");
+        assert.equal(new Date(body.cutoffUtc).toISOString(), body.cutoffUtc);
+        if (retentionAttempts === 1) {
+          firstRetention = current;
+          return route.fulfill(json({ message: "unknown retention outcome" }, 503));
+        }
+        assert.deepEqual(current, firstRetention,
+          "retention retry after reload must retain exact key and body");
+        retentionEvent = {
+          id: current.key,
+          actorAccountId: id,
+          scope: "ATTRIBUTED_RESEARCH",
+          cutoffUtc: body.cutoffUtc,
+          deletedSnapshotCount: 5,
+          deletedOutcomeCount: 2,
+          reason: body.reason,
+          recordedAtUtc: "2026-10-06T12:00:00.000Z",
+        };
+        return route.fulfill(json({
+          eventId: current.key,
+          deletedSnapshotCount: 5,
+          deletedOutcomeCount: 2,
+          previewDigest: retentionDigest,
+          active: false,
+        }));
+      }
       if (path.endsWith("/assessments") && request.method() === "POST") {
         const input = request.postDataJSON();
         assert.equal(input.householdKey, id); assert.equal(input.scores.health, 3);
@@ -168,8 +227,69 @@ try {
   await page.getByRole("link", { name:"بررسی پیشنهاد این اجرا" }).click();
   await page.getByRole("heading", { name:"ضرایب پیشنهادی" }).waitFor();
   assert.equal((await fetch(base + "/api/admin/allocation-proposals/research/runs")).status,401);
+
+  const retentionPreviewUrl =
+    base + "/api/admin/allocation-proposals/research/retention/preview" +
+    "?cutoffUtc=2026-10-01T10%3A00%3A00.000Z";
+  assert.equal((await fetch(retentionPreviewUrl)).status, 401);
+  assert.equal((await fetch(
+    base + "/api/admin/allocation-proposals/research/retention/purge",
+    {
+      method: "POST",
+      headers: {
+        Origin: "https://untrusted.test",
+        "Content-Type": "application/json",
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+      body: JSON.stringify({
+        cutoffUtc: "2026-10-01T10:00:00.000Z",
+        previewDigest: retentionDigest,
+        reason: "test",
+      }),
+    },
+  )).status, 403);
+
+  await page.goto(base + "/admin/allocation-retention");
+  await page.getByRole("heading", {
+    name: "Retention داده‌های پژوهشی تخصیص",
+  }).waitFor();
+  await page.getByLabel("cutoff صریح").fill("2026-10-01T10:00");
+  await page.getByRole("button", { name: "گرفتن Preview" }).click();
+  await page.getByText("Preview digest:", { exact: false }).waitFor();
+  await page.getByText("بیش از ۵۰۰۰ snapshot واجد شرایط است.", {
+    exact: false,
+  }).waitFor();
+  await page.getByLabel("دلیل مصوب حذف").fill(
+    "حذف پژوهشی مصوب در تست مرورگر",
+  );
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", {
+    name: "حذف batch پژوهشی و ثبت audit",
+  }).click();
+  await page.getByText("نتیجه retention قطعی نیست.", {
+    exact: false,
+  }).waitFor();
+  assert.equal(retentionAttempts, 1);
+
+  await page.reload();
+  await page.getByRole("button", {
+    name: "تکرار امن همان حذف قبلی",
+  }).waitFor();
+  assert.equal(await page.getByLabel("cutoff صریح").isDisabled(), true);
+  await page.getByRole("button", {
+    name: "تکرار امن همان حذف قبلی",
+  }).click();
+  await page.getByText("Retention اجرا و audit شد:", {
+    exact: false,
+  }).waitFor();
+  assert.equal(retentionAttempts, 2);
+  await page.getByText("حذف پژوهشی مصوب در تست مرورگر").waitFor();
+  assert.equal(await page.evaluate(
+    () => document.documentElement.scrollWidth <= innerWidth,
+  ), true);
+
   assert.deepEqual(errors, []);
-  console.log("Allocation review UI: authentication gateway, CSRF, reports, review reason, refresh, access denial and mobile reflow passed");
+  console.log("Allocation admin UI: proposal review, training durable retry and retention preview/reload-safe purge passed");
 } finally {
   if (browser) await browser.close();
   if (web?.pid) { try { process.kill(-web.pid, "SIGTERM"); } catch {} }
