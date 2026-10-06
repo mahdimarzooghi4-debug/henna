@@ -243,7 +243,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationAssessmentRecord", null)
                 .WithMany().HasForeignKey("SnapshotId").OnDelete(DeleteBehavior.Restrict).IsRequired();
             e.ToTable("need_labels", "allocation_learning", t =>
-                t.HasCheckConstraint("ck_need_label", "\"NeedScore\" BETWEEN 0 AND 1 AND \"Partition\" IN (1, 2)"));
+                t.HasCheckConstraint("ck_need_label", "\"NeedScore\" BETWEEN 0 AND 1 AND \"Partition\" IN (1, 2, 3)"));
         });
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationTrainingRunRecord", e =>
         {
