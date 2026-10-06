@@ -95,6 +95,10 @@ public sealed class AllocationRuntimePromotionService(
         await RequireAdmin(actor, ct);
         ValidateReason(reason);
 
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock(48710261005)", ct);
+
         var proposal = await db.Proposals.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == proposalId, ct)
             ?? throw new ArgumentException("Proposal does not exist.");
@@ -148,6 +152,7 @@ public sealed class AllocationRuntimePromotionService(
         try
         {
             await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
         }
         catch (DbUpdateException e)
             when (e.InnerException is PostgresException { SqlState: "23505" })
@@ -167,6 +172,10 @@ public sealed class AllocationRuntimePromotionService(
     {
         await RequireAdmin(actor, ct);
         ValidateReason(reason);
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock(48710261005)", ct);
 
         if (!await db.ProductionControlEvents.AsNoTracking().AnyAsync(
             x => x.ProposalId == proposalId &&
@@ -223,6 +232,7 @@ public sealed class AllocationRuntimePromotionService(
         try
         {
             await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
         }
         catch (DbUpdateException e)
             when (e.InnerException is PostgresException { SqlState: "23505" })
