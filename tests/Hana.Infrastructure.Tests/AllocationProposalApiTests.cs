@@ -189,6 +189,14 @@ public sealed class AllocationProposalApiTests
                 .GetProperty("triggerPolicyConfigured").GetBoolean());
             Assert.False(automationJson.RootElement
                 .GetProperty("automaticTrainingEnabled").GetBoolean());
+            var missing = automationJson.RootElement
+                .GetProperty("missingPolicyRequirements")
+                .EnumerateArray()
+                .Select(x => x.GetString())
+                .ToArray();
+            Assert.Contains("ENABLED", missing);
+            Assert.Contains("AUTOMATION_ACCOUNT_ID", missing);
+            Assert.Contains("POOL_RIAL", missing);
             var cohort = Assert.Single(automationJson.RootElement
                 .GetProperty("cohorts").EnumerateArray().ToArray());
             Assert.Equal(1,
