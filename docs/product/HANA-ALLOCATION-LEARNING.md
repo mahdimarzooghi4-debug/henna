@@ -44,7 +44,16 @@ one of `PILOT_COMPLETED` or `PILOT_ABORTED`. Pilot authorization carries an expl
 scope reference and rationale; Henna invents no pilot size, duration, success threshold or
 automatic promotion rule. Pilot events do not change allocation weights, route households,
 mutate wallets or activate production. `APPROVED` is not `ACTIVE`, and
-`PILOT_COMPLETED` is also not `ACTIVE`. Durable review, reviewer identity and rationale now exist for proposals;
+`PILOT_COMPLETED` is also not `ACTIVE`.
+
+After `PILOT_COMPLETED`, a privileged administrator may record
+`PRODUCTION_ACTIVATION_AUTHORIZED`. This is an append-only human authorization event only;
+it does not change the runtime allocation profile. A later
+`PRODUCTION_ROLLBACK_AUTHORIZED` event may be recorded only after activation authorization,
+again without applying a runtime rollback. These authorizations establish the explicit human
+control boundary needed by a future runtime promotion mechanism. Until that separate mechanism
+exists and is intentionally invoked, the baseline remains authoritative and both API responses
+continue to report `active=false` and `runtimeApplied=false`. Durable review, reviewer identity and rationale now exist for proposals;
 rollback and pilot limits remain to implement before allowing activation. Maintain a fixed
 coefficient version for each allocation run; never silently recalculate earlier grants.
 Human approval of a coefficient does not override the funding source's instructions.
