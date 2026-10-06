@@ -1,14 +1,16 @@
 # Henna allocation learning — foundation
 
 Status: Henna-owned experimental offline supervised learner with internal PostgreSQL recording and evaluation;
-no external/internal network model API, no production-trained model, no automatic production activation
-or production deployment yet.
+no external/internal network model API and no production-trained model is active by default. Automatic
+training may create candidates, but production use requires human review, completed pilot, explicit
+activation authorization and a separate explicit runtime promotion.
 
 The Domain simulator compares a versioned baseline with proposed six-dimension weights.
 It freezes household assessments and geography and compares unrounded POOL_NEEDS shares
 in one funding pool governed by one source instruction. Units are rials. These previews
 must never be posted to a wallet; settlement rounding and eligibility remain separate.
-It does not alter the existing allocation calculator or historic allocations.
+An explicitly promoted runtime profile affects only future allocation commands. Every allocation
+journals the exact formula version used; historic grants are never silently recalculated.
 
 The learner is a Henna-owned in-process statistical implementation. The replaceable
 model-provider abstraction has been removed so a remote model cannot be introduced as a
@@ -23,7 +25,7 @@ formula/dataset version, allocation result, timestamps and structured outcome ob
 Only snapshots recorded internally by Henna without attributed/manual-import provenance are
 training-eligible. Human-attributed assessment capture remains research/audit material and is
 explicitly excluded from labels and training.
-Retention controls and additional outcome producers remain to implement. First-party allocation snapshots are now captured directly from Henna's append-only commerce journal by a local DB-to-DB worker; no API or model service is involved.
+Retention controls and additional outcome producers remain to implement. First-party allocation snapshots are now captured directly from Henna's append-only commerce journal by a local DB-to-DB worker; no API or model service is involved. Runtime-promoted formula versions are also captured as first-party evidence. At the current stage, only baseline-formula snapshots are training-eligible; promoted-formula snapshots are deliberately retained but excluded from training until lineage-aware iterative training is implemented and reviewed.
 Keep identity mapping and health details outside model datasets. Access must be authorized.
 Track credit usage alongside stock availability, delivery/access constraints, essential-needs
 coverage and reviewed complaints. Spending alone is not a need label; unused credit does
@@ -47,14 +49,14 @@ mutate wallets or activate production. `APPROVED` is not `ACTIVE`, and
 `PILOT_COMPLETED` is also not `ACTIVE`.
 
 After `PILOT_COMPLETED`, a privileged administrator may record
-`PRODUCTION_ACTIVATION_AUTHORIZED`. This is an append-only human authorization event only;
-it does not change the runtime allocation profile. A later
-`PRODUCTION_ROLLBACK_AUTHORIZED` event may be recorded only after activation authorization,
-again without applying a runtime rollback. These authorizations establish the explicit human
-control boundary needed by a future runtime promotion mechanism. Until that separate mechanism
-exists and is intentionally invoked, the baseline remains authoritative and both API responses
-continue to report `active=false` and `runtimeApplied=false`. Durable review, reviewer identity and rationale now exist for proposals;
-rollback and pilot limits remain to implement before allowing activation. Maintain a fixed
+`PRODUCTION_ACTIVATION_AUTHORIZED`. Authorization alone still does not change runtime.
+A separate explicit `RUNTIME_PROMOTED` transition is required. Runtime transitions are
+append-only, globally sequenced and serialized in PostgreSQL; each promotion freezes both the
+new effective profile and the previous profile. Commerce reads the current runtime profile for
+each new allocation and journals its exact formula version. A later
+`PRODUCTION_ROLLBACK_AUTHORIZED` permits a separate explicit `RUNTIME_ROLLED_BACK`
+transition only while that proposal is still the effective runtime proposal; rollback restores
+the exact frozen previous profile. Historic grants are never rewritten. Maintain a fixed
 coefficient version for each allocation run; never silently recalculate earlier grants.
 Human approval of a coefficient does not override the funding source's instructions.
 
@@ -207,19 +209,19 @@ to verify review interactions, access denial, empty state and mobile reflow agai
 
 The `/admin/allocation-training` page uses server-only cookie-to-bearer gateways and the same live session/ADMIN checks as proposal review. It marks only first-party Henna snapshots as training-eligible; attributed/manual rows are visible only as non-training research evidence. Routes under `/api/v1/admin/allocation-proposals/research` list paginated stored assessment features (without household identifiers), append reviewed labels, list up to 500 labels for an exact rubric version, and run the existing audited training workflow. The server chooses the training cutoff in the web gateway; the API validates UTC and rejects future cutoffs. Review identity and review timestamp come from the authenticated server context. Duplicate labels return conflict. No production assessment ingestion or synthetic seeding was added.
 
-Operators select actual persisted labels, with at least 30 training and 10 independent validation households, one dataset/source/baseline/rubric. These are engineering minimums, not evidence of statistical adequacy. Improving candidates stay pending review; non-improvement creates only a training audit. No coefficient activation, payments, or wallet mutation occurs. Training remains bounded and synchronous; a timeout can occur after a committed run, so investigate the recorded proposal before retrying. Production queueing, idempotent job submission and rollout remain future work.
+Operators select actual persisted labels, with at least 30 training and 10 independent validation households, one dataset/source/baseline/rubric. These are engineering minimums, not evidence of statistical adequacy. Improving candidates stay pending review; non-improvement creates only a training audit. Training itself never activates coefficients, payments, or wallets. Training submission is idempotent when an Idempotency-Key is supplied, and automated orchestration uses deterministic request identities. Human review, pilot, production authorization and runtime promotion remain separate control-plane steps.
 
 
 ## Attributed assessment capture
 
 `/admin/allocation-assessments` and POST `/api/v1/admin/allocation-proposals/research/assessments` let an authenticated current administrator capture a documented external assessment. All six integer 0–3 scores are required (missing is not zero), along with a stable pseudonymous household UUID, dataset/source versions, positive approved geographic factor, nonnegative whole-rial allocation and a past UTC assessment time. The server fixes the supported baseline version and records the authenticated actor and evidence reference. Existing internal snapshots retain null provenance; new HTTP captures require both fields. This is human-attributed intake, not automatic verification of an external dossier, MPI table or payment decision. The operator must use the approved mapping and source document.
 
-Snapshots remain append-only. The browser retains one snapshot UUID across retries; duplicate IDs return 409 without overwriting. There is no national-ID intake, synthetic production seed or wallet write. Attributed/manual capture is research-only and is deliberately blocked from labels and training. First-party operational allocation snapshots arrive separately from Henna's commerce journal. The migration adds nullable provenance fields without fabricating authors for historical snapshots. Production migration, real evidence validation and external-source integration are still separate rollout tasks.
+Snapshots remain append-only. The browser retains one snapshot UUID across retries; an exact replay of the same ID and business payload returns 200 with `replayed=true`, while divergent reuse of that ID returns 409 without overwriting. There is no national-ID intake, synthetic production seed or wallet write. Attributed/manual capture is research-only and is deliberately blocked from labels and training. First-party operational allocation snapshots arrive separately from Henna's commerce journal. The migration adds nullable provenance fields without fabricating authors for historical snapshots. Production migration, real evidence validation and external-source integration are still separate rollout tasks.
 
 
 ## Completed training run history
 
-`/admin/allocation-training-runs` lists paginated completed runs and reads a report derived from each frozen input snapshot. Authenticated current ADMIN authorization and no-store responses apply to list and detail. The report exposes dataset/model/rubric/source, scenario amount, training/validation counts, cutoff and optional metrics, without raw household features, reviewer identifiers or input JSON. Proposal links open the specific proposal for review. NO_IMPROVEMENT is visible as an audited completed result with no candidate. Missing history does not prove an earlier timed-out request never ran; persistent jobs/idempotent training submission are still future work.
+`/admin/allocation-training-runs` lists paginated completed runs and reads a report derived from each frozen input snapshot. Authenticated current ADMIN authorization and no-store responses apply to list and detail. The report exposes dataset/model/rubric/source, scenario amount, training/validation counts, cutoff and optional metrics, without raw household features, reviewer identifiers or input JSON. Proposal links open the specific proposal for review. NO_IMPROVEMENT is visible as an audited completed result with no candidate. Training submission now supports durable idempotent request identity, and automated orchestration reuses a deterministic request ID for the same cohort. A missing response therefore requires reading recorded run history before deciding whether a new request is appropriate.
 
 
 ## Automated learning orchestration
