@@ -61,6 +61,8 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<bool?>("DeliveryBarrier").HasColumnType("boolean");
             e.Property<bool?>("AccessBarrier").HasColumnType("boolean");
             e.Property<int>("Evidence").HasColumnType("integer");
+            e.Property<Guid?>("ReviewedByAccountId").HasColumnType("uuid");
+            e.Property<string>("EvidenceReference").HasMaxLength(240).HasColumnType("character varying(240)");
             e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
             e.HasIndex("SnapshotId", "PeriodEndUtc");
@@ -71,6 +73,8 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
                 t.HasCheckConstraint("ck_outcome_interval", "\"PeriodEndUtc\" > \"PeriodStartUtc\"");
                 t.HasCheckConstraint("ck_outcome_values", "(\"CreditUsedRial\" IS NULL OR (\"CreditUsedRial\" >= 0 AND \"CreditUsedRial\" = trunc(\"CreditUsedRial\"))) AND (\"EssentialNeedsCoverage\" IS NULL OR \"EssentialNeedsCoverage\" BETWEEN 0 AND 1) AND \"Evidence\" BETWEEN 1 AND 3");
                 t.HasCheckConstraint("ck_outcome_observed", "\"CreditUsedRial\" IS NOT NULL OR \"EssentialNeedsCoverage\" IS NOT NULL OR \"StockBarrier\" IS NOT NULL OR \"DeliveryBarrier\" IS NOT NULL OR \"AccessBarrier\" IS NOT NULL");
+                t.HasCheckConstraint("ck_outcome_review_provenance", "(\"Evidence\" = 3 AND \"ReviewedByAccountId\" IS NOT NULL AND \"ReviewedByAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND \"EvidenceReference\" IS NOT NULL AND length(btrim(\"EvidenceReference\")) > 0) OR (\"Evidence\" <> 3 AND \"ReviewedByAccountId\" IS NULL AND \"EvidenceReference\" IS NULL)");
+                t.HasCheckConstraint("ck_outcome_reviewed_nonfinancial", "\"Evidence\" <> 3 OR \"CreditUsedRial\" IS NULL");
             });
         });
 
