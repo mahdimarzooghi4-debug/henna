@@ -38,6 +38,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (UnauthorizedAccessException) { return Results.StatusCode(403); }
             catch (AllocationProposalConflictException) { return Results.Conflict(); }
             catch (AllocationTrainingIdempotencyConflictException) { return Results.Conflict(); }
+            catch (AllocationAssessmentIdempotencyConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -55,13 +56,16 @@ internal static class AllocationLearningProposalEndpoints
                 s.Size.Value, s.Care.Value, s.Education.Value);
             // The documented baseline is fixed here. Input is an attributed external snapshot,
             // not a payment authorization or an automatically verified household profile.
-            await services.GetRequiredService<AllocationLearningRecorder>().RecordAssessmentAsync(
-                input.SnapshotId, new(input.HouseholdKey, scores, input.GeographicFactor.Value),
-                AllocationWeightProfile.Baseline.Version, input.DatasetVersion, input.SourceInstructionReference,
-                input.AllocatedRial.Value, input.AssessedAtUtc.Value, ct,
-                (Guid)http.Items["AllocationReviewerAccount"]!, input.EvidenceReference);
-            return Results.Created("/api/v1/admin/allocation-proposals/research/assessments",
-                new { id = input.SnapshotId, active = false });
+            var created = await services.GetRequiredService<AllocationLearningRecorder>()
+                .RecordAssessmentIdempotentlyAsync(
+                    input.SnapshotId, new(input.HouseholdKey, scores, input.GeographicFactor.Value),
+                    AllocationWeightProfile.Baseline.Version, input.DatasetVersion, input.SourceInstructionReference,
+                    input.AllocatedRial.Value, input.AssessedAtUtc.Value, ct,
+                    (Guid)http.Items["AllocationReviewerAccount"]!, input.EvidenceReference);
+            var payload = new { id = input.SnapshotId, active = false, replayed = !created };
+            return created
+                ? Results.Created("/api/v1/admin/allocation-proposals/research/assessments", payload)
+                : Results.Ok(payload);
         });
 
         routes.MapGet("/research/assessments", async (int? page, IServiceProvider services, CancellationToken ct) =>
