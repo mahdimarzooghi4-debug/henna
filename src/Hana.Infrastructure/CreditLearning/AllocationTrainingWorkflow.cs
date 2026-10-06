@@ -119,7 +119,9 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         var lineages = rows.Select(x => lineage[x.Id]).ToArray();
         var baseline = lineages[0].Baseline;
         if (rows.Any(x => x.FormulaVersion != baseline.Version) ||
-            lineages.Any(x => x.RuntimeProposalId != lineages[0].RuntimeProposalId ||
+            lineages.Any(x =>
+                x.RuntimeProposalId != lineages[0].RuntimeProposalId ||
+                x.RuntimeProfileSequence != lineages[0].RuntimeProfileSequence ||
                 x.Baseline != baseline) ||
             rows.Select(x => x.DatasetVersion).Distinct().Count() != 1 ||
             rows.Select(x => x.SourceInstructionReference).Distinct().Count() != 1)
@@ -138,6 +140,7 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
                 networkModelApi = false, dataOrigin = "HENNA_FIRST_PARTY",
                 labelIds = ids, snapshotIds, examples, baseline,
                 baselineRuntimeProposalId = lineages[0].RuntimeProposalId,
+                baselineRuntimeProfileSequence = lineages[0].RuntimeProfileSequence,
                 poolRial,
                 sourceInstructionReference = rows[0].SourceInstructionReference }),
             CutoffUtc = cutoffUtc, RecordedAtUtc = clock.UtcNow };
