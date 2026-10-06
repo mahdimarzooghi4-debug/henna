@@ -263,4 +263,177 @@ public sealed class AllocationTrainingWorkflowTests
         stored.Status = "NO_IMPROVEMENT";
         await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
     }
+
+    [Fact]
+    public async Task PromotedRuntimeLineageCanTrainTheNextControlledGeneration()
+    {
+        var connection = Environment.GetEnvironmentVariable("ConnectionStrings__IdentityDb");
+        if (string.IsNullOrWhiteSpace(connection)) return;
+
+        await using var identity = new HanaIdentityDbContext(
+            new DbContextOptionsBuilder<HanaIdentityDbContext>()
+                .UseNpgsql(connection).Options);
+        await using var db = new HanaAllocationLearningDbContext(
+            new DbContextOptionsBuilder<HanaAllocationLearningDbContext>()
+                .UseNpgsql(connection, pg => pg.MigrationsHistoryTable(
+                    "__EFMigrationsHistory", "allocation_learning")).Options);
+        Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+
+        var clock = new SystemClock();
+        var actor = Guid.NewGuid();
+        var reviewer = Guid.NewGuid();
+        foreach (var id in new[] { actor, reviewer })
+        {
+            identity.Accounts.Add(new()
+            {
+                Id = id,
+                NormalizedPhone = "09" +
+                    RandomNumberGenerator.GetInt32(1_000_000_000).ToString("D9"),
+                CreatedAtUtc = clock.UtcNow
+            });
+            identity.RoleAssignments.Add(new()
+            {
+                AccountId = id,
+                Role = HanaRoles.Admin,
+                GrantedAtUtc = clock.UtcNow
+            });
+        }
+        await identity.SaveChangesAsync();
+
+        var roles = new RoleAuthorizationService(
+            identity, new AuthSessionService(identity, clock));
+        var workflow = new AllocationTrainingWorkflow(
+            db, roles, clock, new AllocationProposalService(db, clock));
+
+        var dataset = HennaAllocationLearningCapture.DatasetVersion;
+        var source = "henna-program:" + Guid.NewGuid();
+        var promoted = new AllocationWeightProfile(
+            "henna-promoted-ci-" + Guid.NewGuid().ToString("N"),
+            .35m, .20m, .18m, .12m, .10m, .05m);
+        var runtimeProposalId = Guid.NewGuid();
+        var promotedAt = clock.UtcNow.AddHours(-2);
+
+        await using (var tx = await db.Database.BeginTransactionAsync())
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock(48710261005)");
+            var sequence = checked((await db.RuntimeProfileEvents
+                .Select(x => (long?)x.Sequence).MaxAsync() ?? 0L) + 1L);
+            db.Proposals.Add(new()
+            {
+                Id = runtimeProposalId,
+                CreatedByAccountId = actor,
+                CandidateVersion = promoted.Version,
+                ModelVersion = "ci-promoted-parent",
+                Rationale = "Existing reviewed and promoted parent profile.",
+                BaselineVersion = AllocationWeightProfile.Baseline.Version,
+                DatasetVersion = dataset,
+                SourceInstructionReference = source,
+                PoolRial = 4800,
+                WeightsJson = JsonSerializer.Serialize(promoted),
+                SnapshotIdsJson = "[]",
+                SimulationJson = "{}",
+                CreatedAtUtc = promotedAt.AddMinutes(-10)
+            });
+            db.RuntimeProfileEvents.Add(new()
+            {
+                Id = Guid.NewGuid(),
+                ProposalId = runtimeProposalId,
+                ActorAccountId = actor,
+                Sequence = sequence,
+                EventType = "RUNTIME_PROMOTED",
+                EffectiveProposalId = runtimeProposalId,
+                EffectiveProfileVersion = promoted.Version,
+                EffectiveWeightsJson = JsonSerializer.Serialize(promoted),
+                PreviousProposalId = null,
+                PreviousProfileVersion = AllocationWeightProfile.Baseline.Version,
+                PreviousWeightsJson = JsonSerializer.Serialize(
+                    AllocationWeightProfile.Baseline),
+                Reason = "CI parent runtime profile.",
+                RecordedAtUtc = promotedAt
+            });
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+
+        var target = new[] { .30m, .25m, .18m, .12m, .10m, .05m };
+        var snapshotIds = Enumerable.Range(0, 48)
+            .Select(_ => Guid.NewGuid()).ToArray();
+        for (var i = 0; i < snapshotIds.Length; i++)
+        {
+            var feature = i % 6;
+            var scores = Enumerable.Range(0, 6)
+                .Select(k => k == feature ? 3 : 0).ToArray();
+            db.Assessments.Add(new()
+            {
+                Id = snapshotIds[i],
+                HouseholdKey = Guid.NewGuid(),
+                FormulaVersion = promoted.Version,
+                RuntimeProposalId = runtimeProposalId,
+                DatasetVersion = dataset,
+                SourceInstructionReference = source,
+                GeographicFactor = 1m,
+                Health = scores[0],
+                Hardship = scores[1],
+                Age = scores[2],
+                Size = scores[3],
+                Care = scores[4],
+                Education = scores[5],
+                AllocatedRial = 100,
+                AssessedAtUtc = clock.UtcNow.AddHours(-1),
+                RecordedAtUtc = clock.UtcNow
+            });
+        }
+        await db.SaveChangesAsync();
+
+        var labels = new List<Guid>();
+        for (var i = 0; i < snapshotIds.Length; i++)
+            labels.Add(await workflow.ReviewNeedAsync(
+                reviewer,
+                snapshotIds[i],
+                target[i % 6],
+                "iterative-rubric-v1",
+                i < 36
+                    ? LearningPartition.Training
+                    : LearningPartition.Validation));
+
+        var policy = new AllocationLearningAutomationPolicy(
+            Enabled: true,
+            AutomationAccountId: actor,
+            MinimumTrainingLabels: 36,
+            MinimumValidationLabels: 12,
+            PoolRial: 4800,
+            PollIntervalMinutes: 5);
+        var plan = await new AllocationLearningAutomationPlanner(
+            db, policy).BuildAsync();
+        var cohort = Assert.Single(plan.Cohorts.Where(x =>
+            x.FormulaVersion == promoted.Version &&
+            x.RuntimeProposalId == runtimeProposalId &&
+            x.SourceInstructionReference == source &&
+            x.RubricVersion == "iterative-rubric-v1"));
+        Assert.True(cohort.MeetsConfiguredTrigger);
+        Assert.NotNull(cohort.RequestId);
+
+        var run = await workflow.TrainAsync(
+            actor,
+            labels,
+            4800,
+            cohort.LatestReviewedAtUtc,
+            cohort.RequestId);
+        Assert.Equal("PROPOSED", run.Status);
+        Assert.NotNull(run.ProposalId);
+
+        var proposal = await db.Proposals.AsNoTracking()
+            .SingleAsync(x => x.Id == run.ProposalId);
+        Assert.Equal(promoted.Version, proposal.BaselineVersion);
+
+        using var frozen = JsonDocument.Parse(run.InputsJson);
+        Assert.Equal(promoted.Version,
+            frozen.RootElement.GetProperty("baseline")
+                .GetProperty("Version").GetString());
+        Assert.Equal(runtimeProposalId,
+            frozen.RootElement.GetProperty("baselineRuntimeProposalId")
+                .GetGuid());
+    }
+
 }
