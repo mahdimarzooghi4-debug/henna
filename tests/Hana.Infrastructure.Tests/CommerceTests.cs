@@ -100,7 +100,25 @@ public sealed class CommerceTests
  foreach(var pair in households)await Command(admin,"LINK_HOUSEHOLD",new{accountId=pair.Key,householdKey=pair.Value,evidenceReference="CI verified household mapping"});
  var program=await Command(admin,"CREATE_PROGRAM",new{name="CI funded source",fundingReference="approved-ci-instruction",fundedRial=10000,expiresAtUtc=clock.UtcNow.AddDays(10),categoryIds=new[]{category}});
  var allocation=await Command(admin,"ALLOCATE_CREDIT",new{programId=program.GetProperty("Id").GetGuid(),poolRial=10000,beneficiaries=new[]{new{accountId=buyer,householdKey=households[buyer],geographicFactor=1m,scores=new{health=1,hardship=1,age=1,size=1,care=1,education=1}}}});
+ Assert.Equal(AllocationWeightProfile.Baseline.Version,allocation.GetProperty("formulaVersion").GetString());
+ Assert.Equal(JsonValueKind.Null,allocation.GetProperty("runtimeProposalId").ValueKind);
  var creditId=allocation.GetProperty("grants")[0].GetProperty("Id").GetGuid();
+
+ var promotedProfile=new AllocationWeightProfile("ci-promoted-profile-v1",.35m,.20m,.18m,.12m,.10m,.05m);
+ var promotedProposalId=Guid.NewGuid();
+ var promotedService=new CommerceService(db,catalog,sellers,geo,identity,roles,clock,
+  new FixedRuntimeProfileProvider(promotedProposalId,promotedProfile));
+ Task<JsonElement> PromotedCommand(Guid actor,string action,object input,Guid? key=null)=>promotedService.ExecuteAsync(actor,key??Guid.NewGuid(),action,JsonSerializer.SerializeToElement(input));
+ var promotedProgram=await PromotedCommand(admin,"CREATE_PROGRAM",new{name="CI promoted runtime",fundingReference="approved-promoted-ci",fundedRial=10000,expiresAtUtc=clock.UtcNow.AddDays(10),categoryIds=new[]{category}});
+ var promotedAllocation=await PromotedCommand(admin,"ALLOCATE_CREDIT",new{programId=promotedProgram.GetProperty("Id").GetGuid(),poolRial=10000,beneficiaries=new[]{
+  new{accountId=buyer,householdKey=households[buyer],geographicFactor=1m,scores=new{health=3,hardship=0,age=0,size=0,care=0,education=0}},
+  new{accountId=stranger,householdKey=households[stranger],geographicFactor=1m,scores=new{health=0,hardship=3,age=0,size=0,care=0,education=0}}}});
+ Assert.Equal(promotedProfile.Version,promotedAllocation.GetProperty("formulaVersion").GetString());
+ Assert.Equal(promotedProposalId,promotedAllocation.GetProperty("runtimeProposalId").GetGuid());
+ var promotedGrants=promotedAllocation.GetProperty("grants").EnumerateArray().ToArray();
+ Assert.Equal(5164,promotedGrants[0].GetProperty("GrantedRial").GetInt64());
+ Assert.Equal(4835,promotedGrants[1].GetProperty("GrantedRial").GetInt64());
+
  var q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});
  var key=Guid.NewGuid();var input=new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=creditId,unavailableDisposition="KEEP",confirmUnavailable=true};
  var publishedProduct=await catalog.Products.SingleAsync(p=>p.Id==product);publishedProduct.State=PublicationStates.Draft;await catalog.SaveChangesAsync();
@@ -425,4 +443,11 @@ public sealed class CommerceTests
  }
  private static HanaCommerceDbContext Context(string connection)=>new(new DbContextOptionsBuilder<HanaCommerceDbContext>().UseNpgsql(connection,p=>p.MigrationsHistoryTable("__EFMigrationsHistory","commerce")).Options);
  private sealed class Clock:IClock {public DateTimeOffset UtcNow{get;set;}}
+ private sealed class FixedRuntimeProfileProvider(Guid proposalId,AllocationWeightProfile profile)
+  : IAllocationRuntimeProfileProvider
+ {
+  public Task<AllocationRuntimeProfileSnapshot> CurrentAsync(CancellationToken ct=default)=>
+   Task.FromResult(new AllocationRuntimeProfileSnapshot(proposalId,profile));
+ }
+
 }
