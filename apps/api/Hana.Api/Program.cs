@@ -127,6 +127,7 @@ if (hasLearningDb)
         builder.Services.AddScoped<AllocationProductionControlService>();
         builder.Services.AddScoped<AllocationRuntimePromotionService>();
         builder.Services.AddScoped<AllocationRetentionService>();
+        builder.Services.AddScoped<AllocationModelBenchmarkService>();
         builder.Services.AddScoped<IAllocationRuntimeProfileProvider,
             AllocationRuntimeProfileProvider>();
         if (allocationAutomationPolicy.IsWorkerConfigured)
