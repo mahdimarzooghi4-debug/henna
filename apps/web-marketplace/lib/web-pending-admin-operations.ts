@@ -1,7 +1,7 @@
 import {
   adminOperationId,
   type AdminOperationIntent,
-} from "./admin-operations";
+} from "./admin-operations.ts";
 
 const storageKey = "hana.admin.operations.pending.v1";
 const maxStored = 20000;
