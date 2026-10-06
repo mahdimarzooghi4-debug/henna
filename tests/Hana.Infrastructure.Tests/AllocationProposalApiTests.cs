@@ -262,6 +262,88 @@ public sealed class AllocationProposalApiTests
         var audit = Assert.Single(await learning.Reviews.AsNoTracking().Where(x => x.ProposalId == proposalId).ToListAsync());
         Assert.Equal(reviewer, audit.ReviewerAccountId);
         Assert.Contains(audit.Decision, new[] { "APPROVED", "REJECTED" });
+
+        var pilotVersion = "pilot-candidate-" + Guid.NewGuid();
+        var pilotSubmitted = await creatorClient.PostAsJsonAsync(
+            url, Payload(pilotVersion, dataset));
+        Assert.Equal(HttpStatusCode.Created, pilotSubmitted.StatusCode);
+        using var pilotSubmittedJson = JsonDocument.Parse(
+            await pilotSubmitted.Content.ReadAsStringAsync());
+        var pilotProposalId = pilotSubmittedJson.RootElement
+            .GetProperty("id").GetGuid();
+        var pilotUrl = $"{url}/{pilotProposalId}/pilot";
+        var pilotAuthorization = new
+        {
+            scopeReference = "pilot-scope-" + Guid.NewGuid(),
+            reason = "Explicit controlled pilot authorization"
+        };
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await creatorClient.PostAsJsonAsync(
+                pilotUrl + "/authorize", pilotAuthorization)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK,
+            (await reviewerClient.PostAsJsonAsync(
+                $"{url}/{pilotProposalId}/review",
+                new
+                {
+                    decision = "APPROVED",
+                    reason = "Independent human review before pilot"
+                })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await ordinaryClient.PostAsJsonAsync(
+                pilotUrl + "/authorize", pilotAuthorization)).StatusCode);
+
+        var authorizedPilot = await creatorClient.PostAsJsonAsync(
+            pilotUrl + "/authorize", pilotAuthorization);
+        Assert.Equal(HttpStatusCode.OK, authorizedPilot.StatusCode);
+        using (var authorizedJson = JsonDocument.Parse(
+            await authorizedPilot.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("PILOT_AUTHORIZED",
+                authorizedJson.RootElement.GetProperty("status").GetString());
+            Assert.False(authorizedJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.False(authorizedJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await creatorClient.PostAsJsonAsync(
+                pilotUrl + "/authorize", pilotAuthorization)).StatusCode);
+
+        var completedPilot = await reviewerClient.PostAsJsonAsync(
+            pilotUrl + "/complete",
+            new { reason = "Pilot evidence reviewed; close pilot only" });
+        Assert.Equal(HttpStatusCode.OK, completedPilot.StatusCode);
+        using (var completedJson = JsonDocument.Parse(
+            await completedPilot.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("PILOT_COMPLETED",
+                completedJson.RootElement.GetProperty("status").GetString());
+            Assert.False(completedJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.False(completedJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await creatorClient.PostAsJsonAsync(
+                pilotUrl + "/abort",
+                new { reason = "Cannot change a terminal pilot state" })).StatusCode);
+
+        var pilotDetail = await creatorClient.GetAsync(pilotUrl);
+        Assert.Equal(HttpStatusCode.OK, pilotDetail.StatusCode);
+        using (var pilotJson = JsonDocument.Parse(
+            await pilotDetail.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("PILOT_COMPLETED",
+                pilotJson.RootElement.GetProperty("status").GetString());
+            Assert.Equal(2, pilotJson.RootElement
+                .GetProperty("events").GetArrayLength());
+            Assert.False(pilotJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.False(pilotJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+
         // Revocation takes effect on the next privileged request.
         identity.RoleAssignments.Remove(await identity.RoleAssignments.SingleAsync(x => x.AccountId == reviewer));
         await identity.SaveChangesAsync();
