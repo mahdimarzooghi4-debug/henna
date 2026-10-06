@@ -122,6 +122,7 @@ if (hasLearningDb)
     {
         builder.Services.AddScoped<AllocationTrainingWorkflow>();
         builder.Services.AddScoped<AllocationLearningAutomationExecutor>();
+        builder.Services.AddScoped<AllocationReviewedOutcomeService>();
         builder.Services.AddScoped<AllocationPilotService>();
         builder.Services.AddScoped<AllocationProductionControlService>();
         builder.Services.AddScoped<AllocationRuntimePromotionService>();
