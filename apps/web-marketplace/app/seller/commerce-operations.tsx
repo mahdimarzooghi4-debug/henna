@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   StaffCommerceError,
   staffGet,
@@ -233,7 +233,7 @@ export function SellerCommerceOperations() {
       {notice && <p className="form-status" role="status">{notice}</p>}
       {pendingIntent && (
         <button type="button" className="primary-button seller-commerce__action"
-          disabled={busyPath !== null || pendingIntent !== null}
+          disabled={busyPath !== null}
           onClick={() => void sendIntent(
             pendingIntent,
             "درخواست قبلی با همان کلید و بدنه با موفقیت تأیید شد.",
