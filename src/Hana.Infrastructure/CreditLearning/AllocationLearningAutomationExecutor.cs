@@ -35,6 +35,8 @@ public sealed class AllocationLearningAutomationExecutor(
             .Where(x => x.MeetsConfiguredTrigger && x.RequestId is not null)
             .OrderBy(x => x.DatasetVersion, StringComparer.Ordinal)
             .ThenBy(x => x.SourceInstructionReference, StringComparer.Ordinal)
+            .ThenBy(x => x.FormulaVersion, StringComparer.Ordinal)
+            .ThenBy(x => x.RuntimeProposalId)
             .ThenBy(x => x.RubricVersion, StringComparer.Ordinal)
             .ToArray();
 
