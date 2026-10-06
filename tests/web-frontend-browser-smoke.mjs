@@ -30,6 +30,8 @@ let writes = 0;
 let provinceReads = 0;
 let cityReads = 0;
 let apiRequests = 0;
+let firstFinalSubmit = null;
+let finalSubmitAttempts = 0;
 
 function json(data, status = 200) {
   return { status, contentType: "application/json; charset=utf-8",
@@ -258,11 +260,19 @@ async function fakeApi(route) {
   }
   if (path === "/api/seller/registration" && req.method() === "POST") {
     assert.ok(signedIn, "anonymous form must never submit seller registration");
+    finalSubmitAttempts++;
     const body = req.postDataJSON();
+    const current = { body: req.postData() };
     assert.equal(body.revision, draft?.revision);
     assert.equal(body.confirmed, true);
     assert.match(body.idempotencyKey,
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    if (finalSubmitAttempts === 1) {
+      firstFinalSubmit = current;
+      return route.fulfill(json({ message: "unknown outcome" }, 503));
+    }
+    assert.deepEqual(current, firstFinalSubmit,
+      "final seller submit after reload must retain exact body and idempotency key");
     draft = {
       ...draft,
       status: "SUBMITTED",
@@ -704,7 +714,25 @@ async function main() {
   await otherTab.getByLabel("صحت اطلاعات واردشده را تأیید می‌کنم.").check();
   assert.equal(await finalSubmit.isDisabled(), false);
   await finalSubmit.click();
+  await otherTab.getByText("نتیجه ثبت نهایی قطعی نیست", {
+    exact: false,
+  }).waitFor();
+  assert.equal(finalSubmitAttempts, 1);
+  assert.equal(draft.status, "DRAFT");
+  assert.equal(draft.revision, 8);
+
+  await otherTab.reload();
+  await otherTab.getByRole("heading", {
+    name: "بازبینی اطلاعات وارد شده",
+  }).waitFor();
+  await otherTab.getByRole("button", {
+    name: "تکرار امن ثبت نهایی",
+  }).waitFor();
+  await otherTab.getByRole("button", {
+    name: "تکرار امن ثبت نهایی",
+  }).click();
   await otherTab.getByRole("heading", { name: "درخواست ثبت شد" }).waitFor();
+  assert.equal(finalSubmitAttempts, 2);
   assert.equal(draft.status, "SUBMITTED");
   assert.equal(draft.revision, 9);
   assert.equal(draft.accuracyConfirmedAtUtc, "2026-09-25T12:30:00Z");
