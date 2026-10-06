@@ -52,10 +52,23 @@ public sealed class AllocationTrainingWorkflowTests
         for (var i = 0; i < snapshotIds.Length; i++) labels.Add(await workflow.ReviewNeedAsync(reviewer,
             snapshotIds[i], new[] { .35m, .20m, .18m, .12m, .10m, .05m }[i % 6], "synthetic-rubric-1",
             i < 36 ? LearningPartition.Training : LearningPartition.Validation));
-        var run = await workflow.TrainAsync(actor, labels, 4800, clock.UtcNow);
+        var runKey = Guid.NewGuid();
+        var run = await workflow.TrainAsync(
+            actor, labels, 4800, clock.UtcNow, runKey);
+        Assert.Equal(runKey, run.Id);
         Assert.Equal("PROPOSED", run.Status);
         Assert.NotNull(run.ProposalId);
         Assert.NotNull(run.MetricsJson);
+
+        var replay = await workflow.TrainAsync(
+            actor, labels, 4800, clock.UtcNow, runKey);
+        Assert.Equal(run.Id, replay.Id);
+        Assert.Equal(run.ProposalId, replay.ProposalId);
+        Assert.Single(await db.TrainingRuns.AsNoTracking()
+            .Where(x => x.Id == runKey).ToListAsync());
+        await Assert.ThrowsAsync<AllocationTrainingIdempotencyConflictException>(
+            () => workflow.TrainAsync(
+                actor, labels, 4801, clock.UtcNow, runKey));
         var proposal = await db.Proposals.AsNoTracking().SingleAsync(x => x.Id == run.ProposalId);
         Assert.Equal(ExperimentalAllocationWeightLearner.ModelVersion, proposal.ModelVersion);
         Assert.False(await db.Reviews.AnyAsync(x => x.ProposalId == proposal.Id));
