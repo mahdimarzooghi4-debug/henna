@@ -357,7 +357,7 @@ test("support decision survives reload and rejects overwrite or tamper", () => {
 });
 
 
-test("support SLA and unavailability share one durable operation lock", () => {
+test("support SLA, unavailability and ticket reply share one durable lock", () => {
   const previousWindow = globalThis.window;
   const store = memorySessionStorage();
   Object.defineProperty(globalThis, "window", {
@@ -399,12 +399,7 @@ test("support SLA and unavailability share one durable operation lock", () => {
     persistSupportOperationIntent(unavailable);
     assert.equal(clearSupportOperationIntent(unavailable.key), true);
     assert.equal(restoreSupportOperationIntent(), null);
-  } finally {
-    if (previousWindow === undefined) delete globalThis.window;
-    else globalThis.window = previousWindow;
-  }
 
-    assert.equal(clearSupportOperationIntent(unavailable.key), true);
     const ticketReply = staffIntent(
       null,
       `tickets/${ORDER}/reply`,
@@ -422,5 +417,9 @@ test("support SLA and unavailability share one durable operation lock", () => {
     assert.throws(() => persistSupportOperationIntent(otherSla),
       /must be resolved first/);
     assert.equal(clearSupportOperationIntent(ticketReply.key), true);
-
+    assert.equal(restoreSupportOperationIntent(), null);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });
