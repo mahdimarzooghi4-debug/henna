@@ -113,8 +113,7 @@ public static class AllocationModelBenchmarkEvaluator
 
         foreach (var row in rows)
         {
-            text.Append('
-')
+            text.Append('\n')
                 .Append(row.HouseholdKey)
                 .Append('|').Append(row.ReviewerKey)
                 .Append('|').Append(row.RubricVersion.Length)
