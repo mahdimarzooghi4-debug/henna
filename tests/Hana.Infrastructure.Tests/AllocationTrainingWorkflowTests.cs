@@ -5,6 +5,7 @@ using Hana.Infrastructure.CreditLearning;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Time;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Xunit;
 
 namespace Hana.Infrastructure.Tests;
@@ -267,8 +268,21 @@ public sealed class AllocationTrainingWorkflowTests
     [Fact]
     public async Task PromotedRuntimeLineageCanTrainTheNextControlledGeneration()
     {
-        var connection = Environment.GetEnvironmentVariable("ConnectionStrings__IdentityDb");
-        if (string.IsNullOrWhiteSpace(connection)) return;
+        var rootConnection = Environment.GetEnvironmentVariable("ConnectionStrings__IdentityDb");
+        if (string.IsNullOrWhiteSpace(rootConnection)) return;
+
+        var database = "henna_iterative_training_" + Guid.NewGuid().ToString("N");
+        await using (var admin = new NpgsqlConnection(rootConnection))
+        {
+            await admin.OpenAsync();
+            await using var create = new NpgsqlCommand(
+                "CREATE DATABASE " + database, admin);
+            await create.ExecuteNonQueryAsync();
+        }
+        var connection = new NpgsqlConnectionStringBuilder(rootConnection)
+        {
+            Database = database
+        }.ConnectionString;
 
         await using var identity = new HanaIdentityDbContext(
             new DbContextOptionsBuilder<HanaIdentityDbContext>()
@@ -277,6 +291,8 @@ public sealed class AllocationTrainingWorkflowTests
             new DbContextOptionsBuilder<HanaAllocationLearningDbContext>()
                 .UseNpgsql(connection, pg => pg.MigrationsHistoryTable(
                     "__EFMigrationsHistory", "allocation_learning")).Options);
+        await identity.Database.MigrateAsync();
+        await db.Database.MigrateAsync();
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
 
         var clock = new SystemClock();
