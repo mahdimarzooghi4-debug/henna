@@ -11,6 +11,12 @@ import {
   restoreSellerCommerceIntent,
   sellerCommerceIntentArea,
 } from "../apps/web-marketplace/lib/web-pending-staff-commerce.ts";
+import {
+  clearSupportDecisionIntent,
+  persistSupportDecisionIntent,
+  restoreSupportDecisionIntent,
+  supportDecisionIntentDetails,
+} from "../apps/web-marketplace/lib/web-pending-support-decision.ts";
 
 const ID = "60000000-0000-4000-8000-000000000001";
 const ORDER = "60000000-0000-4000-8000-000000000002";
@@ -288,6 +294,56 @@ test("seller business intent shares the same durable lock", () => {
     assert.equal(sellerCommerceIntentArea(
       restoreSellerCommerceIntent()), "business");
     assert.equal(clearSellerCommerceIntent(ticketIntent.key), true);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+
+test("support decision survives reload and rejects overwrite or tamper", () => {
+  const previousWindow = globalThis.window;
+  const store = memorySessionStorage();
+  Object.defineProperty(globalThis, "window", {
+    value: Object.assign({ sessionStorage: store }, store),
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const first = staffIntent(null, `incidents/${ID}/decision`, {
+      decision: "APPROVE",
+      reason: "مدرک بررسی شد",
+    });
+    assert.deepEqual(supportDecisionIntentDetails(first), {
+      incidentId: ID,
+      decision: "APPROVE",
+      reason: "مدرک بررسی شد",
+    });
+    persistSupportDecisionIntent(first);
+    assert.deepEqual(restoreSupportDecisionIntent(), first);
+
+    const changed = staffIntent(null, `incidents/${ID}/decision`, {
+      decision: "REJECT",
+      reason: "مدرک بررسی شد",
+    });
+    assert.throws(() => persistSupportDecisionIntent(changed),
+      /must be resolved first/);
+    assert.equal(clearSupportDecisionIntent(changed.key), false);
+    assert.deepEqual(restoreSupportDecisionIntent(), first);
+
+    const storageKey = store.key(0);
+    const tampered = JSON.parse(store.getItem(storageKey));
+    tampered.body = JSON.stringify({
+      decision: "APPROVE",
+      reason: " مدرک بررسی شد ",
+    });
+    store.setItem(storageKey, JSON.stringify(tampered));
+    assert.throws(() => restoreSupportDecisionIntent(), /invalid/);
+
+    store.clear();
+    persistSupportDecisionIntent(first);
+    assert.equal(clearSupportDecisionIntent(first.key), true);
+    assert.equal(restoreSupportDecisionIntent(), null);
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
