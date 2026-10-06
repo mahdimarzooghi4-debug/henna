@@ -36,7 +36,15 @@ The simulator provides numeric changes only; it does not certify fairness or imp
 ## Human-controlled rollout
 
 Draft -> validated candidate -> offline comparison -> human review -> limited pilot ->
-explicit activation. Durable review, reviewer identity and rationale now exist for proposals;
+explicit activation.
+
+Pilot lifecycle is now an append-only control-plane audit. Only a proposal with an explicit
+human `APPROVED` review may receive `PILOT_AUTHORIZED`; the pilot must then end as exactly
+one of `PILOT_COMPLETED` or `PILOT_ABORTED`. Pilot authorization carries an explicit opaque
+scope reference and rationale; Henna invents no pilot size, duration, success threshold or
+automatic promotion rule. Pilot events do not change allocation weights, route households,
+mutate wallets or activate production. `APPROVED` is not `ACTIVE`, and
+`PILOT_COMPLETED` is also not `ACTIVE`. Durable review, reviewer identity and rationale now exist for proposals;
 rollback and pilot limits remain to implement before allowing activation. Maintain a fixed
 coefficient version for each allocation run; never silently recalculate earlier grants.
 Human approval of a coefficient does not override the funding source's instructions.
