@@ -139,7 +139,7 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
         model.Entity<ReviewedNeedLabelRecord>(e =>
         {
             e.ToTable("need_labels", t => t.HasCheckConstraint("ck_need_label",
-                "\"NeedScore\" BETWEEN 0 AND 1 AND \"Partition\" IN (1, 2)"));
+                "\"NeedScore\" BETWEEN 0 AND 1 AND \"Partition\" IN (1, 2, 3)"));
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.NeedScore).HasColumnType("numeric");
