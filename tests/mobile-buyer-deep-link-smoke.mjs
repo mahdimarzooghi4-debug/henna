@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import {
   formatBuyerLink, parseBuyerLink,
 } from "../apps/mobile-consumer/src/buyer-link.ts";
+import { BuyerLinkInbox } from "../apps/mobile-consumer/src/buyer-link-inbox.ts";
 import {
   BuyerBrowseController, BROWSE_PAGE_SIZE,
 } from "../apps/mobile-consumer/src/buyer-browse-controller.ts";
@@ -51,6 +52,28 @@ test("Expo scheme already configured and cold browse/detail URIs round-trip", ()
   assert.deepEqual(parseBuyerLink("hana://products/" + OTHER), {
     kind: "detail", id: OTHER, browse: blank,
   });
+});
+
+test("native link inbox preserves a valid early event until bootstrap consumes it", () => {
+  const inbox = new BuyerLinkInbox();
+  const early = "hana://products/" + ID + "?page=2";
+  assert.equal(inbox.offer("hana://auth"), false);
+  assert.equal(inbox.offer(early), true);
+  assert.equal(inbox.take(), early);
+  assert.equal(inbox.take(), null);
+
+  const delivered = [];
+  assert.equal(inbox.offer("hana://browse?page=2"), true);
+  const unsubscribe = inbox.subscribe(url => delivered.push(url));
+  assert.deepEqual(delivered, ["hana://browse?page=2"]);
+  assert.equal(inbox.offer("hana://products/" + OTHER), true);
+  assert.deepEqual(delivered, [
+    "hana://browse?page=2",
+    "hana://products/" + OTHER,
+  ]);
+  unsubscribe();
+  assert.equal(inbox.offer("hana://browse?page=3"), true);
+  assert.equal(inbox.take(), "hana://browse?page=3");
 });
 
 test("untrusted, unsupported, malformed or ambiguous incoming routes fail closed", () => {
