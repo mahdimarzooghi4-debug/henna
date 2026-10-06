@@ -16,6 +16,7 @@ import {
   clearSellerCommerceIntent,
   persistSellerCommerceIntent,
   restoreSellerCommerceIntent,
+  sellerCommerceIntentArea,
 } from "../../lib/web-pending-staff-commerce";
 
 type Load<T> =
@@ -89,14 +90,17 @@ export function SellerCommerceOperations() {
       const restored = restoreSellerCommerceIntent();
       if (!restored) return;
       setPendingIntent(restored);
-      const returned =
-        /^returns\/([0-9a-f-]+)\/(contact|visit)$/i.exec(restored.path);
+      const area = sellerCommerceIntentArea(restored);
+      const returned = area === "operations"
+        ? /^returns\/([0-9a-f-]+)\/(contact|visit)$/i.exec(restored.path)
+        : null;
       if (returned) {
         const body = JSON.parse(restored.body) as { evidenceReference: string };
         setReferences({ [returned[1]]: body.evidenceReference });
       }
-      setNotice(
-        "یک درخواست قبلی نتیجه قطعی ندارد. همان کلید و بدنه برای تکرار امن بازیابی شد.");
+      setNotice(area === "operations"
+        ? "یک درخواست قبلی نتیجه قطعی ندارد. همان کلید و بدنه برای تکرار امن بازیابی شد."
+        : "یک درخواست نتیجه قطعی در عملیات تکمیلی فروشگاه وجود دارد؛ تا تعیین تکلیف آن، عملیات سفارش و مرجوعی قفل است.");
       setActivated(true);
     } catch {
       setStorageFailure(
@@ -179,6 +183,10 @@ export function SellerCommerceOperations() {
     await sendIntent(intent, successMessage);
   }, [pendingIntent, sendIntent]);
 
+  const pendingArea = pendingIntent
+    ? sellerCommerceIntentArea(pendingIntent)
+    : null;
+
   if (storageFailure) {
     return (
       <section className="seller-commerce" aria-label="عملیات سفارش و مرجوعی">
@@ -231,7 +239,7 @@ export function SellerCommerceOperations() {
       </div>
 
       {notice && <p className="form-status" role="status">{notice}</p>}
-      {pendingIntent && (
+      {pendingIntent && pendingArea === "operations" && (
         <button type="button" className="primary-button seller-commerce__action"
           disabled={busyPath !== null}
           onClick={() => void sendIntent(
