@@ -107,6 +107,9 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
             .OrderBy(x => x.Id).ToArrayAsync(ct);
         if (labels.Length != ids.Length || labels.Any(x => x.ReviewedAtUtc > cutoffUtc))
             throw new ArgumentException("Labels must exist and precede the cutoff.");
+        if (labels.Any(x => x.Partition == (int)LearningPartition.Evaluation))
+            throw new ArgumentException(
+                "Independent evaluation labels cannot be used for training or candidate selection.");
         var snapshotIds = labels.Select(x => x.SnapshotId).ToArray();
         var snapshots = await db.Assessments.AsNoTracking().Where(x => snapshotIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, ct);
