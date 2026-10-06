@@ -197,8 +197,15 @@ public sealed class AllocationProposalApiTests
             Assert.Contains("ENABLED", missing);
             Assert.Contains("AUTOMATION_ACCOUNT_ID", missing);
             Assert.Contains("POOL_RIAL", missing);
+            Assert.Contains("POLL_INTERVAL_MINUTES", missing);
             var cohort = Assert.Single(automationJson.RootElement
-                .GetProperty("cohorts").EnumerateArray().ToArray());
+                .GetProperty("cohorts")
+                .EnumerateArray()
+                .Where(x =>
+                    x.GetProperty("datasetVersion").GetString() == dataset &&
+                    x.GetProperty("sourceInstructionReference").GetString() == source &&
+                    x.GetProperty("rubricVersion").GetString() == rubric)
+                .ToArray());
             Assert.Equal(1,
                 cohort.GetProperty("trainingLabelCount").GetInt32());
             Assert.Equal(0,
