@@ -54,6 +54,22 @@ public sealed class AllocationTrainingWorkflowTests
             snapshotIds[i], new[] { .35m, .20m, .18m, .12m, .10m, .05m }[i % 6], "synthetic-rubric-1",
             i < 36 ? LearningPartition.Training : LearningPartition.Validation));
 
+        var evaluationLabel = await workflow.ReviewNeedAsync(
+            reviewer,
+            snapshotIds[0],
+            .35m,
+            "synthetic-evaluation-rubric",
+            LearningPartition.Evaluation);
+        var mixedTrainingIds = labels.Take(39)
+            .Append(evaluationLabel)
+            .ToArray();
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            workflow.TrainAsync(
+                actor,
+                mixedTrainingIds,
+                4800,
+                clock.UtcNow));
+
         var missingPolicy = new AllocationLearningAutomationPolicy(
             Enabled: false,
             AutomationAccountId: null,
