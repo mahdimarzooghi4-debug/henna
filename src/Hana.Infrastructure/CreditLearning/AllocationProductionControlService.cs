@@ -92,6 +92,16 @@ public sealed class AllocationProductionControlService(
             throw new AllocationProductionControlConflictException(
                 "Rollback has already been authorized.");
 
+        var latestRuntime = await db.RuntimeProfileEvents.AsNoTracking()
+            .OrderByDescending(x => x.Sequence)
+            .FirstOrDefaultAsync(ct);
+        if (latestRuntime?.EffectiveProposalId != proposalId ||
+            !await db.RuntimeProfileEvents.AsNoTracking().AnyAsync(
+                x => x.ProposalId == proposalId &&
+                     x.EventType == "RUNTIME_PROMOTED", ct))
+            throw new AllocationProductionControlConflictException(
+                "Rollback authorization requires the proposal to be the active runtime profile.");
+
         return await AppendAsync(
             proposalId,
             actor,
