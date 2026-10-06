@@ -49,9 +49,11 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         var snapshot = await db.Assessments.AsNoTracking().SingleOrDefaultAsync(x => x.Id == snapshotId, ct);
         if (snapshot is null)
             throw new ArgumentException("Assessment snapshot is missing.");
-        if (!IsTrainingEligibleFirstPartySnapshot(snapshot))
+        var eligible = await AllocationTrainingLineageResolver.ResolveEligibleAsync(
+            db, new[] { snapshot }, ct);
+        if (!eligible.ContainsKey(snapshot.Id))
             throw new ArgumentException(
-                "Only first-party Henna snapshots can receive training labels.");
+                "Only first-party Henna snapshots with valid runtime lineage can receive training labels.");
         if (snapshot.AssessedAtUtc > clock.UtcNow)
             throw new ArgumentException("Assessment cannot be in the future.");
         var id = Guid.NewGuid();
@@ -109,14 +111,20 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         var snapshots = await db.Assessments.AsNoTracking().Where(x => snapshotIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, ct);
         var rows = labels.Select(x => snapshots[x.SnapshotId]).ToArray();
-        if (rows.Any(x => !IsTrainingEligibleFirstPartySnapshot(x)))
+        var lineage = await AllocationTrainingLineageResolver.ResolveEligibleAsync(
+            db, rows, ct);
+        if (lineage.Count != rows.Length)
             throw new ArgumentException(
-                "Only first-party Henna snapshots recorded inside the platform are training-eligible.");
-        var baseline = AllocationWeightProfile.Baseline;
+                "Only first-party Henna snapshots with valid runtime lineage are training-eligible.");
+        var lineages = rows.Select(x => lineage[x.Id]).ToArray();
+        var baseline = lineages[0].Baseline;
         if (rows.Any(x => x.FormulaVersion != baseline.Version) ||
+            lineages.Any(x => x.RuntimeProposalId != lineages[0].RuntimeProposalId ||
+                x.Baseline != baseline) ||
             rows.Select(x => x.DatasetVersion).Distinct().Count() != 1 ||
             rows.Select(x => x.SourceInstructionReference).Distinct().Count() != 1)
-            throw new ArgumentException("Training must use one supported baseline, dataset and funding instruction.");
+            throw new ArgumentException(
+                "Training must use one runtime lineage, dataset and funding instruction.");
         var examples = labels.Select(x => {
             var s = snapshots[x.SnapshotId];
             return new ReviewedNeedExample(s.HouseholdKey,
@@ -128,7 +136,9 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
             DatasetVersion = rows[0].DatasetVersion, ModelVersion = ExperimentalAllocationWeightLearner.ModelVersion,
             InputsJson = JsonSerializer.Serialize(new { engine = "HENNA_OWNED_LOCAL",
                 networkModelApi = false, dataOrigin = "HENNA_FIRST_PARTY",
-                labelIds = ids, snapshotIds, examples, baseline, poolRial,
+                labelIds = ids, snapshotIds, examples, baseline,
+                baselineRuntimeProposalId = lineages[0].RuntimeProposalId,
+                poolRial,
                 sourceInstructionReference = rows[0].SourceInstructionReference }),
             CutoffUtc = cutoffUtc, RecordedAtUtc = clock.UtcNow };
         LearnedAllocationWeights learned;
@@ -150,7 +160,8 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         {
             run.ProposalId = await proposals.SubmitAsync(requester, learned.Candidate, run.ModelVersion,
             "Experimental learner: held-out error improved; requires independent human review.",
-            snapshotIds, poolRial, rows[0].DatasetVersion, rows[0].SourceInstructionReference, ct);
+            snapshotIds, poolRial, rows[0].DatasetVersion, rows[0].SourceInstructionReference,
+            baseline, ct);
             run.Status = "PROPOSED";
             run.MetricsJson = JsonSerializer.Serialize(learned.Metrics);
             db.TrainingRuns.Add(run);
@@ -203,23 +214,10 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
     }
 
     public static bool IsTrainingEligibleFirstPartySnapshot(
-        AllocationAssessmentRecord snapshot)
-    {
-        ArgumentNullException.ThrowIfNull(snapshot);
-        const string sourcePrefix = "henna-program:";
-        if (snapshot.RecordedByAccountId is not null ||
-            snapshot.EvidenceReference is not null ||
-            snapshot.FormulaVersion != AllocationWeightProfile.Baseline.Version ||
-            snapshot.DatasetVersion != HennaAllocationLearningCapture.DatasetVersion ||
-            !snapshot.SourceInstructionReference.StartsWith(
-                sourcePrefix, StringComparison.Ordinal))
-            return false;
-
-        return Guid.TryParse(
-                snapshot.SourceInstructionReference[sourcePrefix.Length..],
-                out var programId) &&
-            programId != Guid.Empty;
-    }
+        AllocationAssessmentRecord snapshot) =>
+        AllocationTrainingLineageResolver.HasFirstPartyHennaProvenance(snapshot) &&
+        snapshot.RuntimeProposalId is null &&
+        snapshot.FormulaVersion == AllocationWeightProfile.Baseline.Version;
 
     private async Task RequireAdmin(Guid actor, CancellationToken ct)
     {
