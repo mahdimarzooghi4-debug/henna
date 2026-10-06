@@ -55,6 +55,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
         Set<AllocationProductionControlEventRecord>();
     public DbSet<AllocationRuntimeProfileEventRecord> RuntimeProfileEvents =>
         Set<AllocationRuntimeProfileEventRecord>();
+    public DbSet<AllocationRetentionEventRecord> RetentionEvents =>
+        Set<AllocationRetentionEventRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -235,6 +237,27 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
                 .HasDatabaseName("UX_runtime_profile_rolled_back");
             e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationRetentionEventRecord>(e =>
+        {
+            e.ToTable("retention_events", t =>
+            {
+                t.HasCheckConstraint("ck_retention_scope",
+                    "\"Scope\" = 'ATTRIBUTED_RESEARCH'");
+                t.HasCheckConstraint("ck_retention_counts",
+                    "\"DeletedSnapshotCount\" > 0 AND \"DeletedOutcomeCount\" >= 0");
+                t.HasCheckConstraint("ck_retention_reason",
+                    "length(btrim(\"Reason\")) > 0");
+                t.HasCheckConstraint("ck_retention_digest",
+                    "length(\"PreviewDigest\") = 64");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Scope).HasMaxLength(40).IsRequired();
+            e.Property(x => x.PreviewDigest).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => new { x.RecordedAtUtc, x.Id });
+            e.HasIndex(x => new { x.CutoffUtc, x.Id });
         });
     }
 
