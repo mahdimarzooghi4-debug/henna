@@ -17,6 +17,7 @@ import {
   persistSellerCommerceIntent,
   restoreSellerCommerceIntent,
   sellerCommerceIntentArea,
+  subscribeSellerCommerceIntent,
 } from "../../lib/web-pending-staff-commerce";
 
 type Load<T> =
@@ -107,6 +108,16 @@ export function SellerCommerceOperations() {
         "وضعیت retry امن فروشنده در این تب قابل اعتماد نیست. عملیات جدید برای جلوگیری از ارسال تکراری متوقف شد.");
     }
   }, []);
+
+
+  useEffect(() => subscribeSellerCommerceIntent(() => {
+    try {
+      setPendingIntent(restoreSellerCommerceIntent());
+    } catch {
+      setStorageFailure(
+        "وضعیت retry امن فروشنده در این تب قابل اعتماد نیست. عملیات جدید برای جلوگیری از ارسال تکراری متوقف شد.");
+    }
+  }), []);
 
   useEffect(() => {
     if (!activated) return;
