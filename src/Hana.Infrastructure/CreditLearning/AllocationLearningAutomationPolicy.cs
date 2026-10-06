@@ -9,7 +9,8 @@ public sealed record AllocationLearningAutomationPolicy(
     Guid? AutomationAccountId,
     int? MinimumTrainingLabels,
     int? MinimumValidationLabels,
-    long? PoolRial)
+    long? PoolRial,
+    int? PollIntervalMinutes = null)
 {
     public bool IsConfigured =>
         Enabled &&
@@ -19,6 +20,10 @@ public sealed record AllocationLearningAutomationPolicy(
         MinimumValidationLabels is { } validation &&
             validation >= 10 &&
         PoolRial is { } pool && pool > 0;
+
+    public bool IsWorkerConfigured =>
+        IsConfigured &&
+        PollIntervalMinutes is { } minutes && minutes > 0;
 
     public IReadOnlyList<string> MissingRequirements()
     {
@@ -32,6 +37,8 @@ public sealed record AllocationLearningAutomationPolicy(
             missing.Add("MINIMUM_VALIDATION_LABELS");
         if (PoolRial is not { } pool || pool <= 0)
             missing.Add("POOL_RIAL");
+        if (PollIntervalMinutes is not { } minutes || minutes <= 0)
+            missing.Add("POLL_INTERVAL_MINUTES");
         return missing.AsReadOnly();
     }
 }
