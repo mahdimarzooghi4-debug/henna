@@ -55,9 +55,28 @@ public sealed class HennaAllocationLearningCapture(
                 var pending = rows.Where(x => !existingSet.Contains(x.Id)).ToArray();
                 if (pending.Length == 0) continue;
 
-                learning.Assessments.AddRange(pending);
-                await learning.SaveChangesAsync(cancellationToken);
-                added = checked(added + pending.Length);
+                foreach (var row in pending)
+                {
+                    var inserted = await learning.Database.ExecuteSqlInterpolatedAsync(
+                        $"""
+                        INSERT INTO allocation_learning.assessments
+                        ("Id","HouseholdKey","RecordedByAccountId","EvidenceReference",
+                         "FormulaVersion","DatasetVersion","SourceInstructionReference",
+                         "GeographicFactor","Health","Hardship","Age","Size","Care",
+                         "Education","AllocatedRial","AssessedAtUtc","RecordedAtUtc")
+                        VALUES
+                        ({row.Id},{row.HouseholdKey},{row.RecordedByAccountId},
+                         {row.EvidenceReference},{row.FormulaVersion},{row.DatasetVersion},
+                         {row.SourceInstructionReference},{row.GeographicFactor},
+                         {row.Health},{row.Hardship},{row.Age},{row.Size},{row.Care},
+                         {row.Education},{row.AllocatedRial},{row.AssessedAtUtc},
+                         {row.RecordedAtUtc})
+                        ON CONFLICT ("Id") DO NOTHING
+                        """,
+                        cancellationToken);
+                    added = checked(added + inserted);
+                    if (added >= maximumNewEvents) break;
+                }
                 if (added >= maximumNewEvents) break;
             }
         }
