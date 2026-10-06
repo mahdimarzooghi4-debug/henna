@@ -6,6 +6,8 @@ namespace Hana.Infrastructure.CreditLearning;
 public sealed record AllocationLearningAutomationCohort(
     string DatasetVersion,
     string SourceInstructionReference,
+    string FormulaVersion,
+    Guid? RuntimeProposalId,
     string RubricVersion,
     int TrainingLabelCount,
     int ValidationLabelCount,
@@ -42,8 +44,6 @@ public sealed class AllocationLearningAutomationPlanner(
                 on label.SnapshotId equals snapshot.Id
             where snapshot.RecordedByAccountId == null &&
                   snapshot.EvidenceReference == null &&
-                  snapshot.FormulaVersion ==
-                    AllocationWeightProfile.Baseline.Version &&
                   snapshot.DatasetVersion ==
                     HennaAllocationLearningCapture.DatasetVersion &&
                   snapshot.SourceInstructionReference.StartsWith(
@@ -51,9 +51,10 @@ public sealed class AllocationLearningAutomationPlanner(
             select new { label, snapshot })
             .ToListAsync(ct);
 
+        var lineage = await AllocationTrainingLineageResolver.ResolveEligibleAsync(
+            db, rows.Select(x => x.snapshot).DistinctBy(x => x.Id).ToArray(), ct);
         var eligible = rows
-            .Where(x => AllocationTrainingWorkflow
-                .IsTrainingEligibleFirstPartySnapshot(x.snapshot))
+            .Where(x => lineage.ContainsKey(x.snapshot.Id))
             .ToArray();
 
         var cohorts = eligible
@@ -61,6 +62,8 @@ public sealed class AllocationLearningAutomationPlanner(
             {
                 x.snapshot.DatasetVersion,
                 x.snapshot.SourceInstructionReference,
+                x.snapshot.FormulaVersion,
+                x.snapshot.RuntimeProposalId,
                 x.label.RubricVersion
             })
             .Select(group =>
@@ -100,6 +103,8 @@ public sealed class AllocationLearningAutomationPlanner(
                 var cohort = new AllocationLearningAutomationCohort(
                     group.Key.DatasetVersion,
                     group.Key.SourceInstructionReference,
+                    group.Key.FormulaVersion,
+                    group.Key.RuntimeProposalId,
                     group.Key.RubricVersion,
                     trainingLabelCount,
                     validationLabelCount,
@@ -120,6 +125,8 @@ public sealed class AllocationLearningAutomationPlanner(
             })
             .OrderBy(x => x.DatasetVersion, StringComparer.Ordinal)
             .ThenBy(x => x.SourceInstructionReference, StringComparer.Ordinal)
+            .ThenBy(x => x.FormulaVersion, StringComparer.Ordinal)
+            .ThenBy(x => x.RuntimeProposalId)
             .ThenBy(x => x.RubricVersion, StringComparer.Ordinal)
             .ToArray();
 
