@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Hana.Application.Time;
+using Hana.Domain.Credit;
 using Hana.Infrastructure.Catalog;
 using Hana.Infrastructure.Commerce;
 using Hana.Infrastructure.CreditLearning;
