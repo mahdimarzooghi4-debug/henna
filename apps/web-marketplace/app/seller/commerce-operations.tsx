@@ -12,6 +12,11 @@ import {
   type StaffIntent,
   type StaffOrder,
 } from "../../lib/staff-commerce";
+import {
+  clearSellerCommerceIntent,
+  persistSellerCommerceIntent,
+  restoreSellerCommerceIntent,
+} from "../../lib/web-pending-staff-commerce";
 
 type Load<T> =
   | { kind: "loading" }
@@ -52,8 +57,8 @@ export function SellerCommerceOperations() {
     useState<Record<string, string>>({});
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [uncertain, setUncertain] = useState<Record<string, boolean>>({});
-  const intents = useRef<Record<string, StaffIntent | null>>({});
+  const [storageFailure, setStorageFailure] = useState<string | null>(null);
+  const [pendingIntent, setPendingIntent] = useState<StaffIntent | null>(null);
 
   const loadOrders = useCallback(async (page: number, signal?: AbortSignal) => {
     setOrders({ kind: "loading" });
@@ -80,6 +85,26 @@ export function SellerCommerceOperations() {
   }, []);
 
   useEffect(() => {
+    try {
+      const restored = restoreSellerCommerceIntent();
+      if (!restored) return;
+      setPendingIntent(restored);
+      const returned =
+        /^returns\/([0-9a-f-]+)\/(contact|visit)$/i.exec(restored.path);
+      if (returned) {
+        const body = JSON.parse(restored.body) as { evidenceReference: string };
+        setReferences({ [returned[1]]: body.evidenceReference });
+      }
+      setNotice(
+        "یک درخواست قبلی نتیجه قطعی ندارد. همان کلید و بدنه برای تکرار امن بازیابی شد.");
+      setActivated(true);
+    } catch {
+      setStorageFailure(
+        "وضعیت retry امن فروشنده در این تب قابل اعتماد نیست. عملیات جدید برای جلوگیری از ارسال تکراری متوقف شد.");
+    }
+  }, []);
+
+  useEffect(() => {
     if (!activated) return;
     const controller = new AbortController();
     void loadOrders(ordersPage, controller.signal);
@@ -93,19 +118,20 @@ export function SellerCommerceOperations() {
     return () => controller.abort();
   }, [activated, loadReturns, returnsPage]);
 
-  const mutate = useCallback(async (
-    path: string,
-    body: unknown,
+  const sendIntent = useCallback(async (
+    intent: StaffIntent,
     successMessage: string,
   ) => {
-    const intent = staffIntent(intents.current[path] ?? null, path, body);
-    intents.current[path] = intent;
-    setBusyPath(path);
+    setBusyPath(intent.path);
     setNotice(null);
     try {
       await staffPost("seller", intent);
-      intents.current[path] = null;
-      setUncertain(current => ({ ...current, [path]: false }));
+      if (!clearSellerCommerceIntent(intent.key)) {
+        setStorageFailure(
+          "پاسخ سرور دریافت شد، اما پاک‌سازی retry محلی تأیید نشد. عملیات جدید متوقف است.");
+        return;
+      }
+      setPendingIntent(null);
       setNotice(successMessage);
       await Promise.all([
         loadOrders(ordersPage),
@@ -113,12 +139,16 @@ export function SellerCommerceOperations() {
       ]);
     } catch (error) {
       if (error instanceof StaffCommerceError && error.status === 503) {
-        setUncertain(current => ({ ...current, [path]: true }));
+        setPendingIntent(intent);
         setNotice(
-          "نتیجه این درخواست هنوز قطعی نیست. برای تکرار امن، همان دکمه را دوباره بزنید؛ بدنه و کلید درخواست حفظ شده‌اند.");
+          "نتیجه این درخواست هنوز قطعی نیست. همان کلید و بدنه در همین تب حفظ شده‌اند و پس از reload نیز فقط همان درخواست قابل تکرار است.");
       } else {
-        intents.current[path] = null;
-        setUncertain(current => ({ ...current, [path]: false }));
+        if (!clearSellerCommerceIntent(intent.key)) {
+          setStorageFailure(
+            "نتیجه سرور قطعی است، اما پاک‌سازی retry محلی تأیید نشد. عملیات جدید متوقف است.");
+          return;
+        }
+        setPendingIntent(null);
         setNotice(errorMessage(error));
         if (error instanceof StaffCommerceError && error.status === 409)
           await Promise.all([
@@ -130,6 +160,34 @@ export function SellerCommerceOperations() {
       setBusyPath(null);
     }
   }, [loadOrders, loadReturns, ordersPage, returnsPage]);
+
+  const mutate = useCallback(async (
+    path: string,
+    body: unknown,
+    successMessage: string,
+  ) => {
+    if (pendingIntent) return;
+    const intent = staffIntent(null, path, body);
+    try {
+      persistSellerCommerceIntent(intent);
+    } catch {
+      setStorageFailure(
+        "ذخیره retry امن فروشنده تأیید نشد؛ هیچ تغییری به سرور ارسال نشد.");
+      return;
+    }
+    setPendingIntent(intent);
+    await sendIntent(intent, successMessage);
+  }, [pendingIntent, sendIntent]);
+
+  if (storageFailure) {
+    return (
+      <section className="seller-commerce" aria-label="عملیات سفارش و مرجوعی">
+        <p className="form-status form-status--error" role="alert">
+          {storageFailure}
+        </p>
+      </section>
+    );
+  }
 
   if (!activated) {
     return (
@@ -167,12 +225,24 @@ export function SellerCommerceOperations() {
             loadOrders(ordersPage),
             loadReturns(returnsPage),
           ])}
-          disabled={busyPath !== null}>
+          disabled={busyPath !== null || pendingIntent !== null}>
           تازه‌سازی
         </button>
       </div>
 
       {notice && <p className="form-status" role="status">{notice}</p>}
+      {pendingIntent && (
+        <button type="button" className="primary-button seller-commerce__action"
+          disabled={busyPath !== null || pendingIntent !== null}
+          onClick={() => void sendIntent(
+            pendingIntent,
+            "درخواست قبلی با همان کلید و بدنه با موفقیت تأیید شد.",
+          )}>
+          {busyPath === pendingIntent.path
+            ? "در حال تکرار امن…"
+            : "تکرار امن درخواست قبلی"}
+        </button>
+      )}
 
       <section id="seller-orders" className="seller-commerce__section">
         <div className="seller-commerce__section-title">
@@ -220,7 +290,7 @@ export function SellerCommerceOperations() {
               </ul>
               {next && (
                 <button type="button" className="primary-button seller-commerce__action"
-                  disabled={busyPath !== null}
+                  disabled={busyPath !== null || pendingIntent !== null}
                   onClick={() => void mutate(path, {
                     expectedVersion: order.version,
                     state: next,
@@ -229,11 +299,9 @@ export function SellerCommerceOperations() {
                     : "سفارش برای دریافت حضوری آماده شد.")}>
                   {busyPath === path
                     ? "در حال ثبت…"
-                    : uncertain[path]
-                      ? "تکرار امن همان درخواست"
-                      : next === "PREPARING"
-                        ? "شروع آماده‌سازی"
-                        : "اعلام آماده دریافت"}
+                    : next === "PREPARING"
+                      ? "شروع آماده‌سازی"
+                      : "اعلام آماده دریافت"}
                 </button>
               )}
             </article>
@@ -270,7 +338,7 @@ export function SellerCommerceOperations() {
           const contactPath = `returns/${incident.id}/contact`;
           const visitPath = `returns/${incident.id}/visit`;
           const reference = references[incident.id] ?? "";
-          const frozen = Boolean(uncertain[contactPath] || uncertain[visitPath]);
+          const frozen = pendingIntent !== null;
           return (
             <article className="seller-commerce__card" key={incident.id}>
               <div className="seller-commerce__card-head">
@@ -318,9 +386,7 @@ export function SellerCommerceOperations() {
                       }, "تماس اول مرجوعی ثبت شد.")}>
                       {busyPath === contactPath
                         ? "در حال ثبت…"
-                        : uncertain[contactPath]
-                          ? "تکرار امن ثبت تماس"
-                          : "ثبت تماس اول"}
+                        : "ثبت تماس اول"}
                     </button>
                   ) : (
                     <button type="button" className="primary-button"
@@ -330,9 +396,7 @@ export function SellerCommerceOperations() {
                       }, "مراجعه حضوری مرجوعی ثبت شد.")}>
                       {busyPath === visitPath
                         ? "در حال ثبت…"
-                        : uncertain[visitPath]
-                          ? "تکرار امن ثبت مراجعه"
-                          : "ثبت مراجعه حضوری"}
+                        : "ثبت مراجعه حضوری"}
                     </button>
                   )}
                 </div>
