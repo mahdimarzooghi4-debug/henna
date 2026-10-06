@@ -13,6 +13,12 @@ import {
   type StaffIncident,
   type StaffIntent,
 } from "../../lib/staff-commerce";
+import {
+  clearSupportDecisionIntent,
+  persistSupportDecisionIntent,
+  restoreSupportDecisionIntent,
+  supportDecisionIntentDetails,
+} from "../../lib/web-pending-support-decision";
 
 type Load =
   | { kind: "loading" }
@@ -49,6 +55,9 @@ export function SupportCommerceView() {
     useState<Record<string, string>>({});
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [storageFailure, setStorageFailure] = useState<string | null>(null);
+  const [pendingDecisionIntent, setPendingDecisionIntent] =
+    useState<StaffIntent | null>(null);
   const [uncertain, setUncertain] = useState<Record<string, boolean>>({});
   const [uncertainDecision, setUncertainDecision] =
     useState<Record<string, "APPROVE" | "REJECT" | undefined>>({});
@@ -76,6 +85,24 @@ export function SupportCommerceView() {
   }, []);
 
   useEffect(() => {
+    try {
+      const restored = restoreSupportDecisionIntent();
+      if (!restored) return;
+      const details = supportDecisionIntentDetails(restored);
+      if (!details) throw Error();
+      setPendingDecisionIntent(restored);
+      setReasons({ [details.incidentId]: details.reason });
+      setUncertain({ [restored.path]: true });
+      setUncertainDecision({ [details.incidentId]: details.decision });
+      setNotice(
+        "یک تصمیم پشتیبانی نتیجه قطعی ندارد. همان دلیل، تصمیم و کلید برای تکرار امن بازیابی شد.");
+    } catch {
+      setStorageFailure(
+        "وضعیت retry امن تصمیم پشتیبانی قابل اعتماد نیست. ثبت تصمیم جدید متوقف شد.");
+    }
+  }, []);
+
+  useEffect(() => {
     const controller = new AbortController();
     void load(page, controller.signal);
     return () => controller.abort();
@@ -91,11 +118,30 @@ export function SupportCommerceView() {
       setNotice("ثبت دلیل برای تصمیم پشتیبانی الزامی است.");
       return;
     }
-    const intent = staffIntent(intents.current[path] ?? null, path, {
+
+    const restored = pendingDecisionIntent
+      ? supportDecisionIntentDetails(pendingDecisionIntent)
+      : null;
+    if (pendingDecisionIntent &&
+        (!restored || restored.incidentId !== incident.id ||
+          restored.decision !== decision || restored.reason !== reason)) {
+      setNotice(
+        "ابتدا تصمیم پشتیبانی قبلی با همان دلیل و همان انتخاب تعیین تکلیف شود.");
+      return;
+    }
+
+    const intent = staffIntent(pendingDecisionIntent, path, {
       decision,
       reason,
     });
-    intents.current[path] = intent;
+    try {
+      persistSupportDecisionIntent(intent);
+    } catch {
+      setStorageFailure(
+        "ذخیره retry امن تصمیم پشتیبانی تأیید نشد؛ هیچ تصمیمی به سرور ارسال نشد.");
+      return;
+    }
+    setPendingDecisionIntent(intent);
     setBusyPath(path);
     setNotice(null);
     try {
@@ -103,7 +149,12 @@ export function SupportCommerceView() {
         incident: StaffIncident;
         reason: string;
       }>("support", intent);
-      intents.current[path] = null;
+      if (!clearSupportDecisionIntent(intent.key)) {
+        setStorageFailure(
+          "پاسخ سرور دریافت شد، اما پاک‌سازی retry تصمیم تأیید نشد. تصمیم جدید متوقف است.");
+        return;
+      }
+      setPendingDecisionIntent(null);
       setUncertain(current => ({ ...current, [path]: false }));
       setUncertainDecision(current => ({ ...current, [incident.id]: undefined }));
       setResults(current => ({
@@ -126,9 +177,14 @@ export function SupportCommerceView() {
           [incident.id]: decision,
         }));
         setNotice(
-          "نتیجه تصمیم هنوز قطعی نیست. برای retry امن همان تصمیم را با همان دلیل دوباره بزنید؛ کلید و بدنه حفظ شده‌اند.");
+          "نتیجه تصمیم هنوز قطعی نیست. همان تصمیم، دلیل، کلید و بدنه در این تب حفظ شده‌اند و پس از reload نیز قابل تکرار امن هستند.");
       } else {
-        intents.current[path] = null;
+        if (!clearSupportDecisionIntent(intent.key)) {
+          setStorageFailure(
+            "نتیجه سرور قطعی است، اما پاک‌سازی retry تصمیم تأیید نشد. تصمیم جدید متوقف است.");
+          return;
+        }
+        setPendingDecisionIntent(null);
         setUncertain(current => ({ ...current, [path]: false }));
         setUncertainDecision(current => ({ ...current, [incident.id]: undefined }));
         setNotice(message(error));
@@ -138,7 +194,7 @@ export function SupportCommerceView() {
     } finally {
       setBusyPath(null);
     }
-  }, [load, page, reasons]);
+  }, [load, page, pendingDecisionIntent, reasons]);
 
   const verifyUnavailable = useCallback(async (incident: StaffIncident) => {
     const path = `returns/${incident.id}/unavailability`;
@@ -218,6 +274,21 @@ export function SupportCommerceView() {
     }
   }, [load, page]);
 
+  const pendingDecision = pendingDecisionIntent
+    ? supportDecisionIntentDetails(pendingDecisionIntent)
+    : null;
+
+  if (storageFailure) {
+    return (
+      <main className="support-panel support-panel--gate">
+        <section className="support-panel__denied">
+          <h1>پنل پشتیبانی</h1>
+          <p role="alert">{storageFailure}</p>
+        </section>
+      </main>
+    );
+  }
+
   if (state.kind === "denied") {
     return (
       <main className="support-panel support-panel--gate">
@@ -245,7 +316,7 @@ export function SupportCommerceView() {
         </div>
         <div className="support-panel__header-actions">
           <button type="button" className="seller-commerce__refresh"
-            disabled={busyPath !== null}
+            disabled={busyPath !== null || pendingDecisionIntent !== null}
             onClick={() => void assessReturnSla()}>
             {busyPath === "return-sla"
               ? "در حال ارزیابی…"
@@ -282,8 +353,11 @@ export function SupportCommerceView() {
 
         {state.kind === "ready" && state.items.map(incident => {
           const path = `incidents/${incident.id}/decision`;
-          const frozen = Boolean(uncertain[path]);
-          const frozenDecision = uncertainDecision[incident.id];
+          const pendingHere = pendingDecision?.incidentId === incident.id;
+          const frozen = pendingDecisionIntent !== null;
+          const frozenDecision = pendingHere
+            ? pendingDecision?.decision
+            : uncertainDecision[incident.id];
           const result = results[incident.id];
           return (
             <article className="support-incident" key={incident.id}>
