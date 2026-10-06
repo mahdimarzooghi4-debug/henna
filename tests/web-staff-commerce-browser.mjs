@@ -390,6 +390,16 @@ async function main() {
   assert.equal(await reason.isDisabled(), true);
   assert.equal(await page.getByRole("button", { name: "رد گزارش" })
     .isDisabled(), true);
+
+  await page.reload();
+  await page.getByRole("heading", {
+    name: "بررسی گزارش آسیب و کسری",
+  }).waitFor();
+  const restoredReason = page.getByPlaceholder(
+    "دلیل مستند تأیید یا رد را وارد کنید.");
+  await restoredReason.waitFor();
+  assert.equal(await restoredReason.inputValue(), "مدرک تصویری بررسی شد");
+  assert.equal(await restoredReason.isDisabled(), true);
   await page.getByRole("button", {
     name: "تکرار امن همان تأیید",
   }).click();
