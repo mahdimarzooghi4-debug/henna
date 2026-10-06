@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import * as ExpoLinking from "expo-linking";
 import {
   Alert,
   AppState,
@@ -53,8 +52,8 @@ const secureOptions = {
 };
 
 const nativeBuyerLinkInbox = new BuyerLinkInbox();
-// Subscribe before React mounts. iOS can deliver a custom-scheme URL while the
-// JS bundle is starting, before App's effect attaches its normal listener.
+// Subscribe before React mounts so an early valid native link is not lost
+// before App's effect attaches its normal consumer.
 Linking.addEventListener("url", ({ url }) => {
   nativeBuyerLinkInbox.offer(url);
 });
@@ -581,17 +580,10 @@ export default function App() {
         nativeBuyerLinkInbox.clear();
         applyPending(pending);
       } else {
-        // Expo caches the launch URL in native state. On iOS cold starts the
-        // React Native initial-URL bridge can be null even though the OS
-        // launched this installed app from the registered custom scheme.
-        // Prefer a live URL buffered during JS bootstrap, then Expo's native
-        // cached launch URL, then React Native's initial URL.
-        apply(
-          nativeBuyerLinkInbox.take() ??
-            ExpoLinking.getLinkingURL() ??
-            initialUrl,
-          false,
-        );
+        // Prefer a valid OS URL buffered during JS bootstrap; otherwise use
+        // React Native's initial URL. Shared mobile routing remains bounded
+        // to the public buyer-link allowlist.
+        apply(nativeBuyerLinkInbox.take() ?? initialUrl, false);
       }
       stopIncomingLinks = nativeBuyerLinkInbox.subscribe(handleIncoming);
       void pendingCommerceStore.cleanupPhotos().catch(() => {});
