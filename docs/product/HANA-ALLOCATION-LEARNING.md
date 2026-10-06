@@ -25,7 +25,7 @@ formula/dataset version, allocation result, timestamps and structured outcome ob
 Only snapshots recorded internally by Henna without attributed/manual-import provenance are
 training-eligible. Human-attributed assessment capture remains research/audit material and is
 explicitly excluded from labels and training.
-Retention controls and additional outcome producers remain to implement. First-party allocation snapshots are captured directly from Henna's append-only commerce journal by a local DB-to-DB worker; no API or model service is involved. Runtime-promoted formula versions carry both the exact formula version and the runtime proposal identity. A snapshot is training-eligible only when the stored runtime lineage proves that the same profile was actually effective at the allocation timestamp. Baseline and promoted generations are therefore both usable, but never mixed inside one training cohort.
+Retention controls and additional outcome producers remain to implement. First-party allocation snapshots are captured directly from Henna's append-only commerce journal by a local DB-to-DB worker; no API or model service is involved. Runtime-promoted formula versions carry the exact formula version, runtime proposal identity and append-only runtime profile sequence. A snapshot is training-eligible only when that exact sequence resolves to the same effective profile recorded for the allocation. Baseline and promoted generations are therefore both usable, but never mixed inside one training cohort.
 Keep identity mapping and health details outside model datasets. Access must be authorized.
 Track credit usage alongside stock availability, delivery/access constraints, essential-needs
 coverage and reviewed complaints. Spending alone is not a need label; unused credit does
@@ -178,8 +178,8 @@ runtime lineage. It reconstructs features from stored assessments, verifies that
 snapshot's formula version and runtime proposal were actually effective at its allocation timestamp,
 rejects mixed generations, rejects labels beyond a supplied past UTC cutoff and relies on the learner
 to reject household overlap or mixed rubrics. A completed run freezes labels, features, review
-identities, the full baseline profile, baseline runtime proposal identity, model version, pool and
-input references.
+identities, the full baseline profile, baseline runtime proposal identity, baseline runtime
+profile sequence, model version, pool and input references.
 Successful training creates a PENDING_REVIEW proposal plus metrics and a linked PROPOSED audit
 in one database transaction. If evaluation reports no improvement, only a NO_IMPROVEMENT audit
 is stored. Invalid inputs or infrastructure errors abort without a completed run; they are not
@@ -237,7 +237,7 @@ account, minimum training and validation label counts, the simulation pool and a
 No default cadence, sample trigger or pool is invented by the application.
 
 Each coherent dataset/source/runtime-lineage/rubric cohort receives a deterministic request identity derived from
-the model version, exact baseline formula version, runtime proposal identity, pool and exact reviewed label IDs. Re-running the same cohort is
+the model version, exact baseline formula version, runtime proposal identity, runtime profile sequence, pool and exact reviewed label IDs. Re-running the same cohort is
 therefore an idempotent replay of the same audited TrainingRun rather than a new training job.
 The cutoff is the cohort's latest reviewed timestamp, not the worker clock, so unchanged data does
 not acquire a different training fingerprint merely because another polling cycle occurred.
