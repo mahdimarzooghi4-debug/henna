@@ -274,10 +274,11 @@ export function SellerBusinessOperations({
       const restored = restoreSellerCommerceIntent();
       if (!restored) return;
       setPendingIntent(restored);
-      setNotice(sellerCommerceIntentArea(restored) === "business"
+      const area = sellerCommerceIntentArea(restored);
+      setNotice(area === "business"
         ? "یک درخواست قبلی در عملیات تکمیلی نتیجه قطعی ندارد. همان کلید و بدنه برای تکرار امن بازیابی شد."
         : "یک درخواست نتیجه قطعی در سفارش یا مرجوعی وجود دارد؛ تا تعیین تکلیف آن، تغییرات عملیات تکمیلی قفل است.");
-      setActivated(true);
+      if (area === "business") setActivated(true);
     } catch {
       setStorageFailure(
         "وضعیت retry امن فروشنده در این تب قابل اعتماد نیست. عملیات جدید برای جلوگیری از ارسال تکراری متوقف شد.");
@@ -609,6 +610,7 @@ export function SellerBusinessOperations({
             </p>
           </div>
           <button type="button" className="seller-commerce__refresh"
+            disabled={pendingIntent !== null}
             onClick={() => setActivated(true)}>
             بارگیری عملیات تکمیلی
           </button>
