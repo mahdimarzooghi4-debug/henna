@@ -113,6 +113,7 @@ internal static class AllocationLearningProposalEndpoints
                 plan.Status,
                 plan.TriggerPolicyConfigured,
                 plan.AutomaticTrainingEnabled,
+                plan.MissingPolicyRequirements,
                 cohorts = plan.Cohorts.Select(x => new
                 {
                     x.DatasetVersion,
@@ -123,7 +124,9 @@ internal static class AllocationLearningProposalEndpoints
                     x.DistinctTrainingHouseholds,
                     x.DistinctValidationHouseholds,
                     x.HouseholdPartitionOverlap,
-                    x.LatestReviewedAtUtc
+                    x.LatestReviewedAtUtc,
+                    x.MeetsConfiguredTrigger,
+                    x.RequestId
                 }),
                 active = false
             });
