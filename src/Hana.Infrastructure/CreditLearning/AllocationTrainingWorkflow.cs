@@ -3,6 +3,7 @@ using Hana.Application.Time;
 using Hana.Domain.Credit;
 using Hana.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Hana.Infrastructure.CreditLearning;
 
@@ -72,16 +73,28 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
             ids.Distinct().Count() != ids.Length || poolRial <= 0)
             throw new ArgumentException("Distinct reviewed labels and a positive pool are required.");
 
+        IDbContextTransaction? requestTransaction = null;
         if (requestId is { } retryId)
         {
             if (retryId == Guid.Empty)
                 throw new ArgumentException("Training request id is invalid.");
+
+            // Cross-replica serialization belongs in PostgreSQL, not process
+            // memory. Hold a transaction-scoped advisory lock for this
+            // deterministic request identity before checking/inserting.
+            requestTransaction = await db.Database.BeginTransactionAsync(ct);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock({TrainingRequestLockKey(retryId)})",
+                ct);
+
             var existing = await db.TrainingRuns.AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id == retryId, ct);
             if (existing is not null)
             {
                 if (!SameTrainingRequest(existing, requester, ids, poolRial))
                     throw new AllocationTrainingIdempotencyConflictException();
+                await requestTransaction.CommitAsync(ct);
+                await requestTransaction.DisposeAsync();
                 return existing;
             }
         }
@@ -125,10 +138,17 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
             run.Status = "NO_IMPROVEMENT";
             db.TrainingRuns.Add(run);
             await db.SaveChangesAsync(ct);
+            if (requestTransaction is not null)
+            {
+                await requestTransaction.CommitAsync(ct);
+                await requestTransaction.DisposeAsync();
+            }
             return run;
         }
         // Candidate, simulation and training audit commit together or all roll back.
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var ownsProposalTransaction = requestTransaction is null;
+        var transaction = requestTransaction ??
+            await db.Database.BeginTransactionAsync(ct);
         run.ProposalId = await proposals.SubmitAsync(requester, learned.Candidate, run.ModelVersion,
             "Experimental learner: held-out error improved; requires independent human review.",
             snapshotIds, poolRial, rows[0].DatasetVersion, rows[0].SourceInstructionReference, ct);
@@ -137,7 +157,17 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         db.TrainingRuns.Add(run);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
+        await transaction.DisposeAsync();
         return run;
+    }
+
+    private static long TrainingRequestLockKey(Guid requestId)
+    {
+        Span<byte> digest = stackalloc byte[32];
+        System.Security.Cryptography.SHA256.HashData(
+            requestId.ToByteArray(), digest);
+        return System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(
+            digest[..8]);
     }
 
     private static bool SameTrainingRequest(
