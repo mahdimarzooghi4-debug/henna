@@ -229,6 +229,37 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             });
         });
 
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationModelBenchmarkRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("ProposalId").HasColumnType("uuid");
+            e.Property<Guid>("EvaluatedByAccountId").HasColumnType("uuid");
+            e.Property<string>("ProtocolVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("ModelVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("BaselineVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("CandidateVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("DatasetVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("SourceInstructionReference").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<Guid?>("RuntimeProposalId").HasColumnType("uuid");
+            e.Property<long?>("RuntimeProfileSequence").HasColumnType("bigint");
+            e.Property<string>("EvaluationLabelIdsJson").IsRequired().HasColumnType("jsonb");
+            e.Property<string>("EvaluationFingerprint").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+            e.Property<string>("MetricsJson").IsRequired().HasColumnType("jsonb");
+            e.Property<DateTimeOffset>("CutoffUtc").HasColumnType("timestamp with time zone");
+            e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("EvaluationFingerprint", "RecordedAtUtc", "Id");
+            e.HasIndex("ProposalId", "EvaluationFingerprint").IsUnique();
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
+                .WithMany().HasForeignKey("ProposalId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
+                .WithMany().HasForeignKey("RuntimeProposalId").OnDelete(DeleteBehavior.Restrict);
+            e.ToTable("model_benchmarks", "allocation_learning", t =>
+            {
+                t.HasCheckConstraint("ck_model_benchmark_fingerprint", "length(\"EvaluationFingerprint\") = 64");
+            });
+        });
+
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.ReviewedNeedLabelRecord", e =>
         {
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
