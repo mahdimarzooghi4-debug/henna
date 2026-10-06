@@ -28,6 +28,13 @@ import {
   unresolvedSellerFieldChoices, type SellerFieldChoice,
   type SellerFieldChoices,
 } from "../../../lib/seller-field-merge";
+import {
+  clearSellerRegistrationSubmitIntent,
+  persistSellerRegistrationSubmitIntent,
+  restoreSellerRegistrationSubmitIntent,
+  sellerRegistrationSubmitIntent,
+  type SellerRegistrationSubmitIntent,
+} from "../../../lib/web-pending-seller-registration";
 
 
 type SellerConflict =
@@ -108,7 +115,10 @@ export function RegistrationForm() {
     useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
-  const [submitKey, setSubmitKey] = useState<string | null>(null);
+  const [pendingSubmitIntent, setPendingSubmitIntent] =
+    useState<SellerRegistrationSubmitIntent | null>(null);
+  const [submitStorageFailure, setSubmitStorageFailure] =
+    useState<string | null>(null);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
   const conflictHeading = useRef<HTMLHeadingElement>(null);
@@ -119,6 +129,14 @@ export function RegistrationForm() {
   function checkInitialDraft() {
     // Only a 404 from a live, authenticated server permits revision zero.
     // Retry this GET in place; page reload is not needed for an outage.
+    let pending: SellerRegistrationSubmitIntent | null = null;
+    try {
+      pending = restoreSellerRegistrationSubmitIntent();
+      setPendingSubmitIntent(pending);
+    } catch {
+      setSubmitStorageFailure(
+        "وضعیت retry امن ثبت نهایی قابل اعتماد نیست. ثبت نهایی جدید برای جلوگیری از ارسال تکراری متوقف شد.");
+    }
     preflightAbort.current?.abort();
     const controller = new AbortController();
     preflightAbort.current = controller;
@@ -135,6 +153,10 @@ export function RegistrationForm() {
         return;
       }
       if (result.status === "new") {
+        if (pending) {
+          setSubmitStorageFailure(
+            "یک ثبت نهایی حل‌نشده با وضعیت فعلی پیش‌نویس سازگار نیست. ثبت جدید متوقف شد.");
+        }
         setRevision(0);
         setBaseline(emptySellerFields);
         setAccess("signedIn");
@@ -186,9 +208,24 @@ export function RegistrationForm() {
       setAdditionalTouched(false);
       setAdditionalFeedback(null);
       if (result.status === "submitted") {
+        if (pending && !clearSellerRegistrationSubmitIntent(pending.key)) {
+          setSubmitStorageFailure(
+            "سرور ثبت نهایی را تأیید کرده، اما پاک‌سازی retry محلی تأیید نشد.");
+        } else {
+          setPendingSubmitIntent(null);
+        }
         setSubmittedAtUtc(result.submittedAtUtc);
         setTrackingCode(result.trackingCode);
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
+      } else if (pending) {
+        if (result.revision !== pending.revision) {
+          setSubmitStorageFailure(
+            "نسخهٔ پیش‌نویس با ثبت نهایی حل‌نشده سازگار نیست. برای جلوگیری از تکرار نادرست، ثبت متوقف شد.");
+        } else {
+          setReviewConfirmed(true);
+          setMessage(
+            "ثبت نهایی قبلی نتیجه قطعی ندارد. همان revision، کلید و بدنه برای تکرار امن بازیابی شد.");
+        }
       } else {
         setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
       }
@@ -1079,27 +1116,20 @@ export function RegistrationForm() {
     }
   }
 
-  async function submitForReview() {
-    if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
-      completedStep !== 6 || revision < 1 || hasUnsavedChanges ||
-      !reviewConfirmed) return;
-    const key = submitKey ?? crypto.randomUUID();
-    setSubmitKey(key);
+  async function sendSubmitIntent(
+    intent: SellerRegistrationSubmitIntent,
+  ) {
     setBusy(true);
     setMessage("");
     try {
       const response = await fetch("/api/seller/registration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          revision,
-          idempotencyKey: key,
-          confirmed: true,
-        }),
+        body: intent.body,
         cache: "no-store",
       });
       if (response.ok) {
-        const result: unknown = await response.json();
+        const result: unknown = await response.json().catch(() => null);
         if (result && typeof result === "object" &&
           "status" in result && result.status === "SUBMITTED" &&
           "revision" in result && typeof result.revision === "number" &&
@@ -1109,6 +1139,12 @@ export function RegistrationForm() {
           typeof result.accuracyConfirmedAtUtc === "string" &&
           "trackingCode" in result &&
           typeof result.trackingCode === "string") {
+          if (!clearSellerRegistrationSubmitIntent(intent.key)) {
+            setSubmitStorageFailure(
+              "سرور ثبت نهایی را تأیید کرد، اما پاک‌سازی retry محلی تأیید نشد.");
+            return;
+          }
+          setPendingSubmitIntent(null);
           setRevision(result.revision);
           setSubmittedAtUtc(result.submittedAtUtc);
           setTrackingCode(result.trackingCode);
@@ -1117,7 +1153,23 @@ export function RegistrationForm() {
           setMessage("درخواست فروشندگی برای بررسی ثبت شد. ثبت درخواست به معنی تأیید یا فعال‌شدن فروشگاه نیست.");
           return;
         }
+        setPendingSubmitIntent(intent);
+        setMessage(
+          "پاسخ ثبت نهایی قابل اعتماد نبود. همان revision، کلید و بدنه برای تکرار امن حفظ شده‌اند.");
+        return;
       }
+      if (response.status >= 500) {
+        setPendingSubmitIntent(intent);
+        setMessage(
+          "نتیجه ثبت نهایی قطعی نیست. همان revision، کلید و بدنه پس از reload نیز برای تکرار امن حفظ شده‌اند.");
+        return;
+      }
+      if (!clearSellerRegistrationSubmitIntent(intent.key)) {
+        setSubmitStorageFailure(
+          "نتیجه سرور قطعی است، اما پاک‌سازی retry ثبت نهایی تأیید نشد.");
+        return;
+      }
+      setPendingSubmitIntent(null);
       if (response.status === 401) setAccess("signedOut");
       setMessage(response.status === 409
         ? "نسخهٔ پیش‌نویس تغییر کرده یا درخواست قبلاً ثبت شده است. وضعیت را دوباره بررسی کنید."
@@ -1125,10 +1177,37 @@ export function RegistrationForm() {
           ? "نشست شما پایان یافته است؛ درخواست ثبت نشد."
           : "ثبت درخواست تأیید نشد؛ لطفاً دوباره تلاش کنید.");
     } catch {
-      setMessage("ثبت درخواست تأیید نشد؛ لطفاً دوباره تلاش کنید.");
+      setPendingSubmitIntent(intent);
+      setMessage(
+        "نتیجه ثبت نهایی قطعی نیست. همان revision، کلید و بدنه پس از reload نیز برای تکرار امن حفظ شده‌اند.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submitForReview() {
+    if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
+      completedStep !== 6 || revision < 1 || hasUnsavedChanges ||
+      !reviewConfirmed || submitStorageFailure) return;
+
+    let intent: SellerRegistrationSubmitIntent;
+    try {
+      if (pendingSubmitIntent &&
+          pendingSubmitIntent.revision !== revision) {
+        setSubmitStorageFailure(
+          "نسخهٔ پیش‌نویس با ثبت نهایی حل‌نشده سازگار نیست. ثبت جدید متوقف شد.");
+        return;
+      }
+      intent = sellerRegistrationSubmitIntent(
+        revision, pendingSubmitIntent);
+      persistSellerRegistrationSubmitIntent(intent);
+    } catch {
+      setSubmitStorageFailure(
+        "ذخیره retry امن ثبت نهایی تأیید نشد؛ هیچ درخواست جدیدی ارسال نشد.");
+      return;
+    }
+    setPendingSubmitIntent(intent);
+    await sendSubmitIntent(intent);
   }
 
   const readyConflict = conflict?.status === "ready" ? conflict : null;
@@ -1144,6 +1223,11 @@ export function RegistrationForm() {
   return (
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
+      {submitStorageFailure && (
+        <p className="form-status form-status--error" role="alert">
+          {submitStorageFailure}
+        </p>
+      )}
       {hasUnsavedChanges && (
         <p className="seller-unsaved-note" role="status">
           تغییرات این فرم هنوز در سرور ذخیره نشده‌اند. پیش از بستن یا
@@ -2047,7 +2131,8 @@ export function RegistrationForm() {
             <label className="seller-review__confirmation">
               <input type="checkbox"
                 checked={reviewConfirmed}
-                disabled={busy || access !== "signedIn"}
+                disabled={busy || access !== "signedIn" ||
+                  pendingSubmitIntent !== null || submitStorageFailure !== null}
                 onChange={(event) => {
                   setReviewConfirmed(event.target.checked);
                   setMessage("");
@@ -2059,12 +2144,16 @@ export function RegistrationForm() {
               <button type="button" className="primary-button"
                 disabled={busy || access !== "signedIn" ||
                   conflict !== null || hasAnyUnsavedChanges ||
-                  !reviewConfirmed}
+                  !reviewConfirmed || submitStorageFailure !== null}
                 onClick={() => void submitForReview()}>
-                {busy ? "در حال ثبت…" : "ثبت نهایی درخواست"}
+                {busy
+                  ? "در حال ثبت…"
+                  : pendingSubmitIntent
+                    ? "تکرار امن ثبت نهایی"
+                    : "ثبت نهایی درخواست"}
               </button>
               <button type="button" className="auth-card__secondary"
-                disabled={busy}
+                disabled={busy || pendingSubmitIntent !== null}
                 onClick={() => {
                   setReviewConfirmed(false);
                   document.getElementById("seller-additional-heading")
