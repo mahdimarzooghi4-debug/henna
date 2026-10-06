@@ -188,9 +188,9 @@ public sealed class HennaAllocationLearningCaptureTests
         var promotedSnapshot = await learning.Assessments.AsNoTracking()
             .SingleAsync(x => x.Id == promotedGrantId);
         Assert.Equal(promotedFormula, promotedSnapshot.FormulaVersion);
-        Assert.False(
-            AllocationTrainingWorkflow.IsTrainingEligibleFirstPartySnapshot(
-                promotedSnapshot));
+        var promotedLineage = await AllocationTrainingLineageResolver
+            .ResolveEligibleAsync(learning, new[] { promotedSnapshot });
+        Assert.Empty(promotedLineage);
     }
 
     [Fact]
