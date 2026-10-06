@@ -17,11 +17,9 @@ appId: ${APP_ID}
     commands:
       - tapOn:
           text: "^Open$"
-# iOS 26 can launch the target process from the security prompt while XCTest
-# remains visually attached to SpringBoard. Foreground the already-running app
-# without restarting it so the cold deep-link state is preserved and asserted.
-- launchApp:
-    stopApp: false
+# Do not call launchApp here. On a true cold start, openLink/tapping Open already
+# launches the app with the URL. A second launch without the URL can replace
+# the pending iOS launch context before React Native reads getInitialURL().
 - extendedWaitUntil:
     visible: "جزئیات کالا یا خدمت"
     timeout: 120000
@@ -34,17 +32,11 @@ appId: ${APP_ID}
 - assertVisible: "کالاها را در حنا مرور کنید"
 - assertVisible: "کالای پیوند آزمایشی"
 - openLink: "hana://products/60000000-0000-4000-8000-000000000021"
-- launchApp:
-    stopApp: false
 - assertVisible: "جزئیات کالا یا خدمت"
 - assertVisible: "دریافت جزئیات تأیید نشد"
 # The OS may deliver this custom scheme but JS must ignore the unapproved path.
 - openLink: "hana://auth"
-- launchApp:
-    stopApp: false
 - assertVisible: "جزئیات کالا یا خدمت"
 - openLink: "hana://browse?search=%DA%A9%D8%A7%D9%84%D8%A7%DB%8C+%D9%BE%DB%8C%D9%88%D9%86%D8%AF+%D8%A2%D8%B2%D9%85%D8%A7%DB%8C%D8%B4%DB%8C&page=2"
-- launchApp:
-    stopApp: false
 - assertVisible: "کالاها را در حنا مرور کنید"
 - assertVisible: "کالای پیوند آزمایشی"

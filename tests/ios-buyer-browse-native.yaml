@@ -15,10 +15,8 @@ appId: ${APP_ID}
     commands:
       - tapOn:
           text: "^Open$"
-# Keep the already-delivered cold link, but explicitly bring the target app
-# back in front of SpringBoard before reading its native accessibility tree.
-- launchApp:
-    stopApp: false
+# openLink/tapping Open is itself the cold native launch. Do not issue a
+# second URL-less launch before React Native consumes the initial route.
 - extendedWaitUntil:
     visible: "کالاها را در حنا مرور کنید"
     timeout: 120000
