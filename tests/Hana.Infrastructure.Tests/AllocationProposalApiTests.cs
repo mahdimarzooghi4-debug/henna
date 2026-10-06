@@ -359,6 +359,12 @@ public sealed class AllocationProposalApiTests
                 new { reason = "Ordinary user cannot authorize production" }))
             .StatusCode);
 
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await reviewerClient.PostAsJsonAsync(
+                productionControlUrl + "/authorize-rollback",
+                new { reason = "Rollback cannot precede activation authorization" }))
+            .StatusCode);
+
         var activationAuthorization = await creatorClient.PostAsJsonAsync(
             productionControlUrl + "/authorize-activation",
             new { reason = "Explicit production activation authorization only" });
