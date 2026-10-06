@@ -344,6 +344,81 @@ public sealed class AllocationProposalApiTests
                 .GetProperty("runtimeApplied").GetBoolean());
         }
 
+        var productionControlUrl =
+            $"{url}/{pilotProposalId}/production-control";
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await creatorClient.PostAsJsonAsync(
+                $"{url}/{proposalId}/production-control/authorize-activation",
+                new { reason = "Pilot was not completed for this proposal" }))
+            .StatusCode);
+
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await ordinaryClient.PostAsJsonAsync(
+                productionControlUrl + "/authorize-activation",
+                new { reason = "Ordinary user cannot authorize production" }))
+            .StatusCode);
+
+        var activationAuthorization = await creatorClient.PostAsJsonAsync(
+            productionControlUrl + "/authorize-activation",
+            new { reason = "Explicit production activation authorization only" });
+        Assert.Equal(HttpStatusCode.OK, activationAuthorization.StatusCode);
+        using (var activationJson = JsonDocument.Parse(
+            await activationAuthorization.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("PRODUCTION_ACTIVATION_AUTHORIZED",
+                activationJson.RootElement.GetProperty("status").GetString());
+            Assert.False(activationJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.False(activationJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await reviewerClient.PostAsJsonAsync(
+                productionControlUrl + "/authorize-activation",
+                new { reason = "Duplicate activation authorization" }))
+            .StatusCode);
+
+        var rollbackAuthorization = await reviewerClient.PostAsJsonAsync(
+            productionControlUrl + "/authorize-rollback",
+            new { reason = "Explicit rollback authorization only" });
+        Assert.Equal(HttpStatusCode.OK, rollbackAuthorization.StatusCode);
+        using (var rollbackJson = JsonDocument.Parse(
+            await rollbackAuthorization.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("PRODUCTION_ROLLBACK_AUTHORIZED",
+                rollbackJson.RootElement.GetProperty("status").GetString());
+            Assert.False(rollbackJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.False(rollbackJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await creatorClient.PostAsJsonAsync(
+                productionControlUrl + "/authorize-rollback",
+                new { reason = "Duplicate rollback authorization" }))
+            .StatusCode);
+
+        var productionControlDetail =
+            await creatorClient.GetAsync(productionControlUrl);
+        Assert.Equal(HttpStatusCode.OK, productionControlDetail.StatusCode);
+        using (var productionJson = JsonDocument.Parse(
+            await productionControlDetail.Content.ReadAsStringAsync()))
+        {
+            Assert.True(productionJson.RootElement
+                .GetProperty("activationAuthorized").GetBoolean());
+            Assert.True(productionJson.RootElement
+                .GetProperty("rollbackAuthorized").GetBoolean());
+            Assert.Equal(2, productionJson.RootElement
+                .GetProperty("events").GetArrayLength());
+            Assert.False(productionJson.RootElement
+                .GetProperty("active").GetBoolean());
+            Assert.False(productionJson.RootElement
+                .GetProperty("runtimeApplied").GetBoolean());
+        }
+
         // Revocation takes effect on the next privileged request.
         identity.RoleAssignments.Remove(await identity.RoleAssignments.SingleAsync(x => x.AccountId == reviewer));
         await identity.SaveChangesAsync();
