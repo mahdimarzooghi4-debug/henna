@@ -39,6 +39,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationProposalConflictException) { return Results.Conflict(); }
             catch (AllocationTrainingIdempotencyConflictException) { return Results.Conflict(); }
             catch (AllocationAssessmentIdempotencyConflictException) { return Results.Conflict(); }
+            catch (AllocationReviewedOutcomeConflictException) { return Results.Conflict(); }
             catch (AllocationPilotConflictException) { return Results.Conflict(); }
             catch (AllocationProductionControlConflictException) { return Results.Conflict(); }
             catch (AllocationRuntimePromotionConflictException) { return Results.Conflict(); }
@@ -92,6 +93,70 @@ internal static class AllocationLearningProposalEndpoints
             }).ToList();
             return Results.Ok(new { items, page = p, active = false });
         });
+        routes.MapPost("/research/outcomes", async (
+            CaptureReviewedOutcomeRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            var created = await services.GetRequiredService<AllocationReviewedOutcomeService>()
+                .RecordAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    new AllocationReviewedOutcomeInput(
+                        input.EventId,
+                        input.SnapshotId,
+                        input.PeriodStartUtc,
+                        input.PeriodEndUtc,
+                        input.EssentialNeedsCoverage,
+                        input.StockBarrier,
+                        input.DeliveryBarrier,
+                        input.AccessBarrier,
+                        input.EvidenceReference),
+                    ct);
+            var payload = new
+            {
+                id = input.EventId,
+                snapshotId = input.SnapshotId,
+                evidence = "HUMAN_REVIEWED",
+                active = false,
+                replayed = !created
+            };
+            return created
+                ? Results.Created(
+                    "/api/v1/admin/allocation-proposals/research/outcomes",
+                    payload)
+                : Results.Ok(payload);
+        });
+
+        routes.MapGet("/research/outcomes", async (
+            int? page, IServiceProvider services, CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var items = await db.Outcomes.AsNoTracking()
+                .OrderByDescending(x => x.PeriodEndUtc)
+                .ThenBy(x => x.Id)
+                .Skip((p - 1) * 20)
+                .Take(20)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.SnapshotId,
+                    x.PeriodStartUtc,
+                    x.PeriodEndUtc,
+                    x.CreditUsedRial,
+                    x.EssentialNeedsCoverage,
+                    x.StockBarrier,
+                    x.DeliveryBarrier,
+                    x.AccessBarrier,
+                    evidence = x.Evidence,
+                    x.ReviewedByAccountId,
+                    x.EvidenceReference,
+                    x.RecordedAtUtc
+                })
+                .ToListAsync(ct);
+            return Results.Ok(new { items, page = p, active = false });
+        });
+
         routes.MapGet("/research/labels", async (string rubricVersion, IServiceProvider services, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(rubricVersion) || rubricVersion.Length > 120) return Results.BadRequest();
@@ -588,6 +653,16 @@ internal sealed record AllocationRetentionPurgeRequest(
 internal sealed record ProductionControlRequest(string Reason);
 internal sealed record RuntimePromotionRequest(string Reason);
 
+internal sealed record CaptureReviewedOutcomeRequest(
+    Guid EventId,
+    Guid SnapshotId,
+    DateTimeOffset PeriodStartUtc,
+    DateTimeOffset PeriodEndUtc,
+    decimal? EssentialNeedsCoverage,
+    bool? StockBarrier,
+    bool? DeliveryBarrier,
+    bool? AccessBarrier,
+    string EvidenceReference);
 internal sealed record NeedLabelRequest(Guid SnapshotId, decimal NeedScore, string RubricVersion, int Partition);
 internal sealed record TrainAllocationRequest(Guid[]? LabelIds, long PoolRial, DateTimeOffset CutoffUtc);
 
