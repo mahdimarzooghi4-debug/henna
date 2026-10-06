@@ -40,7 +40,7 @@ public sealed class AllocationOutcomeRecord
     public DateTimeOffset RecordedAtUtc { get; set; }
 }
 
-/// <summary>Internal research storage. Retention deletion requires a separate privileged procedure.</summary>
+/// <summary>Internal research storage. Normal writes are append-only; the explicit privileged retention service may purge only its audited research scope.</summary>
 public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocationLearningDbContext> options)
     : DbContext(options)
 {
