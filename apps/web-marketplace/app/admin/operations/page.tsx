@@ -411,7 +411,7 @@ export default function AdminOperationsPage(){
       {notice&&<p className="form-status admin-ops__notice" role="status">{notice}</p>}
       {pendingIntent&&(
         <button type="button" className="primary-button"
-          disabled={busy!==null||pendingIntent!==null}
+          disabled={busy!==null}
           onClick={()=>void retryPending()}>
           {busy===pendingIntent.action
             ?"در حال تکرار امن…"
