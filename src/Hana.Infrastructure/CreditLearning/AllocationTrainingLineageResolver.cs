@@ -6,6 +6,7 @@ namespace Hana.Infrastructure.CreditLearning;
 
 public sealed record AllocationTrainingLineage(
     Guid? RuntimeProposalId,
+    long? RuntimeProfileSequence,
     AllocationWeightProfile Baseline);
 
 public static class AllocationTrainingLineageResolver
@@ -60,34 +61,48 @@ public static class AllocationTrainingLineageResolver
             if (!HasFirstPartyHennaProvenance(snapshot))
                 continue;
 
-            var latest = events
-                .Where(x => x.RecordedAtUtc <= snapshot.AssessedAtUtc)
-                .OrderByDescending(x => x.Sequence)
-                .FirstOrDefault();
+            if (snapshot.RuntimeProfileSequence is null)
+            {
+                // Backward compatibility is intentionally narrow: only legacy
+                // baseline rows recorded before the first runtime transition.
+                if (snapshot.RuntimeProposalId is null &&
+                    snapshot.FormulaVersion ==
+                        AllocationWeightProfile.Baseline.Version &&
+                    !events.Any(x =>
+                        x.RecordedAtUtc <= snapshot.AssessedAtUtc))
+                    result[snapshot.Id] = new(
+                        null, null, AllocationWeightProfile.Baseline);
+                continue;
+            }
 
-            if (latest is null)
+            if (snapshot.RuntimeProfileSequence == 0)
             {
                 if (snapshot.RuntimeProposalId is null &&
                     snapshot.FormulaVersion ==
                         AllocationWeightProfile.Baseline.Version)
                     result[snapshot.Id] = new(
-                        null, AllocationWeightProfile.Baseline);
+                        null, 0L, AllocationWeightProfile.Baseline);
                 continue;
             }
 
-            if (latest.EffectiveProposalId != snapshot.RuntimeProposalId ||
-                latest.EffectiveProfileVersion != snapshot.FormulaVersion)
+            var runtimeEvent = events.SingleOrDefault(x =>
+                x.Sequence == snapshot.RuntimeProfileSequence.Value);
+            if (runtimeEvent is null ||
+                runtimeEvent.RecordedAtUtc > snapshot.AssessedAtUtc ||
+                runtimeEvent.EffectiveProposalId != snapshot.RuntimeProposalId ||
+                runtimeEvent.EffectiveProfileVersion != snapshot.FormulaVersion)
                 continue;
 
             var profile = DeserializeProfile(
-                latest.EffectiveWeightsJson,
-                latest.EffectiveProfileVersion);
+                runtimeEvent.EffectiveWeightsJson,
+                runtimeEvent.EffectiveProfileVersion);
 
             if (snapshot.RuntimeProposalId is null)
             {
-                if (profile.Version ==
-                    AllocationWeightProfile.Baseline.Version)
-                    result[snapshot.Id] = new(null, profile);
+                if (SameProfile(
+                        profile, AllocationWeightProfile.Baseline))
+                    result[snapshot.Id] = new(
+                        null, runtimeEvent.Sequence, profile);
                 continue;
             }
 
@@ -107,11 +122,13 @@ public static class AllocationTrainingLineageResolver
                 x.EventType == "RUNTIME_PROMOTED" &&
                 x.EffectiveProposalId == proposal.Id &&
                 x.EffectiveProfileVersion == profile.Version &&
-                x.Sequence <= latest.Sequence);
+                x.Sequence <= runtimeEvent.Sequence &&
+                x.RecordedAtUtc <= snapshot.AssessedAtUtc);
             if (!promoted)
                 continue;
 
-            result[snapshot.Id] = new(proposal.Id, profile);
+            result[snapshot.Id] = new(
+                proposal.Id, runtimeEvent.Sequence, profile);
         }
 
         return result;
