@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Hana.Domain.Credit;
 
-public enum LearningPartition { Training = 1, Validation = 2 }
+public enum LearningPartition { Training = 1, Validation = 2, Evaluation = 3 }
 public sealed record ReviewedNeedExample(Guid HouseholdKey, HouseholdNeedScores Scores,
     decimal ReviewedNeedScore, Guid ReviewerKey, string RubricVersion,
     DateTimeOffset ReviewedAtUtc, LearningPartition Partition);
