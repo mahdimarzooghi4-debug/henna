@@ -195,7 +195,12 @@ public sealed class AllocationTrainingWorkflowTests
         var rejected = await workflow.TrainAsync(actor, baselineLabels, 4800, clock.UtcNow);
         Assert.Equal("NO_IMPROVEMENT", rejected.Status);
         Assert.Null(rejected.ProposalId);
-        Assert.Equal(2, await db.TrainingRuns.CountAsync(x => x.RequestedByAccountId == actor));
+        var actorRuns = await db.TrainingRuns.AsNoTracking()
+            .Where(x => x.RequestedByAccountId == actor)
+            .ToListAsync();
+        Assert.Contains(actorRuns, x => x.Id == runKey && x.Status == "PROPOSED");
+        Assert.Contains(actorRuns, x => x.Id == concurrentKey && x.Status == "PROPOSED");
+        Assert.Contains(actorRuns, x => x.Id == rejected.Id && x.Status == "NO_IMPROVEMENT");
 
         // Human-attributed/manual HTTP capture is useful for audit/research but is not
         // allowed to train the Henna-owned learner. Training data must be first-party.
