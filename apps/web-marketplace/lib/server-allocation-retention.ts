@@ -45,7 +45,7 @@ export async function forwardAllocationRetention(
       encodeURIComponent(cutoffUtc);
   } else if (operation === "events") {
     const page = request.nextUrl.searchParams.get("page") ?? "1";
-    if (!/^\\d{1,5}$/.test(page) || Number(page) < 1 || Number(page) > 10000)
+    if (!/^\d{1,5}$/.test(page) || Number(page) < 1 || Number(page) > 10000)
       return fail("صفحه معتبر نیست.", 400);
     path = "/api/v1/admin/allocation-proposals/research/retention/events?page=" +
       Number(page);
