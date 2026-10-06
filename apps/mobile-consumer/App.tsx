@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as SecureStore from "expo-secure-store";
+import * as ExpoLinking from "expo-linking";
 import {
   Alert,
   AppState,
@@ -580,10 +581,17 @@ export default function App() {
         nativeBuyerLinkInbox.clear();
         applyPending(pending);
       } else {
-        // Prefer an OS URL captured while React was mounting; otherwise use
-        // the normal native initial URL. This closes the iOS cold-start gap
-        // without weakening the durable-commerce fail-closed rule.
-        apply(nativeBuyerLinkInbox.take() ?? initialUrl, false);
+        // Expo caches the launch URL in native state. On iOS cold starts the
+        // React Native initial-URL bridge can be null even though the OS
+        // launched this installed app from the registered custom scheme.
+        // Prefer a live URL buffered during JS bootstrap, then Expo's native
+        // cached launch URL, then React Native's initial URL.
+        apply(
+          nativeBuyerLinkInbox.take() ??
+            ExpoLinking.getLinkingURL() ??
+            initialUrl,
+          false,
+        );
       }
       stopIncomingLinks = nativeBuyerLinkInbox.subscribe(handleIncoming);
       void pendingCommerceStore.cleanupPhotos().catch(() => {});
