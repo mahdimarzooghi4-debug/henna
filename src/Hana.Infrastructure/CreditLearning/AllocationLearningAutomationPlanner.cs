@@ -127,9 +127,11 @@ public sealed class AllocationLearningAutomationPlanner(
             ? "WAITING_FOR_REVIEWED_FIRST_PARTY_DATA"
             : !policy.IsConfigured
                 ? "TRIGGER_POLICY_REQUIRED"
-                : cohorts.Any(x => x.MeetsConfiguredTrigger)
-                    ? "AUTOMATION_EXECUTOR_REQUIRED"
-                    : "WAITING_FOR_CONFIGURED_TRIGGER";
+                : !policy.IsWorkerConfigured
+                    ? "AUTOMATION_CADENCE_REQUIRED"
+                    : cohorts.Any(x => x.MeetsConfiguredTrigger)
+                        ? "AUTOMATION_ENABLED"
+                        : "WAITING_FOR_CONFIGURED_TRIGGER";
 
         return new AllocationLearningAutomationPlan(
             status,
