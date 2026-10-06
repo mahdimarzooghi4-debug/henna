@@ -151,6 +151,7 @@ if (hasCommerceDb)
 if (hasCommerceDb && hasLearningDb)
 {
     builder.Services.AddScoped<HennaAllocationLearningCapture>();
+    builder.Services.AddScoped<HennaAllocationOutcomeCapture>();
     builder.Services.AddHostedService<HennaAllocationLearningCaptureWorker>();
 }
 if (hasIdentityDb)
