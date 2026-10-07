@@ -80,6 +80,9 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         if (ids.Length is < 40 or > 500 || ids.Any(x => x == Guid.Empty) ||
             ids.Distinct().Count() != ids.Length || poolRial <= 0)
             throw new ArgumentException("Distinct reviewed labels and a positive pool are required.");
+        if (cutoffUtc.Offset != TimeSpan.Zero || cutoffUtc > clock.UtcNow)
+            throw new ArgumentException("A past UTC cutoff is required.");
+        cutoffUtc = CanonicalTimestamp(cutoffUtc);
 
         await using var requestTransaction = requestId is not null
             ? await db.Database.BeginTransactionAsync(ct)
@@ -100,15 +103,14 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
                 .SingleOrDefaultAsync(x => x.Id == retryId, ct);
             if (existing is not null)
             {
-                if (!SameTrainingRequest(existing, requester, ids, poolRial))
+                if (!SameTrainingRequest(
+                        existing, requester, ids, poolRial, cutoffUtc))
                     throw new AllocationTrainingIdempotencyConflictException();
                 await requestTransaction.CommitAsync(ct);
                 return existing;
             }
         }
 
-        if (cutoffUtc.Offset != TimeSpan.Zero || cutoffUtc > clock.UtcNow)
-            throw new ArgumentException("A past UTC cutoff is required.");
         var labels = await db.NeedLabels.AsNoTracking().Where(x => ids.Contains(x.Id))
             .OrderBy(x => x.Id).ToArrayAsync(ct);
         if (labels.Length != ids.Length || labels.Any(x => x.ReviewedAtUtc > cutoffUtc))
@@ -212,9 +214,12 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         AllocationTrainingRunRecord existing,
         Guid requester,
         IReadOnlyList<Guid> sortedLabelIds,
-        long poolRial)
+        long poolRial,
+        DateTimeOffset cutoffUtc)
     {
-        if (existing.RequestedByAccountId != requester) return false;
+        if (existing.RequestedByAccountId != requester ||
+            existing.CutoffUtc != cutoffUtc)
+            return false;
         try
         {
             using var inputs = JsonDocument.Parse(existing.InputsJson);
@@ -235,6 +240,9 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
             return false;
         }
     }
+
+    private static DateTimeOffset CanonicalTimestamp(DateTimeOffset value) =>
+        value.AddTicks(-(value.Ticks % 10));
 
     private async Task RequireAdmin(Guid actor, CancellationToken ct)
     {

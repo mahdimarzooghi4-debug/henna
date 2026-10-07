@@ -7,6 +7,11 @@ using Npgsql;
 
 namespace Hana.Infrastructure.CreditLearning;
 
+internal static class AllocationRuntimeMutationLock
+{
+    internal const long Key = 48710261005L;
+}
+
 public sealed class AllocationRuntimeProfileEventRecord
 {
     public Guid Id { get; set; }
@@ -98,7 +103,7 @@ public sealed class AllocationRuntimePromotionService(
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlRawAsync(
-            "SELECT pg_advisory_xact_lock(48710261005)", ct);
+            $"SELECT pg_advisory_xact_lock({AllocationRuntimeMutationLock.Key})", ct);
 
         var proposal = await db.Proposals.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == proposalId, ct)
@@ -178,7 +183,7 @@ public sealed class AllocationRuntimePromotionService(
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlRawAsync(
-            "SELECT pg_advisory_xact_lock(48710261005)", ct);
+            $"SELECT pg_advisory_xact_lock({AllocationRuntimeMutationLock.Key})", ct);
 
         if (!await db.ProductionControlEvents.AsNoTracking().AnyAsync(
             x => x.ProposalId == proposalId &&

@@ -80,6 +80,11 @@ public sealed class AllocationProductionControlService(
         await RequireAdmin(actor, ct);
         ValidateReason(reason);
 
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlRawAsync(
+            $"SELECT pg_advisory_xact_lock({AllocationRuntimeMutationLock.Key})",
+            ct);
+
         var events = await db.ProductionControlEvents.AsNoTracking()
             .Where(x => x.ProposalId == proposalId)
             .Select(x => x.EventType)
@@ -102,12 +107,14 @@ public sealed class AllocationProductionControlService(
             throw new AllocationProductionControlConflictException(
                 "Rollback authorization requires the proposal to be the active runtime profile.");
 
-        return await AppendAsync(
+        var id = await AppendAsync(
             proposalId,
             actor,
             "PRODUCTION_ROLLBACK_AUTHORIZED",
             reason,
             ct);
+        await tx.CommitAsync(ct);
+        return id;
     }
 
     private async Task<Guid> AppendAsync(
