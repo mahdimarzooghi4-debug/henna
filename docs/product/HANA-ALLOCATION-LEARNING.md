@@ -144,7 +144,11 @@ need-score mean-squared-error measure for baseline and candidate, plus the arith
 difference; it defines no approval threshold, fairness claim, automatic winner or
 production decision. The evaluation-set fingerprint excludes the candidate profile, so
 different candidate/model versions evaluated on the exact same frozen label set and
-baseline share one comparable fingerprint.
+baseline share one comparable fingerprint. XGBoost shadow benchmark protocol v2 now
+reuses this same model/artifact-independent evaluation-set identity; the XGBoost artifact
+digest remains separately attested and persisted. This allows future model-family evidence
+to be aligned on the same frozen Evaluation set without ranking models or defining a
+selection threshold. Existing shadow benchmark v1 rows remain immutable historical evidence.
 
 Benchmark evidence is append-only and records proposal/model/candidate versions, runtime
 lineage, exact evaluation-label IDs, evaluation fingerprint, metrics, cutoff and evaluator

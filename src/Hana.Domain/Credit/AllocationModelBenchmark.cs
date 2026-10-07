@@ -62,7 +62,7 @@ public static class AllocationModelBenchmarkEvaluator
 
         var baselineMse = Mse(data, baseline);
         var candidateMse = Mse(data, candidate);
-        var fingerprint = Fingerprint(data, baseline, cutoffUtc);
+        var fingerprint = ComputeEvaluationFingerprint(data, baseline, cutoffUtc);
 
         return new(
             data.Length,
@@ -90,11 +90,21 @@ public static class AllocationModelBenchmarkEvaluator
             return residual * residual;
         }) / rows.Length;
 
-    private static string Fingerprint(
+    /// <summary>
+    /// Stable identity of one frozen independent Evaluation set and baseline.
+    /// The identity deliberately excludes the candidate/model/artifact so evidence
+    /// from different model families can be aligned without selecting a winner.
+    /// Callers must validate the Evaluation rows before computing the identity.
+    /// </summary>
+    public static string ComputeEvaluationFingerprint(
         ReviewedNeedExample[] rows,
         AllocationWeightProfile baseline,
         DateTimeOffset cutoffUtc)
     {
+        ArgumentNullException.ThrowIfNull(rows);
+        ArgumentNullException.ThrowIfNull(baseline);
+        if (cutoffUtc.Offset != TimeSpan.Zero)
+            throw new ArgumentException("UTC cutoff required.");
         var text = new StringBuilder(ProtocolVersion)
             .Append('|').Append(baseline.Version)
             .Append('|').Append(cutoffUtc.ToString(

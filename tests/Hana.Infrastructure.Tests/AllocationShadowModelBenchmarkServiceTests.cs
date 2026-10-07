@@ -228,6 +228,35 @@ public sealed class AllocationShadowModelBenchmarkServiceTests
         Assert.True(double.IsFinite(
             metrics.ShadowMinusBaselineMse));
 
+        var comparisonExamples = labels.Select(label =>
+        {
+            var snapshot = snapshots.Single(x => x.Id == label.SnapshotId);
+            return new ReviewedNeedExample(
+                snapshot.HouseholdKey,
+                new(
+                    snapshot.Health,
+                    snapshot.Hardship,
+                    snapshot.Age,
+                    snapshot.Size,
+                    snapshot.Care,
+                    snapshot.Education),
+                label.NeedScore,
+                label.ReviewerAccountId,
+                label.RubricVersion,
+                label.ReviewedAtUtc,
+                LearningPartition.Evaluation);
+        }).ToArray();
+        var comparable = AllocationModelBenchmarkEvaluator.Evaluate(
+            comparisonExamples,
+            baseline,
+            new AllocationWeightProfile(
+                "comparison-only-candidate",
+                .34m, .21m, .18m, .12m, .10m, .05m),
+            now.AddHours(-1));
+        Assert.Equal(
+            comparable.EvaluationFingerprint,
+            metrics.EvaluationFingerprint);
+
         var overlapSnapshot = new AllocationAssessmentRecord
         {
             Id = Guid.NewGuid(),

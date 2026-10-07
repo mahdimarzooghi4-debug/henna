@@ -1,6 +1,4 @@
-using System.Globalization;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Hana.Application.Time;
 using Hana.Domain.Credit;
@@ -50,7 +48,7 @@ public sealed class AllocationShadowModelBenchmarkConflictException(string messa
 public static class HennaXGBoostShadowBenchmarkEvaluator
 {
     public const string ProtocolVersion =
-        "henna-xgboost-shadow-benchmark-v1";
+        "henna-xgboost-shadow-benchmark-v2";
 
     public static HennaXGBoostShadowBenchmarkMetrics Evaluate(
         IReadOnlyList<ReviewedNeedExample> examples,
@@ -118,8 +116,8 @@ public static class HennaXGBoostShadowBenchmarkEvaluator
         var baselineMse = Mse(expected, baselinePredictions);
         var shadowMse = Mse(
             expected, predictions.Select(x => (double)x).ToArray());
-        var fingerprint = Fingerprint(
-            data, baseline, actualSha, cutoffUtc);
+        var fingerprint = AllocationModelBenchmarkEvaluator
+            .ComputeEvaluationFingerprint(data, baseline, cutoffUtc);
 
         return new(
             data.Length,
@@ -155,54 +153,7 @@ public static class HennaXGBoostShadowBenchmarkEvaluator
         return total / expected.Length;
     }
 
-    private static string Fingerprint(
-        ReviewedNeedExample[] rows,
-        AllocationWeightProfile baseline,
-        string artifactSha256,
-        DateTimeOffset cutoffUtc)
-    {
-        var text = new StringBuilder(ProtocolVersion)
-            .Append('|').Append(artifactSha256)
-            .Append('|').Append(baseline.Version)
-            .Append('|').Append(cutoffUtc.ToString(
-                "O", CultureInfo.InvariantCulture));
-        foreach (var weight in new[]
-        {
-            baseline.Health,
-            baseline.Hardship,
-            baseline.Age,
-            baseline.Size,
-            baseline.Care,
-            baseline.Education
-        })
-            text.Append('|').Append(
-                weight.ToString(CultureInfo.InvariantCulture));
 
-        foreach (var row in rows)
-        {
-            text.Append('\n')
-                .Append(row.HouseholdKey)
-                .Append('|').Append(row.ReviewerKey)
-                .Append('|').Append(row.RubricVersion.Length)
-                .Append(':').Append(row.RubricVersion)
-                .Append('|').Append(row.ReviewedAtUtc.ToString(
-                    "O", CultureInfo.InvariantCulture))
-                .Append('|').Append(
-                    row.ReviewedNeedScore.ToString(
-                        CultureInfo.InvariantCulture))
-                .Append('|').Append(row.Scores.Health)
-                .Append('|').Append(row.Scores.EconomicHardship)
-                .Append('|').Append(row.Scores.AgeAndDependency)
-                .Append('|').Append(row.Scores.HouseholdSize)
-                .Append('|').Append(row.Scores.CareAndSupport)
-                .Append('|').Append(row.Scores.Education);
-        }
-
-        return Convert.ToHexString(
-            SHA256.HashData(
-                Encoding.UTF8.GetBytes(text.ToString())))
-            .ToLowerInvariant();
-    }
 }
 
 public sealed class AllocationShadowModelBenchmarkService(
