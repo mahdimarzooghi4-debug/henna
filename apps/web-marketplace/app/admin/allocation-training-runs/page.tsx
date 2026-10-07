@@ -33,7 +33,7 @@ export default function TrainingRunsPage() {
   },[selected,refresh]);
   return <main className={styles.page}>
     <header><Link href="/admin/allocation-training">آموزش آزمایشی</Link><Link href="/admin/allocation-proposals">بررسی پیشنهادها</Link></header>
-    <h1>سوابق آموزش تخصیص</h1>
+    <h1>سوابق آموزش تخصیص</h1>\n    <Link href="/admin/allocation-shadow-benchmarks">Evidence ارزیابی مستقل XGBoost Shadow</Link>
     <aside className={styles.note}>این فهرست اجراهای تکمیل‌شده را نشان می‌دهد. در صورت قطع ارتباط، پیش از تکرار آموزش نتیجه را اینجا بررسی کنید. نبودن سابقه به‌تنهایی ثابت نمی‌کند درخواست قبلی اجرا نشده است.</aside>
     {error && <p role="alert" className={styles.error}>{error}</p>}
     <button onClick={() => setRefresh(x=>x+1)} disabled={loading || detailLoading}>به‌روزرسانی سوابق</button>
