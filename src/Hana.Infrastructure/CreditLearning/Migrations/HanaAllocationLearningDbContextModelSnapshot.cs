@@ -287,6 +287,12 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<string>("ModelVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
             e.Property<string>("InputsJson").IsRequired().HasColumnType("jsonb");
             e.Property<string?>("MetricsJson").HasColumnType("jsonb");
+            e.Property<string?>("ShadowModelVersion").HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string?>("ShadowArtifactFormat").HasMaxLength(40).HasColumnType("character varying(40)");
+            e.Property<string?>("ShadowArtifactSha256").HasMaxLength(64).HasColumnType("character varying(64)");
+            e.Property<byte[]?>("ShadowArtifactBytes").HasColumnType("bytea");
+            e.Property<string?>("ShadowParametersJson").HasColumnType("jsonb");
+            e.Property<string?>("ShadowMetricsJson").HasColumnType("jsonb");
             e.Property<DateTimeOffset>("CutoffUtc").HasColumnType("timestamp with time zone");
             e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
@@ -295,7 +301,10 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
                 .WithMany().HasForeignKey("ProposalId").OnDelete(DeleteBehavior.Restrict);
             e.ToTable("training_runs", "allocation_learning", t =>
-                t.HasCheckConstraint("ck_training_run", "(\"Status\" = 'PROPOSED' AND \"ProposalId\" IS NOT NULL AND \"MetricsJson\" IS NOT NULL) OR (\"Status\" = 'NO_IMPROVEMENT' AND \"ProposalId\" IS NULL)"));
+            {
+                t.HasCheckConstraint("ck_training_run", "(\"Status\" = 'PROPOSED' AND \"ProposalId\" IS NOT NULL AND \"MetricsJson\" IS NOT NULL) OR (\"Status\" = 'NO_IMPROVEMENT' AND \"ProposalId\" IS NULL)");
+                t.HasCheckConstraint("ck_training_run_shadow_artifact", "((\"ShadowModelVersion\" IS NULL AND \"ShadowArtifactFormat\" IS NULL AND \"ShadowArtifactSha256\" IS NULL AND \"ShadowArtifactBytes\" IS NULL AND \"ShadowParametersJson\" IS NULL AND \"ShadowMetricsJson\" IS NULL) OR (\"ShadowModelVersion\" IS NOT NULL AND \"ShadowArtifactFormat\" IS NOT NULL AND \"ShadowArtifactSha256\" IS NOT NULL AND length(\"ShadowArtifactSha256\") = 64 AND \"ShadowArtifactBytes\" IS NOT NULL AND octet_length(\"ShadowArtifactBytes\") > 0 AND \"ShadowParametersJson\" IS NOT NULL AND \"ShadowMetricsJson\" IS NOT NULL))");
+            });
         });
     }
 }

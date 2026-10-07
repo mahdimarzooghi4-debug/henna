@@ -136,6 +136,19 @@ public sealed class AllocationTrainingWorkflowTests
         Assert.Equal("PROPOSED", run.Status);
         Assert.NotNull(run.ProposalId);
         Assert.NotNull(run.MetricsJson);
+        Assert.Equal(HennaXGBoostOfflineLearner.ModelVersion,
+            run.ShadowModelVersion);
+        Assert.Equal(HennaXGBoostOfflineLearner.ArtifactFormat,
+            run.ShadowArtifactFormat);
+        Assert.NotNull(run.ShadowArtifactBytes);
+        Assert.NotEmpty(run.ShadowArtifactBytes!);
+        Assert.Equal(
+            Convert.ToHexString(SHA256.HashData(run.ShadowArtifactBytes!))
+                .ToLowerInvariant(),
+            run.ShadowArtifactSha256);
+        Assert.Equal(64, run.ShadowArtifactSha256!.Length);
+        Assert.NotNull(run.ShadowParametersJson);
+        Assert.NotNull(run.ShadowMetricsJson);
 
         var replayExecution = await executor.ExecuteReadyAsync();
         var replay = Assert.Single(replayExecution.Runs);
@@ -212,6 +225,11 @@ public sealed class AllocationTrainingWorkflowTests
         var rejected = await workflow.TrainAsync(actor, baselineLabels, 4800, clock.UtcNow);
         Assert.Equal("NO_IMPROVEMENT", rejected.Status);
         Assert.Null(rejected.ProposalId);
+        Assert.Equal(HennaXGBoostOfflineLearner.ModelVersion,
+            rejected.ShadowModelVersion);
+        Assert.NotNull(rejected.ShadowArtifactBytes);
+        Assert.NotEmpty(rejected.ShadowArtifactBytes!);
+        Assert.NotNull(rejected.ShadowMetricsJson);
         var actorRuns = await db.TrainingRuns.AsNoTracking()
             .Where(x => x.RequestedByAccountId == actor)
             .ToListAsync();

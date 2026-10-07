@@ -28,6 +28,12 @@ public sealed class AllocationTrainingRunRecord
     public string ModelVersion { get; set; } = "";
     public string InputsJson { get; set; } = "";
     public string? MetricsJson { get; set; }
+    public string? ShadowModelVersion { get; set; }
+    public string? ShadowArtifactFormat { get; set; }
+    public string? ShadowArtifactSha256 { get; set; }
+    public byte[]? ShadowArtifactBytes { get; set; }
+    public string? ShadowParametersJson { get; set; }
+    public string? ShadowMetricsJson { get; set; }
     public DateTimeOffset CutoffUtc { get; set; }
     public DateTimeOffset RecordedAtUtc { get; set; }
 }
@@ -136,6 +142,11 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
                 new(s.Health, s.Hardship, s.Age, s.Size, s.Care, s.Education), x.NeedScore,
                 x.ReviewerAccountId, x.RubricVersion, x.ReviewedAtUtc, (LearningPartition)x.Partition);
         }).ToArray();
+        // XGBoost starts learning now, but remains a shadow/offline artifact.
+        // It has no Proposal or Runtime path in this slice.
+        var shadow = HennaXGBoostOfflineLearner.Train(
+            examples, cutoffUtc, ct);
+
         // The run freezes actual labels/features, including their review identities and IDs.
         var run = new AllocationTrainingRunRecord { Id = requestId ?? Guid.NewGuid(), RequestedByAccountId = requester,
             DatasetVersion = rows[0].DatasetVersion, ModelVersion = ExperimentalAllocationWeightLearner.ModelVersion,
@@ -146,6 +157,12 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
                 baselineRuntimeProfileSequence = lineages[0].RuntimeProfileSequence,
                 poolRial,
                 sourceInstructionReference = rows[0].SourceInstructionReference }),
+            ShadowModelVersion = shadow.ModelVersion,
+            ShadowArtifactFormat = shadow.ArtifactFormat,
+            ShadowArtifactSha256 = shadow.ArtifactSha256,
+            ShadowArtifactBytes = shadow.ArtifactBytes,
+            ShadowParametersJson = shadow.ParametersJson,
+            ShadowMetricsJson = JsonSerializer.Serialize(shadow.Metrics),
             CutoffUtc = cutoffUtc, RecordedAtUtc = clock.UtcNow };
         LearnedAllocationWeights learned;
         try { learned = ExperimentalAllocationWeightLearner.Train(examples, baseline, cutoffUtc, ct); }

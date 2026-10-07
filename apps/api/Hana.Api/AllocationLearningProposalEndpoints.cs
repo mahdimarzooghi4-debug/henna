@@ -392,7 +392,22 @@ internal static class AllocationLearningProposalEndpoints
             if (run is null) return Results.NotFound();
             using var inputs = JsonDocument.Parse(run.InputsJson);
             using var metrics = run.MetricsJson is { } json ? JsonDocument.Parse(json) : null;
+            using var shadowParameters = run.ShadowParametersJson is { } shadowParametersJson
+                ? JsonDocument.Parse(shadowParametersJson) : null;
+            using var shadowMetrics = run.ShadowMetricsJson is { } shadowMetricsJson
+                ? JsonDocument.Parse(shadowMetricsJson) : null;
             var examples = inputs.RootElement.GetProperty("examples").EnumerateArray().ToArray();
+            object? shadowModel = run.ShadowModelVersion is null ? null : new
+            {
+                modelVersion = run.ShadowModelVersion,
+                artifactFormat = run.ShadowArtifactFormat,
+                artifactSha256 = run.ShadowArtifactSha256,
+                artifactByteLength = run.ShadowArtifactBytes?.Length,
+                parameters = shadowParameters?.RootElement.Clone(),
+                metrics = shadowMetrics?.RootElement.Clone(),
+                proposalCreated = false,
+                runtimeApplied = false
+            };
             return Results.Ok(new { run.Id, run.Status, run.DatasetVersion, run.ModelVersion, run.ProposalId,
                 run.RecordedAtUtc, run.CutoffUtc,
                 poolRial = inputs.RootElement.GetProperty("poolRial").GetInt64(),
@@ -400,7 +415,9 @@ internal static class AllocationLearningProposalEndpoints
                 rubricVersion = examples[0].GetProperty("RubricVersion").GetString(),
                 trainingCount = examples.Count(x => x.GetProperty("Partition").GetInt32() == 1),
                 validationCount = examples.Count(x => x.GetProperty("Partition").GetInt32() == 2),
-                learningMetrics = metrics?.RootElement.Clone(), active = false });
+                learningMetrics = metrics?.RootElement.Clone(),
+                shadowModel,
+                active = false });
         });
 
         routes.MapPost("/research/train", async (TrainAllocationRequest input, HttpContext http,

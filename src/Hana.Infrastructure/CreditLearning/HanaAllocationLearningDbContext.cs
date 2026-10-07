@@ -152,8 +152,13 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
         });
         model.Entity<AllocationTrainingRunRecord>(e =>
         {
-            e.ToTable("training_runs", t => t.HasCheckConstraint("ck_training_run",
-                "(\"Status\" = 'PROPOSED' AND \"ProposalId\" IS NOT NULL AND \"MetricsJson\" IS NOT NULL) OR (\"Status\" = 'NO_IMPROVEMENT' AND \"ProposalId\" IS NULL)"));
+            e.ToTable("training_runs", t =>
+            {
+                t.HasCheckConstraint("ck_training_run",
+                    "(\"Status\" = 'PROPOSED' AND \"ProposalId\" IS NOT NULL AND \"MetricsJson\" IS NOT NULL) OR (\"Status\" = 'NO_IMPROVEMENT' AND \"ProposalId\" IS NULL)");
+                t.HasCheckConstraint("ck_training_run_shadow_artifact",
+                    "((\"ShadowModelVersion\" IS NULL AND \"ShadowArtifactFormat\" IS NULL AND \"ShadowArtifactSha256\" IS NULL AND \"ShadowArtifactBytes\" IS NULL AND \"ShadowParametersJson\" IS NULL AND \"ShadowMetricsJson\" IS NULL) OR (\"ShadowModelVersion\" IS NOT NULL AND \"ShadowArtifactFormat\" IS NOT NULL AND \"ShadowArtifactSha256\" IS NOT NULL AND length(\"ShadowArtifactSha256\") = 64 AND \"ShadowArtifactBytes\" IS NOT NULL AND octet_length(\"ShadowArtifactBytes\") > 0 AND \"ShadowParametersJson\" IS NOT NULL AND \"ShadowMetricsJson\" IS NOT NULL))");
+            });
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.Status).HasMaxLength(24).IsRequired();
@@ -161,6 +166,12 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.ModelVersion).HasMaxLength(120).IsRequired();
             e.Property(x => x.InputsJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.MetricsJson).HasColumnType("jsonb");
+            e.Property(x => x.ShadowModelVersion).HasMaxLength(120);
+            e.Property(x => x.ShadowArtifactFormat).HasMaxLength(40);
+            e.Property(x => x.ShadowArtifactSha256).HasMaxLength(64);
+            e.Property(x => x.ShadowArtifactBytes).HasColumnType("bytea");
+            e.Property(x => x.ShadowParametersJson).HasColumnType("jsonb");
+            e.Property(x => x.ShadowMetricsJson).HasColumnType("jsonb");
             e.HasIndex(x => new { x.RecordedAtUtc, x.Id });
             e.HasIndex(x => x.ProposalId).IsUnique();
             e.HasOne<AllocationProposalRecord>().WithMany().HasForeignKey(x => x.ProposalId)

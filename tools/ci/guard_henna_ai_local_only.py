@@ -77,6 +77,22 @@ else:
     if 'ModelVersion = "henna-' not in text:
         problems.append("Henna-owned learner must use a henna-* model version")
 
+xgboost_learner = ROOT / "src/Hana.Infrastructure/CreditLearning/HennaXGBoostOfflineLearner.cs"
+if not xgboost_learner.exists():
+    problems.append("Henna XGBoost offline learner source is missing")
+else:
+    text = xgboost_learner.read_text(encoding="utf-8")
+    if 'ModelVersion = "henna-xgboost-v1-offline"' not in text:
+        problems.append("Henna XGBoost learner must use the approved v1 model version")
+
+infra_project = ROOT / "src/Hana.Infrastructure/Hana.Infrastructure.csproj"
+if infra_project.exists():
+    project_text = infra_project.read_text(encoding="utf-8")
+    if 'Include="XGBoostSharp-cpu" Version="0.5.2"' not in project_text:
+        problems.append("Henna XGBoost learner must use the pinned CPU-only package")
+    if "XGBoostSharp-cuda" in project_text:
+        problems.append("CUDA XGBoost package is not approved for Henna v1")
+
 if problems:
     print("Henna AI local-only guard failed:", file=sys.stderr)
     for problem in problems:
