@@ -7,8 +7,8 @@ import {
   type AllocationComparisonEvidence,
   type AllocationModelComparison,
   type RegressionDiagnostics,
-} from "../../lib/allocation-model-comparison";
-import styles from "../admin/allocation-proposals/page.module.css";
+} from "../../../lib/allocation-model-comparison";
+import styles from "../allocation-proposals/page.module.css";
 
 const number = (value: number) =>
   value.toLocaleString("fa-IR", { maximumFractionDigits: 10 });
