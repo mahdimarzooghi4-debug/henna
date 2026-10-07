@@ -46,6 +46,8 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationRetentionConflictException) { return Results.Conflict(); }
             catch (AllocationModelBenchmarkConflictException) { return Results.Conflict(); }
             catch (AllocationShadowModelBenchmarkConflictException) { return Results.Conflict(); }
+            catch (AllocationEbmArtifactConflictException) { return Results.Conflict(); }
+            catch (AllocationEbmBenchmarkConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -470,6 +472,185 @@ internal static class AllocationLearningProposalEndpoints
             });
         });
 
+        routes.MapPost("/research/ebm-artifacts", async (
+            AllocationEbmArtifactRequest input,
+            HttpContext http,
+            IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(input.ArtifactBase64) ||
+                input.Report.ValueKind != JsonValueKind.Object)
+                return Results.BadRequest();
+            byte[] artifactBytes;
+            try
+            {
+                artifactBytes = Convert.FromBase64String(input.ArtifactBase64);
+            }
+            catch (FormatException)
+            {
+                return Results.BadRequest();
+            }
+
+            var row = await services
+                .GetRequiredService<AllocationEbmArtifactService>()
+                .RegisterAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.TrainingRunId,
+                    artifactBytes,
+                    input.Report.GetRawText(),
+                    ct);
+            return Results.Ok(new
+            {
+                row.Id,
+                row.TrainingRunId,
+                row.ModelVersion,
+                row.ArtifactFormat,
+                row.ArtifactSha256,
+                row.LibraryName,
+                row.LibraryVersion,
+                artifactByteLength = row.ArtifactBytes.Length,
+                row.RecordedAtUtc,
+                winner = (string?)null,
+                approved = false,
+                proposalCreated = false,
+                active = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapGet("/research/ebm-artifacts", async (
+            Guid? trainingRunId,
+            int? page,
+            IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            if (trainingRunId == Guid.Empty) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var query = db.EbmArtifacts.AsNoTracking().AsQueryable();
+            if (trainingRunId is { } runId)
+                query = query.Where(x => x.TrainingRunId == runId);
+            var items = await query
+                .OrderByDescending(x => x.RecordedAtUtc)
+                .ThenBy(x => x.Id)
+                .Skip((p - 1) * 20)
+                .Take(20)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.TrainingRunId,
+                    x.ModelVersion,
+                    x.ArtifactFormat,
+                    x.ArtifactSha256,
+                    x.LibraryName,
+                    x.LibraryVersion,
+                    artifactByteLength = x.ArtifactBytes.Length,
+                    x.RecordedAtUtc,
+                    winner = (string?)null,
+                    approved = false,
+                    active = false,
+                    runtimeApplied = false
+                })
+                .ToListAsync(ct);
+            return Results.Ok(new { items, page = p, active = false });
+        });
+
+        routes.MapPost("/research/ebm-benchmarks", async (
+            AllocationEbmBenchmarkRequest input,
+            HttpContext http,
+            IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            if (input.EvaluationLabelIds is null)
+                return Results.BadRequest();
+            var row = await services
+                .GetRequiredService<AllocationEbmBenchmarkService>()
+                .EvaluateAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.TrainingRunId,
+                    input.EvaluationLabelIds,
+                    input.CutoffUtc,
+                    ct);
+            var metrics = JsonSerializer.Deserialize<HennaEbmBenchmarkMetrics>(
+                row.MetricsJson)
+                ?? throw new InvalidOperationException(
+                    "Stored EBM benchmark metrics are invalid.");
+            return Results.Ok(new
+            {
+                row.Id,
+                row.EbmArtifactId,
+                row.TrainingRunId,
+                row.ProtocolVersion,
+                row.ModelVersion,
+                row.ArtifactSha256,
+                row.BaselineVersion,
+                row.DatasetVersion,
+                row.SourceInstructionReference,
+                row.RuntimeProposalId,
+                row.RuntimeProfileSequence,
+                row.EvaluationFingerprint,
+                metrics,
+                row.CutoffUtc,
+                row.RecordedAtUtc,
+                winner = (string?)null,
+                approved = false,
+                proposalCreated = false,
+                active = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapGet("/research/ebm-benchmarks", async (
+            string? evaluationFingerprint,
+            int? page,
+            IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            if (evaluationFingerprint is not null &&
+                (evaluationFingerprint.Length != 64 ||
+                 evaluationFingerprint.Any(x => !Uri.IsHexDigit(x))))
+                return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var query = db.EbmModelBenchmarks.AsNoTracking().AsQueryable();
+            if (evaluationFingerprint is not null)
+                query = query.Where(x =>
+                    x.EvaluationFingerprint == evaluationFingerprint.ToLower());
+            var rows = await query
+                .OrderByDescending(x => x.RecordedAtUtc)
+                .ThenBy(x => x.Id)
+                .Skip((p - 1) * 20)
+                .Take(20)
+                .ToListAsync(ct);
+            var items = rows.Select(x => new
+            {
+                x.Id,
+                x.EbmArtifactId,
+                x.TrainingRunId,
+                x.ProtocolVersion,
+                x.ModelVersion,
+                x.ArtifactSha256,
+                x.BaselineVersion,
+                x.DatasetVersion,
+                x.SourceInstructionReference,
+                x.RuntimeProposalId,
+                x.RuntimeProfileSequence,
+                x.EvaluationFingerprint,
+                metrics = JsonSerializer.Deserialize<HennaEbmBenchmarkMetrics>(
+                    x.MetricsJson),
+                x.CutoffUtc,
+                x.RecordedAtUtc,
+                winner = (string?)null,
+                approved = false,
+                proposalCreated = false,
+                active = false,
+                runtimeApplied = false
+            }).ToList();
+            return Results.Ok(new { items, page = p, active = false });
+        });
+
         routes.MapGet("/research/runs", async (int? page, IServiceProvider services, CancellationToken ct) =>
         {
             var p = page ?? 1;
@@ -504,6 +685,26 @@ internal static class AllocationLearningProposalEndpoints
                 proposalCreated = false,
                 runtimeApplied = false
             };
+            var ebm = await db.EbmArtifacts.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TrainingRunId == id, ct);
+            using var ebmReport = ebm is null
+                ? null
+                : JsonDocument.Parse(ebm.ReportJson);
+            object? ebmModel = ebm is null ? null : new
+            {
+                id = ebm.Id,
+                modelVersion = ebm.ModelVersion,
+                artifactFormat = ebm.ArtifactFormat,
+                artifactSha256 = ebm.ArtifactSha256,
+                artifactByteLength = ebm.ArtifactBytes.Length,
+                libraryName = ebm.LibraryName,
+                libraryVersion = ebm.LibraryVersion,
+                report = ebmReport?.RootElement.Clone(),
+                winner = (string?)null,
+                approved = false,
+                proposalCreated = false,
+                runtimeApplied = false
+            };
             return Results.Ok(new { run.Id, run.Status, run.DatasetVersion, run.ModelVersion, run.ProposalId,
                 run.RecordedAtUtc, run.CutoffUtc,
                 poolRial = inputs.RootElement.GetProperty("poolRial").GetInt64(),
@@ -513,6 +714,7 @@ internal static class AllocationLearningProposalEndpoints
                 validationCount = examples.Count(x => x.GetProperty("Partition").GetInt32() == 2),
                 learningMetrics = metrics?.RootElement.Clone(),
                 shadowModel,
+                ebmModel,
                 active = false });
         });
 
@@ -860,6 +1062,14 @@ internal sealed record AllocationModelBenchmarkRequest(
     Guid[]? EvaluationLabelIds,
     DateTimeOffset CutoffUtc);
 internal sealed record AllocationShadowModelBenchmarkRequest(
+    Guid TrainingRunId,
+    Guid[]? EvaluationLabelIds,
+    DateTimeOffset CutoffUtc);
+internal sealed record AllocationEbmArtifactRequest(
+    Guid TrainingRunId,
+    string? ArtifactBase64,
+    JsonElement Report);
+internal sealed record AllocationEbmBenchmarkRequest(
     Guid TrainingRunId,
     Guid[]? EvaluationLabelIds,
     DateTimeOffset CutoffUtc);

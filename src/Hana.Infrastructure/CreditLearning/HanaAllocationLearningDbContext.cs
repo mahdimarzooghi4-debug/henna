@@ -63,6 +63,10 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
         Set<AllocationModelBenchmarkRecord>();
     public DbSet<AllocationShadowModelBenchmarkRecord> ShadowModelBenchmarks =>
         Set<AllocationShadowModelBenchmarkRecord>();
+    public DbSet<AllocationEbmArtifactRecord> EbmArtifacts =>
+        Set<AllocationEbmArtifactRecord>();
+    public DbSet<AllocationEbmBenchmarkRecord> EbmModelBenchmarks =>
+        Set<AllocationEbmBenchmarkRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -327,6 +331,57 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.MetricsJson).HasColumnType("jsonb").IsRequired();
             e.HasIndex(x => new { x.EvaluationFingerprint, x.RecordedAtUtc, x.Id });
             e.HasIndex(x => new { x.TrainingRunId, x.EvaluationFingerprint }).IsUnique();
+            e.HasOne<AllocationTrainingRunRecord>().WithMany()
+                .HasForeignKey(x => x.TrainingRunId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<AllocationProposalRecord>().WithMany()
+                .HasForeignKey(x => x.RuntimeProposalId).OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationEbmArtifactRecord>(e =>
+        {
+            e.ToTable("ebm_artifacts", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_ebm_artifact",
+                    "\"ModelVersion\" = 'henna-ebm-v1-offline' AND \"ArtifactFormat\" = 'henna-ebm-portable-json-v1' AND \"LibraryName\" = 'interpret-core' AND \"LibraryVersion\" = '0.7.8' AND length(\"ArtifactSha256\") = 64 AND octet_length(\"ArtifactBytes\") > 0");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ModelVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ArtifactFormat).HasMaxLength(80).IsRequired();
+            e.Property(x => x.ArtifactSha256).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ArtifactBytes).HasColumnType("bytea").IsRequired();
+            e.Property(x => x.LibraryName).HasMaxLength(80).IsRequired();
+            e.Property(x => x.LibraryVersion).HasMaxLength(40).IsRequired();
+            e.Property(x => x.ReportJson).HasColumnType("jsonb").IsRequired();
+            e.HasIndex(x => x.TrainingRunId).IsUnique();
+            e.HasIndex(x => new { x.RecordedAtUtc, x.Id });
+            e.HasOne<AllocationTrainingRunRecord>().WithMany()
+                .HasForeignKey(x => x.TrainingRunId).OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationEbmBenchmarkRecord>(e =>
+        {
+            e.ToTable("ebm_model_benchmarks", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_ebm_model_benchmark",
+                    "length(\"EvaluationFingerprint\") = 64 AND length(\"ArtifactSha256\") = 64");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProtocolVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ModelVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ArtifactSha256).HasMaxLength(64).IsRequired();
+            e.Property(x => x.BaselineVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.DatasetVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceInstructionReference).HasMaxLength(120).IsRequired();
+            e.Property(x => x.EvaluationLabelIdsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.EvaluationFingerprint).HasMaxLength(64).IsRequired();
+            e.Property(x => x.MetricsJson).HasColumnType("jsonb").IsRequired();
+            e.HasIndex(x => new { x.EvaluationFingerprint, x.RecordedAtUtc, x.Id });
+            e.HasIndex(x => new { x.EbmArtifactId, x.EvaluationFingerprint }).IsUnique();
+            e.HasIndex(x => x.TrainingRunId);
+            e.HasOne<AllocationEbmArtifactRecord>().WithMany()
+                .HasForeignKey(x => x.EbmArtifactId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<AllocationTrainingRunRecord>().WithMany()
                 .HasForeignKey(x => x.TrainingRunId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<AllocationProposalRecord>().WithMany()

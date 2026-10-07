@@ -129,6 +129,8 @@ if (hasLearningDb)
         builder.Services.AddScoped<AllocationRetentionService>();
         builder.Services.AddScoped<AllocationModelBenchmarkService>();
         builder.Services.AddScoped<AllocationShadowModelBenchmarkService>();
+        builder.Services.AddScoped<AllocationEbmArtifactService>();
+        builder.Services.AddScoped<AllocationEbmBenchmarkService>();
         builder.Services.AddScoped<IAllocationRuntimeProfileProvider,
             AllocationRuntimeProfileProvider>();
         if (allocationAutomationPolicy.IsWorkerConfigured)
