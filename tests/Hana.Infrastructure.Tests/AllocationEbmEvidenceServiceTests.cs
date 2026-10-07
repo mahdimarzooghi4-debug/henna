@@ -12,6 +12,12 @@ namespace Hana.Infrastructure.Tests;
 
 public sealed class AllocationEbmEvidenceServiceTests
 {
+    private const string ModelVersion = "henna-ebm-v1-offline";
+    private const string ArtifactFormat = "henna-ebm-portable-json-v1";
+    private const string LibraryName = "interpret-core";
+    private const string LibraryVersion = "0.7.8";
+    private const string PredictionLookupIndex = "base4(featureOrder)";
+
     [Fact]
     public async Task EbmArtifactAndBenchmarkStayAppendOnlyAndProductionNeutral()
     {
@@ -105,12 +111,12 @@ public sealed class AllocationEbmEvidenceServiceTests
         var lookup = BuildLookup(target.Select(x => (double)x).ToArray());
         var artifactBytes = JsonSerializer.SerializeToUtf8Bytes(new
         {
-            schema = HennaEbmPortableArtifactVerifier.ArtifactFormat,
-            modelVersion = HennaEbmPortableArtifactVerifier.ModelVersion,
+            schema = ArtifactFormat,
+            modelVersion = ModelVersion,
             library = new
             {
-                name = HennaEbmPortableArtifactVerifier.LibraryName,
-                version = HennaEbmPortableArtifactVerifier.LibraryVersion
+                name = LibraryName,
+                version = LibraryVersion
             },
             featureOrder = new[]
             {
@@ -119,7 +125,7 @@ public sealed class AllocationEbmEvidenceServiceTests
             },
             featureDomain = new[] { 0, 1, 2, 3 },
             predictionLookupIndex =
-                HennaEbmPortableArtifactVerifier.PredictionLookupIndex,
+                PredictionLookupIndex,
             predictionLookup = lookup,
             officialInterpretMlModel = new
             {
@@ -130,13 +136,13 @@ public sealed class AllocationEbmEvidenceServiceTests
             SHA256.HashData(artifactBytes)).ToLowerInvariant();
         var reportJson = JsonSerializer.Serialize(new
         {
-            modelVersion = HennaEbmPortableArtifactVerifier.ModelVersion,
-            artifactFormat = HennaEbmPortableArtifactVerifier.ArtifactFormat,
+            modelVersion = ModelVersion,
+            artifactFormat = ArtifactFormat,
             artifactSha256 = sha,
             library = new
             {
-                name = HennaEbmPortableArtifactVerifier.LibraryName,
-                version = HennaEbmPortableArtifactVerifier.LibraryVersion
+                name = LibraryName,
+                version = LibraryVersion
             },
             execution = new
             {
@@ -192,12 +198,12 @@ public sealed class AllocationEbmEvidenceServiceTests
 
         var leakedArtifact = JsonSerializer.SerializeToUtf8Bytes(new
         {
-            schema = HennaEbmPortableArtifactVerifier.ArtifactFormat,
-            modelVersion = HennaEbmPortableArtifactVerifier.ModelVersion,
+            schema = ArtifactFormat,
+            modelVersion = ModelVersion,
             library = new
             {
-                name = HennaEbmPortableArtifactVerifier.LibraryName,
-                version = HennaEbmPortableArtifactVerifier.LibraryVersion
+                name = LibraryName,
+                version = LibraryVersion
             },
             featureOrder = new[]
             {
@@ -206,7 +212,7 @@ public sealed class AllocationEbmEvidenceServiceTests
             },
             featureDomain = new[] { 0, 1, 2, 3 },
             predictionLookupIndex =
-                HennaEbmPortableArtifactVerifier.PredictionLookupIndex,
+                PredictionLookupIndex,
             predictionLookup = lookup,
             officialInterpretMlModel = new
             {
@@ -299,7 +305,7 @@ public sealed class AllocationEbmEvidenceServiceTests
             HennaEbmBenchmarkEvaluator.ProtocolVersion,
             first.ProtocolVersion);
         Assert.Equal(
-            HennaEbmPortableArtifactVerifier.ModelVersion,
+            ModelVersion,
             first.ModelVersion);
         Assert.Equal(sha, first.ArtifactSha256);
         Assert.Equal(64, first.EvaluationFingerprint.Length);
