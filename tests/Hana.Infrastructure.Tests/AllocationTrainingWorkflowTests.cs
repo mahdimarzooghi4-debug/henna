@@ -159,6 +159,13 @@ public sealed class AllocationTrainingWorkflowTests
         await Assert.ThrowsAsync<AllocationTrainingIdempotencyConflictException>(
             () => workflow.TrainAsync(
                 actor, labels, 4801, cohort.LatestReviewedAtUtc, runKey));
+        await Assert.ThrowsAsync<AllocationTrainingIdempotencyConflictException>(
+            () => workflow.TrainAsync(
+                actor,
+                labels,
+                configuredPolicy.PoolRial!.Value,
+                cohort.LatestReviewedAtUtc.AddTicks(-10),
+                runKey));
         var proposal = await db.Proposals.AsNoTracking().SingleAsync(x => x.Id == run.ProposalId);
         Assert.Equal(ExperimentalAllocationWeightLearner.ModelVersion, proposal.ModelVersion);
         Assert.False(await db.Reviews.AnyAsync(x => x.ProposalId == proposal.Id));
