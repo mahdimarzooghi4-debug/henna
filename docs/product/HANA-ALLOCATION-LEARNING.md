@@ -158,6 +158,15 @@ with `winner=null`, `approved=false` and `active=false`. This creates the compar
 foundation needed before choosing a production model family; no model family has been
 selected by this increment.
 
+The approved challenger set now starts with the constrained baseline, XGBoost shadow and an
+official InterpretML EBM offline research challenger. EBM v1 is pinned to
+`interpret-core 0.7.8`, uses the frozen Training/Validation assignment, disables interactions,
+and applies no monotonic constraints until feature directions are explicitly approved. It emits
+a SHA-256-attested portable artifact containing the official InterpretML model plus a complete
+4^6 prediction lookup for Henna's six 0..3 score features. It is not yet registered into the
+TrainingRun control plane or independent Evaluation benchmark, creates no Proposal and has no
+Production runtime path.
+
 ## Experimental supervised weight learner
 
 `ExperimentalAllocationWeightLearner` fits the six weights to independently reviewed

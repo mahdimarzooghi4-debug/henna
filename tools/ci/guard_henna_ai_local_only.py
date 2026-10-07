@@ -10,6 +10,7 @@ SCOPES = [
     ROOT / "src/Hana.Domain/Credit",
     ROOT / "src/Hana.Application/CreditLearning",
     ROOT / "src/Hana.Infrastructure/CreditLearning",
+    ROOT / "tools/ai",
 ]
 FORBIDDEN = {
     "System.Net.Http": "network HTTP client",
@@ -40,7 +41,11 @@ problems: list[str] = []
 files: list[Path] = []
 for scope in SCOPES:
     if scope.exists():
-        files.extend(path for path in scope.rglob("*.cs") if path.is_file())
+        files.extend(
+            path for pattern in ("*.cs", "*.py")
+            for path in scope.rglob(pattern)
+            if path.is_file()
+        )
 
 for path in files:
     text = path.read_text(encoding="utf-8")
@@ -92,6 +97,30 @@ if infra_project.exists():
         problems.append("Henna XGBoost learner must use the pinned CPU-only package")
     if "XGBoostSharp-cuda" in project_text:
         problems.append("CUDA XGBoost package is not approved for Henna v1")
+
+
+ebm_requirements = ROOT / "tools/ai/requirements-ebm.txt"
+if not ebm_requirements.exists():
+    problems.append("Henna EBM offline challenger dependency pin is missing")
+else:
+    requirement_lines = [
+        line.strip() for line in ebm_requirements.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    if requirement_lines != ["interpret-core==0.7.8"]:
+        problems.append(
+            "Henna EBM challenger must use exactly interpret-core==0.7.8"
+        )
+
+ebm_tool = ROOT / "tools/ai/henna_ebm_challenger.py"
+if not ebm_tool.exists():
+    problems.append("Henna official EBM offline challenger source is missing")
+else:
+    ebm_text = ebm_tool.read_text(encoding="utf-8")
+    if 'MODEL_VERSION = "henna-ebm-v1-offline"' not in ebm_text:
+        problems.append("Henna EBM challenger must use the approved v1 model version")
+    if 'INTERPRET_CORE_VERSION = "0.7.8"' not in ebm_text:
+        problems.append("Henna EBM challenger must pin the approved InterpretML version")
 
 native_runtime_package = 'Include="libxgboost-2.0.3-linux-x64" Version="1.0.3"'
 for relative in [
