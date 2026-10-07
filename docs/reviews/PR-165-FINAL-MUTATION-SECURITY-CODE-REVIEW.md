@@ -2,7 +2,8 @@
 
 **Date:** 2026-10-07  
 **Branch:** `feat/allocation-learning-foundation`  
-**Reviewed baseline before this record:** `82c8c1d003366188dc9fb7c2a6b15d6ea1b96117`  
+**Reviewed baseline before the original record:** `82c8c1d003366188dc9fb7c2a6b15d6ea1b96117`  
+**Final reviewed code baseline before this update:** `0d21f4eb18a84582fc7f12e934dac790658a3bd8`  
 **PR state:** Draft / Open / Unmerged
 
 ## Scope reviewed
@@ -52,6 +53,16 @@ This review did not authorize Stage, Production, merge, recovery, real SMS, bank
 
 **Regression coverage:** Each benchmark family verifies that a second ADMIN cannot replay another evaluator's benchmark identity.
 
+### 4. Seller application pagination used two database snapshots
+
+**Risk:** Low/Medium — the admin seller list performed `CountAsync` and page materialization as separate PostgreSQL reads. A concurrent submitted application could appear in the page after the count was taken, producing an internally inconsistent response where `items.Length > total`.
+
+**Invariant:** The total count and returned page must describe one coherent seller-application snapshot.
+
+**Fix:** The list endpoint now reads count and page inside one PostgreSQL `REPEATABLE READ` transaction. Authorization, filtering, ordering and response fields are unchanged.
+
+**Regression evidence:** The previously failing integration test `OnlyExplicitAdminCanReadSubmittedSellerApplications` passes on the corrected head.
+
 ## Confirmed controls
 
 ### Allocation / AI governance
@@ -98,7 +109,7 @@ Real SMS delivery is not implemented and was not fabricated. Bank/payment/IBAN/l
 
 ## QA evidence available at review time
 
-Latest reviewed GitHub CI for `82c8c1d003366188dc9fb7c2a6b15d6ea1b96117` was Bootstrap checks Run #1347 / `37618102755`, fully successful across Backend, Web, Mobile and Android Native Links.
+Bootstrap checks Run #1349 / `37625466553` for final reviewed code head `0d21f4eb18a84582fc7f12e934dac790658a3bd8` completed successfully across Backend, Web, Mobile and Android Native Links.
 
 The Web CI successfully installed CI-only Chromium and ran the actual browser interaction suites, including buyer commerce, seller/support commerce, admin seller operations, allocation proposal review, authentication recovery and public catalog/product flows.
 
