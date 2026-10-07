@@ -1,3 +1,4 @@
+using System.Data;
 using Hana.Application.Time;
 using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
@@ -41,6 +42,9 @@ internal static class AdminSellerApplicationEndpoints
             try
             {
                 var db = services.GetRequiredService<HanaSellerDbContext>();
+                await using var snapshot = await db.Database.BeginTransactionAsync(
+                    IsolationLevel.RepeatableRead,
+                    cancellationToken);
                 var query = db.RegistrationDrafts.AsNoTracking()
                     .Where(x => x.Status == "SUBMITTED")
                     .OrderByDescending(x => x.SubmittedAtUtc)
@@ -69,6 +73,7 @@ internal static class AdminSellerApplicationEndpoints
                         x.SubmittedAtUtc
                     })
                     .ToListAsync(cancellationToken);
+                await snapshot.CommitAsync(cancellationToken);
 
                 return Results.Ok(new
                 {
