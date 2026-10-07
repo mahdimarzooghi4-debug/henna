@@ -175,6 +175,12 @@ public sealed class AllocationModelBenchmarkServiceTests
         Assert.Equal(2, metrics.EvaluationCount);
         Assert.Equal(0m, metrics.CandidateMse);
         Assert.True(metrics.BaselineMse > metrics.CandidateMse);
+        Assert.NotNull(metrics.BaselineDiagnostics);
+        Assert.NotNull(metrics.CandidateDiagnostics);
+        Assert.Equal(0d, metrics.CandidateDiagnostics!.Mse, 12);
+        Assert.Equal(0d, metrics.CandidateDiagnostics.MeanResidual, 12);
+        Assert.Equal(1d,
+            metrics.CandidateDiagnostics.CalibrationSlope!.Value, 12);
 
         var attributedId = Guid.NewGuid();
         learning.Assessments.Add(new()
