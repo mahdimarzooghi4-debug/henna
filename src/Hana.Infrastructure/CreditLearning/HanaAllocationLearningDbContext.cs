@@ -304,7 +304,12 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.EvaluationFingerprint).HasMaxLength(64).IsRequired();
             e.Property(x => x.MetricsJson).HasColumnType("jsonb").IsRequired();
             e.HasIndex(x => new { x.EvaluationFingerprint, x.RecordedAtUtc, x.Id });
-            e.HasIndex(x => new { x.ProposalId, x.EvaluationFingerprint }).IsUnique();
+            e.HasIndex(x => new
+            {
+                x.ProposalId,
+                x.EvaluationFingerprint,
+                x.ProtocolVersion
+            }).IsUnique();
             e.HasOne<AllocationProposalRecord>().WithMany()
                 .HasForeignKey(x => x.ProposalId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<AllocationProposalRecord>().WithMany()
@@ -330,7 +335,12 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.EvaluationFingerprint).HasMaxLength(64).IsRequired();
             e.Property(x => x.MetricsJson).HasColumnType("jsonb").IsRequired();
             e.HasIndex(x => new { x.EvaluationFingerprint, x.RecordedAtUtc, x.Id });
-            e.HasIndex(x => new { x.TrainingRunId, x.EvaluationFingerprint }).IsUnique();
+            e.HasIndex(x => new
+            {
+                x.TrainingRunId,
+                x.EvaluationFingerprint,
+                x.ProtocolVersion
+            }).IsUnique();
             e.HasOne<AllocationTrainingRunRecord>().WithMany()
                 .HasForeignKey(x => x.TrainingRunId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<AllocationProposalRecord>().WithMany()
@@ -378,7 +388,12 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.EvaluationFingerprint).HasMaxLength(64).IsRequired();
             e.Property(x => x.MetricsJson).HasColumnType("jsonb").IsRequired();
             e.HasIndex(x => new { x.EvaluationFingerprint, x.RecordedAtUtc, x.Id });
-            e.HasIndex(x => new { x.EbmArtifactId, x.EvaluationFingerprint }).IsUnique();
+            e.HasIndex(x => new
+            {
+                x.EbmArtifactId,
+                x.EvaluationFingerprint,
+                x.ProtocolVersion
+            }).IsUnique();
             e.HasIndex(x => x.TrainingRunId);
             e.HasOne<AllocationEbmArtifactRecord>().WithMany()
                 .HasForeignKey(x => x.EbmArtifactId).OnDelete(DeleteBehavior.Restrict);
