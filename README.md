@@ -36,6 +36,8 @@ QA دستگاه واقعی و Release Approval همچنان gate انتشارن�
 
 **هوش مصنوعی حنا:** [ADR-048 — هوش متعلق به حنا، بدون Model API داخلی/خارجی](docs/adr/ADR-048-HENNA-OWNED-AI-NO-MODEL-API.md). learner و نسخه‌های مدل داخل حنا اجرا و نگهداری می‌شوند؛ لایه یادگیری حق وابستگی به API/SDK مدل بیرونی یا سرویس مدل شبکه‌ای داخلی ندارد. آموزش فقط از داده‌های first-party حنا، با label بازبینی‌شده، ارزیابی held-out و بررسی انسانی انجام می‌شود و هیچ candidate خودکار وارد production نمی‌شود.
 
+**مرجع وضعیت طراحی:** [Figma ↔ Code Design Status Manifest](docs/design/HANA-FIGMA-CODE-RECONCILIATION.md) — وضعیت canonical فریم‌های مصوب، Draft و Out-of-scope را مستقل از برچسب تاریخی روی بوم ثبت می‌کند.
+
 ## شروع پیاده‌سازی
 
 **[Bootstrap 001 — نخستین اسکلت فنی، دستورات راه‌اندازی، وضعیت آزمون و محدودیت‌ها](docs/implementation/HANA-BOOTSTRAP-001.md).**
