@@ -93,6 +93,19 @@ if infra_project.exists():
     if "XGBoostSharp-cuda" in project_text:
         problems.append("CUDA XGBoost package is not approved for Henna v1")
 
+native_runtime_package = 'Include="libxgboost-2.0.3-linux-x64" Version="1.0.3"'
+for relative in [
+    "apps/api/Hana.Api/Hana.Api.csproj",
+    "apps/workers/Hana.Worker/Hana.Worker.csproj",
+    "tests/Hana.Infrastructure.Tests/Hana.Infrastructure.Tests.csproj",
+]:
+    runtime_project = ROOT / relative
+    runtime_text = runtime_project.read_text(encoding="utf-8")
+    if native_runtime_package not in runtime_text:
+        problems.append(
+            f"{relative}: pinned Linux x64 XGBoost native runtime carrier is required"
+        )
+
 if problems:
     print("Henna AI local-only guard failed:", file=sys.stderr)
     for problem in problems:
