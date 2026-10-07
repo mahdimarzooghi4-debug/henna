@@ -1,7 +1,7 @@
 import {
   parseAllocationOutcomeInput,
   type AllocationOutcomeInput,
-} from "./allocation-outcomes";
+} from "./allocation-outcomes.ts";
 
 const STORAGE_KEY = "hana.admin.allocation-outcome.pending.v1";
 
