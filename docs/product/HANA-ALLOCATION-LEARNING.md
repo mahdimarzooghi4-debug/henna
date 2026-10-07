@@ -170,6 +170,16 @@ lookup, verifies counts/rubric/cutoff, and rejects embedded household/reviewer i
 Independent EBM benchmark evidence then uses the same ADR-053 Evaluation-set fingerprint as
 Baseline and XGBoost. It still creates no Proposal and has no Production runtime path.
 
+New benchmark protocols also persist threshold-free regression diagnostics for the baseline and
+compared model: MSE, RMSE, MAE, mean residual, mean prediction/observed target, and ordinary
+least-squares calibration slope/intercept when prediction variance is non-zero. These measurements
+do not define a pass/fail threshold or winner. Benchmark protocol versions advance while the
+ADR-053 Evaluation-set fingerprint remains byte-for-byte stable, so immutable historical evidence
+can coexist with new diagnostics on the same Evaluation-set identity. Temporal stability still
+requires an approved representative/time-separated cohort contract; fairness still requires
+approved groups/criteria; missing-data behavior is not computed because the current six score
+features have no approved missing-value semantics.
+
 ## Experimental supervised weight learner
 
 `ExperimentalAllocationWeightLearner` fits the six weights to independently reviewed
