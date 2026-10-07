@@ -104,3 +104,53 @@ public sealed class EbmChallengerEvidence : Migration
             DROP TABLE allocation_learning.ebm_artifacts;
             """);
 }
+
+
+[DbContext(typeof(HanaAllocationLearningDbContext))]
+[Migration("20261007143000_RegressionBenchmarkDiagnostics")]
+public sealed class RegressionBenchmarkDiagnostics : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder) =>
+        migrationBuilder.Sql(
+            """
+            DROP INDEX allocation_learning."UX_model_benchmarks_ProposalId_EvaluationFingerprint";
+            CREATE UNIQUE INDEX
+                "UX_model_benchmarks_ProposalId_EvaluationFingerprint_ProtocolVersion"
+                ON allocation_learning.model_benchmarks
+                ("ProposalId","EvaluationFingerprint","ProtocolVersion");
+
+            DROP INDEX allocation_learning."UX_shadow_model_benchmarks_TrainingRunId_EvaluationFingerprint";
+            CREATE UNIQUE INDEX
+                "UX_shadow_model_benchmarks_TrainingRunId_EvaluationFingerprint_ProtocolVersion"
+                ON allocation_learning.shadow_model_benchmarks
+                ("TrainingRunId","EvaluationFingerprint","ProtocolVersion");
+
+            DROP INDEX allocation_learning."UX_ebm_model_benchmarks_EbmArtifactId_EvaluationFingerprint";
+            CREATE UNIQUE INDEX
+                "UX_ebm_model_benchmarks_EbmArtifactId_EvaluationFingerprint_ProtocolVersion"
+                ON allocation_learning.ebm_model_benchmarks
+                ("EbmArtifactId","EvaluationFingerprint","ProtocolVersion");
+            """);
+
+    protected override void Down(MigrationBuilder migrationBuilder) =>
+        migrationBuilder.Sql(
+            """
+            DROP INDEX allocation_learning."UX_model_benchmarks_ProposalId_EvaluationFingerprint_ProtocolVersion";
+            CREATE UNIQUE INDEX
+                "UX_model_benchmarks_ProposalId_EvaluationFingerprint"
+                ON allocation_learning.model_benchmarks
+                ("ProposalId","EvaluationFingerprint");
+
+            DROP INDEX allocation_learning."UX_shadow_model_benchmarks_TrainingRunId_EvaluationFingerprint_ProtocolVersion";
+            CREATE UNIQUE INDEX
+                "UX_shadow_model_benchmarks_TrainingRunId_EvaluationFingerprint"
+                ON allocation_learning.shadow_model_benchmarks
+                ("TrainingRunId","EvaluationFingerprint");
+
+            DROP INDEX allocation_learning."UX_ebm_model_benchmarks_EbmArtifactId_EvaluationFingerprint_ProtocolVersion";
+            CREATE UNIQUE INDEX
+                "UX_ebm_model_benchmarks_EbmArtifactId_EvaluationFingerprint"
+                ON allocation_learning.ebm_model_benchmarks
+                ("EbmArtifactId","EvaluationFingerprint");
+            """);
+}
