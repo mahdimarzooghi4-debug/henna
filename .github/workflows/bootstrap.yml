@@ -416,7 +416,7 @@ jobs:
       - name: Typecheck web
         run: npm run web:typecheck
       - name: Test administrative allocation report validation
-        run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs tests/web-allocation-assessment.mjs tests/web-allocation-training-runs.mjs tests/web-allocation-retention.mjs
+        run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs tests/web-allocation-assessment.mjs tests/web-allocation-training-runs.mjs tests/web-allocation-retention.mjs tests/web-allocation-outcomes.mjs
       - name: Test buyer commerce DTOs and safe return destinations
         run: node --experimental-strip-types --test tests/web-buyer-commerce.mjs
       - name: Test durable web buyer commerce intent recovery
