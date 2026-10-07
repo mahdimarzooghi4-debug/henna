@@ -314,6 +314,15 @@ public sealed class AllocationEbmEvidenceServiceTests
             first.MetricsJson)!;
         Assert.Equal(2, metrics.EvaluationCount);
         Assert.Equal(0d, metrics.EbmMse, 12);
+        Assert.NotNull(metrics.BaselineDiagnostics);
+        Assert.NotNull(metrics.EbmDiagnostics);
+        Assert.Equal(0d, metrics.EbmDiagnostics!.Mse, 12);
+        Assert.Equal(0d, metrics.EbmDiagnostics.Mae, 12);
+        Assert.Equal(0d, metrics.EbmDiagnostics.MeanResidual, 12);
+        Assert.Equal(1d,
+            metrics.EbmDiagnostics.CalibrationSlope!.Value, 12);
+        Assert.Equal(0d,
+            metrics.EbmDiagnostics.CalibrationIntercept!.Value, 12);
 
         var comparisonExamples = labels.Select(label =>
         {
