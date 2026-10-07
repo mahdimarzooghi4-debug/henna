@@ -17,7 +17,9 @@ public sealed record HennaXGBoostShadowBenchmarkMetrics(
     double ShadowMinusBaselineMse,
     string RubricVersion,
     string EvaluationFingerprint,
-    DateTimeOffset CutoffUtc);
+    DateTimeOffset CutoffUtc,
+    RegressionDiagnosticMetrics? BaselineDiagnostics,
+    RegressionDiagnosticMetrics? ShadowDiagnostics);
 
 public sealed class AllocationShadowModelBenchmarkRecord
 {
@@ -49,7 +51,7 @@ public sealed class AllocationShadowModelBenchmarkConflictException(string messa
 public static class HennaXGBoostShadowBenchmarkEvaluator
 {
     public const string ProtocolVersion =
-        "henna-xgboost-shadow-benchmark-v2";
+        "henna-xgboost-shadow-benchmark-v3";
 
     public static HennaXGBoostShadowBenchmarkMetrics Evaluate(
         IReadOnlyList<ReviewedNeedExample> examples,
@@ -114,9 +116,16 @@ public static class HennaXGBoostShadowBenchmarkEvaluator
                 baseline.Education * x.Scores.Education / 3m))
             .ToArray();
 
-        var baselineMse = Mse(expected, baselinePredictions);
-        var shadowMse = Mse(
-            expected, predictions.Select(x => (double)x).ToArray());
+        var shadowPredictions =
+            predictions.Select(x => (double)x).ToArray();
+        var baselineDiagnostics =
+            RegressionDiagnosticEvaluator.Evaluate(
+                expected, baselinePredictions);
+        var shadowDiagnostics =
+            RegressionDiagnosticEvaluator.Evaluate(
+                expected, shadowPredictions);
+        var baselineMse = baselineDiagnostics.Mse;
+        var shadowMse = shadowDiagnostics.Mse;
         var fingerprint = AllocationModelBenchmarkEvaluator
             .ComputeEvaluationFingerprint(data, baseline, cutoffUtc);
 
@@ -127,7 +136,9 @@ public static class HennaXGBoostShadowBenchmarkEvaluator
             shadowMse - baselineMse,
             data[0].RubricVersion,
             fingerprint,
-            cutoffUtc);
+            cutoffUtc,
+            baselineDiagnostics,
+            shadowDiagnostics);
     }
 
     private static float[] Features(ReviewedNeedExample x) =>
@@ -139,21 +150,6 @@ public static class HennaXGBoostShadowBenchmarkEvaluator
             x.Scores.CareAndSupport,
             x.Scores.Education
         ];
-
-    private static double Mse(double[] expected, double[] predicted)
-    {
-        if (expected.Length == 0 || expected.Length != predicted.Length)
-            throw new InvalidOperationException(
-                "Benchmark prediction shape is invalid.");
-        double total = 0;
-        for (var i = 0; i < expected.Length; i++)
-        {
-            var residual = predicted[i] - expected[i];
-            total += residual * residual;
-        }
-        return total / expected.Length;
-    }
-
 
 }
 
