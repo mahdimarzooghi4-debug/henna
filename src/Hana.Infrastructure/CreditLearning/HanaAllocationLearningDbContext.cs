@@ -61,6 +61,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
         Set<AllocationRetentionEventRecord>();
     public DbSet<AllocationModelBenchmarkRecord> ModelBenchmarks =>
         Set<AllocationModelBenchmarkRecord>();
+    public DbSet<AllocationShadowModelBenchmarkRecord> ShadowModelBenchmarks =>
+        Set<AllocationShadowModelBenchmarkRecord>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -301,6 +303,32 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.HasIndex(x => new { x.ProposalId, x.EvaluationFingerprint }).IsUnique();
             e.HasOne<AllocationProposalRecord>().WithMany()
                 .HasForeignKey(x => x.ProposalId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<AllocationProposalRecord>().WithMany()
+                .HasForeignKey(x => x.RuntimeProposalId).OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationShadowModelBenchmarkRecord>(e =>
+        {
+            e.ToTable("shadow_model_benchmarks", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_shadow_model_benchmark_fingerprint",
+                    "length(\"EvaluationFingerprint\") = 64 AND length(\"ArtifactSha256\") = 64");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProtocolVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ModelVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ArtifactSha256).HasMaxLength(64).IsRequired();
+            e.Property(x => x.BaselineVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.DatasetVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceInstructionReference).HasMaxLength(120).IsRequired();
+            e.Property(x => x.EvaluationLabelIdsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.EvaluationFingerprint).HasMaxLength(64).IsRequired();
+            e.Property(x => x.MetricsJson).HasColumnType("jsonb").IsRequired();
+            e.HasIndex(x => new { x.EvaluationFingerprint, x.RecordedAtUtc, x.Id });
+            e.HasIndex(x => new { x.TrainingRunId, x.EvaluationFingerprint }).IsUnique();
+            e.HasOne<AllocationTrainingRunRecord>().WithMany()
+                .HasForeignKey(x => x.TrainingRunId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<AllocationProposalRecord>().WithMany()
                 .HasForeignKey(x => x.RuntimeProposalId).OnDelete(DeleteBehavior.Restrict);
         });

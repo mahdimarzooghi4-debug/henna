@@ -45,6 +45,7 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationRuntimePromotionConflictException) { return Results.Conflict(); }
             catch (AllocationRetentionConflictException) { return Results.Conflict(); }
             catch (AllocationModelBenchmarkConflictException) { return Results.Conflict(); }
+            catch (AllocationShadowModelBenchmarkConflictException) { return Results.Conflict(); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -341,6 +342,101 @@ internal static class AllocationLearningProposalEndpoints
                 winner = (string?)null,
                 approved = false,
                 active = false
+            }).ToList();
+            return Results.Ok(new { items, page = p, active = false });
+        });
+
+        routes.MapPost("/research/shadow-benchmarks", async (
+            AllocationShadowModelBenchmarkRequest input,
+            HttpContext http,
+            IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            if (input.EvaluationLabelIds is null)
+                return Results.BadRequest();
+            var row = await services
+                .GetRequiredService<AllocationShadowModelBenchmarkService>()
+                .EvaluateAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.TrainingRunId,
+                    input.EvaluationLabelIds,
+                    input.CutoffUtc,
+                    ct);
+            var metrics =
+                JsonSerializer.Deserialize<HennaXGBoostShadowBenchmarkMetrics>(
+                    row.MetricsJson)
+                ?? throw new InvalidOperationException(
+                    "Stored shadow benchmark metrics are invalid.");
+            return Results.Ok(new
+            {
+                row.Id,
+                row.TrainingRunId,
+                row.ProtocolVersion,
+                row.ModelVersion,
+                row.ArtifactSha256,
+                row.BaselineVersion,
+                row.DatasetVersion,
+                row.SourceInstructionReference,
+                row.RuntimeProposalId,
+                row.RuntimeProfileSequence,
+                row.EvaluationFingerprint,
+                metrics,
+                row.CutoffUtc,
+                row.RecordedAtUtc,
+                winner = (string?)null,
+                approved = false,
+                active = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapGet("/research/shadow-benchmarks", async (
+            string? evaluationFingerprint,
+            int? page,
+            IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            if (evaluationFingerprint is not null &&
+                (evaluationFingerprint.Length != 64 ||
+                 evaluationFingerprint.Any(x => !Uri.IsHexDigit(x))))
+                return Results.BadRequest();
+
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var query = db.ShadowModelBenchmarks.AsNoTracking().AsQueryable();
+            if (evaluationFingerprint is not null)
+                query = query.Where(x =>
+                    x.EvaluationFingerprint == evaluationFingerprint.ToLower());
+
+            var rows = await query
+                .OrderByDescending(x => x.RecordedAtUtc)
+                .ThenBy(x => x.Id)
+                .Skip((p - 1) * 20)
+                .Take(20)
+                .ToListAsync(ct);
+            var items = rows.Select(x => new
+            {
+                x.Id,
+                x.TrainingRunId,
+                x.ProtocolVersion,
+                x.ModelVersion,
+                x.ArtifactSha256,
+                x.BaselineVersion,
+                x.DatasetVersion,
+                x.SourceInstructionReference,
+                x.RuntimeProposalId,
+                x.RuntimeProfileSequence,
+                x.EvaluationFingerprint,
+                metrics =
+                    JsonSerializer.Deserialize<HennaXGBoostShadowBenchmarkMetrics>(
+                        x.MetricsJson),
+                x.CutoffUtc,
+                x.RecordedAtUtc,
+                winner = (string?)null,
+                approved = false,
+                active = false,
+                runtimeApplied = false
             }).ToList();
             return Results.Ok(new { items, page = p, active = false });
         });
@@ -761,6 +857,10 @@ internal sealed record AllocationRetentionPurgeRequest(
     string Reason);
 internal sealed record AllocationModelBenchmarkRequest(
     Guid ProposalId,
+    Guid[]? EvaluationLabelIds,
+    DateTimeOffset CutoffUtc);
+internal sealed record AllocationShadowModelBenchmarkRequest(
+    Guid TrainingRunId,
     Guid[]? EvaluationLabelIds,
     DateTimeOffset CutoffUtc);
 internal sealed record ProductionControlRequest(string Reason);
