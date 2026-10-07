@@ -227,6 +227,13 @@ public sealed class AllocationShadowModelBenchmarkServiceTests
         Assert.True(double.IsFinite(metrics.ShadowMse));
         Assert.True(double.IsFinite(
             metrics.ShadowMinusBaselineMse));
+        Assert.NotNull(metrics.BaselineDiagnostics);
+        Assert.NotNull(metrics.ShadowDiagnostics);
+        Assert.Equal(metrics.ShadowMse,
+            metrics.ShadowDiagnostics!.Mse, 12);
+        Assert.True(double.IsFinite(metrics.ShadowDiagnostics.Mae));
+        Assert.True(double.IsFinite(
+            metrics.ShadowDiagnostics.MeanResidual));
 
         var comparisonExamples = labels.Select(label =>
         {
