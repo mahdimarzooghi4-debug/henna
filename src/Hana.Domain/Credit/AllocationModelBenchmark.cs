@@ -4,6 +4,84 @@ using System.Text;
 
 namespace Hana.Domain.Credit;
 
+public sealed record RegressionDiagnosticMetrics(
+    int Count,
+    double Mse,
+    double Rmse,
+    double Mae,
+    double MeanResidual,
+    double MeanPrediction,
+    double MeanObserved,
+    double? CalibrationIntercept,
+    double? CalibrationSlope);
+
+public static class RegressionDiagnosticEvaluator
+{
+    public static RegressionDiagnosticMetrics Evaluate(
+        IReadOnlyList<double> observed,
+        IReadOnlyList<double> predicted)
+    {
+        ArgumentNullException.ThrowIfNull(observed);
+        ArgumentNullException.ThrowIfNull(predicted);
+        if (observed.Count == 0 || observed.Count != predicted.Count)
+            throw new ArgumentException(
+                "Observed and predicted values must have the same non-zero length.");
+
+        var count = observed.Count;
+        double squared = 0;
+        double absolute = 0;
+        double residualSum = 0;
+        double predictionSum = 0;
+        double observedSum = 0;
+        for (var i = 0; i < count; i++)
+        {
+            var actual = observed[i];
+            var estimate = predicted[i];
+            if (!double.IsFinite(actual) || !double.IsFinite(estimate))
+                throw new ArgumentException(
+                    "Regression diagnostics require finite values.");
+            var residual = estimate - actual;
+            squared += residual * residual;
+            absolute += Math.Abs(residual);
+            residualSum += residual;
+            predictionSum += estimate;
+            observedSum += actual;
+        }
+
+        var meanPrediction = predictionSum / count;
+        var meanObserved = observedSum / count;
+        double predictionVarianceNumerator = 0;
+        double covarianceNumerator = 0;
+        for (var i = 0; i < count; i++)
+        {
+            var predictionDelta = predicted[i] - meanPrediction;
+            predictionVarianceNumerator += predictionDelta * predictionDelta;
+            covarianceNumerator +=
+                predictionDelta * (observed[i] - meanObserved);
+        }
+
+        double? slope = null;
+        double? intercept = null;
+        if (predictionVarianceNumerator != 0d)
+        {
+            slope = covarianceNumerator / predictionVarianceNumerator;
+            intercept = meanObserved - slope.Value * meanPrediction;
+        }
+
+        var mse = squared / count;
+        return new(
+            count,
+            mse,
+            Math.Sqrt(mse),
+            absolute / count,
+            residualSum / count,
+            meanPrediction,
+            meanObserved,
+            intercept,
+            slope);
+    }
+}
+
 public sealed record AllocationModelBenchmarkMetrics(
     int EvaluationCount,
     decimal BaselineMse,
@@ -11,7 +89,9 @@ public sealed record AllocationModelBenchmarkMetrics(
     decimal CandidateMinusBaselineMse,
     string RubricVersion,
     string EvaluationFingerprint,
-    DateTimeOffset CutoffUtc);
+    DateTimeOffset CutoffUtc,
+    RegressionDiagnosticMetrics? BaselineDiagnostics,
+    RegressionDiagnosticMetrics? CandidateDiagnostics);
 
 /// <summary>
 /// Model-agnostic held-out evaluator. It compares two immutable weight profiles
@@ -21,6 +101,8 @@ public sealed record AllocationModelBenchmarkMetrics(
 public static class AllocationModelBenchmarkEvaluator
 {
     public const string ProtocolVersion =
+        "henna-allocation-benchmark-v2";
+    public const string EvaluationFingerprintProtocolVersion =
         "henna-allocation-benchmark-v1";
 
     public static AllocationModelBenchmarkMetrics Evaluate(
@@ -60,6 +142,21 @@ public static class AllocationModelBenchmarkEvaluator
             throw new ArgumentException(
                 "One reviewed evaluation rubric is required.");
 
+        var observed = data
+            .Select(x => (double)x.ReviewedNeedScore)
+            .ToArray();
+        var baselinePredictions = data
+            .Select(x => (double)Predict(x, baseline))
+            .ToArray();
+        var candidatePredictions = data
+            .Select(x => (double)Predict(x, candidate))
+            .ToArray();
+        var baselineDiagnostics =
+            RegressionDiagnosticEvaluator.Evaluate(
+                observed, baselinePredictions);
+        var candidateDiagnostics =
+            RegressionDiagnosticEvaluator.Evaluate(
+                observed, candidatePredictions);
         var baselineMse = Mse(data, baseline);
         var candidateMse = Mse(data, candidate);
         var fingerprint = ComputeEvaluationFingerprint(data, baseline, cutoffUtc);
@@ -71,7 +168,9 @@ public static class AllocationModelBenchmarkEvaluator
             candidateMse - baselineMse,
             data[0].RubricVersion,
             fingerprint,
-            cutoffUtc);
+            cutoffUtc,
+            baselineDiagnostics,
+            candidateDiagnostics);
     }
 
     private static decimal Mse(
@@ -79,16 +178,20 @@ public static class AllocationModelBenchmarkEvaluator
         AllocationWeightProfile profile) =>
         rows.Sum(row =>
         {
-            var prediction =
-                profile.Health * row.Scores.Health / 3m +
-                profile.Hardship * row.Scores.EconomicHardship / 3m +
-                profile.Age * row.Scores.AgeAndDependency / 3m +
-                profile.Size * row.Scores.HouseholdSize / 3m +
-                profile.Care * row.Scores.CareAndSupport / 3m +
-                profile.Education * row.Scores.Education / 3m;
-            var residual = prediction - row.ReviewedNeedScore;
+            var residual =
+                Predict(row, profile) - row.ReviewedNeedScore;
             return residual * residual;
         }) / rows.Length;
+
+    private static decimal Predict(
+        ReviewedNeedExample row,
+        AllocationWeightProfile profile) =>
+        profile.Health * row.Scores.Health / 3m +
+        profile.Hardship * row.Scores.EconomicHardship / 3m +
+        profile.Age * row.Scores.AgeAndDependency / 3m +
+        profile.Size * row.Scores.HouseholdSize / 3m +
+        profile.Care * row.Scores.CareAndSupport / 3m +
+        profile.Education * row.Scores.Education / 3m;
 
     /// <summary>
     /// Stable identity of one frozen independent Evaluation set and baseline.
@@ -105,7 +208,7 @@ public static class AllocationModelBenchmarkEvaluator
         ArgumentNullException.ThrowIfNull(baseline);
         if (cutoffUtc.Offset != TimeSpan.Zero)
             throw new ArgumentException("UTC cutoff required.");
-        var text = new StringBuilder(ProtocolVersion)
+        var text = new StringBuilder(EvaluationFingerprintProtocolVersion)
             .Append('|').Append(baseline.Version)
             .Append('|').Append(cutoffUtc.ToString(
                 "O", CultureInfo.InvariantCulture));
