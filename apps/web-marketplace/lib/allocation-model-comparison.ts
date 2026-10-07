@@ -268,12 +268,12 @@ export function parseAllocationModelComparisonSources(
   const profile = profilePage.items.map(x => parseProfile(x, evaluationFingerprint));
   const xgboost = xgboostPage.items.map(x => parseXgboost(x, evaluationFingerprint));
   const ebm = ebmPage.items.map(x => parseEbm(x, evaluationFingerprint));
-  if (![...profile, ...xgboost, ...ebm].every(
-    (x): x is AllocationComparisonEvidence => x !== null))
-    return null;
-
-  const items = [...profile, ...xgboost, ...ebm]
+  const parsedItems = [...profile, ...xgboost, ...ebm];
+  const items = parsedItems
+    .filter((x): x is AllocationComparisonEvidence => x !== null)
     .sort((a, b) => Date.parse(b.recordedAtUtc) - Date.parse(a.recordedAtUtc));
+  if (items.length !== parsedItems.length)
+    return null;
   const lineageKeys = new Set(items.map(x => JSON.stringify([
     x.baselineVersion,
     x.datasetVersion,
