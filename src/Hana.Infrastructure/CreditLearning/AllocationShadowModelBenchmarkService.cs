@@ -295,13 +295,12 @@ public sealed class AllocationShadowModelBenchmarkService(
             .SingleOrDefaultAsync(x => x.Id == id, ct);
         if (existing is not null)
         {
-            if (existing.TrainingRunId != trainingRunId ||
-                existing.EvaluatedByAccountId != actor ||
-                existing.EvaluationFingerprint !=
-                    metrics.EvaluationFingerprint ||
-                existing.CutoffUtc != cutoffUtc)
-                throw new AllocationShadowModelBenchmarkConflictException(
-                    "Shadow benchmark identity was reused with different input.");
+            EnsureReplayMatches(
+                existing,
+                trainingRunId,
+                actor,
+                metrics.EvaluationFingerprint,
+                cutoffUtc);
             return existing;
         }
 
@@ -335,11 +334,33 @@ public sealed class AllocationShadowModelBenchmarkService(
             when (e.InnerException is PostgresException
                 { SqlState: "23505" })
         {
-            return await db.ShadowModelBenchmarks.AsNoTracking()
+            var replay = await db.ShadowModelBenchmarks.AsNoTracking()
                 .SingleAsync(x => x.Id == id, ct);
+            EnsureReplayMatches(
+                replay,
+                trainingRunId,
+                actor,
+                metrics.EvaluationFingerprint,
+                cutoffUtc);
+            return replay;
         }
 
         return row;
+    }
+
+    private static void EnsureReplayMatches(
+        AllocationShadowModelBenchmarkRecord existing,
+        Guid trainingRunId,
+        Guid actor,
+        string evaluationFingerprint,
+        DateTimeOffset cutoffUtc)
+    {
+        if (existing.TrainingRunId != trainingRunId ||
+            existing.EvaluatedByAccountId != actor ||
+            existing.EvaluationFingerprint != evaluationFingerprint ||
+            existing.CutoffUtc != cutoffUtc)
+            throw new AllocationShadowModelBenchmarkConflictException(
+                "Shadow benchmark identity was reused with different input.");
     }
 
     internal static Guid BenchmarkId(

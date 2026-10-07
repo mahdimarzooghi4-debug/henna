@@ -623,14 +623,13 @@ public sealed class AllocationEbmBenchmarkService(
             .SingleOrDefaultAsync(x => x.Id == id, ct);
         if (existing is not null)
         {
-            if (existing.EbmArtifactId != artifact.Id ||
-                existing.TrainingRunId != trainingRunId ||
-                existing.EvaluatedByAccountId != actor ||
-                existing.EvaluationFingerprint !=
-                    metrics.EvaluationFingerprint ||
-                existing.CutoffUtc != cutoffUtc)
-                throw new AllocationEbmBenchmarkConflictException(
-                    "EBM benchmark identity was reused with different input.");
+            EnsureReplayMatches(
+                existing,
+                artifact.Id,
+                trainingRunId,
+                actor,
+                metrics.EvaluationFingerprint,
+                cutoffUtc);
             return existing;
         }
 
@@ -665,16 +664,36 @@ public sealed class AllocationEbmBenchmarkService(
             when (e.InnerException is PostgresException
                 { SqlState: "23505" })
         {
-            return await db.EbmModelBenchmarks.AsNoTracking()
-                .SingleAsync(x =>
-                    x.EbmArtifactId == artifact.Id &&
-                    x.EvaluationFingerprint ==
-                        metrics.EvaluationFingerprint &&
-                    x.ProtocolVersion ==
-                        HennaEbmBenchmarkEvaluator.ProtocolVersion, ct);
+            var replay = await db.EbmModelBenchmarks.AsNoTracking()
+                .SingleAsync(x => x.Id == id, ct);
+            EnsureReplayMatches(
+                replay,
+                artifact.Id,
+                trainingRunId,
+                actor,
+                metrics.EvaluationFingerprint,
+                cutoffUtc);
+            return replay;
         }
 
         return row;
+    }
+
+    private static void EnsureReplayMatches(
+        AllocationEbmBenchmarkRecord existing,
+        Guid artifactId,
+        Guid trainingRunId,
+        Guid actor,
+        string evaluationFingerprint,
+        DateTimeOffset cutoffUtc)
+    {
+        if (existing.EbmArtifactId != artifactId ||
+            existing.TrainingRunId != trainingRunId ||
+            existing.EvaluatedByAccountId != actor ||
+            existing.EvaluationFingerprint != evaluationFingerprint ||
+            existing.CutoffUtc != cutoffUtc)
+            throw new AllocationEbmBenchmarkConflictException(
+                "EBM benchmark identity was reused with different input.");
     }
 
     internal static Guid BenchmarkId(

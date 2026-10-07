@@ -141,13 +141,12 @@ public sealed class AllocationModelBenchmarkService(
             .SingleOrDefaultAsync(x => x.Id == id, ct);
         if (existing is not null)
         {
-            if (existing.ProposalId != proposalId ||
-                existing.EvaluatedByAccountId != actor ||
-                existing.EvaluationFingerprint !=
-                    metrics.EvaluationFingerprint ||
-                existing.CutoffUtc != cutoffUtc)
-                throw new AllocationModelBenchmarkConflictException(
-                    "Benchmark identity was reused with different input.");
+            EnsureReplayMatches(
+                existing,
+                proposalId,
+                actor,
+                metrics.EvaluationFingerprint,
+                cutoffUtc);
             return existing;
         }
 
@@ -184,10 +183,31 @@ public sealed class AllocationModelBenchmarkService(
         {
             var replay = await db.ModelBenchmarks.AsNoTracking()
                 .SingleAsync(x => x.Id == id, ct);
+            EnsureReplayMatches(
+                replay,
+                proposalId,
+                actor,
+                metrics.EvaluationFingerprint,
+                cutoffUtc);
             return replay;
         }
 
         return row;
+    }
+
+    private static void EnsureReplayMatches(
+        AllocationModelBenchmarkRecord existing,
+        Guid proposalId,
+        Guid actor,
+        string evaluationFingerprint,
+        DateTimeOffset cutoffUtc)
+    {
+        if (existing.ProposalId != proposalId ||
+            existing.EvaluatedByAccountId != actor ||
+            existing.EvaluationFingerprint != evaluationFingerprint ||
+            existing.CutoffUtc != cutoffUtc)
+            throw new AllocationModelBenchmarkConflictException(
+                "Benchmark identity was reused with different input.");
     }
 
     internal static Guid BenchmarkId(
