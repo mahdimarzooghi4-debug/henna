@@ -249,7 +249,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
             e.HasIndex("EvaluationFingerprint", "RecordedAtUtc", "Id");
-            e.HasIndex("ProposalId", "EvaluationFingerprint").IsUnique();
+            e.HasIndex("ProposalId", "EvaluationFingerprint", "ProtocolVersion").IsUnique();
             e.HasIndex("RuntimeProposalId");
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationProposalRecord", null)
                 .WithMany().HasForeignKey("ProposalId").OnDelete(DeleteBehavior.Restrict).IsRequired();
@@ -281,7 +281,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
             e.HasIndex("EvaluationFingerprint", "RecordedAtUtc", "Id");
-            e.HasIndex("TrainingRunId", "EvaluationFingerprint").IsUnique();
+            e.HasIndex("TrainingRunId", "EvaluationFingerprint", "ProtocolVersion").IsUnique();
             e.HasIndex("RuntimeProposalId");
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationTrainingRunRecord", null)
                 .WithMany().HasForeignKey("TrainingRunId").OnDelete(DeleteBehavior.Restrict).IsRequired();
@@ -340,7 +340,7 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<DateTimeOffset>("RecordedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
             e.HasIndex("EvaluationFingerprint", "RecordedAtUtc", "Id");
-            e.HasIndex("EbmArtifactId", "EvaluationFingerprint").IsUnique();
+            e.HasIndex("EbmArtifactId", "EvaluationFingerprint", "ProtocolVersion").IsUnique();
             e.HasIndex("TrainingRunId");
             e.HasIndex("RuntimeProposalId");
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationEbmArtifactRecord", null)
