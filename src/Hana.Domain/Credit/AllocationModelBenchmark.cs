@@ -69,7 +69,7 @@ public static class RegressionDiagnosticEvaluator
         }
 
         var mse = squared / count;
-        return new(
+        var result = new RegressionDiagnosticMetrics(
             count,
             mse,
             Math.Sqrt(mse),
@@ -79,6 +79,19 @@ public static class RegressionDiagnosticEvaluator
             meanObserved,
             intercept,
             slope);
+        if (!double.IsFinite(result.Mse) ||
+            !double.IsFinite(result.Rmse) ||
+            !double.IsFinite(result.Mae) ||
+            !double.IsFinite(result.MeanResidual) ||
+            !double.IsFinite(result.MeanPrediction) ||
+            !double.IsFinite(result.MeanObserved) ||
+            (result.CalibrationIntercept is { } calibrationIntercept &&
+                !double.IsFinite(calibrationIntercept)) ||
+            (result.CalibrationSlope is { } calibrationSlope &&
+                !double.IsFinite(calibrationSlope)))
+            throw new InvalidOperationException(
+                "Regression diagnostic is not finite.");
+        return result;
     }
 }
 
