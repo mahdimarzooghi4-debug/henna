@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Hana.Application.Time;
 using Hana.Domain.Credit;
