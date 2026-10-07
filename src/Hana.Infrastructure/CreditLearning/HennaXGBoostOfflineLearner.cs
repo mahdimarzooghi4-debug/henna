@@ -125,8 +125,7 @@ public static class HennaXGBoostOfflineLearner
             numParallelTree: 1,
             importanceType: "gain",
             device: "cpu",
-            validateParameters: true,
-            multiStrategy: "one_output_per_tree");
+            validateParameters: true);
 
         var trainingFeatures = Features(training);
         var trainingLabels = Labels(training);
