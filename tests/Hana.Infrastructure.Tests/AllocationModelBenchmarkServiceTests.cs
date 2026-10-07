@@ -40,6 +40,7 @@ public sealed class AllocationModelBenchmarkServiceTests
         var now = new DateTimeOffset(
             2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
         var admin = Guid.NewGuid();
+        var secondAdmin = Guid.NewGuid();
         identity.Accounts.Add(new AccountRecord
         {
             Id = admin,
@@ -49,6 +50,18 @@ public sealed class AllocationModelBenchmarkServiceTests
         identity.RoleAssignments.Add(new()
         {
             AccountId = admin,
+            Role = HanaRoles.Admin,
+            GrantedAtUtc = now
+        });
+        identity.Accounts.Add(new()
+        {
+            Id = secondAdmin,
+            NormalizedPhone = "09123456788",
+            CreatedAtUtc = now
+        });
+        identity.RoleAssignments.Add(new()
+        {
+            AccountId = secondAdmin,
             Role = HanaRoles.Admin,
             GrantedAtUtc = now
         });
@@ -155,6 +168,13 @@ public sealed class AllocationModelBenchmarkServiceTests
             proposalId,
             labels.Select(x => x.Id).Reverse().ToArray(),
             now.AddHours(-1));
+
+        await Assert.ThrowsAsync<AllocationModelBenchmarkConflictException>(
+            () => service.EvaluateAsync(
+                secondAdmin,
+                proposalId,
+                labels.Select(x => x.Id).ToArray(),
+                now.AddHours(-1)));
 
         Assert.Equal(first.Id, replay.Id);
         Assert.Equal(

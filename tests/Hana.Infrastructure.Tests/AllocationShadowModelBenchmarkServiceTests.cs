@@ -42,6 +42,7 @@ public sealed class AllocationShadowModelBenchmarkServiceTests
         var now = new DateTimeOffset(
             2026, 10, 7, 7, 0, 0, TimeSpan.Zero);
         var admin = Guid.NewGuid();
+        var secondAdmin = Guid.NewGuid();
         identity.Accounts.Add(new()
         {
             Id = admin,
@@ -51,6 +52,18 @@ public sealed class AllocationShadowModelBenchmarkServiceTests
         identity.RoleAssignments.Add(new()
         {
             AccountId = admin,
+            Role = HanaRoles.Admin,
+            GrantedAtUtc = now
+        });
+        identity.Accounts.Add(new()
+        {
+            Id = secondAdmin,
+            NormalizedPhone = "09123456788",
+            CreatedAtUtc = now
+        });
+        identity.RoleAssignments.Add(new()
+        {
+            AccountId = secondAdmin,
             Role = HanaRoles.Admin,
             GrantedAtUtc = now
         });
@@ -197,6 +210,13 @@ public sealed class AllocationShadowModelBenchmarkServiceTests
             runId,
             labels.Select(x => x.Id).Reverse().ToArray(),
             now.AddHours(-1));
+
+        await Assert.ThrowsAsync<AllocationShadowModelBenchmarkConflictException>(
+            () => service.EvaluateAsync(
+                secondAdmin,
+                runId,
+                labels.Select(x => x.Id).ToArray(),
+                now.AddHours(-1)));
 
         Assert.Equal(first.Id, replay.Id);
         Assert.Equal(

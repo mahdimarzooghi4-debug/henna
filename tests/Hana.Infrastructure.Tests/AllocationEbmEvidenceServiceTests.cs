@@ -48,6 +48,7 @@ public sealed class AllocationEbmEvidenceServiceTests
         var now = new DateTimeOffset(
             2026, 10, 7, 10, 0, 0, TimeSpan.Zero);
         var admin = Guid.NewGuid();
+        var secondAdmin = Guid.NewGuid();
         identity.Accounts.Add(new()
         {
             Id = admin,
@@ -57,6 +58,18 @@ public sealed class AllocationEbmEvidenceServiceTests
         identity.RoleAssignments.Add(new()
         {
             AccountId = admin,
+            Role = HanaRoles.Admin,
+            GrantedAtUtc = now
+        });
+        identity.Accounts.Add(new()
+        {
+            Id = secondAdmin,
+            NormalizedPhone = "09123456788",
+            CreatedAtUtc = now
+        });
+        identity.RoleAssignments.Add(new()
+        {
+            AccountId = secondAdmin,
             Role = HanaRoles.Admin,
             GrantedAtUtc = now
         });
@@ -298,6 +311,13 @@ public sealed class AllocationEbmEvidenceServiceTests
             runId,
             labels.Select(x => x.Id).Reverse().ToArray(),
             now.AddHours(-1));
+
+        await Assert.ThrowsAsync<AllocationEbmBenchmarkConflictException>(
+            () => benchmarks.EvaluateAsync(
+                secondAdmin,
+                runId,
+                labels.Select(x => x.Id).ToArray(),
+                now.AddHours(-1)));
 
         Assert.Equal(first.Id, benchmarkReplay.Id);
         Assert.Equal(registered.Id, first.EbmArtifactId);
