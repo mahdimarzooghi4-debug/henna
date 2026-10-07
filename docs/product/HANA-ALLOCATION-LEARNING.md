@@ -180,6 +180,14 @@ requires an approved representative/time-separated cohort contract; fairness sti
 approved groups/criteria; missing-data behavior is not computed because the current six score
 features have no approved missing-value semantics.
 
+The admin comparison view accepts one exact Evaluation fingerprint and reads the existing Profile,
+XGBoost and EBM benchmark stores without creating new model evidence. It validates governance flags
+and protocol-specific diagnostics fail-closed, orders evidence only by recording time, and shows
+baseline/dataset/funding/runtime lineage side by side. A lineage mismatch is surfaced explicitly
+and is not treated as comparable evidence. The view reads at most the first 20 matching records
+from each existing benchmark endpoint and marks the result as potentially truncated when a source
+page is full. It never ranks model families or selects a winner.
+
 ## Experimental supervised weight learner
 
 `ExperimentalAllocationWeightLearner` fits the six weights to independently reviewed
