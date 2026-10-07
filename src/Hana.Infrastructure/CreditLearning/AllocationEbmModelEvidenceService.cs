@@ -31,7 +31,9 @@ public sealed record HennaEbmBenchmarkMetrics(
     double EbmMinusBaselineMse,
     string RubricVersion,
     string EvaluationFingerprint,
-    DateTimeOffset CutoffUtc);
+    DateTimeOffset CutoffUtc,
+    RegressionDiagnosticMetrics? BaselineDiagnostics,
+    RegressionDiagnosticMetrics? EbmDiagnostics);
 
 public sealed class AllocationEbmBenchmarkRecord
 {
@@ -401,7 +403,7 @@ public sealed class AllocationEbmArtifactService(
 public static class HennaEbmBenchmarkEvaluator
 {
     public const string ProtocolVersion =
-        "henna-ebm-shadow-benchmark-v1";
+        "henna-ebm-shadow-benchmark-v2";
 
     public static HennaEbmBenchmarkMetrics Evaluate(
         IReadOnlyList<ReviewedNeedExample> examples,
@@ -435,27 +437,30 @@ public static class HennaEbmBenchmarkEvaluator
             throw new ArgumentException(
                 "One reviewed evaluation rubric is required.");
 
-        var baselineMse = data.Sum(x =>
-        {
-            var predicted =
+        var observed = data
+            .Select(x => (double)x.ReviewedNeedScore)
+            .ToArray();
+        var baselinePredictions = data.Select(x =>
+            (double)(
                 baseline.Health * x.Scores.Health / 3m +
                 baseline.Hardship * x.Scores.EconomicHardship / 3m +
                 baseline.Age * x.Scores.AgeAndDependency / 3m +
                 baseline.Size * x.Scores.HouseholdSize / 3m +
                 baseline.Care * x.Scores.CareAndSupport / 3m +
-                baseline.Education * x.Scores.Education / 3m;
-            var residual = (double)(predicted - x.ReviewedNeedScore);
-            return residual * residual;
-        }) / data.Length;
-
-        var ebmMse = data.Sum(x =>
-        {
-            var residual =
-                HennaEbmPortableArtifactVerifier.Predict(
-                    lookup, x.Scores) -
-                (double)x.ReviewedNeedScore;
-            return residual * residual;
-        }) / data.Length;
+                baseline.Education * x.Scores.Education / 3m))
+            .ToArray();
+        var ebmPredictions = data
+            .Select(x => HennaEbmPortableArtifactVerifier.Predict(
+                lookup, x.Scores))
+            .ToArray();
+        var baselineDiagnostics =
+            RegressionDiagnosticEvaluator.Evaluate(
+                observed, baselinePredictions);
+        var ebmDiagnostics =
+            RegressionDiagnosticEvaluator.Evaluate(
+                observed, ebmPredictions);
+        var baselineMse = baselineDiagnostics.Mse;
+        var ebmMse = ebmDiagnostics.Mse;
 
         var fingerprint =
             AllocationModelBenchmarkEvaluator.ComputeEvaluationFingerprint(
@@ -467,7 +472,9 @@ public static class HennaEbmBenchmarkEvaluator
             ebmMse - baselineMse,
             data[0].RubricVersion,
             fingerprint,
-            cutoffUtc);
+            cutoffUtc,
+            baselineDiagnostics,
+            ebmDiagnostics);
     }
 }
 
@@ -662,7 +669,9 @@ public sealed class AllocationEbmBenchmarkService(
                 .SingleAsync(x =>
                     x.EbmArtifactId == artifact.Id &&
                     x.EvaluationFingerprint ==
-                        metrics.EvaluationFingerprint, ct);
+                        metrics.EvaluationFingerprint &&
+                    x.ProtocolVersion ==
+                        HennaEbmBenchmarkEvaluator.ProtocolVersion, ct);
         }
 
         return row;
