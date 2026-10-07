@@ -55,6 +55,31 @@ public sealed class AllocationModelBenchmarkTests
             b.EvaluationFingerprint);
         Assert.NotEqual(a.CandidateMse, b.CandidateMse);
         Assert.Equal(rubric, a.RubricVersion);
+        Assert.NotNull(a.BaselineDiagnostics);
+        Assert.NotNull(a.CandidateDiagnostics);
+        Assert.Equal(2, a.CandidateDiagnostics!.Count);
+        Assert.Equal(0d, a.CandidateDiagnostics.Mse, 12);
+        Assert.Equal(0d, a.CandidateDiagnostics.Rmse, 12);
+        Assert.Equal(0d, a.CandidateDiagnostics.Mae, 12);
+        Assert.Equal(0d, a.CandidateDiagnostics.MeanResidual, 12);
+        Assert.Equal(1d, a.CandidateDiagnostics.CalibrationSlope!.Value, 12);
+        Assert.Equal(0d, a.CandidateDiagnostics.CalibrationIntercept!.Value, 12);
+    }
+
+    [Fact]
+    public void RegressionDiagnosticsLeaveCalibrationUndefinedForConstantPredictions()
+    {
+        var metrics = RegressionDiagnosticEvaluator.Evaluate(
+            new[] { .2d, .8d },
+            new[] { .5d, .5d });
+
+        Assert.Equal(2, metrics.Count);
+        Assert.Null(metrics.CalibrationSlope);
+        Assert.Null(metrics.CalibrationIntercept);
+        Assert.Equal(.09d, metrics.Mse, 12);
+        Assert.Equal(.3d, metrics.Rmse, 12);
+        Assert.Equal(.3d, metrics.Mae, 12);
+        Assert.Equal(0d, metrics.MeanResidual, 12);
     }
 
     [Fact]
