@@ -116,11 +116,28 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
             badReviewId, sevenId, NeedSeverityEvidenceDisposition.Conflicting,
             null, null, "conflicting-pre-allocation-evidence", at.AddHours(-1),
             "Human abstained due to contradictory evidence")));
+        // Even if an operator silently omits the contradictory second
+        // review, the original selection is now stale and must be rejected.
+        // This includes abstentions and reviews created AFTER its cutoff.
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            preview.PreviewAsync(actor, new[] { humanIds[0] },
+                new[] { humanIds[1] }, new[] { humanIds[2] }, cutoff));
         await Assert.ThrowsAsync<ArgumentException>(() =>
             preview.PreviewAsync(actor, new[] { badReviewId },
                 new[] { humanIds[1] }, new[] { humanIds[2] }, clock.UtcNow));
         await Assert.ThrowsAsync<ArgumentException>(() =>
             preview.PreviewAsync(actor, new[] { humanIds[0], badReviewId },
+                new[] { humanIds[1] }, new[] { humanIds[2] }, clock.UtcNow));
+
+        // A new human-reviewed seven-factor assessment, even without a
+        // matching severity judgment yet, cannot be silently ignored.
+        var correctedFeatureId = Guid.NewGuid();
+        Assert.True(await factors.RecordAsync(actor, new(
+            correctedFeatureId, ids[2], 2, 0, 1, 1, 0, 1,
+            HouseholdHousingTenure.Tenant, "corrected-tenure-source",
+            "corrected-non-housing-hardship", "corrected-five-dimensions")));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            preview.PreviewAsync(actor, new[] { humanIds[0] },
                 new[] { humanIds[1] }, new[] { humanIds[2] }, clock.UtcNow));
 
         // Training/evaluation provenance has been examined, not admitted:

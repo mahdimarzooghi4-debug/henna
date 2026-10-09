@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -51,6 +52,12 @@ public sealed class AllocationSevenFactorPartitionPreflightService(
         if (cutoffUtc.Offset != TimeSpan.Zero || cutoffUtc > clock.UtcNow)
             throw new ArgumentException("A non-future UTC cutoff is required.");
 
+        // Every query below observes one consistent PostgreSQL snapshot.
+        // Without a common read snapshot, a competing human review might be
+        // inserted between conflict detection and manifest hashing.
+        await using var readSnapshot = await db.Database.BeginTransactionAsync(
+            IsolationLevel.RepeatableRead, ct);
+
         var reviews = await db.QualitativeSeverityReviews.AsNoTracking()
             .Where(r => ids.Contains(r.Id)).ToArrayAsync(ct);
         if (reviews.Length != ids.Length ||
@@ -85,6 +92,36 @@ public sealed class AllocationSevenFactorPartitionPreflightService(
         if (sources.Count != reviews.Length ||
             sources.Values.Select(x => x.HouseholdKey).Distinct().Count() != reviews.Length)
             throw new ArgumentException("Training, validation and evaluation households must be disjoint.");
+
+        // Never assume explicitly selected IDs represent all known reviews.
+        // An unselected abstention, amendment, contradictory human review,
+        // or replacement feature assessment for the same household makes
+        // automatic review selection unsafe. No correction/withdrawal
+        // resolution contract exists yet, so fail closed on any ambiguity.
+        // Include *all* snapshots for each selected household, even when a
+        // second review is attached to a different snapshot or was recorded
+        // after the requested cutoff. This prevents replaying an old clean
+        // digest after more recent contradictory evidence arrives.
+        var householdIds = sources.Values.Select(s => s.HouseholdKey)
+            .Distinct().ToArray();
+        var householdSnapshotIds = await db.Assessments.AsNoTracking()
+            .Where(s => householdIds.Contains(s.HouseholdKey))
+            .Select(s => s.Id)
+            .ToArrayAsync(ct);
+        var allFeatureIds = await db.ReviewedSevenFactorAssessments.AsNoTracking()
+            .Where(r => householdSnapshotIds.Contains(r.SnapshotId))
+            .Select(r => r.Id).ToArrayAsync(ct);
+        var allHumanIds = await db.QualitativeSeverityReviews.AsNoTracking()
+            .Where(r => householdSnapshotIds.Contains(r.SnapshotId))
+            .Select(r => r.Id).ToArrayAsync(ct);
+        var chosenFeatures = features.Keys.ToHashSet();
+        var chosenReviews = ids.ToHashSet();
+        if (allFeatureIds.Length != chosenFeatures.Count ||
+            allFeatureIds.Any(id => !chosenFeatures.Contains(id)) ||
+            allHumanIds.Length != chosenReviews.Count ||
+            allHumanIds.Any(id => !chosenReviews.Contains(id)))
+            throw new ArgumentException(
+                "Unselected or competing household evidence exists; explicit human correction/withdrawal resolution is required.");
 
         var lineage = await AllocationTrainingLineageResolver.ResolveEligibleAsync(
             db, sources.Values.ToArray(), ct);
@@ -173,6 +210,7 @@ public sealed class AllocationSevenFactorPartitionPreflightService(
         });
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+        await readSnapshot.CommitAsync(ct);
         return new(ContractVersion, cutoffUtc, first.FormulaVersion,
             first.DatasetVersion, first.SourceInstructionReference,
             trainingIds.Count, validationIds.Count, evaluationIds.Count,

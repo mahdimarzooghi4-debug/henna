@@ -40,3 +40,23 @@ criteria and explicit independent Model Evaluation/Pilot promotion. The
 independent post-allocation essential-needs coverage objective remains
 separately governed. No iOS/Stage/QA Gate/Production/Recovery or real money
 is authorized.
+
+
+## Full-universe conflict guard and consistent read
+
+A caller cannot bypass unresolved amendment/withdrawal decisions simply by
+omitting a known review ID. For every selected household, the preflight queries
+**all** relevant source snapshots and requires the **entire** set of existing
+seven-factor human feature reviews and qualitative severity judgments to
+match the explicit selected IDs. An omitted competing or abstained human review,
+a second feature assessment, or another reviewed snapshot for the same
+household causes a fail-closed rejection, **including when the extra review
+was recorded after the requested cutoff**. There is no latest-wins or silent
+acceptance of an older digest after new evidence surfaces.
+
+Related reads execute in one PostgreSQL REPEATABLE READ transaction to avoid
+mixing different database snapshots during eligibility checks and SHA-256
+creation. This protects consistency during preview; any later authorized
+admission must re-attest against fresh data and still requires an explicit
+correction/withdrawal resolution policy. No auto-withdraw or correction
+precedence is invented.
