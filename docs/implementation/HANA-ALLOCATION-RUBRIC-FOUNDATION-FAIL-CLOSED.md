@@ -24,6 +24,8 @@ This is a **narrow negative admission rule** implementing an explicit existing p
 
 ## Separate future product / data decisions (NOT made here)
 
+The decision inventory, admission/enforcement map and future acceptance-test plan are recorded in [`HANA-POSITIVE-RUBRIC-ADMISSION-CONTRACT-DRAFT.md`](../product/HANA-POSITIVE-RUBRIC-ADMISSION-CONTRACT-DRAFT.md). That document is explicitly DRAFT and authorizes no numeric labeling, approval registry or runtime change.
+
 A complete **positive Rubric Admission** contract must be explicitly approved before production-grade Reviewed Need Labels or their downstream evidence can be relied upon. It must specify:
 
 1. Versioned complete-rubric identity, approval authority/status and immutable effective version;
