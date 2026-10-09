@@ -55,7 +55,8 @@ public sealed class AllocationLearningAutomationPlanner(
         var lineage = await AllocationTrainingLineageResolver.ResolveEligibleAsync(
             db, rows.Select(x => x.snapshot).DistinctBy(x => x.Id).ToArray(), ct);
         var eligible = rows
-            .Where(x => lineage.ContainsKey(x.snapshot.Id))
+            .Where(x => lineage.ContainsKey(x.snapshot.Id) &&
+                !AllocationRubricFoundationBoundary.IsNonLabelingFoundation(x.label.RubricVersion))
             .ToArray();
 
         var cohorts = eligible
