@@ -55,6 +55,7 @@ public static class HennaXGBoostOfflineLearner
                 "Complete, distinct reviewed training/validation households are required.");
         if (data.Select(x => x.RubricVersion).Distinct().Count() != 1)
             throw new ArgumentException("One reviewed scoring rubric is required.");
+        AllocationRubricFoundationBoundary.RejectNonLabelingFoundation(data.FirstOrDefault()?.RubricVersion);
 
         var training = data.Where(x => x.Partition == LearningPartition.Training).ToArray();
         var validation = data.Where(x => x.Partition == LearningPartition.Validation).ToArray();
