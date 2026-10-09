@@ -120,6 +120,18 @@ Do not infer approval from:
 - a historical DRAFT proposal;
 - a Figma frame name alone.
 
+## User-supplied node for AI design inspection
+
+The owner provided node `181:2` in `uREafnhmH5dDRwPraBOmuk`:
+https://www.figma.com/design/uREafnhmH5dDRwPraBOmuk/henna-platform?node-id=181-2&p=f&t=zTI08I3Zi2E2cb2T-0
+
+This is an **inspection target, not an approved visual implementation reference**.
+As of 2026-10-09, the attempt to retrieve its design context was blocked by
+the Figma MCP Starter-plan tool-call limit. Its node type, screen content,
+approval status and fidelity to `/admin/allocation-ai` have **not** been
+verified. Do not silently promote or modify it; see
+`docs/design/HANA-ADMIN-AI-WORKSPACE-DRAFT.md` for the follow-up.
+
 ## Current synchronization blocker
 
 During this reconciliation attempt, the connected Figma MCP returned the Starter-plan tool-call

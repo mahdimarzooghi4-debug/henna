@@ -17,6 +17,24 @@ The new v1.1 backend capabilities currently do **not** have an authenticated BFF
 
 Figma file: \`uREafnhmH5dDRwPraBOmuk\`. The live Figma MCP returned **Starter-plan tool-call limit**, so no screenshot, new Figma node, pixel-perfect match or Code Connect mapping was claimed. There is not yet an authorized immutable node ID for this new AI workspace. The code-first visual treatment is therefore **DRAFT**, with no changes to existing approved/Draft Figma nodes. When Figma read/write access becomes available, prepare and seek explicit design approval of desktop/mobile states (navigation, empty/error, evidence lineage mismatch, abstention, two independent learning objectives, human promotion boundary), then record the exact node IDs in \`HANA-FIGMA-CODE-RECONCILIATION.md\` before claiming Figma fidelity.
 
+
+## User-provided Figma inspection target (2026-10-09)
+
+The user supplied this exact Figma URL while reviewing the AI UX:
+
+https://www.figma.com/design/uREafnhmH5dDRwPraBOmuk/henna-platform?node-id=181-2&p=f&t=zTI08I3Zi2E2cb2T-0
+
+Extracted identifier: \`181:2\`. The file/node **has not been visually inspected**:
+\`get_design_context\` returned the Figma MCP **Starter-plan call limit**.
+This identifier is an inspection target only. We cannot infer whether it is a
+page, screen, approved AI workspace, component, or unrelated draft until Figma
+access or the node screenshot is available. No visual match or approval is
+claimed and no existing Figma nodes have been changed.
+
+The connected account also has a separate Pro team with a Full seat, but the
+MCP limit is reported for the Starter team owning this file. File access or a
+user-supplied screenshot of node \`181:2\` is needed to complete comparison.
+
 ## Tests and release boundary
 
 The existing real Chromium Playwright allocation browser suite checks the new workspace, all navigation destinations and mobile overflow, and asserts six/seven feature distinctions and no implied automatic Production promotion.
