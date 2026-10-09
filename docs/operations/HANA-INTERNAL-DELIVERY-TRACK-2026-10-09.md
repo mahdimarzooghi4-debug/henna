@@ -28,7 +28,11 @@ Historical backlog PR #130 predates much of current PR #165 Commerce development
 4. Ensure UI distinguishes observed data, reviewed labels, offline/evaluation evidence, proposed weights and activated version; no false Production/readiness claims.
 5. Prepare existing catalog/geography import security, migrations, backup and runbooks for authorized Stage, without pretending that real signed-off data or external services exist.
 
-## 3. Internal decisions that MUST be answered before new implementation
+## 3. Resolved product directions (ADR-063)
+
+The Product Owner accepted **two separate learning objectives** (reviewed severity and evidence-backed essential-needs coverage), AI-generated **geographic parameter proposals**, **housing as a seventh future factor**, and **joint finance-manager documentation plus actual bank reconciliation** before real funding release. See `docs/adr/ADR-063-ALLOCATION-TWO-TARGETS-GEOGRAPHY-HOUSING-FUNDING.md`. These approvals do NOT choose numerical target mappings, geography learning algorithms, seventh-factor weights, owner/tenant scores, or a concrete bank provider/verification adapter. Legacy PR #141 contains suggested numbers, not approval of those numbers.
+
+## 3. Remaining technical/numeric contracts STILL needed
 
 1. **Reviewed Need Label [0,1]**: exactly which independently evidenced aspects of unmet need define the numeric target, and what review/rationale/abstention contract applies? Existing `HENNA-AJF-v1` and `HENNA-ARR-v1` are reasoning foundations only. See `docs/product/HANA-POSITIVE-RUBRIC-ADMISSION-CONTRACT-DRAFT.md`.
 2. **XGBoost → coefficients**: what governed objective/method is permitted to transform independent model evidence into a *six-weight* profile while retaining existing budget distribution? A raw need score is not automatically a weight. No algorithm or numeric threshold may be invented.
