@@ -17,11 +17,21 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
+import { useFonts } from "expo-font";
+import { Vazirmatn_400Regular, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
+import { MobileCommerceClient } from "./src/mobile-commerce";
+import { BuyerIncidentsScreen } from "./src/buyer-incidents-screen";
+import { BuyerSupportScreen } from "./src/buyer-support-screen";
+import { BuyerWalletScreen } from "./src/buyer-wallet-screen";
+import { BuyerOrdersScreen } from "./src/buyer-orders-screen";
+import { BuyerCheckoutScreen } from "./src/buyer-checkout-screen";
+import { BuyerCartScreen } from "./src/buyer-cart-screen";
 import { colors, space } from "./src/theme";
 import { BuyerBrowseScreen } from "./src/buyer-browse-screen";
 import {
   parseBuyerLink, type BuyerLinkEvent, type BuyerLinkRoute,
 } from "./src/buyer-link";
+import { BuyerLinkInbox } from "./src/buyer-link-inbox";
 import { isValidIranianMobile, normalizeIranianMobile, normalizeDigits } from "./src/phone";
 import { MobileAuthClient } from "./src/mobile-auth";
 import { otpRequestTransition } from "./src/otp-request-transition";
@@ -29,6 +39,7 @@ import { validateOtpEntry } from "./src/otp-form-input";
 import {
   shouldRecheckOnForeground, type MobileAuthView,
 } from "./src/session-foreground";
+import { pendingCommerceStore } from "./src/native-pending-commerce";
 
 type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited";
 type ViewState = MobileAuthView;
@@ -40,15 +51,24 @@ const secureOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 
+const nativeBuyerLinkInbox = new BuyerLinkInbox();
+// Subscribe before React mounts so an early valid native link is not lost
+// before App's effect attaches its normal consumer.
+Linking.addEventListener("url", ({ url }) => {
+  nativeBuyerLinkInbox.offer(url);
+});
+
 // Expo SecureStore uses iOS Keychain / Android Keystore-backed encrypted storage.
 // Keep the bearer OUT of React state, console, AsyncStorage and Expo public config.
+const tokenStore = {
+ read: () => SecureStore.getItemAsync(tokenKey, secureOptions),
+ write: (token: string) => SecureStore.setItemAsync(tokenKey, token, secureOptions),
+ remove: () => SecureStore.deleteItemAsync(tokenKey, secureOptions),
+};
+const commerce = new MobileCommerceClient(process.env.EXPO_PUBLIC_HANA_API_BASE_URL,tokenStore,fetch,__DEV__);
 const auth = new MobileAuthClient(
   process.env.EXPO_PUBLIC_HANA_API_BASE_URL,
-  {
-    read: () => SecureStore.getItemAsync(tokenKey, secureOptions),
-    write: (token) => SecureStore.setItemAsync(tokenKey, token, secureOptions),
-    remove: () => SecureStore.deleteItemAsync(tokenKey, secureOptions),
-  },
+  tokenStore,
   fetch,
   Date.now,
   __DEV__,
@@ -325,7 +345,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                     onPress={() =>
                       Alert.alert(
                         "ثبت‌نام فروشگاه",
-                        "ثبت‌نام فروشگاه فقط در نسخه وب حنا ارائه می‌شود. فرم اولیه وب به API و پایگاه داده متصل است؛ اما ورود عمومی با پیامک و تأیید نهایی فروشگاه هنوز فعال نیست."
+                        "ثبت‌نام، بررسی، فعال‌سازی و پنل فروشنده در نسخه وب حنا ارائه می‌شوند. ورود عمومی همچنان به اتصال سرویس پیامک واقعی وابسته است."
                       )
                     }
                   >
@@ -500,7 +520,13 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<"browse" | "auth">("browse");
+  const [screen, setScreen] = useState<"browse" | "auth" | "cart" | "checkout" | "orders" | "incidents" | "support" | "wallet">("browse");
+  const [fontsLoaded,fontError] = useFonts({Vazirmatn_400Regular,Vazirmatn_700Bold});
+  const [selectedProduct,setSelectedProduct] = useState<string|null>(null);
+  const [selectedOrder,setSelectedOrder]=useState<string|null>(null);
+  const [incidentOrder,setIncidentOrder]=useState<string|null>(null);
+  const incidentReturn=useRef<"browse"|"orders">("browse");
+  const authReturn = useRef<"browse"|"cart"|"checkout"|"orders"|"incidents"|"support"|"wallet">("browse");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
   // link must not first fetch page 1 and briefly paint unrelated content.
   const [link, setLink] = useState<BuyerLinkEvent | null>(null);
@@ -508,35 +534,99 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    let receivedLiveLink = false;
+    let stopIncomingLinks = () => {};
+    let incomingSequence = 0;
+
     const apply = (url: string | null, incoming: boolean) => {
       const route = parseBuyerLink(url);
       if (incoming && route === null) return; // Never navigate on untrusted URL.
       setLink({ token: ++sequence.current, route: route ?? blankBrowseLink });
       if (incoming) setScreen("browse");
     };
-    const listener = Linking.addEventListener("url", ({ url }) => {
-      if (!active || parseBuyerLink(url) === null) return;
-      receivedLiveLink = true;
-      apply(url, true);
+
+    const applyPending = (pending: Awaited<ReturnType<typeof pendingCommerceStore.route>>) => {
+      if (pending?.selectedOrderId) setSelectedOrder(pending.selectedOrderId);
+      if (pending?.incidentOrderId) {
+        setIncidentOrder(pending.incidentOrderId);
+        incidentReturn.current = "orders";
+      }
+      if (pending) setScreen(pending.screen);
+      setLink({ token: ++sequence.current, route: blankBrowseLink });
+    };
+
+    const handleIncoming = (url: string) => {
+      const request = ++incomingSequence;
+      void pendingCommerceStore.route()
+        .then((pending) => {
+          if (!active || request !== incomingSequence) return;
+          if (pending) {
+            applyPending(pending);
+            return;
+          }
+          apply(url, true);
+        })
+        .catch(() => {
+          // A storage failure cannot prove there is no financial retry.
+          // Keep the current screen rather than letting a link hide it.
+        });
+    };
+
+    void Promise.all([
+      Linking.getInitialURL().catch(() => null),
+      pendingCommerceStore.route(),
+    ]).then(([initialUrl, pending]) => {
+      if (!active) return;
+      if (pending) {
+        nativeBuyerLinkInbox.clear();
+        applyPending(pending);
+      } else {
+        // Prefer a valid OS URL buffered during JS bootstrap; otherwise use
+        // React Native's initial URL. Shared mobile routing remains bounded
+        // to the public buyer-link allowlist.
+        apply(nativeBuyerLinkInbox.take() ?? initialUrl, false);
+      }
+      stopIncomingLinks = nativeBuyerLinkInbox.subscribe(handleIncoming);
+      void pendingCommerceStore.cleanupPhotos().catch(() => {});
+    }).catch(() => {
+      if (!active) return;
+      // Public browsing remains usable, while commerce controllers fail
+      // closed if SecureStore cannot prove whether a retry is pending.
+      nativeBuyerLinkInbox.clear();
+      apply(null, false);
+      stopIncomingLinks = nativeBuyerLinkInbox.subscribe(handleIncoming);
     });
-    void Linking.getInitialURL()
-      .then((url) => {
-        if (active && !receivedLiveLink) apply(url, false);
-      })
-      .catch(() => {
-        if (active && !receivedLiveLink) apply(null, false);
-      });
-    return () => { active = false; listener.remove(); };
+
+    return () => {
+      active = false;
+      incomingSequence++;
+      stopIncomingLinks();
+    };
   }, []);
 
   return (
     <SafeAreaProvider>
-      {link === null ? <View style={styles.flex} /> :
-        screen === "browse"
-          ? <BuyerBrowseScreen link={link}
-              onLogin={() => setScreen("auth")} />
-          : <ConsumerAuthScreen onBrowse={() => setScreen("browse")} />}
+      {!fontsLoaded && !fontError ? <View style={styles.flex}><Text>در حال آماده‌سازی فونت…</Text></View> : fontError ? <View style={styles.flex}><Text>بارگذاری فونت انجام نشد؛ اپ را دوباره باز کنید.</Text></View> : link === null ? <View style={styles.flex} /> :
+        <>
+          <View style={{flex:1,display:screen === "browse" ? "flex" : "none"}}><BuyerBrowseScreen link={link} active={screen === "browse"}
+            onLogin={() => {authReturn.current="browse";setScreen("auth");}}
+            onIssues={()=>{setIncidentOrder(null);incidentReturn.current="browse";setScreen("incidents");}}
+            onOrders={()=>{setSelectedOrder(null);setScreen("orders");}}
+            onSupport={()=>setScreen("support")}
+            onWallet={()=>setScreen("wallet")}
+            onCart={(id) => {setSelectedProduct(id??null);setScreen("cart");}} /></View>
+          {screen === "cart" && <BuyerCartScreen api={commerce} onCheckout={()=>setScreen("checkout")} selectedProduct={selectedProduct} onBack={() => setScreen("browse")} onLogin={() => {authReturn.current="cart";setScreen("auth");}} />}
+          {screen === "checkout" && <BuyerCheckoutScreen onOrder={(id)=>{setSelectedOrder(id);setScreen("orders");}} api={commerce} onBack={()=>setScreen("cart")} onLogin={()=>{authReturn.current="checkout";setScreen("auth");}} />}
+          {screen === "orders" && <BuyerOrdersScreen onIssues={(id)=>{setIncidentOrder(id);incidentReturn.current="orders";setScreen("incidents");}} api={commerce} selectedId={selectedOrder} onBack={()=>setScreen("browse")} onLogin={()=>{authReturn.current="orders";setScreen("auth");}} />}
+          {screen === "incidents" && <BuyerIncidentsScreen api={commerce} orderId={incidentOrder} onBack={()=>{if(incidentReturn.current==="orders")setSelectedOrder(incidentOrder);setScreen(incidentReturn.current);}} onLogin={()=>{authReturn.current="incidents";setScreen("auth");}} />}
+          {screen === "support" && <BuyerSupportScreen api={commerce}
+            onBack={()=>setScreen("browse")}
+            onLogin={()=>{authReturn.current="support";setScreen("auth");}} />}
+          {screen === "wallet" && <BuyerWalletScreen api={commerce}
+            onBack={()=>setScreen("browse")}
+            onLogin={()=>{authReturn.current="wallet";setScreen("auth");}} />}
+          {screen === "auth" && <ConsumerAuthScreen onBrowse={() => setScreen(authReturn.current)} />}
+        </>}
+
     </SafeAreaProvider>
   );
 }

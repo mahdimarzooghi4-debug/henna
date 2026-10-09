@@ -17,6 +17,8 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
         Set<SellerApplicationAmendmentRecord>();
     public DbSet<SellerActivationRecord> SellerActivations =>
         Set<SellerActivationRecord>();
+    public DbSet<SellerSuspensionRecord> SellerSuspensions =>
+        Set<SellerSuspensionRecord>();
     public DbSet<SellerBusinessCategoryRecord> BusinessCategories =>
         Set<SellerBusinessCategoryRecord>();
     public DbSet<SellerBusinessCategoryImportReceipt> BusinessCategoryImportReceipts =>
@@ -95,8 +97,11 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                     "(completed_step < 4 AND business_category_id IS NULL AND business_name IS NULL AND business_description IS NULL AND business_phone IS NULL AND offering_type IS NULL) OR " +
                     "(completed_step >= 4 AND business_category_id IS NOT NULL AND business_name IS NOT NULL AND business_description IS NOT NULL AND business_phone IS NOT NULL AND offering_type IS NOT NULL AND char_length(btrim(business_name)) BETWEEN 1 AND 180 AND char_length(btrim(business_description)) BETWEEN 1 AND 500 AND business_phone ~ '^0[0-9]{10}$' AND offering_type IN ('GOOD', 'SERVICE', 'BOTH'))");
                 table.HasCheckConstraint("ck_registration_activity_shape",
-                    "(completed_step < 5 AND activity_province_id IS NULL AND activity_city_id IS NULL AND activity_address IS NULL AND activity_hours IS NULL AND seller_delivery IS NULL AND pickup IS NULL AND service_area IS NULL) OR " +
+                    "(completed_step < 5 AND activity_province_id IS NULL AND activity_city_id IS NULL AND activity_address IS NULL AND activity_latitude IS NULL AND activity_longitude IS NULL AND activity_hours IS NULL AND seller_delivery IS NULL AND pickup IS NULL AND service_area IS NULL) OR " +
                     "(completed_step >= 5 AND activity_province_id IS NOT NULL AND activity_city_id IS NOT NULL AND char_length(btrim(activity_address)) BETWEEN 1 AND 500 AND char_length(btrim(activity_hours)) BETWEEN 1 AND 180 AND seller_delivery IS NOT NULL AND pickup IS NOT NULL AND (seller_delivery OR pickup) AND char_length(btrim(service_area)) BETWEEN 1 AND 240)");
+                table.HasCheckConstraint(
+                    "ck_registration_activity_coordinates",
+                    "(activity_latitude IS NULL AND activity_longitude IS NULL) OR (activity_latitude IS NOT NULL AND activity_longitude IS NOT NULL AND activity_latitude >= -90 AND activity_latitude <= 90 AND activity_longitude >= -180 AND activity_longitude <= 180)");
                 table.HasCheckConstraint("ck_registration_additional_shape",
                     "(completed_step < 6 AND registration_contact_name IS NULL AND registration_contact_role IS NULL AND backup_phone IS NULL AND website_or_social IS NULL AND business_email IS NULL AND response_hours IS NULL) OR " +
                     "(completed_step >= 6 AND char_length(btrim(registration_contact_name)) BETWEEN 1 AND 120 AND (registration_contact_role IS NULL OR char_length(btrim(registration_contact_role)) BETWEEN 1 AND 120) AND (backup_phone IS NULL OR backup_phone ~ '^09[0-9]{9}$') AND (website_or_social IS NULL OR char_length(btrim(website_or_social)) BETWEEN 1 AND 300) AND (business_email IS NULL OR char_length(btrim(business_email)) BETWEEN 3 AND 254) AND char_length(btrim(response_hours)) BETWEEN 1 AND 180)");
@@ -157,6 +162,10 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
             entity.Property(x => x.ActivityCityId).HasColumnName("activity_city_id");
             entity.Property(x => x.ActivityAddress).HasColumnName("activity_address")
                 .HasMaxLength(500);
+            entity.Property(x => x.ActivityLatitude).HasColumnName("activity_latitude")
+                .HasPrecision(9, 6);
+            entity.Property(x => x.ActivityLongitude).HasColumnName("activity_longitude")
+                .HasPrecision(9, 6);
             entity.Property(x => x.ActivityHours).HasColumnName("activity_hours")
                 .HasMaxLength(180);
             entity.Property(x => x.SellerDelivery).HasColumnName("seller_delivery");
@@ -285,6 +294,54 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasForeignKey(x => x.ApplicationAccountId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_seller_activations_registration_drafts");
+        });
+
+        modelBuilder.Entity<SellerSuspensionRecord>(entity =>
+        {
+            entity.ToTable("seller_suspensions", table =>
+            {
+                table.HasCheckConstraint("ck_seller_suspensions_revision",
+                    "expected_revision >= 1");
+                table.HasCheckConstraint("ck_seller_suspensions_reason",
+                    "char_length(btrim(reason)) BETWEEN 1 AND 500");
+                table.HasCheckConstraint("ck_seller_suspensions_restore",
+                    "(restored_at_utc IS NULL AND restored_by_account_id IS NULL AND restore_key IS NULL AND restore_expected_revision IS NULL) OR " +
+                    "(restored_at_utc IS NOT NULL AND restored_by_account_id IS NOT NULL AND restore_key IS NOT NULL AND restore_expected_revision >= 1)");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(x => x.ApplicationAccountId)
+                .HasColumnName("application_account_id").IsRequired();
+            entity.Property(x => x.SuspendedByAccountId)
+                .HasColumnName("suspended_by_account_id").IsRequired();
+            entity.Property(x => x.SuspensionKey)
+                .HasColumnName("suspension_key").IsRequired();
+            entity.Property(x => x.ExpectedRevision)
+                .HasColumnName("expected_revision").IsRequired();
+            entity.Property(x => x.Reason).HasColumnName("reason")
+                .HasMaxLength(500).IsRequired();
+            entity.Property(x => x.CreatedAtUtc)
+                .HasColumnName("created_at_utc").IsRequired();
+            entity.Property(x => x.RestoredAtUtc).HasColumnName("restored_at_utc");
+            entity.Property(x => x.RestoredByAccountId)
+                .HasColumnName("restored_by_account_id");
+            entity.Property(x => x.RestoreKey).HasColumnName("restore_key");
+            entity.Property(x => x.RestoreExpectedRevision)
+                .HasColumnName("restore_expected_revision");
+            entity.HasIndex(x => x.SuspensionKey).IsUnique()
+                .HasDatabaseName("ux_seller_suspensions_suspension_key");
+            entity.HasIndex(x => x.RestoreKey).IsUnique()
+                .HasFilter("restore_key IS NOT NULL")
+                .HasDatabaseName("ux_seller_suspensions_restore_key");
+            entity.HasIndex(x => x.ApplicationAccountId).IsUnique()
+                .HasFilter("restored_at_utc IS NULL")
+                .HasDatabaseName("ux_seller_suspensions_open_application");
+            entity.HasIndex(x => new { x.ApplicationAccountId, x.CreatedAtUtc })
+                .HasDatabaseName("ix_seller_suspensions_application_created");
+            entity.HasOne<SellerRegistrationDraft>().WithMany()
+                .HasForeignKey(x => x.ApplicationAccountId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_seller_suspensions_registration_drafts");
         });
 
         modelBuilder.Entity<SellerApplicationReviewRecord>(entity =>

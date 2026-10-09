@@ -4,6 +4,9 @@ using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
 using Hana.Infrastructure.Catalog;
 using Hana.Infrastructure.Geography;
+using Hana.Infrastructure.CreditLearning;
+using Hana.Infrastructure.Commerce;
+using Hana.Infrastructure.External;
 using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
@@ -42,6 +45,12 @@ if (trustedForwarding is not null)
 // must be implemented against an actual contracted provider and reviewed
 // before replacing this registration. A signing key alone never enables OTP.
 builder.Services.AddSingleton<IOtpSmsSender, UnconfiguredOtpSmsSender>();
+builder.Services.AddSingleton<IExternalPaymentProvider,
+    UnconfiguredExternalPaymentProvider>();
+builder.Services.AddSingleton<IExternalIbanOwnershipVerifier,
+    UnconfiguredExternalIbanOwnershipVerifier>();
+builder.Services.AddSingleton<IExternalLogisticsProvider,
+    UnconfiguredExternalLogisticsProvider>();
 var otpKeyConfigured = false;
 try
 {
@@ -67,6 +76,90 @@ catch (FormatException)
 // while database readiness will correctly fail closed.
 var identityConnectionString = builder.Configuration.GetConnectionString("IdentityDb");
 var hasIdentityDb = !string.IsNullOrWhiteSpace(identityConnectionString);
+// Research storage is opt-in and has no public write/export endpoint.
+var learningConnectionString = builder.Configuration.GetConnectionString("AllocationLearningDb");
+var hasLearningDb = !string.IsNullOrWhiteSpace(learningConnectionString);
+var allocationAutomationEnabled = bool.TryParse(
+    builder.Configuration["AllocationLearning:Automation:Enabled"],
+    out var parsedAutomationEnabled) && parsedAutomationEnabled;
+var allocationAutomationActor = Guid.TryParse(
+    builder.Configuration["AllocationLearning:Automation:AccountId"],
+    out var parsedAutomationActor) && parsedAutomationActor != Guid.Empty
+        ? parsedAutomationActor : (Guid?)null;
+var allocationAutomationTraining = int.TryParse(
+    builder.Configuration["AllocationLearning:Automation:MinimumTrainingLabels"],
+    out var parsedAutomationTraining)
+        ? parsedAutomationTraining : (int?)null;
+var allocationAutomationValidation = int.TryParse(
+    builder.Configuration["AllocationLearning:Automation:MinimumValidationLabels"],
+    out var parsedAutomationValidation)
+        ? parsedAutomationValidation : (int?)null;
+var allocationAutomationPool = long.TryParse(
+    builder.Configuration["AllocationLearning:Automation:PoolRial"],
+    out var parsedAutomationPool)
+        ? parsedAutomationPool : (long?)null;
+var allocationAutomationPollMinutes = int.TryParse(
+    builder.Configuration["AllocationLearning:Automation:PollIntervalMinutes"],
+    out var parsedAutomationPollMinutes)
+        ? parsedAutomationPollMinutes : (int?)null;
+var allocationAutomationPolicy = new AllocationLearningAutomationPolicy(
+    allocationAutomationEnabled,
+    allocationAutomationActor,
+    allocationAutomationTraining,
+    allocationAutomationValidation,
+    allocationAutomationPool,
+    allocationAutomationPollMinutes);
+builder.Services.AddSingleton(allocationAutomationPolicy);
+if (hasLearningDb)
+{
+    builder.Services.AddDbContext<HanaAllocationLearningDbContext>(options =>
+        options.UseNpgsql(learningConnectionString, postgres =>
+            postgres.MigrationsHistoryTable("__EFMigrationsHistory", "allocation_learning")));
+    builder.Services.AddScoped<AllocationLearningRecorder>();
+    builder.Services.AddScoped<AllocationProposalService>();
+    builder.Services.AddScoped<AllocationLearningAutomationPlanner>();
+    if (hasIdentityDb)
+    {
+        builder.Services.AddScoped<AllocationTrainingWorkflow>();
+        builder.Services.AddScoped<AllocationLearningAutomationExecutor>();
+        builder.Services.AddScoped<AllocationReviewedOutcomeService>();
+        builder.Services.AddScoped<AllocationPilotService>();
+        builder.Services.AddScoped<AllocationProductionControlService>();
+        builder.Services.AddScoped<AllocationRuntimePromotionService>();
+        builder.Services.AddScoped<AllocationRetentionService>();
+        builder.Services.AddScoped<AllocationModelBenchmarkService>();
+        builder.Services.AddScoped<AllocationShadowModelBenchmarkService>();
+        builder.Services.AddScoped<AllocationEbmArtifactService>();
+        builder.Services.AddScoped<AllocationEbmBenchmarkService>();
+        builder.Services.AddScoped<IAllocationRuntimeProfileProvider,
+            AllocationRuntimeProfileProvider>();
+        if (allocationAutomationPolicy.IsWorkerConfigured)
+            builder.Services.AddHostedService<AllocationLearningAutomationWorker>();
+    }
+}
+else
+{
+    builder.Services.AddScoped<IAllocationRuntimeProfileProvider,
+        BaselineAllocationRuntimeProfileProvider>();
+}
+var commerceConnectionString = builder.Configuration.GetConnectionString("CommerceDb");
+var hasCommerceDb = hasIdentityDb && !string.IsNullOrWhiteSpace(commerceConnectionString);
+if (hasCommerceDb)
+{
+    builder.Services.AddDbContext<HanaCommerceDbContext>(options => options.UseNpgsql(commerceConnectionString,
+        pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "commerce")));
+    builder.Services.AddScoped<CommerceService>();
+    if (Guid.TryParse(builder.Configuration["Commerce:AutomationAccountId"], out var automationAccount) && automationAccount != Guid.Empty)
+        builder.Services.AddHostedService(services => new CommerceAutomation(
+            services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<IClock>(),
+            services.GetRequiredService<ILogger<CommerceAutomation>>(), automationAccount));
+}
+if (hasCommerceDb && hasLearningDb)
+{
+    builder.Services.AddScoped<HennaAllocationLearningCapture>();
+    builder.Services.AddScoped<HennaAllocationOutcomeCapture>();
+    builder.Services.AddHostedService<HennaAllocationLearningCaptureWorker>();
+}
 if (hasIdentityDb)
 {
     builder.Services.AddDbContext<HanaIdentityDbContext>(
@@ -134,13 +227,37 @@ app.MapGet("/health/ready", async (IServiceProvider services,
         var sellerPending = await sellerDb.Database.GetPendingMigrationsAsync(cancellationToken);
         var catalogPending = await catalogDb.Database.GetPendingMigrationsAsync(cancellationToken);
         var geographyPending = await geographyDb.Database.GetPendingMigrationsAsync(cancellationToken);
-        return pending.Any() || sellerPending.Any() || catalogPending.Any() ||
+        if (pending.Any() || sellerPending.Any() || catalogPending.Any() ||
             geographyPending.Any() ||
             !await sellerDb.Database.CanConnectAsync(cancellationToken) ||
             !await catalogDb.Database.CanConnectAsync(cancellationToken) ||
-            !await geographyDb.Database.CanConnectAsync(cancellationToken)
-            ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
-            : Results.Ok(new { ready = true, modules = new[] { "identity", "seller", "catalog", "geography" } });
+            !await geographyDb.Database.CanConnectAsync(cancellationToken))
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+        if (hasCommerceDb)
+        {
+            var commerceDb = scope.ServiceProvider.GetRequiredService<HanaCommerceDbContext>();
+            if (!await commerceDb.Database.CanConnectAsync(cancellationToken) ||
+                (await commerceDb.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (hasLearningDb)
+        {
+            var learningDb = scope.ServiceProvider
+                .GetRequiredService<HanaAllocationLearningDbContext>();
+            if (!await learningDb.Database.CanConnectAsync(cancellationToken) ||
+                (await learningDb.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var modules = new List<string>
+        {
+            "identity", "seller", "catalog", "geography"
+        };
+        if (hasCommerceDb) modules.Add("commerce");
+        if (hasLearningDb) modules.Add("allocation-learning");
+        return Results.Ok(new { ready = true, modules = modules.ToArray() });
     }
     catch
     {
@@ -348,9 +465,13 @@ app.MapSellerActivityArea(hasIdentityDb);
 app.MapSellerAdditionalInformation(hasIdentityDb);
 app.MapSellerApplicationStatus(hasIdentityDb);
 app.MapSellerApplicationAmendments(hasIdentityDb);
-app.MapSellerAccess(hasIdentityDb);
+app.MapSellerAccess(hasIdentityDb, hasCommerceDb);
 app.MapAdminSellerApplications(hasIdentityDb);
+app.MapCommerce(hasCommerceDb);
+app.MapAllocationLearningProposals(hasIdentityDb && hasLearningDb);
 app.MapAdminSellerActivation(hasIdentityDb);
+app.MapAdminSellerSuspensions(hasIdentityDb);
+app.MapAdminExternalIntegrations(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 
@@ -384,6 +505,25 @@ if (args.Any(value => value.StartsWith(
 
 // Migration is an explicit one-off operator action, never a side effect of
 // starting ordinary API replicas. Store the real password only in env/secrets.
+if (args.Contains("--apply-learning-migrations", StringComparer.Ordinal))
+{
+    if (string.IsNullOrWhiteSpace(learningConnectionString))
+        throw new InvalidOperationException("AllocationLearningDb connection string is required.");
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<HanaAllocationLearningDbContext>()
+        .Database.MigrateAsync();
+    return;
+}
+
+if (args.Contains("--apply-commerce-migrations", StringComparer.Ordinal))
+{
+    if (!hasIdentityDb || string.IsNullOrWhiteSpace(commerceConnectionString))
+        throw new InvalidOperationException("IdentityDb and CommerceDb are required.");
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<HanaCommerceDbContext>().Database.MigrateAsync();
+    return;
+}
+
 if (args.Contains("--apply-migrations", StringComparer.Ordinal))
 {
     if (!hasIdentityDb)

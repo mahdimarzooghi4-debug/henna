@@ -8,7 +8,8 @@ internal static class SellerAccessEndpoints
 {
     internal static void MapSellerAccess(
         this WebApplication app,
-        bool hasDatabase)
+        bool hasDatabase,
+        bool commerceConfigured)
     {
         app.MapGet("/api/v1/seller/access", async (
             HttpContext context,
@@ -44,6 +45,12 @@ internal static class SellerAccessEndpoints
 
                 var db =
                     services.GetRequiredService<HanaSellerDbContext>();
+                if (await db.SellerSuspensions.AsNoTracking().AnyAsync(
+                    x => x.ApplicationAccountId == accountId.Value &&
+                        x.RestoredAtUtc == null,
+                    cancellationToken))
+                    return Results.StatusCode(
+                        StatusCodes.Status403Forbidden);
                 var activation = await db.RegistrationDrafts
                     .AsNoTracking()
                     .Where(x =>
@@ -81,12 +88,15 @@ internal static class SellerAccessEndpoints
                     capabilities = new
                     {
                         dashboard = true,
-                        orders = false,
-                        listings = false,
-                        inventory = false,
-                        pricing = false,
-                        settlements = false,
-                        reports = false
+                        orders = commerceConfigured,
+                        listings = commerceConfigured,
+                        serviceListings = commerceConfigured &&
+                            activation.OfferingType is "SERVICE" or "BOTH",
+                        inventory = commerceConfigured &&
+                            activation.OfferingType is "GOOD" or "BOTH",
+                        pricing = commerceConfigured,
+                        settlements = commerceConfigured,
+                        reports = commerceConfigured
                     }
                 });
             }

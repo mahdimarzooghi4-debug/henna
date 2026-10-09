@@ -37,15 +37,20 @@ internal static class SellerActivityAreaEndpoints
             var serviceArea = SellerIdentityInputValidation.CleanText(
                 input.ServiceArea, 240);
 
+            var coordinatePairValid =
+                (input.Latitude is null && input.Longitude is null) ||
+                (input.Latitude is >= -90 and <= 90 &&
+                 input.Longitude is >= -180 and <= 180);
             if (input.ProvinceId == Guid.Empty ||
                 input.CityId == Guid.Empty ||
                 address is null || hours is null || serviceArea is null ||
-                (!input.SellerDelivery && !input.Pickup))
+                (!input.SellerDelivery && !input.Pickup) ||
+                !coordinatePairValid)
                 return Results.ValidationProblem(
                     new Dictionary<string, string[]>
                     {
                         ["activityArea"] =
-                            ["محدوده فعالیت کامل یا معتبر نیست."]
+                            ["محدوده فعالیت یا مختصات آن کامل و معتبر نیست."]
                     });
 
             if (!hasDatabase)
@@ -103,6 +108,8 @@ internal static class SellerActivityAreaEndpoints
                       activity_province_id = {input.ProvinceId},
                       activity_city_id = {input.CityId},
                       activity_address = {address},
+                      activity_latitude = {input.Latitude},
+                      activity_longitude = {input.Longitude},
                       activity_hours = {hours},
                       seller_delivery = {input.SellerDelivery},
                       pickup = {input.Pickup},
@@ -125,6 +132,8 @@ internal static class SellerActivityAreaEndpoints
                         province = new { id = province.Id, name = province.Name },
                         city = new { id = city.Id, name = city.Name },
                         address,
+                        latitude = input.Latitude,
+                        longitude = input.Longitude,
                         activityHours = hours,
                         sellerDelivery = input.SellerDelivery,
                         pickup = input.Pickup,
@@ -160,6 +169,8 @@ internal sealed record SellerActivityAreaInput(
     Guid ProvinceId,
     Guid CityId,
     string? Address,
+    decimal? Latitude,
+    decimal? Longitude,
     string? ActivityHours,
     bool SellerDelivery,
     bool Pickup,

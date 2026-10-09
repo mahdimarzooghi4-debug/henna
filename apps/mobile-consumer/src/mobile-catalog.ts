@@ -9,6 +9,10 @@ export type CatalogProduct = {
   id: string; categoryId: string; name: string;
   kind: "GOOD" | "SERVICE"; description: string | null;
 };
+export type CatalogServiceListing = {
+  id: string; sellerId: string; productId: string; priceRial: number;
+  availabilityNote: string; version: number; storeName: string;
+};
 export type CatalogPage = {
   items: CatalogProduct[]; page: number; pageSize: number; total: number;
 };
@@ -80,6 +84,30 @@ function products(raw: unknown): CatalogPage | null {
   return {
     items, page: value.page, pageSize: value.pageSize, total: value.total,
   };
+}
+
+function serviceListings(
+  raw: unknown, requestedProductId: string,
+): CatalogServiceListing[] | null {
+  const value=record(raw);
+  if(!value || value.page!==1 || value.pageSize!==20 ||
+    !Array.isArray(value.items) || value.items.length>20) return null;
+  const items:CatalogServiceListing[]=[];
+  for(const rawItem of value.items){
+    const item=record(rawItem);
+    if(!item || item.published!==true || !validId(item.id) ||
+      !validId(item.sellerId) || item.productId!==requestedProductId ||
+      !boundedInt(item.priceRial,1,Number.MAX_SAFE_INTEGER) ||
+      !boundedText(item.availabilityNote,500) ||
+      !boundedInt(item.version,1,2147483647) ||
+      !boundedText(item.storeName,200)) return null;
+    items.push({
+      id:item.id,sellerId:item.sellerId,productId:requestedProductId,
+      priceRial:item.priceRial,availabilityNote:item.availabilityNote,
+      version:item.version,storeName:item.storeName,
+    });
+  }
+  return items;
 }
 
 export type CatalogQuery = {
@@ -173,5 +201,14 @@ export class MobileCatalogClient {
   detail(id: string, signal?: AbortSignal): Promise<CatalogResult<CatalogProduct>> {
     if (!validId(id)) return Promise.resolve({ status: "invalid" });
     return this.get("/api/v1/catalog/products/" + id, product, true, signal);
+  }
+
+  serviceListings(
+    productId:string, signal?:AbortSignal,
+  ):Promise<CatalogResult<CatalogServiceListing[]>> {
+    if(!validId(productId))return Promise.resolve({status:"invalid"});
+    return this.get(
+      "/api/v1/service-listings?productId="+encodeURIComponent(productId)+"&page=1",
+      raw=>serviceListings(raw,productId),false,signal);
   }
 }

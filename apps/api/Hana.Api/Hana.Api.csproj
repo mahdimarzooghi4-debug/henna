@@ -4,5 +4,6 @@
     <ProjectReference Include="../../../src/Hana.Domain/Hana.Domain.csproj" />
     <ProjectReference Include="../../../src/Hana.Infrastructure/Hana.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    <PackageReference Include="libxgboost-2.0.3-linux-x64" Version="1.0.3" />
   </ItemGroup>
 </Project>

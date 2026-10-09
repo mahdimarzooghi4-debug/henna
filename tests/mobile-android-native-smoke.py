@@ -5,6 +5,7 @@ No OCR/screenshot guesses, test seed, SMS token or production HTTP endpoint.
 This test deliberately omits EXPO_PUBLIC_HANA_API_BASE_URL: the already
 approved 503/unavailable UI must remain truthful without an API server.
 """
+import base64
 import glob
 import os
 import re
@@ -46,6 +47,53 @@ def hierarchy():
     )
 
 
+def dismiss_known_emulator_anr():
+    """Dismiss only known emulator-system ANRs, never the Henna app's errors."""
+    try:
+        execute("adb", "shell", "uiautomator", "dump",
+                "/sdcard/hana-system-window.xml", timeout=20)
+        raw = execute("adb", "exec-out", "cat",
+                      "/sdcard/hana-system-window.xml", timeout=20)
+        root = ET.fromstring(raw)
+        values = {
+            value for node in root.iter()
+            for key in ("text", "content-desc")
+            if (value := node.attrib.get(key))
+        }
+        known = {
+            "Pixel Launcher isn't responding",
+            "com.google.android.googlesdksetup isn't responding",
+        }
+        observed = next((title for title in known if title in values), None)
+        if observed is None:
+            return False
+        wait = next(
+            (node for node in root.iter()
+             if node.attrib.get("text") == "Wait" or
+             node.attrib.get("content-desc") == "Wait"),
+            None,
+        )
+        if wait is None:
+            return False
+        bounds = wait.attrib.get("bounds", "")
+        coords = list(map(int, re.findall(r"\d+", bounds)))
+        if len(coords) != 4:
+            return False
+        x1, y1, x2, y2 = coords
+        execute("adb", "shell", "input", "tap",
+                str((x1 + x2) // 2), str((y1 + y2) // 2))
+        print(
+            f"Dismissed known emulator system ANR ({observed}); "
+            "continuing strict app UI checks.",
+            flush=True,
+        )
+        time.sleep(2)
+        return True
+    except (subprocess.TimeoutExpired, ET.ParseError, AssertionError,
+            StopIteration):
+        return False
+
+
 def wait_screen(*phrases, timeout=110):
     end = time.monotonic() + timeout
     last = "<no UI hierarchy yet>"
@@ -55,6 +103,10 @@ def wait_screen(*phrases, timeout=110):
             if all(phrase in last for phrase in phrases):
                 print("Observed native UI: " + " / ".join(phrases), flush=True)
                 return last
+            if ("Pixel Launcher isn't responding" in last or
+                    "com.google.android.googlesdksetup isn't responding" in last):
+                dismiss_known_emulator_anr()
+                continue
         except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
             pass
         time.sleep(2)
@@ -62,6 +114,58 @@ def wait_screen(*phrases, timeout=110):
         f"Real Android UI did not contain {phrases!r}. "
         f"Last accessibility hierarchy:\n{last[-7000:]}"
     )
+
+
+def tap_label(label, timeout=30):
+    """Wait for the real app control after a known system ANR is dismissed."""
+    end = time.monotonic() + timeout
+    last = "<no UI hierarchy yet>"
+    while time.monotonic() < end:
+        dismiss_known_emulator_anr()
+        try:
+            execute("adb", "shell", "uiautomator", "dump",
+                    "/sdcard/hana-window.xml", timeout=20)
+            raw = execute("adb", "exec-out", "cat",
+                          "/sdcard/hana-window.xml", timeout=20)
+            root = ET.fromstring(raw)
+            last = "\n".join(
+                value for item in root.iter()
+                for key in ("text", "content-desc")
+                if (value := item.attrib.get(key))
+            )
+            node = next(
+                (item for item in root.iter()
+                 if item.attrib.get("content-desc") == label),
+                None,
+            )
+            if node is not None:
+                coords = list(map(int, re.findall(r"\d+", node.attrib["bounds"])))
+                if len(coords) == 4:
+                    x1, y1, x2, y2 = coords
+                    execute("adb", "shell", "input", "tap",
+                            str((x1 + x2) // 2), str((y1 + y2) // 2))
+                    return
+        except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
+            pass
+        time.sleep(2)
+    raise AssertionError(
+        f"Native control {label!r} did not become visible after system ANR recovery. "
+        f"Last accessibility hierarchy:\n{last[-5000:]}"
+    )
+
+def tap_until_screen(label, *phrases, attempts=3):
+    """Retry only a lost emulator tap; the destination UI remains strict."""
+    last_error = None
+    for _ in range(attempts):
+        try:
+            tap_label(label)
+            return wait_screen(*phrases, timeout=25)
+        except (AssertionError, StopIteration) as exc:
+            last_error = exc
+            dismiss_known_emulator_anr()
+    raise AssertionError(
+        f"Native navigation via {label!r} did not reach {phrases!r}"
+    ) from last_error
 
 
 def open_uri(uri, package):
@@ -121,6 +225,22 @@ def main():
     # parsed-but-unused string in Node-only tests.
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(BROWSE, package)
+    wait_screen("کالاها را در حنا مرور کنید", TERM)
+    tap_until_screen("سبد خرید", "سبد مرجع خرید", "پاسخ سرور تأیید نشد")
+    print("HANA_NATIVE_CART_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
+    tap_until_screen("مقایسه فروشگاه‌ها و ادامه خرید", "مقایسهٔ پیشنهادها", "پاسخ سرور تأیید نشد")
+    print("HANA_NATIVE_CHECKOUT_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("سبد مرجع خرید")
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("کالاها را در حنا مرور کنید", TERM)
+    tap_until_screen("سفارش‌های من", "سفارش‌های من", "پاسخ سرور تأیید نشد")
+    print("HANA_NATIVE_ORDERS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("کالاها را در حنا مرور کنید", TERM)
+    tap_until_screen("گزارش‌ها و مرجوعی‌های من", "گزارش‌ها و مرجوعی‌های من", "پاسخ سرور تأیید نشد")
+    print("HANA_NATIVE_INCIDENTS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
+    execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
     print("PASS: installed Android native OS URI dispatch, cold/warm detail,"
           " Back to saved browse, invalid URI isolation and cold browse")

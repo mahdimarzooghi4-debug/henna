@@ -104,6 +104,29 @@ test("published detail is shaped without price; non-public detail is 404", async
   checkPublicCall(calls[0]);
 });
 
+test("public service listings expose only bounded provider terms without session", async () => {
+  const listing={
+    id:CATEGORY,sellerId:CATEGORY,productId:PRODUCT,priceRial:2500,
+    availabilityNote:"شنبه تا چهارشنبه با هماهنگی",
+    version:2,published:true,storeName:"خدمات CI",privateNote:PRIVATE,
+  };
+  const {client,calls}=harness([{
+    body:{items:[listing],page:1,pageSize:20},
+  }]);
+  assert.deepEqual(await client.serviceListings(PRODUCT),{
+    status:"ok",data:[{
+      id:CATEGORY,sellerId:CATEGORY,productId:PRODUCT,priceRial:2500,
+      availabilityNote:"شنبه تا چهارشنبه با هماهنگی",
+      version:2,storeName:"خدمات CI",
+    }],
+  });
+  const url=new URL(calls[0].url);
+  assert.equal(url.pathname,"/api/v1/service-listings");
+  assert.equal(url.searchParams.get("productId"),PRODUCT);
+  assert.equal(url.searchParams.get("page"),"1");
+  checkPublicCall(calls[0]);
+});
+
 test("invalid parameters cannot make a network request", async () => {
   const { client, calls } = harness();
   for (const query of [
@@ -119,6 +142,7 @@ test("invalid parameters cannot make a network request", async () => {
     "00000000-0000-0000-0000-000000000000",
   ]) {
     assert.deepEqual(await client.detail(id), { status: "invalid" });
+    assert.deepEqual(await client.serviceListings(id), { status: "invalid" });
   }
   assert.equal(calls.length, 0);
 });

@@ -44,6 +44,8 @@ export async function PUT(request: NextRequest) {
   let provinceId: string | null = null;
   let cityId: string | null = null;
   let address: string | null = null;
+  let latitude: number | null = null;
+  let longitude: number | null = null;
   let activityHours: string | null = null;
   let serviceArea: string | null = null;
   let sellerDelivery: boolean | null = null;
@@ -58,8 +60,8 @@ export async function PUT(request: NextRequest) {
 
     const value = body as Record<string, unknown>;
     const allowed = new Set([
-      "provinceId", "cityId", "address", "activityHours",
-      "sellerDelivery", "pickup", "serviceArea", "revision",
+      "provinceId", "cityId", "address", "latitude", "longitude",
+      "activityHours", "sellerDelivery", "pickup", "serviceArea", "revision",
     ]);
     if (Object.keys(value).some((key) => !allowed.has(key)))
       return error("محدوده فعالیت معتبر نیست.", 400);
@@ -71,6 +73,12 @@ export async function PUT(request: NextRequest) {
       uuidPattern.test(value.cityId))
       cityId = value.cityId;
     address = cleanText(value.address, 500);
+    if (value.latitude !== null && value.latitude !== undefined &&
+      typeof value.latitude === "number" && Number.isFinite(value.latitude))
+      latitude = value.latitude;
+    if (value.longitude !== null && value.longitude !== undefined &&
+      typeof value.longitude === "number" && Number.isFinite(value.longitude))
+      longitude = value.longitude;
     activityHours = cleanText(value.activityHours, 180);
     serviceArea = cleanText(value.serviceArea, 240);
     if (typeof value.sellerDelivery === "boolean")
@@ -83,10 +91,16 @@ export async function PUT(request: NextRequest) {
     return error("محدوده فعالیت معتبر نیست.", 400);
   }
 
+  const coordinatesValid =
+    (latitude === null && longitude === null) ||
+    (latitude !== null && longitude !== null &&
+      latitude >= -90 && latitude <= 90 &&
+      longitude >= -180 && longitude <= 180);
   if (!provinceId || !cityId || !address || !activityHours ||
     !serviceArea || sellerDelivery === null || pickup === null ||
-    (!sellerDelivery && !pickup) || revision === null)
-    return error("محدوده فعالیت کامل یا معتبر نیست.", 400);
+    (!sellerDelivery && !pickup) || revision === null ||
+    !coordinatesValid)
+    return error("محدوده فعالیت یا مختصات آن کامل و معتبر نیست.", 400);
 
   const target = hanaAuthApiUrl(
     "/api/v1/seller/registration/activity-area");
@@ -104,6 +118,8 @@ export async function PUT(request: NextRequest) {
         provinceId,
         cityId,
         address,
+        latitude,
+        longitude,
         activityHours,
         sellerDelivery,
         pickup,
@@ -137,7 +153,9 @@ export async function PUT(request: NextRequest) {
       typeof payload.city !== "object" ||
       !("id" in payload.city) || payload.city.id !== cityId ||
       !("name" in payload.city) ||
-      typeof payload.city.name !== "string")
+      typeof payload.city.name !== "string" ||
+      !("latitude" in payload) || payload.latitude !== latitude ||
+      !("longitude" in payload) || payload.longitude !== longitude)
       return error("ذخیره محدوده فعالیت تأیید نشد.", 503);
 
     return NextResponse.json(payload, { headers: noStore });

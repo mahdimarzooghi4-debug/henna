@@ -114,6 +114,27 @@ public sealed class SellerActivationApiTests
             new AuthenticationHeaderValue(
                 "Bearer", applicantToken);
 
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await applicant.GetAsync(
+                "/api/v1/admin/integrations/status")).StatusCode);
+        var integrationStatus = await admin.GetAsync(
+            "/api/v1/admin/integrations/status");
+        Assert.Equal(HttpStatusCode.OK, integrationStatus.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await integrationStatus.Content.ReadAsStringAsync()))
+        {
+            Assert.False(body.RootElement.GetProperty(
+                "sms").GetProperty("configured").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerIdentity").GetProperty("configured").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "payment").GetProperty("configured").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "logistics").GetProperty("configured").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "allExternalReady").GetBoolean());
+        }
+
         Assert.False(await identity.RoleAssignments.AsNoTracking()
             .AnyAsync(x =>
                 x.AccountId == applicantId &&
@@ -293,9 +314,27 @@ public sealed class SellerActivationApiTests
             Assert.True(body.RootElement.GetProperty(
                 "capabilities").GetProperty(
                     "dashboard").GetBoolean());
-            Assert.False(body.RootElement.GetProperty(
+            Assert.True(body.RootElement.GetProperty(
                 "capabilities").GetProperty(
                     "orders").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "listings").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "inventory").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "serviceListings").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "pricing").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "settlements").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "capabilities").GetProperty(
+                    "reports").GetBoolean());
         }
 
         var status = await applicant.GetAsync(
@@ -314,6 +353,163 @@ public sealed class SellerActivationApiTests
             Assert.NotEqual(JsonValueKind.Null,
                 body.RootElement.GetProperty(
                     "activatedAtUtc").ValueKind);
+        }
+
+        var suspendUrl = "/api/v1/admin/seller-applications/" +
+            applicantId + "/suspend";
+        var suspendKey = Guid.NewGuid();
+        async Task<HttpResponseMessage> Suspend(
+            Guid key, string reason = "CI compliance hold")
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post, suspendUrl)
+            {
+                Content = JsonContent.Create(new
+                {
+                    revision = 6,
+                    reason
+                })
+            };
+            request.Headers.Add("Idempotency-Key", key.ToString());
+            return await admin.SendAsync(request);
+        }
+
+        var suspendedResponse = await Suspend(suspendKey);
+        Assert.Equal(HttpStatusCode.OK, suspendedResponse.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await suspendedResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(7, body.RootElement.GetProperty(
+                "revision").GetInt32());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerSuspended").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerRoleGranted").GetBoolean());
+            Assert.Equal("CI compliance hold",
+                body.RootElement.GetProperty(
+                    "suspensionReason").GetString());
+        }
+        Assert.Equal(HttpStatusCode.OK,
+            (await Suspend(suspendKey)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await Suspend(suspendKey, "changed reason")).StatusCode);
+
+        // Replaying the original activation key must report the CURRENT
+        // suspension boundary, never the historic activation state.
+        var suspendedActivationReplay = await Activate(activationKey);
+        Assert.Equal(HttpStatusCode.OK, suspendedActivationReplay.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await suspendedActivationReplay.Content.ReadAsStringAsync()))
+        {
+            Assert.True(body.RootElement.GetProperty(
+                "sellerActivated").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerSuspended").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerRoleGranted").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerAccessEnabled").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
+        }
+
+        identity.ChangeTracker.Clear();
+        Assert.False(await identity.RoleAssignments.AsNoTracking()
+            .AnyAsync(x =>
+                x.AccountId == applicantId &&
+                x.Role == HanaRoles.Seller));
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await applicant.GetAsync("/api/v1/seller/access")).StatusCode);
+        var suspendedStatus = await applicant.GetAsync(
+            "/api/v1/seller/registration/status");
+        Assert.Equal(HttpStatusCode.OK, suspendedStatus.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await suspendedStatus.Content.ReadAsStringAsync()))
+        {
+            Assert.False(body.RootElement.GetProperty(
+                "sellerAccessEnabled").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
+        }
+
+        seller.ChangeTracker.Clear();
+        var openSuspension = Assert.Single(
+            await seller.SellerSuspensions.AsNoTracking()
+                .Where(x => x.ApplicationAccountId == applicantId &&
+                    x.RestoredAtUtc == null)
+                .ToListAsync());
+        Assert.Equal(suspendKey, openSuspension.SuspensionKey);
+        Assert.Equal("CI compliance hold", openSuspension.Reason);
+
+        var restoreUrl = "/api/v1/admin/seller-applications/" +
+            applicantId + "/restore";
+        var restoreKey = Guid.NewGuid();
+        async Task<HttpResponseMessage> Restore(Guid key)
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post, restoreUrl)
+            {
+                Content = JsonContent.Create(new { revision = 7 })
+            };
+            request.Headers.Add("Idempotency-Key", key.ToString());
+            return await admin.SendAsync(request);
+        }
+
+        var restoredResponse = await Restore(restoreKey);
+        Assert.Equal(HttpStatusCode.OK, restoredResponse.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await restoredResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(8, body.RootElement.GetProperty(
+                "revision").GetInt32());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerSuspended").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerRoleGranted").GetBoolean());
+        }
+        Assert.Equal(HttpStatusCode.OK,
+            (await Restore(restoreKey)).StatusCode);
+
+        var restoredActivationReplay = await Activate(activationKey);
+        Assert.Equal(HttpStatusCode.OK, restoredActivationReplay.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await restoredActivationReplay.Content.ReadAsStringAsync()))
+        {
+            Assert.True(body.RootElement.GetProperty(
+                "sellerActivated").GetBoolean());
+            Assert.False(body.RootElement.GetProperty(
+                "sellerSuspended").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerRoleGranted").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerAccessEnabled").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
+        }
+
+        identity.ChangeTracker.Clear();
+        seller.ChangeTracker.Clear();
+        Assert.True(await identity.RoleAssignments.AsNoTracking()
+            .AnyAsync(x =>
+                x.AccountId == applicantId &&
+                x.Role == HanaRoles.Seller));
+        var restoredSuspension = await seller.SellerSuspensions
+            .AsNoTracking().SingleAsync(x =>
+                x.ApplicationAccountId == applicantId);
+        Assert.NotNull(restoredSuspension.RestoredAtUtc);
+        Assert.Equal(restoreKey, restoredSuspension.RestoreKey);
+        Assert.Equal(HttpStatusCode.OK,
+            (await applicant.GetAsync("/api/v1/seller/access")).StatusCode);
+        var restoredStatus = await applicant.GetAsync(
+            "/api/v1/seller/registration/status");
+        Assert.Equal(HttpStatusCode.OK, restoredStatus.StatusCode);
+        using (var body = JsonDocument.Parse(
+            await restoredStatus.Content.ReadAsStringAsync()))
+        {
+            Assert.True(body.RootElement.GetProperty(
+                "sellerAccessEnabled").GetBoolean());
+            Assert.True(body.RootElement.GetProperty(
+                "sellerPanelEnabled").GetBoolean());
         }
     }
 

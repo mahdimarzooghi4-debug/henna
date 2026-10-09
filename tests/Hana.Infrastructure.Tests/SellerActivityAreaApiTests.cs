@@ -144,6 +144,8 @@ public sealed class SellerActivityAreaApiTests
             provinceId = otherProvinceId,
             cityId,
             address = "خیابان آزمون، پلاک ۱۲",
+            latitude = 35.721234m,
+            longitude = 51.412345m,
             activityHours = "شنبه تا پنجشنبه، ۸ تا ۲۲",
             sellerDelivery = true,
             pickup = false,
@@ -165,11 +167,28 @@ public sealed class SellerActivityAreaApiTests
         });
         Assert.Equal(HttpStatusCode.BadRequest, noDelivery.StatusCode);
 
+        var halfCoordinate = await client.PutAsJsonAsync(url, new
+        {
+            provinceId,
+            cityId,
+            address = "خیابان آزمون، پلاک ۱۲",
+            latitude = 35.721234m,
+            longitude = (decimal?)null,
+            activityHours = "شنبه تا پنجشنبه، ۸ تا ۲۲",
+            sellerDelivery = true,
+            pickup = true,
+            serviceArea = "کل شهر",
+            revision = 1
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, halfCoordinate.StatusCode);
+
         var saved = await client.PutAsJsonAsync(url, new
         {
             provinceId,
             cityId,
             address = "خیابان آزمون، پلاک ۱۲",
+            latitude = 35.721234m,
+            longitude = 51.412345m,
             activityHours = "شنبه تا پنجشنبه، ۸ تا ۲۲",
             sellerDelivery = true,
             pickup = true,
@@ -190,6 +209,10 @@ public sealed class SellerActivityAreaApiTests
             Assert.Equal("شهر فعالیت CI",
                 body.RootElement.GetProperty("city")
                     .GetProperty("name").GetString());
+            Assert.Equal(35.721234m,
+                body.RootElement.GetProperty("latitude").GetDecimal());
+            Assert.Equal(51.412345m,
+                body.RootElement.GetProperty("longitude").GetDecimal());
         }
 
         var row = await seller.RegistrationDrafts.AsNoTracking()
@@ -197,6 +220,8 @@ public sealed class SellerActivityAreaApiTests
         Assert.Equal(5, row.CompletedStep);
         Assert.Equal(provinceId, row.ActivityProvinceId);
         Assert.Equal(cityId, row.ActivityCityId);
+        Assert.Equal(35.721234m, row.ActivityLatitude);
+        Assert.Equal(51.412345m, row.ActivityLongitude);
         Assert.True(row.SellerDelivery);
         Assert.True(row.Pickup);
 
@@ -210,5 +235,11 @@ public sealed class SellerActivityAreaApiTests
         Assert.Equal("شهر فعالیت CI",
             restoredBody.RootElement
                 .GetProperty("activityCityName").GetString());
+        Assert.Equal(35.721234m,
+            restoredBody.RootElement.GetProperty("activityLatitude")
+                .GetDecimal());
+        Assert.Equal(51.412345m,
+            restoredBody.RootElement.GetProperty("activityLongitude")
+                .GetDecimal());
     }
 }

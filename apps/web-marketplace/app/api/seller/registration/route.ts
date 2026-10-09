@@ -162,6 +162,10 @@ export async function GET(request: NextRequest) {
       ? payload.activityCityName : null;
     const activityAddress = "activityAddress" in payload
       ? payload.activityAddress : null;
+    const activityLatitude = "activityLatitude" in payload
+      ? payload.activityLatitude : null;
+    const activityLongitude = "activityLongitude" in payload
+      ? payload.activityLongitude : null;
     const activityHours = "activityHours" in payload
       ? payload.activityHours : null;
     const sellerDelivery = "sellerDelivery" in payload
@@ -173,7 +177,8 @@ export async function GET(request: NextRequest) {
     if (completedStep < 5) {
       if (activityProvinceId !== null || activityProvinceName !== null ||
         activityCityId !== null || activityCityName !== null ||
-        activityAddress !== null || activityHours !== null ||
+        activityAddress !== null || activityLatitude !== null ||
+        activityLongitude !== null || activityHours !== null ||
         sellerDelivery !== null || pickup !== null || serviceArea !== null)
         return error(unavailable, 503);
     } else if (
@@ -187,6 +192,13 @@ export async function GET(request: NextRequest) {
       !activityCityName.trim() || activityCityName.length > 120 ||
       typeof activityAddress !== "string" ||
       !activityAddress.trim() || activityAddress.length > 500 ||
+      !((activityLatitude === null && activityLongitude === null) ||
+        (typeof activityLatitude === "number" &&
+          Number.isFinite(activityLatitude) &&
+          activityLatitude >= -90 && activityLatitude <= 90 &&
+          typeof activityLongitude === "number" &&
+          Number.isFinite(activityLongitude) &&
+          activityLongitude >= -180 && activityLongitude <= 180)) ||
       typeof activityHours !== "string" ||
       !activityHours.trim() || activityHours.length > 180 ||
       typeof sellerDelivery !== "boolean" ||
@@ -282,6 +294,8 @@ export async function GET(request: NextRequest) {
           activityCityId,
           activityCityName,
           activityAddress,
+          activityLatitude,
+          activityLongitude,
           activityHours,
           sellerDelivery,
           pickup,
@@ -317,6 +331,8 @@ export async function GET(request: NextRequest) {
           activityCityId,
           activityCityName,
           activityAddress,
+          activityLatitude,
+          activityLongitude,
           activityHours,
           sellerDelivery,
           pickup,

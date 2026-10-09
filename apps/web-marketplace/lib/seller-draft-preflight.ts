@@ -44,6 +44,8 @@ export type SellerPreflight =
     activityCityId: string | null;
     activityCityName: string | null;
     activityAddress: string | null;
+    activityLatitude: number | null;
+    activityLongitude: number | null;
     activityHours: string | null;
     sellerDelivery: boolean | null;
     pickup: boolean | null;
@@ -79,6 +81,8 @@ export type SellerPreflight =
     activityCityId: string | null;
     activityCityName: string | null;
     activityAddress: string | null;
+    activityLatitude: number | null;
+    activityLongitude: number | null;
     activityHours: string | null;
     sellerDelivery: boolean | null;
     pickup: boolean | null;
@@ -223,6 +227,10 @@ export async function loadSellerDraft(
       ? draft.activityCityName : null;
     const activityAddress = "activityAddress" in draft
       ? draft.activityAddress : null;
+    const activityLatitude = "activityLatitude" in draft
+      ? draft.activityLatitude : null;
+    const activityLongitude = "activityLongitude" in draft
+      ? draft.activityLongitude : null;
     const activityHours = "activityHours" in draft
       ? draft.activityHours : null;
     const sellerDelivery = "sellerDelivery" in draft
@@ -234,7 +242,8 @@ export async function loadSellerDraft(
     if (completedStep < 5) {
       if (activityProvinceId !== null || activityProvinceName !== null ||
         activityCityId !== null || activityCityName !== null ||
-        activityAddress !== null || activityHours !== null ||
+        activityAddress !== null || activityLatitude !== null ||
+        activityLongitude !== null || activityHours !== null ||
         sellerDelivery !== null || pickup !== null || serviceArea !== null)
         return { status: "unavailable" };
     } else if (
@@ -248,6 +257,13 @@ export async function loadSellerDraft(
       !activityCityName.trim() || activityCityName.length > 120 ||
       typeof activityAddress !== "string" ||
       !activityAddress.trim() || activityAddress.length > 500 ||
+      !((activityLatitude === null && activityLongitude === null) ||
+        (typeof activityLatitude === "number" &&
+          Number.isFinite(activityLatitude) &&
+          activityLatitude >= -90 && activityLatitude <= 90 &&
+          typeof activityLongitude === "number" &&
+          Number.isFinite(activityLongitude) &&
+          activityLongitude >= -180 && activityLongitude <= 180)) ||
       typeof activityHours !== "string" ||
       !activityHours.trim() || activityHours.length > 180 ||
       typeof sellerDelivery !== "boolean" ||
@@ -335,6 +351,8 @@ export async function loadSellerDraft(
         activityCityId: activityCityId as string | null,
         activityCityName: activityCityName as string | null,
         activityAddress: activityAddress as string | null,
+        activityLatitude: activityLatitude as number | null,
+        activityLongitude: activityLongitude as number | null,
         activityHours: activityHours as string | null,
         sellerDelivery: sellerDelivery as boolean | null,
         pickup: pickup as boolean | null,
@@ -373,6 +391,8 @@ export async function loadSellerDraft(
       activityCityId: activityCityId as string | null,
       activityCityName: activityCityName as string | null,
       activityAddress: activityAddress as string | null,
+      activityLatitude: activityLatitude as number | null,
+      activityLongitude: activityLongitude as number | null,
       activityHours: activityHours as string | null,
       sellerDelivery: sellerDelivery as boolean | null,
       pickup: pickup as boolean | null,

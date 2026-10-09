@@ -23,8 +23,8 @@ const catalog = new MobileCatalogClient(
 );
 
 /** Approved Figma buyer mobile frames 476:4 (empty), 478:22 (API-backed). */
-export function BuyerBrowseScreen({ onLogin, link }: {
-  onLogin: () => void; link: BuyerLinkEvent;
+export function BuyerBrowseScreen({ onLogin, onIssues, onOrders, onSupport, onWallet, onCart, active=true, link }: {
+  onIssues:()=>void; onOrders:()=>void; onSupport:()=>void; onWallet:()=>void; active?:boolean; onLogin: () => void; onCart: (productId?:string)=>void; link: BuyerLinkEvent;
 }) {
   const [detailId, setDetailId] = useState<string | null>(
     link.route.kind === "detail" ? link.route.id : null,
@@ -66,7 +66,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   const categories = browse.categories;
   // Keep the mounted browse coordinator and its real search/filter/page state.
   if (detailId !== null) return (
-    <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
+    <BuyerProductDetailScreen key={detailId} id={detailId} active={active} catalog={catalog} onCart={onCart}
       onBack={() => {
         setDetailId(null);
         // A category can leave publication while the buyer reads detail.
@@ -90,9 +90,20 @@ export function BuyerBrowseScreen({ onLogin, link }: {
               style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}>
               <Text style={styles.headerLinkText}>ورود</Text>
             </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="سبد خرید" onPress={()=>onCart()}><Text style={styles.headerLinkText}>سبد خرید</Text></Pressable>
           </View>
 
           <View style={styles.content}>
+            <Pressable style={styles.headerLink} accessibilityRole="button" accessibilityLabel="سفارش‌های من" onPress={onOrders}><Text style={styles.headerLinkText}>سفارش‌های من</Text></Pressable>
+            <Pressable style={styles.headerLink} accessibilityRole="button" accessibilityLabel="گزارش‌ها و مرجوعی‌های من" onPress={onIssues}><Text style={styles.headerLinkText}>گزارش‌ها و مرجوعی‌های من</Text></Pressable>
+            <Pressable style={styles.headerLink} accessibilityRole="button"
+              accessibilityLabel="کیف پول و برداشت" onPress={onWallet}>
+              <Text style={styles.headerLinkText}>کیف پول</Text>
+            </Pressable>
+            <Pressable style={styles.headerLink} accessibilityRole="button"
+              accessibilityLabel="اعلان‌ها و پشتیبانی" onPress={onSupport}>
+              <Text style={styles.headerLinkText}>اعلان‌ها و پشتیبانی</Text>
+            </Pressable>
             <View style={styles.intro}>
               <Text style={styles.eyebrow}>مرور کاتالوگ حنا</Text>
               <Text style={styles.title} accessibilityRole="header">
@@ -217,7 +228,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
                   {browse.search || browse.categoryId
                     ? "در این جست‌وجو یا دسته‌بندی کالای منتشرشده‌ای پیدا نشد."
                     : "پس از انتشار کالاهای واقعی، فهرست اینجا نمایش داده می‌شود."}
-                  {" "}خرید هنوز فعال نیست.
+                  {" "}برای کالاهای منتشرشده، سبد و خرید از جزئیات در دسترس است؛ خدمت فقط ارائه‌دهنده و دسترس‌پذیری را نشان می‌دهد.
                 </Text>
               </View>
             ) : (
@@ -281,7 +292,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
                   </View>
                 </View>
                 <Text style={styles.nonCommerce}>
-                  این فهرست برای مرور است؛ قیمت، موجودی و امکان خرید هنوز فعال نیست.
+                  قیمت و موجودی کالا هنگام ورود به سبد و مقایسهٔ فروشگاه از سرور بررسی می‌شود؛ خدمات در این مسیر رزرو یا لجستیک ایجاد نمی‌کنند.
                 </Text>
               </>
             )}

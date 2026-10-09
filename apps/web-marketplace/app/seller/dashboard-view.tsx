@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SellerCommerceOperations } from "./commerce-operations";
+import { SellerBusinessOperations } from "./business-operations";
 
 type SellerAccess = {
   sellerAccess: true;
@@ -13,12 +15,13 @@ type SellerAccess = {
   offeringType: "GOOD" | "SERVICE" | "BOTH";
   capabilities: {
     dashboard: true;
-    orders: false;
-    listings: false;
-    inventory: false;
-    pricing: false;
-    settlements: false;
-    reports: false;
+    orders: boolean;
+    listings: boolean;
+    serviceListings: boolean;
+    inventory: boolean;
+    pricing: boolean;
+    settlements: boolean;
+    reports: boolean;
   };
 };
 
@@ -26,17 +29,14 @@ const navigation = [
   ["داشبورد", true],
   ["سفارش‌ها", false],
   ["کالاها و خدمات", false],
-  ["کتابخانه تصاویر", false],
   ["موجودی و دسترس‌پذیری", false],
   ["قیمت‌گذاری", false],
-  ["طرح‌ها و اعتبارها", false],
-  ["ارسال و محدوده فعالیت", false],
+  ["محدوده فعالیت", true],
   ["تسویه‌حساب‌ها", false],
   ["گزارش‌ها", false],
   ["اعلان‌ها", false],
-  ["اطلاعات کسب‌وکار", false],
+  ["اطلاعات کسب‌وکار", true],
   ["پشتیبانی", false],
-  ["تنظیمات", false],
 ] as const;
 
 const capabilityCards = [
@@ -117,6 +117,21 @@ export function SellerDashboardView() {
   }
 
   const seller = state.value;
+  const availabilityReady = seller.capabilities.inventory ||
+    seller.capabilities.serviceListings;
+  const sellerNavigation = navigation.map(([label, enabled]) => {
+    const connected =
+      label === "سفارش‌ها" ? seller.capabilities.orders :
+      label === "کالاها و خدمات" ? seller.capabilities.listings :
+      label === "موجودی و دسترس‌پذیری" ? availabilityReady :
+      label === "قیمت‌گذاری" ? seller.capabilities.pricing :
+      label === "تسویه‌حساب‌ها" ? seller.capabilities.settlements :
+      label === "گزارش‌ها" ? seller.capabilities.reports :
+      label === "اعلان‌ها" || label === "پشتیبانی"
+        ? seller.capabilities.orders
+        : enabled;
+    return [label, connected] as const;
+  });
   return (
     <main className="seller-panel">
       <aside className="seller-panel__sidebar"
@@ -130,17 +145,24 @@ export function SellerDashboardView() {
         </div>
 
         <nav className="seller-panel__nav">
-          {navigation.map(([label, enabled]) => enabled
-            ? <Link key={label} href="/seller"
+          {sellerNavigation.map(([label, enabled]) => {
+            if (label === "اطلاعات کسب‌وکار" || label === "محدوده فعالیت")
+              return <Link key={label} href="/seller/register/status"
                 className="seller-panel__nav-item seller-panel__nav-item--active">
                 {label}
-              </Link>
-            : <span key={label}
-                className="seller-panel__nav-item seller-panel__nav-item--disabled"
-                aria-disabled="true">
-                {label}
-                <small>متصل نشده</small>
-              </span>)}
+              </Link>;
+            return enabled
+              ? <Link key={label} href="/seller"
+                  className="seller-panel__nav-item seller-panel__nav-item--active">
+                  {label}
+                </Link>
+              : <span key={label}
+                  className="seller-panel__nav-item seller-panel__nav-item--disabled"
+                  aria-disabled="true">
+                  {label}
+                  <small>متصل نشده</small>
+                </span>;
+          })}
         </nav>
       </aside>
 
@@ -195,6 +217,16 @@ export function SellerDashboardView() {
           </dl>
         </section>
 
+        {seller.capabilities.orders && <SellerCommerceOperations />}
+        {seller.capabilities.orders && (
+          <SellerBusinessOperations
+            offerManagementEnabled={seller.capabilities.inventory}
+            serviceListingEnabled={seller.capabilities.serviceListings}
+            settlementsEnabled={seller.capabilities.settlements}
+            reportsEnabled={seller.capabilities.reports}
+          />
+        )}
+
         <section className="seller-panel__capabilities"
           aria-labelledby="seller-capabilities-heading">
           <div className="seller-panel__section-heading">
@@ -207,32 +239,41 @@ export function SellerDashboardView() {
           </div>
 
           <div className="seller-panel__capability-grid">
-            {capabilityCards.map(([label, key]) => (
-              <article className="seller-panel__capability" key={key}>
-                <strong>{label}</strong>
-                <span className={seller.capabilities[key]
-                  ? "seller-panel__capability-state seller-panel__capability-state--ready"
-                  : "seller-panel__capability-state"}>
-                  {seller.capabilities[key]
-                    ? "فعال"
-                    : "هنوز متصل نشده"}
-                </span>
-                <p>
-                  {seller.capabilities[key]
-                    ? "این قابلیت از سرویس واقعی حنا تغذیه می‌شود."
-                    : "برای این بخش هنوز قرارداد اجرایی متصل نشده است؛ داده نمونه نمایش داده نمی‌شود."}
-                </p>
-              </article>
-            ))}
-          </div>
+            {capabilityCards.map(([label, key]) => {
+              const ready = key === "inventory"
+                ? availabilityReady : seller.capabilities[key];
+              const serviceOnlyAvailability = key === "inventory" &&
+                !seller.capabilities.inventory &&
+                seller.capabilities.serviceListings;
+              return (
+                <article className="seller-panel__capability" key={key}>
+                  <strong>{label}</strong>
+                  <span className={ready
+                    ? "seller-panel__capability-state seller-panel__capability-state--ready"
+                    : "seller-panel__capability-state"}>
+                    {ready ? "فعال" : "هنوز متصل نشده"}
+                  </span>
+                  <p>
+                    {serviceOnlyAvailability
+                      ? "برای خدمت، موجودی کالایی وجود ندارد؛ متن دسترس‌پذیری نسخه‌دار از سرویس واقعی حنا مدیریت می‌شود."
+                      : ready
+                        ? "این قابلیت از سرویس واقعی حنا تغذیه می‌شود."
+                        : "برای این بخش هنوز قرارداد اجرایی متصل نشده است؛ داده نمونه نمایش داده نمی‌شود."}
+                  </p>
+                </article>
+              );
+            })}          </div>
         </section>
 
         <section className="seller-panel__notice">
           <strong>دسترسی فروشندگی فعال است.</strong>
           <p>
             فعال‌شدن نقش فروشنده فقط دسترسی این پنل را باز کرده است.
-            سفارش، موجودی، قیمت‌گذاری و تسویه هرکدام در برش مستقل
-            و پس از اتصال backend واقعی فعال می‌شوند.
+            {seller.capabilities.orders
+              ? seller.capabilities.listings
+                ? "سفارش، مرجوعی، قیمت، موجودی، تسویه آماده‌شده، اعلان و تیکت به backend واقعی حنا متصل‌اند. انتقال بانکی و سرویس بیرونی جعل نمی‌شوند."
+                : "سفارش، مرجوعی، تسویه آماده‌شده، اعلان و تیکت متصل‌اند؛ برای فروشنده صرفاً خدماتی، مدیریت offer کالای GOOD عمداً فعال نیست."
+              : "CommerceDb در این محیط آماده نیست؛ عملیات تجاری عمداً غیرفعال مانده‌اند و داده نمونه نمایش داده نمی‌شود."}
           </p>
         </section>
       </section>

@@ -28,6 +28,8 @@ public sealed class SellerRegistrationDraft
     public Guid? ActivityProvinceId { get; set; }
     public Guid? ActivityCityId { get; set; }
     public string? ActivityAddress { get; set; }
+    public decimal? ActivityLatitude { get; set; }
+    public decimal? ActivityLongitude { get; set; }
     public string? ActivityHours { get; set; }
     public bool? SellerDelivery { get; set; }
     public bool? Pickup { get; set; }

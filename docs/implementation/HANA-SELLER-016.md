@@ -1,4 +1,4 @@
-# Seller 016 — Activated Seller Panel Shell
+# Seller 016 — Activated Seller Panel and Commerce Operations
 
 ## Figma basis
 
@@ -33,13 +33,14 @@ which is a Next BFF over:
 
 `GET /api/v1/seller/access`
 
-Backend access requires both:
+Backend access requires all of:
 
 1. Identity role `SELLER`
 2. matching Seller application with:
    - `SUBMITTED`
    - review `APPROVED`
    - non-null activation timestamp
+3. no open seller suspension record
 
 A verified account, an APPROVED review by itself, or a browser-only flag is insufficient.
 
@@ -60,16 +61,19 @@ The backend returns only real persisted context:
 Current capability readiness:
 
 - dashboard = true
-- orders = false
-- listings = false
-- inventory = false
-- pricing = false
-- settlements = false
-- reports = false
+- orders = true only when IdentityDb + CommerceDb are configured; otherwise false
+- listings = true when CommerceDb is configured
+- serviceListings = true for SERVICE/BOTH sellers when CommerceDb is configured
+- inventory = true only for GOOD/BOTH sellers when CommerceDb is configured
+- pricing = true when CommerceDb is configured
+- settlements = true when CommerceDb is configured
+- reports = true when CommerceDb is configured
 
 ## Dashboard UI
 
-The shell follows the Seller Dashboard Figma structure:
+The shell follows the Seller Dashboard Figma structure. The repository has no
+separate approved Figma frame for order/return operations, so those operational
+views reuse the current Henna tokens without claiming pixel-level Figma fidelity:
 
 - seller identity/sidebar
 - business-management heading
@@ -94,6 +98,13 @@ Seller 016 deliberately does not render Figma sample values such as:
 Unavailable modules show:
 
 `هنوز متصل نشده`
+
+When the backend reports `orders=true`, orders are backed by real commerce reads and commands. The seller can load
+its own server-scoped orders, move `PAID → PREPARING → READY_FOR_PICKUP`,
+and load its own incident/return list. For an approved damaged-item return the
+seller can register first contact and then a door visit with a traceable
+evidence reference. The buyer remains the only actor that confirms physical
+return collection.
 
 This prevents design data from being confused with production state.
 
@@ -134,7 +145,9 @@ Seller activation integration now verifies:
 - activation response reports panel enabled
 - Seller access returns real business name
 - dashboard capability enabled
-- orders capability remains disabled
+- orders capability is true only when the commerce database/service is configured
+- seller order/incident lists are scoped by SellerId before pagination
+- support incident reads require current SUPPORT permission
 
 ### Web gateway
 
@@ -157,7 +170,9 @@ It proves:
 - panel link becomes available after activation
 - `/seller` opens
 - real business/store names are rendered
-- six unsupported operational modules are marked «هنوز متصل نشده»
+- no internal seller capability card remains marked «هنوز متصل نشده»; only external bank/logistics boundaries remain out of scope
+- commerce data is loaded only after an explicit seller action
+- order-state and return-contact commands use persisted idempotency
 - no Figma sample metrics are required for the dashboard shell
 
 ## Platform scope
@@ -170,23 +185,78 @@ Release gates remain:
 - web
 - mobile typecheck
 - Android native-link checks
+- iOS Expo export/bundle check
 
-iOS remains out of scope.
+آزمون iOS روی دستگاه/شبیه‌ساز macOS در CI فعلی موجود نیست؛ export موفق به‌تنهایی آزمون دستگاه واقعی نیست.
 
-## Next slices
+## Connected commerce BFF
 
-The shell intentionally leaves operational modules disabled until each obtains a real backend contract.
+Browser code never receives the bearer token. Seller commerce uses the
+HttpOnly-cookie BFF under `/api/seller/commerce/*`, with an explicit route
+allowlist, same-origin checks for writes, bounded request/response bodies and
+UUID idempotency keys. An ambiguous 503 freezes the original key/body for a
+safe retry; a known 409 reloads server state before a new decision.
 
-Likely next vertical slice:
+## Connected seller business operations
 
-- Seller Orders read model and list/detail flow
+For GOOD/BOTH sellers, the panel connects:
+
+- seller-owned GOOD offers
+- price and stock updates with expectedVersion
+- published GOOD catalog lookup before creating a new offer
+
+For SERVICE/BOTH sellers, the panel also connects:
+
+- seller-owned service listings
+- versioned price + availability-note updates
+- published SERVICE catalog lookup before creating a listing
+- public service-provider display on buyer product detail
+- no fake stock, booking slot, delivery coverage or logistics promise
+
+Shared seller operations include:
+- read-only prepared settlements
+- internal notifications and mark-read
+- internal support ticket creation/history
+- server-scoped operational report for order states, incident/refund totals and prepared-settlement breakdowns
+
+Settlement states are deliberately shown as `READY_FOR_BANK_TRANSFER` or
+`FINANCE_REVIEW_REQUIRED`; the UI never labels them paid. Bank transfer remains
+an external integration.
+
+Offers or service listings whose catalog product/category is later unpublished
+are removed from public commerce reads, while the seller can still see its own
+stored row. Public service listings expose price and availability text only;
+they do not claim booking, inventory or delivery.
+
+## Seller suspension and restore
+
+The admin seller-review console has an explicit operator flow for already
+activated sellers:
+
+- suspend requires the current application revision, a bounded reason and a
+  UUID idempotency key;
+- suspension is stored as a separate audit record; activation history and
+  order/settlement history are preserved;
+- the SELLER role is removed in the same database transaction;
+- an open suspension is also checked independently by Seller access, Commerce
+  seller authorization and public offer/service visibility, so an accidental
+  role re-grant cannot bypass the hold;
+- restore requires the current revision and a separate idempotency key, closes
+  the open suspension and re-grants SELLER without deleting suspension history;
+- registration status reports seller access disabled while the hold is open;
+- replay of the historic activation idempotency key is suspension-aware: while
+  a hold is open it returns sellerActivated=true but sellerRoleGranted /
+  sellerAccessEnabled / sellerPanelEnabled=false, and after restore it reports
+  the current enabled state. Historical activation can never override a hold.
+
+## Remaining seller scope
+
+- external bank settlement confirmation
+- external logistics
 
 ## Non-scope
 
-- fake order data
-- catalog write operations
-- inventory mutation
-- pricing mutation
-- settlement data
-- reports
-- deactivation/suspension
+- fake order or finance data
+- fabricated bank payment
+- external logistics
+- national-scale readiness

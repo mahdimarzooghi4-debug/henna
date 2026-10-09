@@ -11,6 +11,12 @@ import {
 import {
   loadSellerDraft,
 } from "../apps/web-marketplace/lib/seller-draft-preflight.ts";
+import {
+  clearSellerRegistrationSubmitIntent,
+  persistSellerRegistrationSubmitIntent,
+  restoreSellerRegistrationSubmitIntent,
+  sellerRegistrationSubmitIntent,
+} from "../apps/web-marketplace/lib/web-pending-seller-registration.ts";
 
 const mine = {
   storeName: "فروشگاه این پنجره",
@@ -135,4 +141,58 @@ test("changing a saved form twice creates a second conflict, not an automatic re
   assert.equal(afterSecond.revision, 19);
   assert.equal(afterSecond.saved, false);
   assert.equal(afterSecond.fields, mine);
+});
+
+
+function memorySessionStorage() {
+  const values = new Map();
+  return {
+    get length() { return values.size; },
+    clear() { values.clear(); },
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    key(index) { return [...values.keys()][index] ?? null; },
+    removeItem(key) { values.delete(key); },
+    setItem(key, value) { values.set(String(key), String(value)); },
+  };
+}
+
+test("final seller submit survives reload with exact revision, key and body", () => {
+  const previousWindow = globalThis.window;
+  const store = memorySessionStorage();
+  Object.defineProperty(globalThis, "window", {
+    value: { sessionStorage: store },
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const first = sellerRegistrationSubmitIntent(8);
+    persistSellerRegistrationSubmitIntent(first);
+    assert.deepEqual(restoreSellerRegistrationSubmitIntent(), first);
+
+    const retry = sellerRegistrationSubmitIntent(8, first);
+    assert.deepEqual(retry, first);
+
+    const changed = sellerRegistrationSubmitIntent(9);
+    assert.throws(() => persistSellerRegistrationSubmitIntent(changed),
+      /must be resolved first/);
+    assert.equal(clearSellerRegistrationSubmitIntent(changed.key), false);
+
+    const storageKey = store.key(0);
+    const tampered = JSON.parse(store.getItem(storageKey));
+    tampered.body = JSON.stringify({
+      revision: 8,
+      idempotencyKey: first.key,
+      confirmed: false,
+    });
+    store.setItem(storageKey, JSON.stringify(tampered));
+    assert.throws(() => restoreSellerRegistrationSubmitIntent(), /invalid/);
+
+    store.clear();
+    persistSellerRegistrationSubmitIntent(first);
+    assert.equal(clearSellerRegistrationSubmitIntent(first.key), true);
+    assert.equal(restoreSellerRegistrationSubmitIntent(), null);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });

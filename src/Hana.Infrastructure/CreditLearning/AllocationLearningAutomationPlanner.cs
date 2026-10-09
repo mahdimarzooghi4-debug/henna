@@ -1,0 +1,155 @@
+using Hana.Domain.Credit;
+using Microsoft.EntityFrameworkCore;
+
+namespace Hana.Infrastructure.CreditLearning;
+
+public sealed record AllocationLearningAutomationCohort(
+    string DatasetVersion,
+    string SourceInstructionReference,
+    string FormulaVersion,
+    Guid? RuntimeProposalId,
+    long? RuntimeProfileSequence,
+    string RubricVersion,
+    int TrainingLabelCount,
+    int ValidationLabelCount,
+    int DistinctTrainingHouseholds,
+    int DistinctValidationHouseholds,
+    bool HouseholdPartitionOverlap,
+    DateTimeOffset LatestReviewedAtUtc,
+    IReadOnlyList<Guid> LabelIds,
+    bool MeetsConfiguredTrigger,
+    Guid? RequestId);
+
+public sealed record AllocationLearningAutomationPlan(
+    string Status,
+    bool TriggerPolicyConfigured,
+    bool AutomaticTrainingEnabled,
+    IReadOnlyList<string> MissingPolicyRequirements,
+    IReadOnlyList<AllocationLearningAutomationCohort> Cohorts);
+
+/// <summary>
+/// Discovers coherent first-party reviewed-label cohorts for future automated
+/// training orchestration. It deliberately does not decide when to train:
+/// trigger thresholds/policy require an explicit product decision.
+/// </summary>
+public sealed class AllocationLearningAutomationPlanner(
+    HanaAllocationLearningDbContext db,
+    AllocationLearningAutomationPolicy policy)
+{
+    public async Task<AllocationLearningAutomationPlan> BuildAsync(
+        CancellationToken ct = default)
+    {
+        var rows = await (
+            from label in db.NeedLabels.AsNoTracking()
+            join snapshot in db.Assessments.AsNoTracking()
+                on label.SnapshotId equals snapshot.Id
+            where snapshot.RecordedByAccountId == null &&
+                  snapshot.EvidenceReference == null &&
+                  snapshot.DatasetVersion ==
+                    HennaAllocationLearningCapture.DatasetVersion &&
+                  snapshot.SourceInstructionReference.StartsWith(
+                    "henna-program:")
+            select new { label, snapshot })
+            .ToListAsync(ct);
+
+        var lineage = await AllocationTrainingLineageResolver.ResolveEligibleAsync(
+            db, rows.Select(x => x.snapshot).DistinctBy(x => x.Id).ToArray(), ct);
+        var eligible = rows
+            .Where(x => lineage.ContainsKey(x.snapshot.Id) &&
+                !AllocationRubricFoundationBoundary.IsNonLabelingFoundation(x.label.RubricVersion))
+            .ToArray();
+
+        var cohorts = eligible
+            .GroupBy(x => new
+            {
+                x.snapshot.DatasetVersion,
+                x.snapshot.SourceInstructionReference,
+                x.snapshot.FormulaVersion,
+                x.snapshot.RuntimeProposalId,
+                x.snapshot.RuntimeProfileSequence,
+                x.label.RubricVersion
+            })
+            .Select(group =>
+            {
+                var trainingHouseholds = group
+                    .Where(x => x.label.Partition ==
+                        (int)LearningPartition.Training)
+                    .Select(x => x.snapshot.HouseholdKey)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToArray();
+                var validationHouseholds = group
+                    .Where(x => x.label.Partition ==
+                        (int)LearningPartition.Validation)
+                    .Select(x => x.snapshot.HouseholdKey)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToArray();
+
+                var trainingLabelCount = group.Count(x =>
+                    x.label.Partition == (int)LearningPartition.Training);
+                var validationLabelCount = group.Count(x =>
+                    x.label.Partition == (int)LearningPartition.Validation);
+                var overlap = trainingHouseholds
+                    .Intersect(validationHouseholds)
+                    .Any();
+                var labelIds = group.Select(x => x.label.Id)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToArray();
+                var meets = policy.IsConfigured &&
+                    trainingLabelCount >= policy.MinimumTrainingLabels!.Value &&
+                    validationLabelCount >= policy.MinimumValidationLabels!.Value &&
+                    trainingHouseholds.Length == trainingLabelCount &&
+                    validationHouseholds.Length == validationLabelCount &&
+                    !overlap;
+                var cohort = new AllocationLearningAutomationCohort(
+                    group.Key.DatasetVersion,
+                    group.Key.SourceInstructionReference,
+                    group.Key.FormulaVersion,
+                    group.Key.RuntimeProposalId,
+                    group.Key.RuntimeProfileSequence,
+                    group.Key.RubricVersion,
+                    trainingLabelCount,
+                    validationLabelCount,
+                    trainingHouseholds.Length,
+                    validationHouseholds.Length,
+                    overlap,
+                    group.Max(x => x.label.ReviewedAtUtc),
+                    labelIds,
+                    MeetsConfiguredTrigger: meets,
+                    RequestId: null);
+                return meets
+                    ? cohort with
+                    {
+                        RequestId = AllocationLearningAutomationIdentity
+                            .RequestId(cohort, policy.PoolRial!.Value)
+                    }
+                    : cohort;
+            })
+            .OrderBy(x => x.DatasetVersion, StringComparer.Ordinal)
+            .ThenBy(x => x.SourceInstructionReference, StringComparer.Ordinal)
+            .ThenBy(x => x.FormulaVersion, StringComparer.Ordinal)
+            .ThenBy(x => x.RuntimeProposalId)
+            .ThenBy(x => x.RuntimeProfileSequence)
+            .ThenBy(x => x.RubricVersion, StringComparer.Ordinal)
+            .ToArray();
+
+        var status = cohorts.Length == 0
+            ? "WAITING_FOR_REVIEWED_FIRST_PARTY_DATA"
+            : !policy.IsConfigured
+                ? "TRIGGER_POLICY_REQUIRED"
+                : !policy.IsWorkerConfigured
+                    ? "AUTOMATION_CADENCE_REQUIRED"
+                    : cohorts.Any(x => x.MeetsConfiguredTrigger)
+                        ? "AUTOMATION_ENABLED"
+                        : "WAITING_FOR_CONFIGURED_TRIGGER";
+
+        return new AllocationLearningAutomationPlan(
+            status,
+            TriggerPolicyConfigured: policy.IsConfigured,
+            AutomaticTrainingEnabled: policy.IsWorkerConfigured,
+            MissingPolicyRequirements: policy.MissingRequirements(),
+            Cohorts: cohorts);
+    }
+}

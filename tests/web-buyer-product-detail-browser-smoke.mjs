@@ -43,7 +43,17 @@ async function main() {
   const context = await browser.newContext({
     locale: "fa-IR", viewport: { width: 1440, height: 900 },
   });
-  await context.route("**/api/catalog/**", async route => {
+  await context.route("**/api/buyer/commerce/service-listings**", async route => {
+    const req=route.request(),url=new URL(req.url());
+    assert.equal(req.method(),"GET");
+    assert.equal(url.searchParams.get("productId"),ID);
+    return route.fulfill(json([{
+      id:OTHER,sellerId:OTHER,productId:ID,priceRial:2500,
+      availabilityNote:"شنبه تا چهارشنبه با هماهنگی",
+      version:1,storeName:"ارائه‌دهنده مرورگر",
+    }]));
+  });
+    await context.route("**/api/catalog/**", async route => {
     const req = route.request();
     const url = new URL(req.url());
     assert.equal(req.method(), "GET");
@@ -59,7 +69,8 @@ async function main() {
       }));
     if (url.pathname === "/api/catalog/products/" + OTHER)
       return route.fulfill(json({
-        ...published, id: OTHER, name: "کالای دیگر", description: null,
+        ...published, id: OTHER, kind: "GOOD",
+        name: "کالای دیگر", description: null,
       }));
     assert.equal(url.pathname, "/api/catalog/products/" + ID);
     if (mode === "404") return route.fulfill(json({}, 404));
@@ -83,6 +94,10 @@ async function main() {
   assert.equal(await page.getByText("SECRET").count(), 0);
   assert.equal(await page.getByText("1200").count(), 0);
   assert.equal(await page.getByRole("button", { name: /سبد|خرید/ }).count(), 0);
+  await page.getByRole("heading",{name:"ارائه‌دهنده مرورگر"}).waitFor();
+  await page.getByText("۲٬۵۰۰ ریال",{exact:false}).waitFor();
+  await page.getByText("شنبه تا چهارشنبه با هماهنگی",{exact:true}).waitFor();
+  await page.getByText("رزرو زمان، پرداخت بانکی و",{exact:false}).waitFor();
   await page.getByRole("link", { name: "بازگشت به فهرست کالاها" }).click();
   await page.getByRole("link", { name: published.name, exact: true }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/");

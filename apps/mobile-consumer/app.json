@@ -7,7 +7,23 @@
     "userInterfaceStyle": "light",
     "version": "0.1.0",
     "newArchEnabled": true,
-    "plugins": ["expo-secure-store"],
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "برای انتخاب عکس مدرک مشکل سفارش، اجازه دسترسی به عکس انتخاب‌شده را بدهید.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "حنا فقط با اقدام خودتان از موقعیت فعلی برای تکمیل مختصات نشانی استفاده می‌کند."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": false
     },
@@ -15,7 +31,7 @@
       "edgeToEdgeEnabled": true
     },
     "extra": {
-      "implementationPhase": "Frontend 020 buyer public custom-scheme links; native E2E and real SMS adapter pending"
+      "implementationPhase": "Buyer commerce cold-start recovery, evidence cleanup and foreground address location; SMS/PSP/logistics external integrations pending"
     }
   }
 }

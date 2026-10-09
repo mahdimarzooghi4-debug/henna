@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../../components/form-field";
+import { CoordinateMapPicker } from "../../../components/coordinate-map-picker";
+import type { MapPoint } from "../../../../../packages/buyer-commerce/map-tiles";
 import { SellerLocationReference } from "./location-reference";
 import {
   hasUnsavedSellerEdits, isLeavingSellerPage, validateSellerDraft,
@@ -26,6 +28,13 @@ import {
   unresolvedSellerFieldChoices, type SellerFieldChoice,
   type SellerFieldChoices,
 } from "../../../lib/seller-field-merge";
+import {
+  clearSellerRegistrationSubmitIntent,
+  persistSellerRegistrationSubmitIntent,
+  restoreSellerRegistrationSubmitIntent,
+  sellerRegistrationSubmitIntent,
+  type SellerRegistrationSubmitIntent,
+} from "../../../lib/web-pending-seller-registration";
 
 
 type SellerConflict =
@@ -87,6 +96,8 @@ export function RegistrationForm() {
   const [activityCityName, setActivityCityName] =
     useState<string | null>(null);
   const [activityAddress, setActivityAddress] = useState("");
+  const [activityLatitude, setActivityLatitude] = useState<number | null>(null);
+  const [activityLongitude, setActivityLongitude] = useState<number | null>(null);
   const [activityHours, setActivityHours] = useState("");
   const [sellerDelivery, setSellerDelivery] = useState(false);
   const [pickup, setPickup] = useState(false);
@@ -104,7 +115,10 @@ export function RegistrationForm() {
     useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [submittedAtUtc, setSubmittedAtUtc] = useState<string | null>(null);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
-  const [submitKey, setSubmitKey] = useState<string | null>(null);
+  const [pendingSubmitIntent, setPendingSubmitIntent] =
+    useState<SellerRegistrationSubmitIntent | null>(null);
+  const [submitStorageFailure, setSubmitStorageFailure] =
+    useState<string | null>(null);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [conflict, setConflict] = useState<SellerConflict | null>(null);
   const conflictHeading = useRef<HTMLHeadingElement>(null);
@@ -115,6 +129,14 @@ export function RegistrationForm() {
   function checkInitialDraft() {
     // Only a 404 from a live, authenticated server permits revision zero.
     // Retry this GET in place; page reload is not needed for an outage.
+    let pending: SellerRegistrationSubmitIntent | null = null;
+    try {
+      pending = restoreSellerRegistrationSubmitIntent();
+      setPendingSubmitIntent(pending);
+    } catch {
+      setSubmitStorageFailure(
+        "وضعیت retry امن ثبت نهایی قابل اعتماد نیست. ثبت نهایی جدید برای جلوگیری از ارسال تکراری متوقف شد.");
+    }
     preflightAbort.current?.abort();
     const controller = new AbortController();
     preflightAbort.current = controller;
@@ -131,6 +153,10 @@ export function RegistrationForm() {
         return;
       }
       if (result.status === "new") {
+        if (pending) {
+          setSubmitStorageFailure(
+            "یک ثبت نهایی حل‌نشده با وضعیت فعلی پیش‌نویس سازگار نیست. ثبت جدید متوقف شد.");
+        }
         setRevision(0);
         setBaseline(emptySellerFields);
         setAccess("signedIn");
@@ -161,6 +187,8 @@ export function RegistrationForm() {
       setActivityCityId(result.activityCityId ?? "");
       setActivityCityName(result.activityCityName);
       setActivityAddress(result.activityAddress ?? "");
+      setActivityLatitude(result.activityLatitude);
+      setActivityLongitude(result.activityLongitude);
       setActivityHours(result.activityHours ?? "");
       setSellerDelivery(result.sellerDelivery ?? false);
       setPickup(result.pickup ?? false);
@@ -180,9 +208,24 @@ export function RegistrationForm() {
       setAdditionalTouched(false);
       setAdditionalFeedback(null);
       if (result.status === "submitted") {
+        if (pending && !clearSellerRegistrationSubmitIntent(pending.key)) {
+          setSubmitStorageFailure(
+            "سرور ثبت نهایی را تأیید کرده، اما پاک‌سازی retry محلی تأیید نشد.");
+        } else {
+          setPendingSubmitIntent(null);
+        }
         setSubmittedAtUtc(result.submittedAtUtc);
         setTrackingCode(result.trackingCode);
         setMessage("درخواست فروشندگی برای بررسی ثبت شده است. تا تعیین نتیجه، اطلاعات این مرحله قابل ویرایش نیست.");
+      } else if (pending) {
+        if (result.revision !== pending.revision) {
+          setSubmitStorageFailure(
+            "نسخهٔ پیش‌نویس با ثبت نهایی حل‌نشده سازگار نیست. برای جلوگیری از تکرار نادرست، ثبت متوقف شد.");
+        } else {
+          setReviewConfirmed(true);
+          setMessage(
+            "ثبت نهایی قبلی نتیجه قطعی ندارد. همان revision، کلید و بدنه برای تکرار امن بازیابی شد.");
+        }
       } else {
         setMessage("پیش‌نویس اطلاعات اولیه شما بازیابی شد؛ می‌توانید آن را ویرایش کنید.");
       }
@@ -300,10 +343,15 @@ export function RegistrationForm() {
       businessDescription.trim().length > 0 ||
       businessPhone.trim().length > 0 ||
       offeringType !== null);
+  const activityMapPoint: MapPoint | null =
+    activityLatitude !== null && activityLongitude !== null
+      ? { latitude: activityLatitude, longitude: activityLongitude }
+      : null;
   const hasUnsavedActivityChanges = completedStep === 4 &&
     (activityProvinceId.length > 0 ||
       activityCityId.length > 0 ||
       activityAddress.trim().length > 0 ||
+      activityLatitude !== null || activityLongitude !== null ||
       activityHours.trim().length > 0 ||
       sellerDelivery || pickup ||
       serviceArea.trim().length > 0);
@@ -876,6 +924,8 @@ export function RegistrationForm() {
             provinceId: province.id,
             cityId: city.id,
             address: nextAddress,
+            latitude: activityLatitude,
+            longitude: activityLongitude,
             activityHours: nextHours,
             sellerDelivery,
             pickup,
@@ -899,12 +949,18 @@ export function RegistrationForm() {
           "city" in result && result.city &&
           typeof result.city === "object" &&
           "name" in result.city &&
-          typeof result.city.name === "string") {
+          typeof result.city.name === "string" &&
+          "latitude" in result &&
+          result.latitude === activityLatitude &&
+          "longitude" in result &&
+          result.longitude === activityLongitude) {
           setRevision(result.revision as number);
           setCompletedStep(5);
           setActivityProvinceName(result.province.name);
           setActivityCityName(result.city.name);
           setActivityAddress(nextAddress);
+          setActivityLatitude(activityLatitude);
+          setActivityLongitude(activityLongitude);
           setActivityHours(nextHours);
           setServiceArea(nextServiceArea);
           setRegistrationContactName(
@@ -1060,27 +1116,20 @@ export function RegistrationForm() {
     }
   }
 
-  async function submitForReview() {
-    if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
-      completedStep !== 6 || revision < 1 || hasUnsavedChanges ||
-      !reviewConfirmed) return;
-    const key = submitKey ?? crypto.randomUUID();
-    setSubmitKey(key);
+  async function sendSubmitIntent(
+    intent: SellerRegistrationSubmitIntent,
+  ) {
     setBusy(true);
     setMessage("");
     try {
       const response = await fetch("/api/seller/registration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          revision,
-          idempotencyKey: key,
-          confirmed: true,
-        }),
+        body: intent.body,
         cache: "no-store",
       });
       if (response.ok) {
-        const result: unknown = await response.json();
+        const result: unknown = await response.json().catch(() => null);
         if (result && typeof result === "object" &&
           "status" in result && result.status === "SUBMITTED" &&
           "revision" in result && typeof result.revision === "number" &&
@@ -1090,6 +1139,12 @@ export function RegistrationForm() {
           typeof result.accuracyConfirmedAtUtc === "string" &&
           "trackingCode" in result &&
           typeof result.trackingCode === "string") {
+          if (!clearSellerRegistrationSubmitIntent(intent.key)) {
+            setSubmitStorageFailure(
+              "سرور ثبت نهایی را تأیید کرد، اما پاک‌سازی retry محلی تأیید نشد.");
+            return;
+          }
+          setPendingSubmitIntent(null);
           setRevision(result.revision);
           setSubmittedAtUtc(result.submittedAtUtc);
           setTrackingCode(result.trackingCode);
@@ -1098,7 +1153,23 @@ export function RegistrationForm() {
           setMessage("درخواست فروشندگی برای بررسی ثبت شد. ثبت درخواست به معنی تأیید یا فعال‌شدن فروشگاه نیست.");
           return;
         }
+        setPendingSubmitIntent(intent);
+        setMessage(
+          "پاسخ ثبت نهایی قابل اعتماد نبود. همان revision، کلید و بدنه برای تکرار امن حفظ شده‌اند.");
+        return;
       }
+      if (response.status >= 500) {
+        setPendingSubmitIntent(intent);
+        setMessage(
+          "نتیجه ثبت نهایی قطعی نیست. همان revision، کلید و بدنه پس از reload نیز برای تکرار امن حفظ شده‌اند.");
+        return;
+      }
+      if (!clearSellerRegistrationSubmitIntent(intent.key)) {
+        setSubmitStorageFailure(
+          "نتیجه سرور قطعی است، اما پاک‌سازی retry ثبت نهایی تأیید نشد.");
+        return;
+      }
+      setPendingSubmitIntent(null);
       if (response.status === 401) setAccess("signedOut");
       setMessage(response.status === 409
         ? "نسخهٔ پیش‌نویس تغییر کرده یا درخواست قبلاً ثبت شده است. وضعیت را دوباره بررسی کنید."
@@ -1106,10 +1177,37 @@ export function RegistrationForm() {
           ? "نشست شما پایان یافته است؛ درخواست ثبت نشد."
           : "ثبت درخواست تأیید نشد؛ لطفاً دوباره تلاش کنید.");
     } catch {
-      setMessage("ثبت درخواست تأیید نشد؛ لطفاً دوباره تلاش کنید.");
+      setPendingSubmitIntent(intent);
+      setMessage(
+        "نتیجه ثبت نهایی قطعی نیست. همان revision، کلید و بدنه پس از reload نیز برای تکرار امن حفظ شده‌اند.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submitForReview() {
+    if (busy || access !== "signedIn" || conflict || submittedAtUtc ||
+      completedStep !== 6 || revision < 1 || hasUnsavedChanges ||
+      !reviewConfirmed || submitStorageFailure) return;
+
+    let intent: SellerRegistrationSubmitIntent;
+    try {
+      if (pendingSubmitIntent &&
+          pendingSubmitIntent.revision !== revision) {
+        setSubmitStorageFailure(
+          "نسخهٔ پیش‌نویس با ثبت نهایی حل‌نشده سازگار نیست. ثبت جدید متوقف شد.");
+        return;
+      }
+      intent = sellerRegistrationSubmitIntent(
+        revision, pendingSubmitIntent);
+      persistSellerRegistrationSubmitIntent(intent);
+    } catch {
+      setSubmitStorageFailure(
+        "ذخیره retry امن ثبت نهایی تأیید نشد؛ هیچ درخواست جدیدی ارسال نشد.");
+      return;
+    }
+    setPendingSubmitIntent(intent);
+    await sendSubmitIntent(intent);
   }
 
   const readyConflict = conflict?.status === "ready" ? conflict : null;
@@ -1125,6 +1223,11 @@ export function RegistrationForm() {
   return (
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
+      {submitStorageFailure && (
+        <p className="form-status form-status--error" role="alert">
+          {submitStorageFailure}
+        </p>
+      )}
       {hasUnsavedChanges && (
         <p className="seller-unsaved-note" role="status">
           تغییرات این فرم هنوز در سرور ذخیره نشده‌اند. پیش از بستن یا
@@ -1620,11 +1723,32 @@ export function RegistrationForm() {
 
                 <div className="seller-activity__map" aria-label="موقعیت روی نقشه">
                   <strong>موقعیت روی نقشه (اختیاری)</strong>
-                  <div className="seller-activity__map-placeholder">
-                    <span aria-hidden="true">⌖</span>
-                    <p>نقشه تعاملی حنا هنوز به قرارداد مختصات متصل نشده است.</p>
-                    <small>در این مرحله هیچ مختصات نمونه یا تخمینی ذخیره نمی‌شود.</small>
-                  </div>
+                  <CoordinateMapPicker
+                    value={activityMapPoint}
+                    disabled={busy || access !== "signedIn"}
+                    label="انتخاب موقعیت محل فعالیت فروشنده روی نقشه"
+                    onChange={(point) => {
+                      setActivityLatitude(point.latitude);
+                      setActivityLongitude(point.longitude);
+                      setActivityFeedback(null);
+                    }}
+                  />
+                  {activityMapPoint && (
+                    <button type="button"
+                      className="commerce-button commerce-button--secondary"
+                      disabled={busy || access !== "signedIn"}
+                      onClick={() => {
+                        setActivityLatitude(null);
+                        setActivityLongitude(null);
+                        setActivityFeedback(null);
+                      }}>
+                      حذف مختصات انتخاب‌شده
+                    </button>
+                  )}
+                  <small>
+                    مختصات فقط نقطهٔ محل فعالیت را ثبت می‌کند؛ پوشش ارسال یا
+                    محدودهٔ سرویس از آن نتیجه‌گیری نمی‌شود.
+                  </small>
                 </div>
 
                 <FormField id="seller-activity-hours"
@@ -1718,6 +1842,14 @@ export function RegistrationForm() {
                   <div>
                     <dt>محدوده پوشش</dt>
                     <dd>{serviceArea}</dd>
+                  </div>
+                  <div>
+                    <dt>مختصات</dt>
+                    <dd>
+                      {activityMapPoint
+                        ? `${activityMapPoint.latitude.toFixed(6)}، ${activityMapPoint.longitude.toFixed(6)}`
+                        : "ثبت نشده"}
+                    </dd>
                   </div>
                 </dl>
                 <p>{activityAddress}</p>
@@ -1999,7 +2131,8 @@ export function RegistrationForm() {
             <label className="seller-review__confirmation">
               <input type="checkbox"
                 checked={reviewConfirmed}
-                disabled={busy || access !== "signedIn"}
+                disabled={busy || access !== "signedIn" ||
+                  pendingSubmitIntent !== null || submitStorageFailure !== null}
                 onChange={(event) => {
                   setReviewConfirmed(event.target.checked);
                   setMessage("");
@@ -2011,12 +2144,16 @@ export function RegistrationForm() {
               <button type="button" className="primary-button"
                 disabled={busy || access !== "signedIn" ||
                   conflict !== null || hasAnyUnsavedChanges ||
-                  !reviewConfirmed}
+                  !reviewConfirmed || submitStorageFailure !== null}
                 onClick={() => void submitForReview()}>
-                {busy ? "در حال ثبت…" : "ثبت نهایی درخواست"}
+                {busy
+                  ? "در حال ثبت…"
+                  : pendingSubmitIntent
+                    ? "تکرار امن ثبت نهایی"
+                    : "ثبت نهایی درخواست"}
               </button>
               <button type="button" className="auth-card__secondary"
-                disabled={busy}
+                disabled={busy || pendingSubmitIntent !== null}
                 onClick={() => {
                   setReviewConfirmed(false);
                   document.getElementById("seller-additional-heading")

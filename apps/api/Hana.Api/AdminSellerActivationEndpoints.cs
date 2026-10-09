@@ -78,7 +78,8 @@ internal static class AdminSellerActivationEndpoints
                                 cancellationToken);
                         return replay is null
                             ? Results.NotFound()
-                            : Results.Ok(ActivationResponse(replay));
+                            : Results.Ok(await ActivationResponseAsync(
+                                db, replay, cancellationToken));
                     }
 
                     if (await db.SellerActivations.AsNoTracking()
@@ -162,7 +163,8 @@ internal static class AdminSellerActivationEndpoints
                         .SingleAsync(
                             x => x.AccountId == applicationId,
                             cancellationToken);
-                    return Results.Ok(ActivationResponse(activated));
+                    return Results.Ok(await ActivationResponseAsync(
+                        db, activated, cancellationToken));
                 }
                 catch (Exception) when (
                     !cancellationToken.IsCancellationRequested)
@@ -217,18 +219,35 @@ internal static class AdminSellerActivationEndpoints
             : null;
     }
 
-    private static object ActivationResponse(
-        SellerRegistrationDraft application) => new
+    private static async Task<object> ActivationResponseAsync(
+        HanaSellerDbContext db,
+        SellerRegistrationDraft application,
+        CancellationToken cancellationToken)
+    {
+        var suspension = await db.SellerSuspensions.AsNoTracking()
+            .Where(x => x.ApplicationAccountId == application.AccountId &&
+                x.RestoredAtUtc == null)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        var activated = application.ActivatedAtUtc is not null;
+        var suspended = suspension is not null;
+        var enabled = activated && !suspended;
+        return new
         {
             applicationId = application.AccountId,
             application.Revision,
             application.TrackingCode,
             application.ReviewStatus,
             application.ActivatedAtUtc,
-            sellerRoleGranted = application.ActivatedAtUtc is not null,
-            sellerAccessEnabled = application.ActivatedAtUtc is not null,
-            sellerPanelEnabled = application.ActivatedAtUtc is not null
+            sellerActivated = activated,
+            sellerSuspended = suspended,
+            suspendedAtUtc = suspension?.CreatedAtUtc,
+            suspensionReason = suspension?.Reason,
+            sellerRoleGranted = enabled,
+            sellerAccessEnabled = enabled,
+            sellerPanelEnabled = enabled
         };
+    }
 }
 
 internal sealed record AdminSellerActivationInput(int Revision);

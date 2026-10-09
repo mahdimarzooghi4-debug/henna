@@ -251,8 +251,8 @@ async function main() {
         request.method === "PUT") {
         const data = JSON.parse(body);
         assert.deepEqual(Object.keys(data).sort(), [
-          "activityHours", "address", "cityId", "pickup",
-          "provinceId", "revision", "sellerDelivery", "serviceArea",
+          "activityHours", "address", "cityId", "latitude", "longitude",
+          "pickup", "provinceId", "revision", "sellerDelivery", "serviceArea",
         ].sort());
         if (sellerDraft?.revision !== data.revision ||
           sellerDraft?.completedStep !== 4) {
@@ -273,6 +273,8 @@ async function main() {
             activityCityId,
             activityCityName: "شهر فعالیت CI",
             activityAddress: data.address,
+            activityLatitude: data.latitude,
+            activityLongitude: data.longitude,
             activityHours: data.activityHours,
             sellerDelivery: data.sellerDelivery,
             pickup: data.pickup,
@@ -294,6 +296,8 @@ async function main() {
               name: "شهر فعالیت CI",
             },
             address: sellerDraft.activityAddress,
+            latitude: sellerDraft.activityLatitude,
+            longitude: sellerDraft.activityLongitude,
             activityHours: sellerDraft.activityHours,
             sellerDelivery: true,
             pickup: true,
@@ -420,12 +424,13 @@ async function main() {
             activityCityId: sellerDraft.activityCityId,
             capabilities: {
               dashboard: true,
-              orders: false,
-              listings: false,
-              inventory: false,
-              pricing: false,
-              settlements: false,
-              reports: false,
+              orders: true,
+              listings: true,
+              serviceListings: true,
+              inventory: true,
+              pricing: true,
+              settlements: true,
+              reports: true,
             },
           }));
         }
@@ -591,6 +596,8 @@ async function main() {
     activityCityId: null,
     activityCityName: null,
     activityAddress: null,
+    activityLatitude: null,
+    activityLongitude: null,
     activityHours: null,
     sellerDelivery: null,
     pickup: null,
@@ -1053,12 +1060,13 @@ async function main() {
     activityCityId,
     capabilities: {
       dashboard: true,
-      orders: false,
-      listings: false,
-      inventory: false,
-      pricing: false,
-      settlements: false,
-      reports: false,
+      orders: true,
+      listings: true,
+      serviceListings: true,
+      inventory: true,
+      pricing: true,
+      settlements: true,
+      reports: true,
     },
   });
 

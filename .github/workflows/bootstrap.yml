@@ -8,12 +8,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-latest
     env:
       # Ephemeral CI-only credential. Never reuse in any deployment.
       ConnectionStrings__IdentityDb: Host=localhost;Port=5432;Database=hana_ci;Username=hana_ci;Password=hana_ci_only
+      ConnectionStrings__CommerceDb: Host=localhost;Port=5432;Database=hana_ci;Username=hana_ci;Password=hana_ci_only
+      ConnectionStrings__AllocationLearningDb: Host=localhost;Port=5432;Database=hana_ci;Username=hana_ci;Password=hana_ci_only
     services:
       postgres:
         image: postgres:17
@@ -33,6 +39,17 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Enforce Henna-owned local-only AI boundary
+        run: python tools/ci/guard_henna_ai_local_only.py
+      - name: Install pinned offline EBM research dependency
+        run: python -m pip install --disable-pip-version-check --no-cache-dir -r tools/ai/requirements-ebm.txt
+      - name: Test official InterpretML EBM offline challenger
+        run: python tests/henna_ebm_challenger_smoke.py
+      - name: Verify commerce contract matches shipping commands
+        run: python tools/contracts/commerce_openapi.py --check
       - name: Restore .NET solution
         run: dotnet restore Hana.slnx
       - name: Build .NET solution
@@ -45,6 +62,14 @@ jobs:
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
       - name: Confirm repeated migration is harmless
         run: dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-migrations
+      - name: Apply research migrations twice to verify safe repetition
+        run: |
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-learning-migrations
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-learning-migrations
+      - name: Apply commerce migrations twice
+        run: |
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-commerce-migrations
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile -- --apply-commerce-migrations
       - name: Test Identity, Seller, Catalog and Geography with real PostgreSQL
         run: dotnet test Hana.slnx --configuration Release --no-build
       - name: Verify catalog operator preview and apply CLI
@@ -176,7 +201,10 @@ jobs:
           for attempt in {1..45}; do
             if curl --fail --silent http://127.0.0.1:5184/health/live > /dev/null; then
               curl --fail --silent http://127.0.0.1:5184/api/v1/system/status | grep -q '"phase":"bootstrap"'
-              curl --fail --silent http://127.0.0.1:5184/health/ready | grep -q '"ready":true'
+              curl --fail --silent http://127.0.0.1:5184/health/ready -o /tmp/hana-ready.json
+              grep -q '"ready":true' /tmp/hana-ready.json
+              grep -q '"allocation-learning"' /tmp/hana-ready.json
+              grep -q '"commerce"' /tmp/hana-ready.json
               curl --fail --silent http://127.0.0.1:5184/api/v1/catalog/categories -o /tmp/hana-catalog-categories.json
               grep -q '"items":' /tmp/hana-catalog-categories.json
               curl --fail --silent http://127.0.0.1:5184/api/v1/catalog/products -o /tmp/hana-catalog-products.json
@@ -200,6 +228,8 @@ jobs:
               # No valid session is ever created by the default disabled SMS provider.
               session_no_bearer=$(curl --silent --output /tmp/hana-session-missing.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/auth/session)
               test "$session_no_bearer" = "401"
+              integrations_no_bearer=$(curl --silent --output /tmp/hana-integrations-missing.json --write-out "%{http_code}" http://127.0.0.1:5184/api/v1/admin/integrations/status)
+              test "$integrations_no_bearer" = "401"
               session_missing_db_token=$(curl --silent --output /tmp/hana-session-invalid.json --write-out "%{http_code}" -H "Authorization: Bearer hn1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" http://127.0.0.1:5184/api/v1/auth/session)
               test "$session_missing_db_token" = "401"
               logout_no_bearer=$(curl --silent --output /tmp/hana-logout-missing.json --write-out "%{http_code}" -X DELETE http://127.0.0.1:5184/api/v1/auth/session)
@@ -216,6 +246,90 @@ jobs:
             sleep 1
           done
           cat /tmp/hana-api.log
+          exit 1
+
+      - name: Fail readiness when configured learning database is unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASPNETCORE_ENVIRONMENT=Development \
+          ASPNETCORE_URLS=http://127.0.0.1:5189 \
+          ConnectionStrings__AllocationLearningDb='Host=127.0.0.1;Port=55432;Database=missing;Username=none;Password=none;Timeout=1;Command Timeout=1' \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj --configuration Release --no-build --no-launch-profile > /tmp/hana-learning-ready.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5189/health/live > /dev/null; then
+              code=$(curl --silent --output /tmp/hana-learning-not-ready.json --write-out "%{http_code}" http://127.0.0.1:5189/health/ready)
+              test "$code" = "503"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hana-learning-ready.log
+          exit 1
+
+      - name: Rehearse PostgreSQL backup and restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_db=hana_ci
+          restore_db=hana_ci_restore
+          backup=/tmp/hana-ci.backup
+          source_data=/tmp/hana-ci-source-data.sql
+          restored_data=/tmp/hana-ci-restored-data.sql
+          pg17() {
+            docker run --rm --network host \
+              -e PGPASSWORD=hana_ci_only \
+              -v /tmp:/backup \
+              postgres:17 "$@"
+          }
+
+          pg17 pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+            --dbname="$source_db" --format=custom --no-owner --no-privileges \
+            --file=/backup/hana-ci.backup
+          test -s "$backup"
+
+          pg17 dropdb --if-exists --host=127.0.0.1 --port=5432 \
+            --username=hana_ci "$restore_db"
+          pg17 createdb --host=127.0.0.1 --port=5432 \
+            --username=hana_ci "$restore_db"
+          pg17 pg_restore --host=127.0.0.1 --port=5432 --username=hana_ci \
+            --dbname="$restore_db" --no-owner --no-privileges --exit-on-error \
+            /backup/hana-ci.backup
+
+          # Compare deterministic logical data, including sequence values.
+          pg17 pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+            --dbname="$source_db" --data-only --inserts --no-owner --no-privileges \
+            | grep -vE '^\\(un)?restrict ' > "$source_data"
+          pg17 pg_dump --host=127.0.0.1 --port=5432 --username=hana_ci \
+            --dbname="$restore_db" --data-only --inserts --no-owner --no-privileges \
+            | grep -vE '^\\(un)?restrict ' > "$restored_data"
+          cmp "$source_data" "$restored_data"
+
+          restored='Host=127.0.0.1;Port=5432;Database=hana_ci_restore;Username=hana_ci;Password=hana_ci_only'
+          ASPNETCORE_ENVIRONMENT=Development \
+          ASPNETCORE_URLS=http://127.0.0.1:5190 \
+          ConnectionStrings__IdentityDb="$restored" \
+          ConnectionStrings__CommerceDb="$restored" \
+          ConnectionStrings__AllocationLearningDb="$restored" \
+          dotnet run --project apps/api/Hana.Api/Hana.Api.csproj \
+            --configuration Release --no-build --no-launch-profile \
+            > /tmp/hana-restored-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5190/health/live > /dev/null; then
+              curl --fail --silent http://127.0.0.1:5190/health/ready \
+                -o /tmp/hana-restored-ready.json
+              grep -q '"ready":true' /tmp/hana-restored-ready.json
+              grep -q '"commerce"' /tmp/hana-restored-ready.json
+              grep -q '"allocation-learning"' /tmp/hana-restored-ready.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hana-restored-api.log
           exit 1
 
       - name: Smoke test explicit trusted proxy handling
@@ -308,6 +422,22 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Typecheck web
         run: npm run web:typecheck
+      - name: Test administrative allocation report validation
+        run: node --experimental-strip-types --test tests/web-allocation-proposals.mjs tests/web-allocation-assessment.mjs tests/web-allocation-training-runs.mjs tests/web-allocation-retention.mjs tests/web-allocation-outcomes.mjs tests/web-allocation-shadow-benchmarks.mjs tests/web-allocation-model-comparison.mjs
+      - name: Test buyer commerce DTOs and safe return destinations
+        run: node --experimental-strip-types --test tests/web-buyer-commerce.mjs
+      - name: Test durable web buyer commerce intent recovery
+        run: node --experimental-strip-types --test tests/web-pending-commerce.mjs
+      - name: Test staff commerce DTOs and frozen retry intents
+        run: node --experimental-strip-types --test tests/web-staff-commerce.mjs
+      - name: Test organization dashboard bounded DTO
+        run: node --experimental-strip-types --test tests/web-organization-dashboard-smoke.mjs
+      - name: Test admin seller review DTOs and retry intent
+        run: node --experimental-strip-types --test tests/web-admin-sellers.mjs
+      - name: Test admin operations bounded DTOs and retry intent
+        run: node --experimental-strip-types --test tests/web-admin-operations.mjs
+      - name: Test external integration readiness DTO
+        run: node --experimental-strip-types --test tests/web-external-integrations.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
@@ -370,6 +500,18 @@ jobs:
           done
           cat /tmp/hana-web.log
           exit 1
+      - name: Test buyer commerce cookie gateway over isolated HTTPS
+        run: node tests/web-buyer-commerce-gateway.mjs
+      - name: Test seller and support commerce gateways over isolated HTTPS
+        run: node tests/web-staff-commerce-gateway.mjs
+      - name: Test organization dashboard gateway over isolated HTTPS
+        run: node tests/web-organization-dashboard-gateway.mjs
+      - name: Test admin seller review gateway over isolated HTTPS
+        run: node tests/web-admin-sellers-gateway.mjs
+      - name: Test admin operations gateway over isolated HTTPS
+        run: node tests/web-admin-operations-gateway.mjs
+      - name: Test external integration readiness gateway
+        run: node tests/web-external-integrations-gateway.mjs
       - name: Test isolated web cookie gateway (CI-only mock upstream)
         run: node tests/web-auth-gateway-smoke.mjs
       - name: Verify web and Expo OTP resend recovery (CI-only transport)
@@ -398,8 +540,20 @@ jobs:
           set -euo pipefail
           npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.55.1
           npx playwright install --with-deps chromium
+      - name: Browser test buyer cart quote and order lifecycle (CI-only API doubles)
+        run: node tests/web-buyer-commerce-browser.mjs
+      - name: Browser test buyer notifications and support lifecycle
+        run: node tests/web-buyer-support-browser.mjs
+      - name: Browser test seller and support commerce lifecycle
+        run: node tests/web-staff-commerce-browser.mjs
+      - name: Browser test admin seller review and activation
+        run: node tests/web-admin-sellers-browser.mjs
+      - name: Browser test internal admin operations console
+        run: node tests/web-admin-operations-browser.mjs
       - name: Browser test approved buyer login and seller form across two tabs
         run: node tests/web-frontend-browser-smoke.mjs
+      - name: Browser test administrative allocation proposal review
+        run: node tests/web-allocation-proposals-browser.mjs
       - name: Test web session recheck policy without interrupting OTP
         run: node --experimental-strip-types --test tests/web-session-visibility-smoke.mjs
       - name: Browser test buyer OTP recovery at mobile viewport
@@ -432,6 +586,20 @@ jobs:
         run: npm run mobile:typecheck
       - name: Test mobile OTP and SecureStore session semantics (CI-only mocked API/store)
         run: node --experimental-strip-types --test tests/mobile-auth-smoke.mjs
+      - name: Test native checkout partial basket and original-intent recovery
+        run: node --experimental-strip-types --test tests/mobile-checkout-controller-smoke.mjs
+      - name: Test durable mobile commerce intent recovery and photo cleanup
+        run: node --experimental-strip-types --test tests/mobile-pending-commerce.mjs
+      - name: Test native buyer notifications and support controller
+        run: node --experimental-strip-types --test tests/mobile-buyer-support-controller-smoke.mjs
+      - name: Native order history and lifecycle controller
+        run: node --experimental-strip-types --test tests/mobile-orders-controller-smoke.mjs
+      - name: Native incident photo and return lifecycle
+        run: node --experimental-strip-types --test tests/mobile-incidents-smoke.mjs
+      - name: Test native reference cart mutations and stale rendering
+        run: node --experimental-strip-types --test tests/mobile-cart-controller-smoke.mjs
+      - name: Test native buyer commerce transport (CI-only API/store doubles)
+        run: node --experimental-strip-types --test tests/mobile-commerce-smoke.mjs
       - name: Test Expo OTP field feedback and six-digit submission guard
         run: node --experimental-strip-types --test tests/mobile-otp-entry-smoke.mjs
       - name: Test Expo foreground session revalidation and SecureStore fail closed
@@ -448,6 +616,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-buyer-deep-link-smoke.mjs
       - name: Test public Expo geography client (CI-only mocked transport)
         run: node --experimental-strip-types --test tests/mobile-geography-smoke.mjs
+      - name: Test explicit foreground address location policy
+        run: node --experimental-strip-types --test tests/mobile-device-location.mjs
       - name: Bundle consumer app for Android
         run: npm run mobile:export:android
 

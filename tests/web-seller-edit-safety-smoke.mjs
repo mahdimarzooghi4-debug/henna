@@ -141,6 +141,8 @@ test("retrying an unavailable preflight only unlocks after authenticated draft o
     activityCityId: null,
     activityCityName: null,
     activityAddress: null,
+    activityLatitude: null,
+    activityLongitude: null,
     activityHours: null,
     sellerDelivery: null,
     pickup: null,
