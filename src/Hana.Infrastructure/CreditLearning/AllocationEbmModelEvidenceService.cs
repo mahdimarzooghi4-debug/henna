@@ -305,6 +305,8 @@ public sealed class AllocationEbmArtifactService(
                     LearningPartition.Validation)))
             throw new InvalidOperationException(
                 "Training run partitions are invalid for EBM evidence.");
+        if (examples.Any(x => AllocationRubricFoundationBoundary.IsNonLabelingFoundation(x.RubricVersion)))
+            throw new ArgumentException("Review foundations cannot be used for EBM training lineage.");
 
         var training = examples
             .Where(x => x.Partition == LearningPartition.Training)
@@ -436,6 +438,7 @@ public static class HennaEbmBenchmarkEvaluator
         if (data.Select(x => x.RubricVersion).Distinct().Count() != 1)
             throw new ArgumentException(
                 "One reviewed evaluation rubric is required.");
+        AllocationRubricFoundationBoundary.RejectNonLabelingFoundation(data[0].RubricVersion);
 
         var observed = data
             .Select(x => (double)x.ReviewedNeedScore)
@@ -557,6 +560,8 @@ public sealed class AllocationEbmBenchmarkService(
                 x.ReviewedAtUtc > cutoffUtc))
             throw new ArgumentException(
                 "All benchmark labels must exist, be Evaluation-only and precede the cutoff.");
+        if (labels.Any(x => AllocationRubricFoundationBoundary.IsNonLabelingFoundation(x.RubricVersion)))
+            throw new ArgumentException("Review foundations cannot be used for independent model evaluation.");
 
         var snapshotIds = labels.Select(x => x.SnapshotId).ToArray();
         var snapshots = await db.Assessments.AsNoTracking()

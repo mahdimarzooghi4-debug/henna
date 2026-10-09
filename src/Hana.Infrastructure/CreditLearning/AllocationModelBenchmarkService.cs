@@ -72,6 +72,8 @@ public sealed class AllocationModelBenchmarkService(
                 x.ReviewedAtUtc > cutoffUtc))
             throw new ArgumentException(
                 "All benchmark labels must exist, be Evaluation-only and precede the cutoff.");
+        if (labels.Any(x => AllocationRubricFoundationBoundary.IsNonLabelingFoundation(x.RubricVersion)))
+            throw new ArgumentException("Review foundations cannot be used for independent model evaluation.");
 
         var snapshotIds = labels.Select(x => x.SnapshotId).ToArray();
         var snapshots = await db.Assessments.AsNoTracking()

@@ -300,6 +300,23 @@ public sealed class AllocationEbmEvidenceServiceTests
 
         var benchmarks = new AllocationEbmBenchmarkService(
             learning, roles, clock);
+        // Historical rows may have been persisted before foundation versions
+        // were denied; they remain immutable but cannot create benchmark evidence.
+        var foundationLabelId = Guid.NewGuid();
+        learning.NeedLabels.Add(new ReviewedNeedLabelRecord
+        {
+            Id = foundationLabelId,
+            SnapshotId = snapshots[0].Id,
+            ReviewerAccountId = admin,
+            NeedScore = .35m,
+            RubricVersion = AllocationRubricFoundationBoundary.ReviewRubricFoundationVersion,
+            Partition = (int)LearningPartition.Evaluation,
+            ReviewedAtUtc = now.AddHours(-2)
+        });
+        await learning.SaveChangesAsync();
+        await Assert.ThrowsAsync<ArgumentException>(() => benchmarks.EvaluateAsync(
+            admin, runId, new[] { foundationLabelId }, now.AddHours(-1)));
+
         var first = await benchmarks.EvaluateAsync(
             admin,
             runId,

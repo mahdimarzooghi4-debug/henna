@@ -40,3 +40,9 @@ The values, thresholds, fairness cohorts/metrics, temporal stability and missing
 Regression tests should cover rejected label creation and rejected legacy foundation cohort, as well as continued acceptance of existing synthetic test rubrics. Only full exact-head CI on PR #165 determines successful integration.
 
 References: `docs/product/HANA-ALLOCATION-JUDGMENT-FRAMEWORK.md`, `docs/product/HANA-ALLOCATION-REVIEW-RUBRIC.md`, ADR-060, ADR-061.
+
+## Independent benchmark and EBM artifact boundary
+
+Before a new benchmark record is created, the Baseline/Profile, XGBoost, and EBM independent Evaluation services reject legacy labels whose rubric version identifies either known non-labeling foundation (`HENNA-AJF-v1` or `HENNA-ARR-v1`). The pure XGBoost and EBM benchmark evaluators also reject those identifiers. EBM artifact registration rejects training-run frozen examples with those identifiers. Existing rows and previously recorded evidence remain unchanged.
+
+This implements **known-negative version rejection only**. It does not establish positive approval or a numeric labeling rubric for any other identifier. A separate explicitly approved Rubric Admission registry and complete numeric-label semantics are prerequisites before future evidence can be asserted as production-grade. No change to runtime or Production authorization.
