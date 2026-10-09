@@ -49,6 +49,43 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
                 t.HasCheckConstraint("ck_assessment_runtime_sequence", "\"RuntimeProfileSequence\" IS NULL OR \"RuntimeProfileSequence\" >= 0");
             });
         });
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationReviewedSevenFactorRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("SnapshotId").HasColumnType("uuid");
+            e.Property<Guid>("ReviewerAccountId").HasColumnType("uuid");
+            e.Property<string>("FormulaVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("SourceFormulaVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("SourceDatasetVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("SourceInstructionReference").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<int>("Health").HasColumnType("integer");
+            e.Property<int>("NonHousingHardship").HasColumnType("integer");
+            e.Property<int>("Age").HasColumnType("integer");
+            e.Property<int>("Size").HasColumnType("integer");
+            e.Property<int>("Care").HasColumnType("integer");
+            e.Property<int>("Education").HasColumnType("integer");
+            e.Property<int>("HousingTenure").HasColumnType("integer");
+            e.Property<string>("HousingEvidenceReference").IsRequired().HasMaxLength(240).HasColumnType("character varying(240)");
+            e.Property<string>("NonHousingHardshipEvidenceReference").IsRequired().HasMaxLength(240).HasColumnType("character varying(240)");
+            e.Property<string>("OtherNeedsEvidenceReference").IsRequired().HasMaxLength(240).HasColumnType("character varying(240)");
+            e.Property<decimal>("OriginalGeographicFactor").HasColumnType("numeric");
+            e.Property<DateTimeOffset>("ReviewedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("SnapshotId","ReviewedAtUtc","Id");
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationAssessmentRecord", null)
+                .WithMany().HasForeignKey("SnapshotId")
+                .OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.ToTable("reviewed_seven_factor_assessments", "allocation_learning", t =>
+            {
+                t.HasCheckConstraint("ck_seven_factor_review_version",
+                    "\"FormulaVersion\" = 'HANA-NEEDS-BASED-ALLOCATION-v1.1'");
+                t.HasCheckConstraint("ck_seven_factor_review_scores",
+                    "\"Health\" BETWEEN 0 AND 3 AND \"NonHousingHardship\" BETWEEN 0 AND 3 AND \"Age\" BETWEEN 0 AND 3 AND \"Size\" BETWEEN 0 AND 3 AND \"Care\" BETWEEN 0 AND 3 AND \"Education\" BETWEEN 0 AND 3 AND \"HousingTenure\" IN (1,2)");
+                t.HasCheckConstraint("ck_seven_factor_review_evidence",
+                    "\"ReviewerAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND length(btrim(\"HousingEvidenceReference\")) > 0 AND length(btrim(\"NonHousingHardshipEvidenceReference\")) > 0 AND length(btrim(\"OtherNeedsEvidenceReference\")) > 0 AND \"OriginalGeographicFactor\" > 0");
+            });
+        });
+
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationOutcomeRecord", e =>
         {
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");

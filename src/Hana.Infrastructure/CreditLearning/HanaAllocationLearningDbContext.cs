@@ -48,6 +48,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
 {
     public DbSet<AllocationAssessmentRecord> Assessments => Set<AllocationAssessmentRecord>();
     public DbSet<AllocationOutcomeRecord> Outcomes => Set<AllocationOutcomeRecord>();
+    public DbSet<AllocationReviewedSevenFactorRecord> ReviewedSevenFactorAssessments =>
+        Set<AllocationReviewedSevenFactorRecord>();
     public DbSet<AllocationProposalRecord> Proposals => Set<AllocationProposalRecord>();
     public DbSet<AllocationProposalReviewRecord> Reviews => Set<AllocationProposalReviewRecord>();
     public DbSet<ReviewedNeedLabelRecord> NeedLabels => Set<ReviewedNeedLabelRecord>();
@@ -94,6 +96,31 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.HasOne<AllocationProposalRecord>().WithMany()
                 .HasForeignKey(x => x.RuntimeProposalId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationReviewedSevenFactorRecord>(e =>
+        {
+            e.ToTable("reviewed_seven_factor_assessments", t =>
+            {
+                t.HasCheckConstraint("ck_seven_factor_review_version",
+                    "\"FormulaVersion\" = 'HANA-NEEDS-BASED-ALLOCATION-v1.1'");
+                t.HasCheckConstraint("ck_seven_factor_review_scores",
+                    "\"Health\" BETWEEN 0 AND 3 AND \"NonHousingHardship\" BETWEEN 0 AND 3 AND \"Age\" BETWEEN 0 AND 3 AND \"Size\" BETWEEN 0 AND 3 AND \"Care\" BETWEEN 0 AND 3 AND \"Education\" BETWEEN 0 AND 3 AND \"HousingTenure\" IN (1,2)");
+                t.HasCheckConstraint("ck_seven_factor_review_evidence",
+                    "\"ReviewerAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND length(btrim(\"HousingEvidenceReference\")) > 0 AND length(btrim(\"NonHousingHardshipEvidenceReference\")) > 0 AND length(btrim(\"OtherNeedsEvidenceReference\")) > 0 AND \"OriginalGeographicFactor\" > 0");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.FormulaVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceFormulaVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceDatasetVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceInstructionReference).HasMaxLength(120).IsRequired();
+            e.Property(x => x.HousingEvidenceReference).HasMaxLength(240).IsRequired();
+            e.Property(x => x.NonHousingHardshipEvidenceReference).HasMaxLength(240).IsRequired();
+            e.Property(x => x.OtherNeedsEvidenceReference).HasMaxLength(240).IsRequired();
+            e.Property(x => x.OriginalGeographicFactor).HasColumnType("numeric");
+            e.HasIndex(x => new { x.SnapshotId, x.ReviewedAtUtc, x.Id });
+            e.HasOne<AllocationAssessmentRecord>().WithMany()
+                .HasForeignKey(x => x.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         });
         model.Entity<AllocationOutcomeRecord>(e =>
         {
