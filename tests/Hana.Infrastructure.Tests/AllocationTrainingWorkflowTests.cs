@@ -50,10 +50,36 @@ public sealed class AllocationTrainingWorkflowTests
                 AllocatedRial = 100, AssessedAtUtc = clock.UtcNow.AddDays(-1), RecordedAtUtc = clock.UtcNow });
         }
         await db.SaveChangesAsync();
+        foreach (var foundation in new[] {
+            AllocationRubricFoundationBoundary.JudgmentFrameworkVersion,
+            AllocationRubricFoundationBoundary.ReviewRubricFoundationVersion
+        })
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => workflow.ReviewNeedAsync(
+                reviewer, snapshotIds[0], .5m, foundation, LearningPartition.Training));
+        }
+        Assert.Empty(await db.NeedLabels.AsNoTracking()
+            .Where(x => x.SnapshotId == snapshotIds[0]).ToArrayAsync());
         for (var i = 0; i < snapshotIds.Length; i++) labels.Add(await workflow.ReviewNeedAsync(reviewer,
             snapshotIds[i], new[] { .35m, .20m, .18m, .12m, .10m, .05m }[i % 6], "synthetic-rubric-1",
             i < 36 ? LearningPartition.Training : LearningPartition.Validation));
 
+        // Simulate an imported historical row which predates the foundation
+        // rejection; it must remain stored but never be used for training.
+        var historicalFoundationId = Guid.NewGuid();
+        db.NeedLabels.Add(new ReviewedNeedLabelRecord {
+            Id = historicalFoundationId,
+            SnapshotId = snapshotIds[0],
+            ReviewerAccountId = reviewer,
+            NeedScore = .5m,
+            RubricVersion = AllocationRubricFoundationBoundary.ReviewRubricFoundationVersion,
+            Partition = (int)LearningPartition.Training,
+            ReviewedAtUtc = clock.UtcNow
+        });
+        await db.SaveChangesAsync();
+        await Assert.ThrowsAsync<ArgumentException>(() => workflow.TrainAsync(
+            actor, labels.Skip(1).Append(historicalFoundationId).ToArray(),
+            4800, clock.UtcNow));
         var evaluationLabel = await workflow.ReviewNeedAsync(
             reviewer,
             snapshotIds[0],
