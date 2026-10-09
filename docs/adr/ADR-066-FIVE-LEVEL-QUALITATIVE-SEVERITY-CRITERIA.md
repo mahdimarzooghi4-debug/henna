@@ -20,6 +20,16 @@ The above anchors are **qualitative**. They add no arbitrary days, thresholds, c
 - Explicit review ID, actor/content-bound idempotency, relational source foreign keys, DB checks, audit timestamps, and an append-only trigger. Corrections are separate immutable records; no implicit latest-wins.
 - This new table is **separate from** numeric \`need_labels\`, the six-feature TrainingRun and the two independent evidence inventories. Existing commerce and production-profile code is unchanged.
 
+## Evidence authenticity review authority — ADR-067
+
+The Product Owner accepted that the **same authorized Henna Admin** may review
+and take responsibility for evidence authenticity, enter the reviewed
+seven-factor input, and record the human Need Severity decision. A second
+independent reviewer is not mandatory. This is a human accountability decision,
+not proof that a bare evidence reference has been authenticated. Existing
+first-party lineage, evidence reference, pre-allocation time, rationale,
+abstention and immutable audit requirements remain compulsory.
+
 ## Boundaries still requiring decisions and verification
 
 Even an accepted qualitative criterion does not prove that an external evidence reference is genuine or resolve conflicting reviewers. A **complete positive data-admission rubric** additionally requires verifiable source/evidence requirements and authority, dispute/withdrawal/correction policy, household and temporal Train/Validation/Evaluation partitions, minimum real-data sufficiency policy, missing-data behavior, fairness and acceptance governance, and independently authorized Dataset/Training/Evaluation/Pilot. No invented model objective, weight derivation, geographic learning parameters, thresholds or automatic runtime promotion.

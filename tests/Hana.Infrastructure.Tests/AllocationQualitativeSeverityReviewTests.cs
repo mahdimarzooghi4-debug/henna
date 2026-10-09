@@ -80,6 +80,11 @@ public sealed class AllocationQualitativeSeverityReviewTests
         Assert.Equal(3, stored.HumanSelectedBasis);
         Assert.Equal(ReviewedNeedSeverityQualitativeRubricV1.Version, stored.CriteriaVersion);
         Assert.Equal(snapshot, stored.SnapshotId);
+        // ADR-067: one authorized Admin is sufficient as the human reviewer;
+        // no second-reviewer identity or second-signature gate is invented.
+        Assert.Equal(admin, stored.ReviewerAccountId);
+        Assert.Equal(admin, (await db.ReviewedSevenFactorAssessments.AsNoTracking()
+            .SingleAsync(x => x.Id == sevenId)).ReviewerAccountId);
 
         await Assert.ThrowsAsync<AllocationQualitativeSeverityReviewConflictException>(() =>
             writer.RecordAsync(admin, review with { Rationale = "changed reason" }));

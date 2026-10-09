@@ -25,6 +25,17 @@ Current safeguards reject the two known non-labeling foundation identifiers at r
 7. XGBoost is a Production-track **family**, not an active Production model. EBM is a challenger; the constrained profile is a baseline. All AI remains Henna-owned, in-process and explicitly governed.
 8. Any unresolved policy remains unresolved; no fallback “approved” rubric or unreviewed migration of legacy labels.
 
+## Accepted evidence-review actor decision — ADR-067
+
+The Product Owner approved **one authorized Admin as sufficient** to review
+authenticity of Need Severity evidence; no second independent signer is
+required. The Admin may be the same actor who captured the seven-feature
+review and chosen qualitative level. An evidence reference must not be
+treated as an automatically authenticated underlying document. This resolves
+the actor requirement only; document-level verification, complete positive
+rubric admission, temporal/fairness/missing-data policy and model promotion
+remain separate gates.
+
 ## 3. Product decisions still required (no defaults)
 
 | Decision area | Precise question for Product / Data Governance | Current disposition |
