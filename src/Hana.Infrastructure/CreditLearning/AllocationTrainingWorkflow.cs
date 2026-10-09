@@ -52,6 +52,7 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         if (string.IsNullOrWhiteSpace(rubricVersion) || rubricVersion.Length > 120 ||
             score is < 0m or > 1m || !Enum.IsDefined(partition))
             throw new ArgumentException("Reviewed score, rubric and partition are required.");
+        AllocationRubricFoundationBoundary.RejectNonLabelingFoundation(rubricVersion);
         var snapshot = await db.Assessments.AsNoTracking().SingleOrDefaultAsync(x => x.Id == snapshotId, ct);
         if (snapshot is null)
             throw new ArgumentException("Assessment snapshot is missing.");
@@ -118,6 +119,8 @@ public sealed class AllocationTrainingWorkflow(HanaAllocationLearningDbContext d
         if (labels.Any(x => x.Partition == (int)LearningPartition.Evaluation))
             throw new ArgumentException(
                 "Independent evaluation labels cannot be used for training or candidate selection.");
+        if (labels.Any(x => AllocationRubricFoundationBoundary.IsNonLabelingFoundation(x.RubricVersion)))
+            throw new ArgumentException("Review foundations cannot be used to train model candidates.");
         var snapshotIds = labels.Select(x => x.SnapshotId).ToArray();
         var snapshots = await db.Assessments.AsNoTracking().Where(x => snapshotIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, ct);
