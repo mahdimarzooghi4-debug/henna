@@ -35,6 +35,17 @@ The connected account also has a separate Pro team with a Full seat, but the
 MCP limit is reported for the Starter team owning this file. File access or a
 user-supplied screenshot of node \`181:2\` is needed to complete comparison.
 
+## Confirmed second audience — Funding Supporter (2026-10-09)
+
+The Product Owner explicitly clarified that `حمایتگر` means the person or
+organization financing household support, **not** the customer-support staff
+at `/support`. A separate supporter-facing read-only AI impact UX is scoped
+in `docs/design/HANA-ADMIN-SUPPORTER-AI-PANEL-BOUNDARIES-DRAFT.md`.
+It is **not an implemented donor panel** and must not alias the current
+`/organization` manager portal without a verified funding-supporter role,
+program-level isolation and a disclosure contract. No ungrounded outcome
+metrics, fake model inference or funding verification are permitted.
+
 ## Tests and release boundary
 
 The existing real Chromium Playwright allocation browser suite checks the new workspace, all navigation destinations and mobile overflow, and asserts six/seven feature distinctions and no implied automatic Production promotion.
