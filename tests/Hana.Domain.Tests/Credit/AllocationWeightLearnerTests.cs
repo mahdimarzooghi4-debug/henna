@@ -61,6 +61,7 @@ public sealed class AllocationWeightLearnerTests
     [InlineData("HENNA-AJF-v1")]
     [InlineData("HENNA-ARR-v1")]
     [InlineData(" henna-arr-v1 ")]
+    [InlineData("HENNA-NEED-SEVERITY-FIVE-LEVEL-SCALE-v1")]
     public void ReviewFoundationsCannotTrainCoefficientCandidates(string rubric)
     {
         var examples = Examples().Select(row =>

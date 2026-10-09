@@ -10,6 +10,7 @@ public static class AllocationLabelRubricBoundary
 {
     public const string JudgmentFrameworkVersion = "HENNA-AJF-v1";
     public const string ReviewRubricFoundationVersion = "HENNA-ARR-v1";
+    public const string PartialFiveLevelScaleVersion = ReviewedNeedSeverityScaleJudgment.ScaleVersion;
 
     public static bool IsNonLabelingFoundation(string? rubricVersion)
     {
@@ -17,6 +18,8 @@ public static class AllocationLabelRubricBoundary
         return string.Equals(version, JudgmentFrameworkVersion,
                    StringComparison.OrdinalIgnoreCase) ||
                string.Equals(version, ReviewRubricFoundationVersion,
+                   StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(version, PartialFiveLevelScaleVersion,
                    StringComparison.OrdinalIgnoreCase);
     }
 
@@ -24,6 +27,6 @@ public static class AllocationLabelRubricBoundary
     {
         if (IsNonLabelingFoundation(rubricVersion))
             throw new ArgumentException(
-                "HENNA-AJF-v1 and HENNA-ARR-v1 are review foundations, not approved complete numeric labeling rubrics.");
+                "HENNA-AJF-v1, HENNA-ARR-v1 and the five-level severity scale are not approved complete numeric labeling rubrics.");
     }
 }

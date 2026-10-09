@@ -20,3 +20,7 @@ The Domain `ReviewedNeedSeverityScaleJudgment` provides these five values and ex
 **Next product decisions:** evidence criteria and abstention/disagreement standard per level, accountable rubric approval authority, version lifecycle and admission rules, fairness/temporal/missing-data contracts and model-acceptance criteria. Only then can a safe persisted review and seven-feature positive Dataset admission be connected to real training. Real external bank/Finance Manager proof remains separately required for actual funding.
 
 No iOS, Stage, QA Gate, Release, Production or Recovery action is authorized.
+
+## Positive-label guard
+
+The five-level **scale identity** is added to the Domain-level known-non-admission check alongside AJF/ARR. A legacy experimental `ReviewNeedAsync`, coefficient learner, shadow-model training or independent evaluation must reject this **partial** scale identifier as an approved complete numeric Rubric Version. This is a known-negative protection; no other unknown identifier thereby becomes approved. Future admission requires a separate explicitly versioned COMPLETE rubric, reviewed evidence requirements and human authorization.

@@ -10,6 +10,8 @@ public sealed class AllocationRubricFoundationBoundaryTests
     [InlineData("HENNA-ARR-v1")]
     [InlineData(" henna-arr-v1 ")]
     [InlineData(" henna-ajf-v1 ")]
+    [InlineData("HENNA-NEED-SEVERITY-FIVE-LEVEL-SCALE-v1")]
+    [InlineData(" henna-need-severity-five-level-scale-v1 ")]
     public void ReviewFoundationsAreNotNumericLabelRubrics(string version)
     {
         Assert.True(AllocationRubricFoundationBoundary.IsNonLabelingFoundation(version));
