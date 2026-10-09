@@ -158,6 +158,38 @@ try {
       simulation: { Rows: [{ HouseholdKey: id, BaselineAmountRial: 100, ProposedAmountRial: 110 }] } }));
     return route.fulfill(json({ active: false, items: [{ id, candidateVersion: "candidate-ui-test", baselineVersion: "baseline", modelVersion: "model", createdAtUtc: "2026-10-04T00:00:00Z", decision }] }));
   });
+  // AI workspace must expose only real existing routes, preserve research
+  // boundaries and remain usable on narrow mobile screens.
+  await page.goto(base + "/admin/allocation-ai");
+  await page.getByRole("heading", { name: "فضای کاری هوش حنا" }).waitFor();
+  await page.getByRole("heading", { name: "شدت نیاز، پیش از تخصیص" }).waitFor();
+  await page.getByRole("heading", { name: "پوشش نیاز ضروری، پس از تخصیص" }).waitFor();
+  await page.getByRole("heading", { name: "قرارداد هفت‌شاخصی v1.1" }).waitFor();
+  assert.match(await page.locator("main").innerText(), /فاقد رابط عملیاتی کامل/);
+  assert.match(await page.locator("main").innerText(), /شش‌شاخصی/);
+  assert.match(await page.locator("main").innerText(), /برنده‌ای خودکار انتخاب نمی‌شود/);
+  for (const destination of [
+    "/admin/allocation-assessments",
+    "/admin/allocation-outcomes",
+    "/admin/allocation-training",
+    "/admin/allocation-model-comparison",
+    "/admin/allocation-training-runs",
+    "/admin/allocation-shadow-benchmarks",
+    "/admin/allocation-proposals",
+    "/admin/allocation-retention",
+  ]) {
+    assert.equal(await page.locator(`main a[href="${destination}"]`).count() >= 1, true,
+      `AI workspace should link to existing route ${destination}`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true, "AI workspace must not overflow on mobile");
+  await page.getByRole("link", { name: /ورود به آموزش آزمایشی/ }).click();
+  await page.getByRole("heading", { name: "آموزش آزمایشی تخصیص — شش‌شاخصی" }).waitFor();
+  await page.getByRole("link", { name: "بازگشت به فضای کاری هوش حنا" }).click();
+  await page.getByRole("heading", { name: "فضای کاری هوش حنا" }).waitFor();
+  await page.setViewportSize({ width: 1280, height: 900 });
+
   await page.goto(base + "/admin/allocation-proposals");
   await page.getByRole("button", { name: /candidate-ui-test/ }).click();
   try { await page.getByRole("heading", { name: "ضرایب پیشنهادی" }).waitFor(); }

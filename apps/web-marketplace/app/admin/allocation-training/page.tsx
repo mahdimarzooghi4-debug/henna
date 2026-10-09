@@ -141,7 +141,14 @@ export default function AllocationTrainingPage() {
   const training = chosen.filter(x => x.partition === 1).length, validation = chosen.filter(x => x.partition === 2).length;
   return <main className={styles.page}>
     <header><Link href="/admin/allocation-proposals">بررسی پیشنهادها</Link><Link href="/auth">ورود</Link></header>
-    <h1>آموزش آزمایشی تخصیص</h1>
+    <h1>آموزش آزمایشی تخصیص — شش‌شاخصی</h1>
+    <aside className={styles.note}>
+      این فرم مربوط به مسیر آزمایشی شش‌شاخصی است. برای نسخه هفت‌شاخصی v1.1،
+      وضعیت مالک/مستأجر و مقیاس پنج‌سطحی شدت نیاز، هنوز مسیر ورود عملیاتی
+      این صفحه تأیید نشده است. شناسه مقیاس پنج‌سطحی را به‌جای Rubric کامل
+      آموزشی وارد نکنید؛ پذیرش Dataset جدید مسدود می‌ماند.
+      <p><Link href="/admin/allocation-ai">بازگشت به فضای کاری هوش حنا</Link></p>
+    </aside>
     <Link href="/admin/allocation-training-runs">پیگیری سوابق و نتیجه آموزش</Link>
     <Link href="/admin/allocation-assessments">ثبت ارزیابی مستند خانوار</Link>
     <Link href="/admin/allocation-retention">Retention داده‌های پژوهشی</Link>
