@@ -112,15 +112,29 @@ public sealed class CommerceTests
   new FixedRuntimeProfileProvider(promotedProposalId,promotedProfile));
  Task<JsonElement> PromotedCommand(Guid actor,string action,object input,Guid? key=null)=>promotedService.ExecuteAsync(actor,key??Guid.NewGuid(),action,JsonSerializer.SerializeToElement(input));
  var promotedProgram=await PromotedCommand(admin,"CREATE_PROGRAM",new{name="CI promoted runtime",fundingReference="approved-promoted-ci",fundedRial=10000,expiresAtUtc=clock.UtcNow.AddDays(10),categoryIds=new[]{category}});
+ // The approved source pool formula continues to apply promoted household
+ // weights and unchanged, non-identical geographic factors independently.
+ const decimal buyerGeography=.8m, otherGeography=1.2m;
+ var buyerNeed=new HouseholdNeedScores(3,0,0,0,0,0);
+ var otherNeed=new HouseholdNeedScores(0,3,0,0,0,0);
  var promotedAllocation=await PromotedCommand(admin,"ALLOCATE_CREDIT",new{programId=promotedProgram.GetProperty("Id").GetGuid(),poolRial=10000,beneficiaries=new[]{
-  new{accountId=buyer,householdKey=households[buyer],geographicFactor=1m,scores=new{health=3,hardship=0,age=0,size=0,care=0,education=0}},
-  new{accountId=stranger,householdKey=households[stranger],geographicFactor=1m,scores=new{health=0,hardship=3,age=0,size=0,care=0,education=0}}}});
+  new{accountId=buyer,householdKey=households[buyer],geographicFactor=buyerGeography,scores=new{health=3,hardship=0,age=0,size=0,care=0,education=0}},
+  new{accountId=stranger,householdKey=households[stranger],geographicFactor=otherGeography,scores=new{health=0,hardship=3,age=0,size=0,care=0,education=0}}}});
  Assert.Equal(promotedProfile.Version,promotedAllocation.GetProperty("formulaVersion").GetString());
  Assert.Equal(promotedProposalId,promotedAllocation.GetProperty("runtimeProposalId").GetGuid());
  Assert.Equal(7L,promotedAllocation.GetProperty("runtimeProfileSequence").GetInt64());
  var promotedGrants=promotedAllocation.GetProperty("grants").EnumerateArray().ToArray();
- Assert.Equal(5164,promotedGrants[0].GetProperty("GrantedRial").GetInt64());
- Assert.Equal(4835,promotedGrants[1].GetProperty("GrantedRial").GetInt64());
+ var buyerWeight=buyerGeography*promotedProfile.Factor(buyerNeed);
+ var otherWeight=otherGeography*promotedProfile.Factor(otherNeed);
+ var denominator=buyerWeight+otherWeight;
+ var expectedBuyer=checked((long)decimal.Floor(10000m*buyerWeight/denominator));
+ var expectedOther=checked((long)decimal.Floor(10000m*otherWeight/denominator));
+ Assert.Equal(4159L,expectedBuyer);
+ Assert.Equal(5840L,expectedOther);
+ Assert.Equal(expectedBuyer,promotedGrants[0].GetProperty("GrantedRial").GetInt64());
+ Assert.Equal(expectedOther,promotedGrants[1].GetProperty("GrantedRial").GetInt64());
+ Assert.Equal(10000L-expectedBuyer-expectedOther,
+  promotedAllocation.GetProperty("unallocatedRial").GetInt64());
 
  var q=await Command(buyer,"CREATE_QUOTE",new{sellerId=seller,addressId,purchaseType="PERSONAL",fulfillmentMode="PICKUP"});
  var key=Guid.NewGuid();var input=new{quoteId=q.GetProperty("Id").GetGuid(),creditGrantId=creditId,unavailableDisposition="KEEP",confirmUnavailable=true};
