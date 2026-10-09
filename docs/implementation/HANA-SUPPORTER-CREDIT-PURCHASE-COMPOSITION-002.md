@@ -28,3 +28,11 @@ HTTP route, BFF or Figma view is added. Do not conflate \`/support\` or
 
 See Issues #167 (external/banking) and #168 (internal/completion). No
 Production funding proof, Stage, merge or iOS Native work was performed.
+
+## Read-model consistency
+A grant ID may legitimately remain on an entirely cash-funded order when its
+available credit is exhausted at checkout. It contributes no purchase lines.
+Positive credit payment without a grant ID fails closed; the projection also
+validates the exact item unit-price × quantity and cash/credit order totals,
+unique order-item identities, and cancellation/refund coherence. No cash-funded
+share is reported as supporter spend.

@@ -36,21 +36,29 @@ public static class SupporterCreditPurchaseProjection
             grants.Select(g => g.Id).Distinct().Count() != grants.Count)
             throw new ArgumentException("Invalid or duplicate credit grants.", nameof(grants));
         if (orders.Any(o => o.Id == Guid.Empty || o.BuyerId == Guid.Empty ||
-                o.CreditPaidRial < 0 || o.CashPaidRial < 0 ||
-                o.Items is null || o.Items.Any(i => i.ProductId == Guid.Empty ||
+                o.TotalRial < 0 || o.CreditPaidRial < 0 || o.CashPaidRial < 0 ||
+                (decimal)o.CreditPaidRial + o.CashPaidRial != o.TotalRial ||
+                (o.CreditPaidRial > 0 && !o.CreditGrantId.HasValue) ||
+                (o.State == "CANCELLED" && o.RefundState != "REFUNDED") ||
+                o.Items is null || o.Items.Any(i => i.Id == Guid.Empty ||
+                    i.ProductId == Guid.Empty || i.UnitPriceRial <= 0 ||
                     i.Quantity <= 0 || i.RefundedQuantity < 0 ||
                     i.RefundedQuantity > i.Quantity ||
-                    i.CreditRial < 0 || i.CashRial < 0) ||
-                o.Items.Sum(i => (decimal)i.CreditRial) != o.CreditPaidRial) ||
+                    i.CreditRial < 0 || i.CashRial < 0 ||
+                    (decimal)i.CreditRial + i.CashRial !=
+                        (decimal)i.UnitPriceRial * i.Quantity) ||
+                o.Items.Select(i => i.Id).Distinct().Count() != o.Items.Count ||
+                o.Items.Sum(i => (decimal)i.CreditRial) != o.CreditPaidRial ||
+                o.Items.Sum(i => (decimal)i.CashRial) != o.CashPaidRial) ||
             orders.Select(o => o.Id).Distinct().Count() != orders.Count)
             throw new ArgumentException("Inconsistent recorded order credit lineage.", nameof(orders));
 
         var grantsById = grants.ToDictionary(g => g.Id);
         foreach (var order in orders.Where(o => o.CreditGrantId.HasValue))
             if (grantsById.TryGetValue(order.CreditGrantId!.Value, out var grant) &&
-                (order.BuyerId != grant.AccountId || order.CreditPaidRial == 0))
+                order.BuyerId != grant.AccountId)
                 throw new InvalidOperationException(
-                    "Order credit grant belongs to a different account or was not spent.");
+                    "Order credit grant belongs to a different account.");
 
         return grants.Where(g => g.ProgramId == programId)
             .OrderBy(g => g.AccountId).ThenBy(g => g.Id)

@@ -13,7 +13,7 @@ public sealed class SupporterCreditPurchaseProjectionTests
     private static OrderItem Item(long credit, long cash = 0,
         int quantity = 1, int returned = 0, string? name = "Item") =>
         new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
-            quantity, cash + credit, cash, credit, returned, name);
+            quantity, (cash + credit) / quantity, cash, credit, returned, name);
 
     private static Order Purchase(CreditGrant grant, params OrderItem[] items) =>
         new(Guid.NewGuid(), grant.AccountId, Guid.NewGuid(),
@@ -56,7 +56,7 @@ public sealed class SupporterCreditPurchaseProjectionTests
             State = "CANCELLED", RefundState = "REFUNDED"
         };
         var partial = Purchase(own,
-            Item(1001, quantity: 3, returned: 1)) with { RefundState = "PARTIAL" };
+            Item(1001, cash: 2002, quantity: 3, returned: 1)) with { RefundState = "PARTIAL" };
         var items = Assert.Single(SupporterCreditPurchaseProjection.Compose(
             own.ProgramId, new[] { own }, new[] { cancelled, partial })).Purchases;
         Assert.Equal(2, items.Count);
@@ -64,6 +64,40 @@ public sealed class SupporterCreditPurchaseProjectionTests
         Assert.Equal(800, items.Single(i => i.OrderId == cancelled.Id).RefundedCreditRial);
         Assert.Equal(333, items.Single(i => i.OrderId == partial.Id).RefundedCreditRial);
         Assert.Equal(668, items.Single(i => i.OrderId == partial.Id).NetCreditRial);
+    }
+
+    [Fact]
+    public void ExhaustedGrantCashOrdersDoNotCountAsSupporterPurchases()
+    {
+        var grant = Grant(Guid.NewGuid(), Guid.NewGuid());
+        var cashOnly = Purchase(grant, Item(0, cash: 600));
+        var row = Assert.Single(SupporterCreditPurchaseProjection.Compose(
+            grant.ProgramId, new[] { grant }, new[] { cashOnly }));
+        Assert.Equal(2000, row.GrantedRial);
+        Assert.Empty(row.Purchases);
+    }
+
+    [Fact]
+    public void UnlinkedPositiveCreditAndCorruptedCashOrPriceTotalsFailClosed()
+    {
+        var grant = Grant(Guid.NewGuid(), Guid.NewGuid());
+        var order = Purchase(grant, Item(400, cash: 200));
+        Assert.Throws<ArgumentException>(() =>
+            SupporterCreditPurchaseProjection.Compose(grant.ProgramId, new[] { grant },
+                new[] { order with { CreditGrantId = null } }));
+        Assert.Throws<ArgumentException>(() =>
+            SupporterCreditPurchaseProjection.Compose(grant.ProgramId, new[] { grant },
+                new[] { order with { CashPaidRial = 199 } }));
+        Assert.Throws<ArgumentException>(() =>
+            SupporterCreditPurchaseProjection.Compose(grant.ProgramId, new[] { grant },
+                new[] { order with { TotalRial = 601 } }));
+        Assert.Throws<ArgumentException>(() =>
+            SupporterCreditPurchaseProjection.Compose(grant.ProgramId, new[] { grant },
+                new[] { order with { Items = new List<OrderItem> {
+                    order.Items[0] with { UnitPriceRial = 999 } } } }));
+        Assert.Throws<ArgumentException>(() =>
+            SupporterCreditPurchaseProjection.Compose(grant.ProgramId, new[] { grant },
+                new[] { order with { State = "CANCELLED" } }));
     }
 
     [Fact]
