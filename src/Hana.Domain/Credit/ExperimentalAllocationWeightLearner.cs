@@ -36,6 +36,13 @@ public static class ExperimentalAllocationWeightLearner
             x.ReviewedAtUtc.Offset != TimeSpan.Zero || x.ReviewedAtUtc > cutoffUtc ||
             !Enum.IsDefined(x.Partition)) || data.Select(x => x.HouseholdKey).Distinct().Count() != data.Length)
             throw new ArgumentException("Complete, distinct reviewed households are required.");
+        if (data.Any(x => x.Partition == LearningPartition.Evaluation))
+            throw new ArgumentException(
+                "Independent Evaluation labels cannot enter coefficient learning.");
+        if (data.Any(x =>
+                AllocationLabelRubricBoundary.IsNonLabelingFoundation(x.RubricVersion)))
+            throw new ArgumentException(
+                "Review foundations cannot be used for coefficient learning.");
         if (data.Select(x => x.RubricVersion).Distinct().Count() != 1)
             throw new ArgumentException("One reviewed scoring rubric is required.");
         var training = data.Where(x => x.Partition == LearningPartition.Training).ToArray();

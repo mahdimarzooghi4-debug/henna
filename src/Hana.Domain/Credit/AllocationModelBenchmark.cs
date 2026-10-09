@@ -151,6 +151,10 @@ public static class AllocationModelBenchmarkEvaluator
             data.Select(x => x.HouseholdKey).Distinct().Count() != data.Length)
             throw new ArgumentException(
                 "Complete distinct independent evaluation labels are required.");
+        if (data.Any(x =>
+                AllocationLabelRubricBoundary.IsNonLabelingFoundation(x.RubricVersion)))
+            throw new ArgumentException(
+                "Review foundations cannot be used for independent coefficient evaluation.");
         if (data.Select(x => x.RubricVersion).Distinct().Count() != 1)
             throw new ArgumentException(
                 "One reviewed evaluation rubric is required.");

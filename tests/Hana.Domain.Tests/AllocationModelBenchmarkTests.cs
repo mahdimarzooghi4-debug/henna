@@ -105,4 +105,26 @@ public sealed class AllocationModelBenchmarkTests
                     .31m,.24m,.18m,.12m,.10m,.05m),
                 cutoff));
     }
+    [Theory]
+    [InlineData("HENNA-AJF-v1")]
+    [InlineData("HENNA-ARR-v1")]
+    [InlineData(" henna-ajf-v1 ")]
+    public void ReviewFoundationsCannotBecomeIndependentCoefficientEvidence(
+        string rubric)
+    {
+        var cutoff = new DateTimeOffset(2026, 10, 6, 12, 0, 0,
+            TimeSpan.Zero);
+        var row = new ReviewedNeedExample(
+            Guid.NewGuid(),
+            new HouseholdNeedScores(3, 0, 0, 0, 0, 0),
+            .35m, Guid.NewGuid(), rubric, cutoff.AddHours(-1),
+            LearningPartition.Evaluation);
+        var candidate = new AllocationWeightProfile(
+            "candidate-reviewed", .35m, .20m, .18m, .12m, .10m, .05m);
+
+        Assert.Throws<ArgumentException>(() =>
+            AllocationModelBenchmarkEvaluator.Evaluate(
+                new[] { row }, AllocationWeightProfile.Baseline,
+                candidate, cutoff));
+    }
 }

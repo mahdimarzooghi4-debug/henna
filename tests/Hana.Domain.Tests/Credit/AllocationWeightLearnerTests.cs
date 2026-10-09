@@ -57,4 +57,65 @@ public sealed class AllocationWeightLearnerTests
         Assert.Throws<ArgumentException>(() => ExperimentalAllocationWeightLearner.Train(data,
             AllocationWeightProfile.Baseline, Cutoff));
     }
+    [Theory]
+    [InlineData("HENNA-AJF-v1")]
+    [InlineData("HENNA-ARR-v1")]
+    [InlineData(" henna-arr-v1 ")]
+    public void ReviewFoundationsCannotTrainCoefficientCandidates(string rubric)
+    {
+        var examples = Examples().Select(row =>
+            row with { RubricVersion = rubric }).ToArray();
+
+        Assert.Throws<ArgumentException>(() =>
+            ExperimentalAllocationWeightLearner.Train(
+                examples, AllocationWeightProfile.Baseline, Cutoff));
+    }
+
+    [Fact]
+    public void IndependentEvaluationRowsCannotEnterCoefficientTraining()
+    {
+        var examples = Examples();
+        examples[47] = examples[47] with {
+            Partition = LearningPartition.Evaluation
+        };
+
+        Assert.Throws<ArgumentException>(() =>
+            ExperimentalAllocationWeightLearner.Train(
+                examples, AllocationWeightProfile.Baseline, Cutoff));
+    }
+
+    [Fact]
+    public void LearnedCoefficientsEnterOriginalPoolFormulaWithUnchangedGeography()
+    {
+        // Synthetic contract test only; these are not real Henna need labels.
+        var learned = ExperimentalAllocationWeightLearner.Train(
+            Examples(), AllocationWeightProfile.Baseline, Cutoff);
+        var households = new[]
+        {
+            new AllocationLearningCase(Guid.NewGuid(),
+                new HouseholdNeedScores(3, 0, 0, 0, 0, 0), .8m),
+            new AllocationLearningCase(Guid.NewGuid(),
+                new HouseholdNeedScores(0, 3, 0, 0, 0, 0), 1.2m)
+        };
+        const decimal pool = 1_000_000m;
+        var preview = AllocationLearningSimulator.ComparePool(
+            pool, households, AllocationWeightProfile.Baseline,
+            learned.Candidate, "synthetic-dataset", "test-source");
+
+        var weights = households.Select(h =>
+            h.GeographicFactor * learned.Candidate.Factor(h.Scores)).ToArray();
+        var denominator = weights.Sum();
+
+        Assert.Equal(pool * weights[0] / denominator,
+            preview.Rows[0].ProposedAmountRial);
+        Assert.Equal(pool * weights[1] / denominator,
+            preview.Rows[1].ProposedAmountRial);
+        Assert.InRange(preview.Rows.Sum(x => x.ProposedAmountRial),
+            pool - .000001m, pool + .000001m);
+        Assert.True(learned.Candidate.Health >
+            AllocationWeightProfile.Baseline.Health);
+        Assert.True(preview.Rows[0].ChangeRial > 0m);
+        Assert.Equal(.8m, households[0].GeographicFactor);
+        Assert.Equal(1.2m, households[1].GeographicFactor);
+    }
 }

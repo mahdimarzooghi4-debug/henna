@@ -1,28 +1,22 @@
+using Hana.Domain.Credit;
+
 namespace Hana.Infrastructure.CreditLearning;
 
 /// <summary>
-/// Known approved *reasoning* foundations are not complete numeric labeling rubrics.
-/// This negative check does not approve other rubric identifiers: a positive,
-/// versioned rubric admission contract still requires explicit product governance.
+/// Compatibility facade for the Domain-level known-negative rubric boundary.
+/// Neither this facade nor its absence of rejection positively approves any
+/// other rubric identifier for model training or Production.
 /// </summary>
 public static class AllocationRubricFoundationBoundary
 {
-    public const string JudgmentFrameworkVersion = "HENNA-AJF-v1";
-    public const string ReviewRubricFoundationVersion = "HENNA-ARR-v1";
+    public const string JudgmentFrameworkVersion =
+        AllocationLabelRubricBoundary.JudgmentFrameworkVersion;
+    public const string ReviewRubricFoundationVersion =
+        AllocationLabelRubricBoundary.ReviewRubricFoundationVersion;
 
-    public static bool IsNonLabelingFoundation(string? rubricVersion)
-    {
-        var version = rubricVersion?.Trim();
-        return string.Equals(version, JudgmentFrameworkVersion,
-                   StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(version, ReviewRubricFoundationVersion,
-                   StringComparison.OrdinalIgnoreCase);
-    }
+    public static bool IsNonLabelingFoundation(string? rubricVersion) =>
+        AllocationLabelRubricBoundary.IsNonLabelingFoundation(rubricVersion);
 
-    public static void RejectNonLabelingFoundation(string? rubricVersion)
-    {
-        if (IsNonLabelingFoundation(rubricVersion))
-            throw new ArgumentException(
-                "HENNA-AJF-v1 and HENNA-ARR-v1 are review foundations, not approved complete numeric labeling rubrics.");
-    }
+    public static void RejectNonLabelingFoundation(string? rubricVersion) =>
+        AllocationLabelRubricBoundary.RejectNonLabelingFoundation(rubricVersion);
 }
