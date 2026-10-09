@@ -58,8 +58,6 @@ public sealed class AllocationNewModelConflictReconciliationTests
         var featureWriter = new AllocationReviewedSevenFactorService(db, roles, clock);
         var reviewWriter = new AllocationQualitativeSeverityReviewService(db, roles, clock);
         var resolver = new AllocationNewModelConflictReconciliationService(db, roles, clock);
-        var cutoff = clock.UtcNow;
-
         // Household 0 has a real v1.1 judgment; household 1 currently has
         // only historical six-factor data; the latter is never invented as a
         // seven-feature zero-severity label.
@@ -77,6 +75,8 @@ public sealed class AllocationNewModelConflictReconciliationTests
             "preallocation-proof", at.AddHours(-1),
             "Reviewed near-term impact");
         Assert.True(await reviewWriter.RecordAsync(admin, review));
+        // Capture the explicit cutoff after the first review exists.
+        var cutoff = clock.UtcNow;
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             resolver.PreviewAsync(Guid.NewGuid(), keys, cutoff));
