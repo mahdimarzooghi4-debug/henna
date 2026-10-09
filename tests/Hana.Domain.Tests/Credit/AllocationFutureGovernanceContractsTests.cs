@@ -39,7 +39,7 @@ public sealed class AllocationFutureGovernanceContractsTests
         Assert.Throws<ArgumentException>(() => new HouseholdHousingTenureEvidence(
             snapshot, HouseholdHousingTenure.Tenant, ""));
         Assert.Throws<ArgumentException>(() => new SevenFactorCoefficientDraft(
-            "missing-housing-weight", .30m, .25m, .18m, .12m, .10m, .05m, 0m));
+            "missing-housing-weight", .30m, .20m, .18m, .12m, .10m, .05m, 0m));
         // A complete seven-weight research draft is expressible, but it is
         // not an approved scoring mapping or an active Commerce profile.
         var draft = new SevenFactorCoefficientDraft(
