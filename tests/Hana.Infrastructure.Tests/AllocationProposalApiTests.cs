@@ -163,6 +163,16 @@ public sealed class AllocationProposalApiTests
         var rubric = "rubric-" + Guid.NewGuid();
         var label = new { snapshotId = snapshots[0], needScore = .8m, rubricVersion = rubric, partition = 1 };
         Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.PostAsJsonAsync(research + "/labels", label)).StatusCode);
+        foreach (var foundation in new[] {
+            AllocationRubricFoundationBoundary.JudgmentFrameworkVersion,
+            AllocationRubricFoundationBoundary.ReviewRubricFoundationVersion
+        })
+        {
+            Assert.Equal(HttpStatusCode.BadRequest,
+                (await creatorClient.PostAsJsonAsync(research + "/labels",
+                    new { snapshotId = snapshots[0], needScore = .8m,
+                        rubricVersion = foundation, partition = 1 })).StatusCode);
+        }
         var labeled = await creatorClient.PostAsJsonAsync(research + "/labels", label);
         Assert.Equal(HttpStatusCode.OK, labeled.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await creatorClient.PostAsJsonAsync(research + "/labels", label)).StatusCode);
