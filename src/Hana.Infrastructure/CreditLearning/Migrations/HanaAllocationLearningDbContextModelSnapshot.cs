@@ -71,7 +71,8 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             e.Property<decimal>("OriginalGeographicFactor").HasColumnType("numeric");
             e.Property<DateTimeOffset>("ReviewedAtUtc").HasColumnType("timestamp with time zone");
             e.HasKey("Id");
-            e.HasIndex("SnapshotId","ReviewedAtUtc","Id");
+            e.HasIndex("SnapshotId","ReviewedAtUtc","Id")
+                .HasDatabaseName("IX_seven_factor_review_SnapshotId_ReviewedAtUtc_Id");
             e.HasOne("Hana.Infrastructure.CreditLearning.AllocationAssessmentRecord", null)
                 .WithMany().HasForeignKey("SnapshotId")
                 .OnDelete(DeleteBehavior.Restrict).IsRequired();

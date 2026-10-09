@@ -118,7 +118,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.NonHousingHardshipEvidenceReference).HasMaxLength(240).IsRequired();
             e.Property(x => x.OtherNeedsEvidenceReference).HasMaxLength(240).IsRequired();
             e.Property(x => x.OriginalGeographicFactor).HasColumnType("numeric");
-            e.HasIndex(x => new { x.SnapshotId, x.ReviewedAtUtc, x.Id });
+            e.HasIndex(x => new { x.SnapshotId, x.ReviewedAtUtc, x.Id })
+                .HasDatabaseName("IX_seven_factor_review_SnapshotId_ReviewedAtUtc_Id");
             e.HasOne<AllocationAssessmentRecord>().WithMany()
                 .HasForeignKey(x => x.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         });
