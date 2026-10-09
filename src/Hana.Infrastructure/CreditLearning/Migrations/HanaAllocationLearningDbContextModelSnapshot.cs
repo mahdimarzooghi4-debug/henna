@@ -87,6 +87,42 @@ public sealed class HanaAllocationLearningDbContextModelSnapshot : ModelSnapshot
             });
         });
 
+        modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationQualitativeSeverityReviewRecord", e =>
+        {
+            e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");
+            e.Property<Guid>("SevenFactorReviewId").HasColumnType("uuid");
+            e.Property<Guid>("SnapshotId").HasColumnType("uuid");
+            e.Property<Guid>("ReviewerAccountId").HasColumnType("uuid");
+            e.Property<string>("ScaleVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("CriteriaVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("SourceFormulaVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("SourceDatasetVersion").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<string>("SourceInstructionReference").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
+            e.Property<int>("EvidenceDisposition").HasColumnType("integer");
+            e.Property<int?>("SeverityLevel").HasColumnType("integer");
+            e.Property<int?>("HumanSelectedBasis").HasColumnType("integer");
+            e.Property<string>("EvidenceReference").IsRequired().HasMaxLength(240).HasColumnType("character varying(240)");
+            e.Property<DateTimeOffset>("EvidenceObservedAtUtc").HasColumnType("timestamp with time zone");
+            e.Property<string>("Rationale").IsRequired().HasMaxLength(2000).HasColumnType("character varying(2000)");
+            e.Property<DateTimeOffset>("ReviewedAtUtc").HasColumnType("timestamp with time zone");
+            e.HasKey("Id");
+            e.HasIndex("SevenFactorReviewId", "ReviewedAtUtc", "Id")
+                .HasDatabaseName("IX_qualitative_severity_SevenFactorReviewId_ReviewedAtUtc_Id");
+            e.HasIndex("SnapshotId");
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationReviewedSevenFactorRecord", null)
+                .WithMany().HasForeignKey("SevenFactorReviewId")
+                .OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.HasOne("Hana.Infrastructure.CreditLearning.AllocationAssessmentRecord", null)
+                .WithMany().HasForeignKey("SnapshotId")
+                .OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.ToTable("qualitative_severity_reviews", "allocation_learning", t =>
+            {
+                t.HasCheckConstraint("ck_qualitative_scale_version", "\"ScaleVersion\" = 'HENNA-NEED-SEVERITY-FIVE-LEVEL-SCALE-v1' AND \"CriteriaVersion\" = 'HENNA-NEED-SEVERITY-QUALITATIVE-CRITERIA-v1'");
+                t.HasCheckConstraint("ck_qualitative_level_basis", "(\"EvidenceDisposition\" = 1 AND \"SeverityLevel\" BETWEEN 0 AND 4 AND \"HumanSelectedBasis\" = \"SeverityLevel\") OR (\"EvidenceDisposition\" IN (2,3) AND \"SeverityLevel\" IS NULL AND \"HumanSelectedBasis\" IS NULL)");
+                t.HasCheckConstraint("ck_qualitative_evidence", "\"ReviewerAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND length(btrim(\"EvidenceReference\")) > 0 AND length(btrim(\"Rationale\")) > 0 AND \"EvidenceObservedAtUtc\" <= \"ReviewedAtUtc\"");
+            });
+        });
+
         modelBuilder.Entity("Hana.Infrastructure.CreditLearning.AllocationOutcomeRecord", e =>
         {
             e.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uuid");

@@ -48,6 +48,8 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
 {
     public DbSet<AllocationAssessmentRecord> Assessments => Set<AllocationAssessmentRecord>();
     public DbSet<AllocationOutcomeRecord> Outcomes => Set<AllocationOutcomeRecord>();
+    public DbSet<AllocationQualitativeSeverityReviewRecord> QualitativeSeverityReviews =>
+        Set<AllocationQualitativeSeverityReviewRecord>();
     public DbSet<AllocationReviewedSevenFactorRecord> ReviewedSevenFactorAssessments =>
         Set<AllocationReviewedSevenFactorRecord>();
     public DbSet<AllocationProposalRecord> Proposals => Set<AllocationProposalRecord>();
@@ -120,6 +122,30 @@ public sealed class HanaAllocationLearningDbContext(DbContextOptions<HanaAllocat
             e.Property(x => x.OriginalGeographicFactor).HasColumnType("numeric");
             e.HasIndex(x => new { x.SnapshotId, x.ReviewedAtUtc, x.Id })
                 .HasDatabaseName("IX_seven_factor_review_SnapshotId_ReviewedAtUtc_Id");
+            e.HasOne<AllocationAssessmentRecord>().WithMany()
+                .HasForeignKey(x => x.SnapshotId).OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<AllocationQualitativeSeverityReviewRecord>(e =>
+        {
+            e.ToTable("qualitative_severity_reviews", t =>
+            {
+                t.HasCheckConstraint("ck_qualitative_scale_version", "\"ScaleVersion\" = 'HENNA-NEED-SEVERITY-FIVE-LEVEL-SCALE-v1' AND \"CriteriaVersion\" = 'HENNA-NEED-SEVERITY-QUALITATIVE-CRITERIA-v1'");
+                t.HasCheckConstraint("ck_qualitative_level_basis", "(\"EvidenceDisposition\" = 1 AND \"SeverityLevel\" BETWEEN 0 AND 4 AND \"HumanSelectedBasis\" = \"SeverityLevel\") OR (\"EvidenceDisposition\" IN (2,3) AND \"SeverityLevel\" IS NULL AND \"HumanSelectedBasis\" IS NULL)");
+                t.HasCheckConstraint("ck_qualitative_evidence", "\"ReviewerAccountId\" <> '00000000-0000-0000-0000-000000000000'::uuid AND length(btrim(\"EvidenceReference\")) > 0 AND length(btrim(\"Rationale\")) > 0 AND \"EvidenceObservedAtUtc\" <= \"ReviewedAtUtc\"");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ScaleVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.CriteriaVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceFormulaVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceDatasetVersion).HasMaxLength(120).IsRequired();
+            e.Property(x => x.SourceInstructionReference).HasMaxLength(120).IsRequired();
+            e.Property(x => x.EvidenceReference).HasMaxLength(240).IsRequired();
+            e.Property(x => x.Rationale).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => new { x.SevenFactorReviewId, x.ReviewedAtUtc, x.Id })
+                .HasDatabaseName("IX_qualitative_severity_SevenFactorReviewId_ReviewedAtUtc_Id");
+            e.HasOne<AllocationReviewedSevenFactorRecord>().WithMany()
+                .HasForeignKey(x => x.SevenFactorReviewId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<AllocationAssessmentRecord>().WithMany()
                 .HasForeignKey(x => x.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         });
