@@ -36,3 +36,20 @@ Positive credit payment without a grant ID fails closed; the projection also
 validates the exact item unit-price × quantity and cash/credit order totals,
 unique order-item identities, and cancellation/refund coherence. No cash-funded
 share is reported as supporter spend.
+
+## Internal persistence-backed read — next bounded slice
+
+`SupporterCreditPurchaseReadService.ReadInternalAsync` verifies a real
+`PROGRAM` document, selects the matching `CREDIT` jsonb rows and only
+`ORDER` rows referring to those grant IDs, using a parameterized PostgreSQL
+uuid-array predicate. Read-only EF queries execute within one REPEATABLE READ
+snapshot to avoid mixing grant/order versions during concurrent writes.
+Stored IDs and document ownership are checked before the pure projection.
+
+There is deliberately no public endpoint, BFF, registered supporter role,
+granted disclosure permission, UI, or identity-to-funder inference. These
+must be authorized and independently reviewed before any personal detail
+leaves the internal trusted domain. A test with real PostgreSQL verifies
+own-program selection, cash exclusion, proportional credit refunds,
+unknown programs and fail-closed storage owner mismatch. Empty or synthetic
+test funding references must never be interpreted as real bank receipts.
