@@ -100,7 +100,10 @@ public sealed class AllocationQualitativeSeverityReviewService(
             SeverityLevel = selected.Judgment.Level is { } level ? (int)level : null,
             HumanSelectedBasis = selected.HumanSelectedBasis is { } basis ? (int)basis : null,
             EvidenceReference = humanEvidence.EvidenceReference,
-            EvidenceObservedAtUtc = humanEvidence.EvidenceObservedAtUtc,
+            // PostgreSQL timestamptz is microsecond-precise; bind replay identity
+            // to that exact persisted UTC precision, never to unused .NET ticks.
+            EvidenceObservedAtUtc = humanEvidence.EvidenceObservedAtUtc.AddTicks(
+                -(humanEvidence.EvidenceObservedAtUtc.Ticks % 10)),
             Rationale = humanEvidence.Rationale,
             ReviewedAtUtc = now
         };
