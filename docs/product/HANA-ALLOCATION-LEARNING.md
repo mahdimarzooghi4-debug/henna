@@ -12,6 +12,22 @@ must never be posted to a wallet; settlement rounding and eligibility remain sep
 An explicitly promoted runtime profile affects only future allocation commands. Every allocation
 journals the exact formula version used; historic grants are never silently recalculated.
 
+## Judgment framework and reviewed-label doctrine
+
+Henna's reviewed-label process is governed upstream by `HENNA-AJF-v1` in
+`docs/product/HANA-ALLOCATION-JUDGMENT-FRAMEWORK.md` and ADR-060.
+
+The framework is not XGBoost input and is not a synthetic Training Dataset. It defines the
+reasoning discipline that an approved versioned Review Rubric must implement before human
+Reviewed Need Labels are created. The intended path is:
+
+`Judgment Framework → Versioned Review Rubric → Human Reviewed Labels → Training/Validation/Evaluation → Offline Learning → Independent Evaluation → Human Governance`
+
+Framework examples may be used for reviewer education and rubric QA only. They must not be
+silently converted into model features, labels or governed Training/Validation/Evaluation rows.
+The framework does not define the numeric mapping to the existing 0–1 Reviewed Need Label;
+that mapping remains a separate explicit Review Rubric decision.
+
 The learner is a Henna-owned in-process statistical implementation. The replaceable
 model-provider abstraction has been removed so a remote model cannot be introduced as a
 configuration change. It needs independently reviewed labels and no model credential or
