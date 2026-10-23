@@ -1,4 +1,4 @@
-import { uuidPattern } from "./seven-factor-evidence";
+import { uuidPattern } from "./seven-factor-evidence.ts";
 
 // This is a structural review only; no training Dataset or positive label admission.
 export const partitionContract = "HENNA-SEVEN-FACTOR-HUMAN-PARTITION-PREFLIGHT-v1";
