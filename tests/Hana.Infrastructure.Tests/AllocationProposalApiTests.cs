@@ -142,11 +142,12 @@ public sealed class AllocationProposalApiTests
             (await ordinaryClient.PostAsJsonAsync(partitions, noEvaluation)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest,
             (await creatorClient.PostAsJsonAsync(partitions, noEvaluation)).StatusCode);
+        var repeatedReviewId = Guid.NewGuid();
         var duplicate = new
         {
-            trainingReviewIds = new[] { Guid.NewGuid() },
+            trainingReviewIds = new[] { repeatedReviewId },
             validationReviewIds = new[] { Guid.NewGuid() },
-            evaluationReviewIds = Array.Empty<Guid>(),
+            evaluationReviewIds = new[] { repeatedReviewId },
             cutoffUtc = now
         };
         Assert.Equal(HttpStatusCode.BadRequest,
