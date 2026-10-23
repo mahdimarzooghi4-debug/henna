@@ -78,6 +78,36 @@ public sealed class AllocationProposalApiTests
         Assert.Equal(HttpStatusCode.Forbidden, (await ordinaryClient.GetAsync(research + "/assessments")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await creatorClient.GetAsync(research + "/assessments?page=0")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await creatorClient.GetAsync(research + "/assessments")).StatusCode);
+        // Seven-factor inventory is authenticated, ADMIN-only, read-only,
+        // and cannot be interpreted as a verified training Dataset.
+        var sevenInventory = research + "/seven-factor/review-inventory";
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.GetAsync(sevenInventory)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await ordinaryClient.GetAsync(sevenInventory)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await creatorClient.GetAsync(sevenInventory + "?page=0")).StatusCode);
+        using (var evidenceResponse = await creatorClient.GetAsync(sevenInventory))
+        {
+            Assert.Equal(HttpStatusCode.OK, evidenceResponse.StatusCode);
+            Assert.Equal("no-store", evidenceResponse.Headers.CacheControl?.ToString());
+            using var payload = JsonDocument.Parse(
+                await evidenceResponse.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("active").GetBoolean());
+            Assert.False(payload.RootElement.GetProperty("admitted").GetBoolean());
+            Assert.False(payload.RootElement.GetProperty("runtimeApplied").GetBoolean());
+            Assert.Equal(
+                AllocationSevenFactorReviewInventoryService.NotAdmittedStatus,
+                payload.RootElement.GetProperty("admissionStatus").GetString());
+        }
+        var previewUrl = sevenInventory + "/preview";
+        var invalidReview = new { reviewIds = new[] { Guid.NewGuid() }, cutoffUtc = now };
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.PostAsJsonAsync(previewUrl, invalidReview)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await ordinaryClient.PostAsJsonAsync(previewUrl, invalidReview)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await creatorClient.PostAsJsonAsync(previewUrl, invalidReview)).StatusCode);
         var runId = Guid.NewGuid();
         learning.TrainingRuns.Add(new() { Id = runId, RequestedByAccountId = creator,
             Status = "NO_IMPROVEMENT", DatasetVersion = dataset, ModelVersion = "audit-api-test",
