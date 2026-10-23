@@ -45,7 +45,7 @@ function parseItems(raw: unknown): ArtifactEvidenceItem[] | null {
       modelVersion: item.modelVersion, artifactFormat: item.artifactFormat,
       artifactSha256: item.artifactSha256, datasetVersion: item.datasetVersion,
       recordedAtUtc: item.recordedAtUtc, artifactVerified: item.artifactVerified,
-      evaluationCount: item.evaluationCount,
+      evaluationCount: item.evaluationCount as number,
     });
   }
   return rows;
