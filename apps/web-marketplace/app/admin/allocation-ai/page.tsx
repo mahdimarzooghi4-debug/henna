@@ -53,6 +53,11 @@ const evidence = [
     href: "/admin/allocation-proposals",
   },
   {
+    title: "دفتر آثار مدل‌های داخلی",
+    description: "آثار واقعی XGBoost و EBM، تطبیق SHA-256 و سوابق ارزیابی مستقل؛ بدون ثبت یا فعال‌سازی مدل.",
+    href: "/admin/allocation-ai/models",
+  },
+  {
     title: "Retention داده پژوهشی",
     description: "کنترل حذف با پیش‌نمایش، دلیل و اثرانگشت تأییدشده؛ مستقل از داده عملیاتی.",
     href: "/admin/allocation-retention",

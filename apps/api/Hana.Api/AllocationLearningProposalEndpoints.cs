@@ -208,6 +208,78 @@ internal static class AllocationLearningProposalEndpoints
             });
         });
 
+
+        // Read-only research artifacts, not an approved Model Registry.
+        // Recompute stored artifact digests; never expose bytes or labels.
+        routes.MapGet("/research/model-artifacts", async (
+            int? page, IServiceProvider services, CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var xgboost = await db.TrainingRuns.AsNoTracking()
+                .Where(x => x.ShadowArtifactSha256 != null &&
+                    x.ShadowModelVersion != null && x.ShadowArtifactFormat != null)
+                .OrderByDescending(x => x.RecordedAtUtc).ThenBy(x => x.Id)
+                .Skip((p - 1) * 10).Take(11).ToListAsync(ct);
+            var ebm = await db.EbmArtifacts.AsNoTracking()
+                .OrderByDescending(x => x.RecordedAtUtc).ThenBy(x => x.Id)
+                .Skip((p - 1) * 10).Take(11).ToListAsync(ct);
+            var runIds = xgboost.Take(10).Select(x => x.Id).ToArray();
+            var ebmIds = ebm.Take(10).Select(x => x.Id).ToArray();
+            var ebmRunIds = ebm.Take(10).Select(x => x.TrainingRunId).ToArray();
+            var ebmRuns = await db.TrainingRuns.AsNoTracking()
+                .Where(x => ebmRunIds.Contains(x.Id))
+                .Select(x => new { x.Id, x.DatasetVersion })
+                .ToDictionaryAsync(x => x.Id, ct);
+            var xgEvidence = await db.ShadowModelBenchmarks.AsNoTracking()
+                .Where(x => runIds.Contains(x.TrainingRunId))
+                .Select(x => new { x.TrainingRunId, x.ArtifactSha256, x.ModelVersion })
+                .ToListAsync(ct);
+            var ebmEvidence = await db.EbmModelBenchmarks.AsNoTracking()
+                .Where(x => ebmIds.Contains(x.EbmArtifactId))
+                .Select(x => new { x.EbmArtifactId, x.ArtifactSha256, x.ModelVersion })
+                .ToListAsync(ct);
+            return Results.Ok(new
+            {
+                contractVersion = "HENNA-RESEARCH-MODEL-ARTIFACT-INVENTORY-v1",
+                page = p,
+                xgboostHasMore = xgboost.Count > 10,
+                ebmHasMore = ebm.Count > 10,
+                xgboostItems = xgboost.Take(10).Select(x => new
+                {
+                    artifactId = x.Id, trainingRunId = x.Id,
+                    modelVersion = x.ShadowModelVersion,
+                    artifactFormat = x.ShadowArtifactFormat,
+                    artifactSha256 = x.ShadowArtifactSha256,
+                    datasetVersion = x.DatasetVersion,
+                    recordedAtUtc = x.RecordedAtUtc,
+                    artifactVerified = AllocationModelArtifactAttestation.Matches(
+                        x.ShadowArtifactBytes, x.ShadowArtifactSha256),
+                    evaluationCount = xgEvidence.Count(e =>
+                        e.TrainingRunId == x.Id &&
+                        e.ArtifactSha256 == x.ShadowArtifactSha256 &&
+                        e.ModelVersion == x.ShadowModelVersion)
+                }),
+                ebmItems = ebm.Take(10).Select(x => new
+                {
+                    artifactId = x.Id, x.TrainingRunId, x.ModelVersion,
+                    x.ArtifactFormat, x.ArtifactSha256,
+                    datasetVersion = ebmRuns.TryGetValue(x.TrainingRunId, out var run)
+                        ? run.DatasetVersion : "",
+                    x.RecordedAtUtc,
+                    artifactVerified = AllocationModelArtifactAttestation.Matches(
+                        x.ArtifactBytes, x.ArtifactSha256),
+                    evaluationCount = ebmEvidence.Count(e =>
+                        e.EbmArtifactId == x.Id &&
+                        e.ArtifactSha256 == x.ArtifactSha256 &&
+                        e.ModelVersion == x.ModelVersion)
+                }),
+                admitted = false, registryReady = false, registrationEnabled = false,
+                approved = false, active = false, runtimeApplied = false
+            });
+        });
+
         routes.MapPost("/research/outcomes", async (
             CaptureReviewedOutcomeRequest input, HttpContext http,
             IServiceProvider services, CancellationToken ct) =>
