@@ -38,6 +38,37 @@ try {
       return route.fulfill(json({ active:false,items:[run] }));
     }
     if (path.includes("/research/")) {
+      if (path.endsWith("/seven-factor/human-reviews")) {
+        return route.fulfill(json({
+          items: [firstPartyId, trainingLabelIds[0], trainingLabelIds[1]].map(x => ({
+            id: x, sevenFactorReviewId: id,
+            reviewedAtUtc: "2026-10-09T12:00:00.000Z", evidenceDisposition: 1,
+            scaleVersion: "HENNA-NEED-SEVERITY-FIVE-LEVEL-SCALE-v1",
+            criteriaVersion: "HENNA-NEED-SEVERITY-QUALITATIVE-RUBRIC-v1",
+          })),
+          page: 1, hasMore: false,
+          contractVersion: "HENNA-SEVEN-FACTOR-HUMAN-PARTITION-PREFLIGHT-v1",
+          admissionStatus: "NOT_ADMITTED_COMPLETE_RUBRIC_AND_EVALUATION_GOVERNANCE_REQUIRED",
+          active: false, admitted: false, runtimeApplied: false,
+        }));
+      }
+      if (path.endsWith("/seven-factor/partition-preflight/preview")) {
+        const data = request.postDataJSON();
+        assert.deepEqual(data.trainingReviewIds, [firstPartyId]);
+        assert.deepEqual(data.validationReviewIds, [trainingLabelIds[0]]);
+        assert.deepEqual(data.evaluationReviewIds, [trainingLabelIds[1]]);
+        assert.equal(new Date(data.cutoffUtc).toISOString(), data.cutoffUtc);
+        return route.fulfill(json({
+          contractVersion: "HENNA-SEVEN-FACTOR-HUMAN-PARTITION-PREFLIGHT-v1",
+          cutoffUtc: data.cutoffUtc, sourceFormulaVersion: "HANA-NEEDS-BASED-ALLOCATION-v1",
+          sourceDatasetVersion: "henna-first-party-v1",
+          sourceInstructionReference: "ui-source",
+          trainingCount: 1, validationCount: 1, evaluationCount: 1,
+          sha256: "d".repeat(64),
+          admissionStatus: "NOT_ADMITTED_COMPLETE_RUBRIC_AND_EVALUATION_GOVERNANCE_REQUIRED",
+          active: false, admitted: false, runtimeApplied: false,
+        }));
+      }
       if (path.endsWith("/seven-factor/review-inventory")) {
         return route.fulfill(json({
           items: [{ id: firstPartyId, formulaVersion: "HANA-NEEDS-BASED-ALLOCATION-v1.1",
@@ -362,6 +393,30 @@ try {
   await page.getByRole("button", { name: "بررسی نسب‌نامه و ساخت اثرانگشت" }).click();
   await page.getByRole("heading", { name: "پیش‌نمایش معتبر شواهد — بدون پذیرش Dataset" }).waitFor();
   assert.match(await page.locator("main").innerText(), /REVIEW_ONLY_NUMERIC_RUBRIC_REQUIRED/);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  const partitionsApi = base + "/api/admin/allocation-proposals/research/seven-factor/human-reviews";
+  assert.equal((await fetch(partitionsApi)).status, 401);
+  assert.equal((await fetch(base +
+    "/api/admin/allocation-proposals/research/seven-factor/partition-preflight/preview", {
+      method: "POST", headers: { Origin: "https://untrusted.test",
+        "Content-Type": "application/json" },
+      body: JSON.stringify({ trainingReviewIds: [firstPartyId],
+        validationReviewIds: [trainingLabelIds[0]],
+        evaluationReviewIds: [trainingLabelIds[1]],
+        cutoffUtc: "2026-10-09T12:00:00.000Z" }),
+    })).status, 403);
+  await page.goto(base + "/admin/allocation-ai/partitions");
+  await page.getByRole("heading", { name: "تفکیک دستی شواهد هفت‌عاملی" }).waitFor();
+  await page.getByRole("combobox", { name: "بخش بازبینی " + firstPartyId })
+    .selectOption("training");
+  await page.getByRole("combobox", { name: "بخش بازبینی " + trainingLabelIds[0] })
+    .selectOption("validation");
+  await page.getByRole("combobox", { name: "بخش بازبینی " + trainingLabelIds[1] })
+    .selectOption("evaluation");
+  await page.getByRole("button", { name: "زمان فعلی UTC" }).click();
+  await page.getByRole("button", { name: "بررسی سه بخش (بدون پذیرش)" }).click();
+  await page.getByRole("heading", { name: "نتیجه ساختاری معتبر — نه تأیید Dataset" }).waitFor();
+  assert.match(await page.locator("main").innerText(), /NOT_ADMITTED_COMPLETE_RUBRIC_AND_EVALUATION_GOVERNANCE_REQUIRED/);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   assert.deepEqual(errors, []);
   console.log("Allocation admin UI: proposal review, training durable retry and retention preview/reload-safe purge passed");

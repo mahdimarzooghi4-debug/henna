@@ -177,6 +177,11 @@ export default function AllocationAiWorkspacePage() {
         <Link href="/admin/allocation-ai/evidence" className={styles.textLink}>
           مشاهده شواهد واقعی هفت‌شاخصی و پیش‌نمایش اثرانگشت ←
         </Link>
+        <p>
+          <Link href="/admin/allocation-ai/partitions" className={styles.textLink}>
+            پیش‌بررسی تفکیک دستی آموزش، اعتبارسنجی و ارزیابی مستقل ←
+          </Link>
+        </p>
       </section>
 
       <section aria-labelledby="evidence-title" className={styles.library}>

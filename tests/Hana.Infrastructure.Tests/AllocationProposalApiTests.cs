@@ -108,6 +108,50 @@ public sealed class AllocationProposalApiTests
             (await ordinaryClient.PostAsJsonAsync(previewUrl, invalidReview)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest,
             (await creatorClient.PostAsJsonAsync(previewUrl, invalidReview)).StatusCode);
+        // Only the explicitly chosen human review IDs enter disjoint preview;
+        // no missing, overlapping or zero-partition cohort may be admitted.
+        var humanReviews = research + "/seven-factor/human-reviews";
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.GetAsync(humanReviews)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await ordinaryClient.GetAsync(humanReviews)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await creatorClient.GetAsync(humanReviews + "?page=0")).StatusCode);
+        using (var humanResponse = await creatorClient.GetAsync(humanReviews))
+        {
+            Assert.Equal(HttpStatusCode.OK, humanResponse.StatusCode);
+            Assert.Equal("no-store", humanResponse.Headers.CacheControl?.ToString());
+            using var payload = JsonDocument.Parse(await humanResponse.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("admitted").GetBoolean());
+            Assert.False(payload.RootElement.GetProperty("active").GetBoolean());
+            Assert.False(payload.RootElement.GetProperty("runtimeApplied").GetBoolean());
+            Assert.Equal(AllocationSevenFactorPartitionPreflightService.NotAdmittedStatus,
+                payload.RootElement.GetProperty("admissionStatus").GetString());
+        }
+        var partitions = research + "/seven-factor/partition-preflight/preview";
+        var noEvaluation = new
+        {
+            trainingReviewIds = new[] { Guid.NewGuid() },
+            validationReviewIds = new[] { Guid.NewGuid() },
+            evaluationReviewIds = Array.Empty<Guid>(),
+            cutoffUtc = now
+        };
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.PostAsJsonAsync(partitions, noEvaluation)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await ordinaryClient.PostAsJsonAsync(partitions, noEvaluation)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await creatorClient.PostAsJsonAsync(partitions, noEvaluation)).StatusCode);
+        var repeatedReviewId = Guid.NewGuid();
+        var duplicate = new
+        {
+            trainingReviewIds = new[] { repeatedReviewId },
+            validationReviewIds = new[] { Guid.NewGuid() },
+            evaluationReviewIds = new[] { repeatedReviewId },
+            cutoffUtc = now
+        };
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await creatorClient.PostAsJsonAsync(partitions, duplicate)).StatusCode);
         var runId = Guid.NewGuid();
         learning.TrainingRuns.Add(new() { Id = runId, RequestedByAccountId = creator,
             Status = "NO_IMPROVEMENT", DatasetVersion = dataset, ModelVersion = "audit-api-test",

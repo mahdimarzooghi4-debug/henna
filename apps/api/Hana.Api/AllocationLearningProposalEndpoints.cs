@@ -155,6 +155,59 @@ internal static class AllocationLearningProposalEndpoints
             });
         });
 
+        // Actual human-selected severity review IDs for an explicit, read-only
+        // three-way partition preview. Never return household identifiers,
+        // severity scores, evidence text or derived eligibility decisions.
+        routes.MapGet("/research/seven-factor/human-reviews", async (
+            int? page, IServiceProvider services, CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var rows = await db.QualitativeSeverityReviews.AsNoTracking()
+                .OrderByDescending(x => x.ReviewedAtUtc).ThenBy(x => x.Id)
+                .Skip((p - 1) * 20).Take(21)
+                .Select(x => new
+                {
+                    x.Id, x.SevenFactorReviewId, x.ReviewedAtUtc,
+                    x.EvidenceDisposition, x.ScaleVersion, x.CriteriaVersion
+                }).ToListAsync(ct);
+            return Results.Ok(new
+            {
+                items = rows.Take(20),
+                page = p,
+                hasMore = rows.Count > 20,
+                contractVersion = AllocationSevenFactorPartitionPreflightService.ContractVersion,
+                admissionStatus = AllocationSevenFactorPartitionPreflightService.NotAdmittedStatus,
+                active = false, admitted = false, runtimeApplied = false
+            });
+        });
+
+        routes.MapPost("/research/seven-factor/partition-preflight/preview", async (
+            SevenFactorPartitionPreviewRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.TrainingReviewIds is null ||
+                input.ValidationReviewIds is null ||
+                input.EvaluationReviewIds is null)
+                return Results.BadRequest();
+            var preview = await services
+                .GetRequiredService<AllocationSevenFactorPartitionPreflightService>()
+                .PreviewAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.TrainingReviewIds, input.ValidationReviewIds,
+                    input.EvaluationReviewIds, input.CutoffUtc, ct);
+            return Results.Ok(new
+            {
+                preview.ContractVersion, preview.CutoffUtc,
+                preview.SourceFormulaVersion, preview.SourceDatasetVersion,
+                preview.SourceInstructionReference, preview.TrainingCount,
+                preview.ValidationCount, preview.EvaluationCount,
+                preview.Sha256, preview.AdmissionStatus,
+                active = false, admitted = false, runtimeApplied = false
+            });
+        });
+
         routes.MapPost("/research/outcomes", async (
             CaptureReviewedOutcomeRequest input, HttpContext http,
             IServiceProvider services, CancellationToken ct) =>
@@ -1103,6 +1156,9 @@ internal static class AllocationLearningProposalEndpoints
     }
 }
 
+internal sealed record SevenFactorPartitionPreviewRequest(
+    Guid[]? TrainingReviewIds, Guid[]? ValidationReviewIds,
+    Guid[]? EvaluationReviewIds, DateTimeOffset CutoffUtc);
 internal sealed record SevenFactorInventoryPreviewRequest(Guid[]? ReviewIds, DateTimeOffset CutoffUtc);
 internal sealed record ProposalWeights(decimal Health, decimal Hardship, decimal Age,
     decimal Size, decimal Care, decimal Education);
