@@ -170,10 +170,13 @@ export default function AllocationAiWorkspacePage() {
           <div><strong>ورود به آموزش</strong><span>فاقد مجوز پذیرش خودکار Dataset جدید</span></div>
         </div>
         <p className={styles.contractWarning}>
-          این قابلیت‌ها هنوز صفحه عملیاتی برای ثبت یا حل تعارض در Web ندارند؛
-          دکمه ساختگی برای آن‌ها نمایش داده نمی‌شود. قرارداد هفت‌شاخصی جایگزین
-          فرم شش‌شاخصی موجود یا تأیید مستقل Production نشده است.
+          پیش‌نمایش واقعی و فقط‌خواندنی شواهد بازبینی‌شده اکنون موجود است؛
+          ثبت بازبینی هفت‌عاملی، حل تعارض و پذیرش Dataset هنوز رابط عملیاتی ندارند.
+          قرارداد هفت‌شاخصی جایگزین فرم شش‌شاخصی یا تأیید Production نشده است.
         </p>
+        <Link href="/admin/allocation-ai/evidence" className={styles.textLink}>
+          مشاهده شواهد واقعی هفت‌شاخصی و پیش‌نمایش اثرانگشت ←
+        </Link>
       </section>
 
       <section aria-labelledby="evidence-title" className={styles.library}>
