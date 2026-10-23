@@ -97,6 +97,64 @@ internal static class AllocationLearningProposalEndpoints
             }).ToList();
             return Results.Ok(new { items, page = p, active = false });
         });
+        // v1.1 evidence browse and exact-selection inventory are read-only.
+        // Neither endpoint creates NeedLabels, DatasetVersions, TrainingRuns or Proposals.
+        routes.MapGet("/research/seven-factor/review-inventory", async (
+            int? page, IServiceProvider services, CancellationToken ct) =>
+        {
+            var p = page ?? 1;
+            if (p is < 1 or > 10000) return Results.BadRequest();
+            var db = services.GetRequiredService<HanaAllocationLearningDbContext>();
+            var rows = await db.ReviewedSevenFactorAssessments.AsNoTracking()
+                .OrderByDescending(x => x.ReviewedAtUtc).ThenBy(x => x.Id)
+                .Skip((p - 1) * 20).Take(21)
+                .Select(x => new { x.Id, x.SnapshotId, x.ReviewedAtUtc, x.FormulaVersion })
+                .ToListAsync(ct);
+            var current = rows.Take(20).ToArray();
+            var ids = current.Select(x => x.Id).ToArray();
+            var severityIds = await db.QualitativeSeverityReviews.AsNoTracking()
+                .Where(x => ids.Contains(x.SevenFactorReviewId))
+                .Select(x => x.SevenFactorReviewId).Distinct().ToListAsync(ct);
+            var linked = severityIds.ToHashSet();
+            return Results.Ok(new
+            {
+                items = current.Select(x => new
+                {
+                    x.Id, x.ReviewedAtUtc, x.FormulaVersion,
+                    hasQualitativeReview = linked.Contains(x.Id)
+                }),
+                page = p,
+                hasMore = rows.Count > 20,
+                formulaVersion = NeedsBasedAllocationV11.FormulaVersion,
+                admissionStatus = AllocationSevenFactorReviewInventoryService.NotAdmittedStatus,
+                active = false,
+                admitted = false,
+                runtimeApplied = false
+            });
+        });
+
+        routes.MapPost("/research/seven-factor/review-inventory/preview", async (
+            SevenFactorInventoryPreviewRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.ReviewIds is null)
+                return Results.BadRequest();
+            var preview = await services
+                .GetRequiredService<AllocationSevenFactorReviewInventoryService>()
+                .PreviewAsync(
+                    (Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.ReviewIds, input.CutoffUtc, ct);
+            return Results.Ok(new
+            {
+                preview.ManifestContractVersion, preview.FormulaVersion,
+                preview.SourceFormulaVersion, preview.SourceDatasetVersion,
+                preview.SourceInstructionReference, preview.CutoffUtc,
+                preview.ReviewedHouseholdCount, preview.Sha256,
+                preview.AdmissionStatus,
+                active = false, admitted = false, runtimeApplied = false
+            });
+        });
+
         routes.MapPost("/research/outcomes", async (
             CaptureReviewedOutcomeRequest input, HttpContext http,
             IServiceProvider services, CancellationToken ct) =>
@@ -1045,6 +1103,7 @@ internal static class AllocationLearningProposalEndpoints
     }
 }
 
+internal sealed record SevenFactorInventoryPreviewRequest(Guid[]? ReviewIds, DateTimeOffset CutoffUtc);
 internal sealed record ProposalWeights(decimal Health, decimal Hardship, decimal Age,
     decimal Size, decimal Care, decimal Education);
 internal sealed record SubmitProposalRequest(string CandidateVersion, string ModelVersion, string Rationale,

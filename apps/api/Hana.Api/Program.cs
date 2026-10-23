@@ -121,6 +121,7 @@ if (hasLearningDb)
     if (hasIdentityDb)
     {
         builder.Services.AddScoped<AllocationTrainingWorkflow>();
+        builder.Services.AddScoped<AllocationSevenFactorReviewInventoryService>();
         builder.Services.AddScoped<AllocationLearningAutomationExecutor>();
         builder.Services.AddScoped<AllocationReviewedOutcomeService>();
         builder.Services.AddScoped<AllocationPilotService>();
