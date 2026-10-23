@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   parseSevenFactorInventory, parseSevenFactorPreview,
   type SevenFactorEvidenceInventory, type SevenFactorEvidencePreview,
-} from "../../../lib/seven-factor-evidence";
+} from "../../../../lib/seven-factor-evidence";
 import styles from "./page.module.css";
 
 const endpoint = "/api/admin/allocation-proposals/research/seven-factor/review-inventory";
