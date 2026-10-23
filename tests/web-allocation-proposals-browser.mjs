@@ -38,6 +38,33 @@ try {
       return route.fulfill(json({ active:false,items:[run] }));
     }
     if (path.includes("/research/")) {
+      if (path.endsWith("/seven-factor/review-inventory")) {
+        return route.fulfill(json({
+          items: [{ id: firstPartyId, formulaVersion: "HANA-NEEDS-BASED-ALLOCATION-v1.1",
+            reviewedAtUtc: "2026-10-09T12:00:00.000Z", hasQualitativeReview: true }],
+          page: 1, hasMore: false,
+          formulaVersion: "HANA-NEEDS-BASED-ALLOCATION-v1.1",
+          admissionStatus: "REVIEW_ONLY_NUMERIC_RUBRIC_REQUIRED",
+          active: false, admitted: false, runtimeApplied: false,
+        }));
+      }
+      if (path.endsWith("/seven-factor/review-inventory/preview")) {
+        assert.equal(request.method(), "POST");
+        const body = request.postDataJSON();
+        assert.deepEqual(body.reviewIds, [firstPartyId]);
+        assert.equal(new Date(body.cutoffUtc).toISOString(), body.cutoffUtc);
+        return route.fulfill(json({
+          manifestContractVersion: "HENNA-SEVEN-FACTOR-REVIEW-INVENTORY-v1",
+          formulaVersion: "HANA-NEEDS-BASED-ALLOCATION-v1.1",
+          sourceFormulaVersion: "HANA-NEEDS-BASED-ALLOCATION-v1",
+          sourceDatasetVersion: "henna-first-party-v1",
+          sourceInstructionReference: "ui-source",
+          cutoffUtc: body.cutoffUtc, reviewedHouseholdCount: 1,
+          sha256: "c".repeat(64),
+          admissionStatus: "REVIEW_ONLY_NUMERIC_RUBRIC_REQUIRED",
+          active: false, admitted: false, runtimeApplied: false,
+        }));
+      }
       if (path.endsWith("/retention/preview")) {
         const cutoffUtc = new URL(request.url()).searchParams.get("cutoffUtc");
         assert.equal(new Date(cutoffUtc).toISOString(), cutoffUtc);
@@ -320,6 +347,22 @@ try {
     () => document.documentElement.scrollWidth <= innerWidth,
   ), true);
 
+  const sevenApi = base + "/api/admin/allocation-proposals/research/seven-factor/review-inventory";
+  assert.equal((await fetch(sevenApi)).status, 401);
+  assert.equal((await fetch(sevenApi + "/preview", {
+    method: "POST", headers: { Origin: "https://untrusted.test",
+      "Content-Type": "application/json" },
+    body: JSON.stringify({ reviewIds: [firstPartyId],
+      cutoffUtc: "2026-10-09T12:00:00.000Z" }),
+  })).status, 403);
+  await page.goto(base + "/admin/allocation-ai/evidence");
+  await page.getByRole("heading", { name: "دفتر شواهد هفت‌عاملی v1.1" }).waitFor();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "تنظیم برش روی اکنون UTC" }).click();
+  await page.getByRole("button", { name: "بررسی نسب‌نامه و ساخت اثرانگشت" }).click();
+  await page.getByRole("heading", { name: "پیش‌نمایش معتبر شواهد — بدون پذیرش Dataset" }).waitFor();
+  assert.match(await page.locator("main").innerText(), /REVIEW_ONLY_NUMERIC_RUBRIC_REQUIRED/);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   assert.deepEqual(errors, []);
   console.log("Allocation admin UI: proposal review, training durable retry and retention preview/reload-safe purge passed");
 } finally {
