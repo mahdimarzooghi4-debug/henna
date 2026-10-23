@@ -63,7 +63,7 @@ export default function SevenFactorEvidencePage() {
       });
       if (!res.ok) throw new Error(await errorText(res));
       const result = parseSevenFactorPreview(await res.json());
-      if (!result || result.reviewedHouseholdCount !== chosen.length || result.cutoffUtc !== cutoff)
+      if (!result || result.reviewedHouseholdCount !== chosen.length || Date.parse(result.cutoffUtc) !== Date.parse(cutoff))
         throw new Error("شواهد انتخاب‌شده با پیش‌نمایش معتبر هم‌خوان نیستند.");
       setPreview(result);
     } catch (e) { setError(e instanceof Error ? e.message : "پیش‌نمایش ناموفق"); }
