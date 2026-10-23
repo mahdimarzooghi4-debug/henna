@@ -43,7 +43,7 @@ export function parseHumanReviewInventory(raw: unknown): HumanReviewInventory | 
     if (!isObject(r) || typeof r.id !== "string" || !uuidPattern.test(r.id) ||
         typeof r.sevenFactorReviewId !== "string" || !uuidPattern.test(r.sevenFactorReviewId) ||
         !utc(r.reviewedAtUtc) || !Number.isInteger(r.evidenceDisposition) ||
-        (r.evidenceDisposition as number) < 0 || (r.evidenceDisposition as number) > 3 ||
+        (r.evidenceDisposition as number) < 1 || (r.evidenceDisposition as number) > 3 ||
         !safeText(r.scaleVersion) || !safeText(r.criteriaVersion)) return null;
     items.push({
       id: r.id, sevenFactorReviewId: r.sevenFactorReviewId,
