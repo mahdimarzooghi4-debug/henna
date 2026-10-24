@@ -187,6 +187,21 @@ internal static class AllocationLearningProposalEndpoints
 
         // Re-attest the EXACT prior selection, without changing cutoff,
         // accepting new reviews, choosing a dataset or granting admission.
+        // Descriptive triage of selected human-reviewed, first-party evidence.
+        // Does not rank people, resolve conflicts or admit training inputs.
+        routes.MapPost("/research/seven-factor/human-review-triage/preview", async (
+            SevenFactorHumanReviewTriageRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.SelectedReviewIds is null)
+                return Results.BadRequest();
+            var result = await services
+                .GetRequiredService<AllocationSevenFactorHumanReviewTriageService>()
+                .PreviewAsync((Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.SelectedReviewIds, input.CutoffUtc, ct);
+            return Results.Ok(result);
+        });
+
         routes.MapPost("/research/seven-factor/partition-preflight/revalidate", async (
             SevenFactorManifestRevalidationRequest input, HttpContext http,
             IServiceProvider services, CancellationToken ct) =>
@@ -1322,6 +1337,9 @@ internal static class AllocationLearningProposalEndpoints
 
 internal sealed record ModelVersionTechnicalPreflightRequest(
     string? Family, Guid ArtifactId, Guid EvaluationId);
+internal sealed record SevenFactorHumanReviewTriageRequest(
+    Guid[]? SelectedReviewIds, DateTimeOffset CutoffUtc);
+
 internal sealed record SevenFactorManifestRevalidationRequest(
     Guid[]? TrainingReviewIds, Guid[]? ValidationReviewIds,
     Guid[]? EvaluationReviewIds, DateTimeOffset CutoffUtc,
