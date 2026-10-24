@@ -19,7 +19,7 @@ export type TriageEntry = {
 export type TriageResult = {
   contractVersion: typeof triageContract; status: typeof triageStatus;
   cutoffUtc: string; selectedReviewCount: number;
-  entries: TriageEntry[];
+  sha256: string; entries: TriageEntry[];
   datasetAdmitted: false; humanConflictResolved: false;
   modelTrained: false; modelApproved: false; runtimeApplied: false;
 };
@@ -45,6 +45,7 @@ export function parseTriageResult(raw:unknown, selection:TriageSelection):Triage
     raw.contractVersion!==triageContract||raw.status!==triageStatus||
     !utc(raw.cutoffUtc)||Date.parse(raw.cutoffUtc)!==Date.parse(selection.cutoffUtc)||
     raw.selectedReviewCount!==selection.selectedReviewIds.length||
+    typeof raw.sha256!=="string"||!/^[0-9a-f]{64}$/.test(raw.sha256)||
     !Array.isArray(raw.entries)||raw.entries.length!==selection.selectedReviewIds.length||
     raw.datasetAdmitted!==false||raw.humanConflictResolved!==false||
     raw.modelTrained!==false||raw.modelApproved!==false||raw.runtimeApplied!==false)
@@ -81,7 +82,7 @@ export function parseTriageResult(raw:unknown, selection:TriageSelection):Triage
   if(seen.size!==requested.size)return null;
   return {
     contractVersion:triageContract,status:triageStatus,cutoffUtc:raw.cutoffUtc,
-    selectedReviewCount:selection.selectedReviewIds.length,entries,
+    selectedReviewCount:selection.selectedReviewIds.length,sha256:raw.sha256,entries,
     datasetAdmitted:false,humanConflictResolved:false,modelTrained:false,
     modelApproved:false,runtimeApplied:false
   };

@@ -81,8 +81,10 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
         }
 
         var triage = new AllocationSevenFactorHumanReviewTriageService(db, roles, clock);
+        var triageRevalidator = new AllocationSevenFactorHumanReviewTriageRevalidationService(triage);
+        var triageCutoff = clock.UtcNow;
         var initialTriage = await triage.PreviewAsync(actor,
-            humanIds.ToArray(), clock.UtcNow);
+            humanIds.ToArray(), triageCutoff);
         Assert.Equal(3, initialTriage.SelectedReviewCount);
         Assert.All(initialTriage.Entries, entry =>
         {
@@ -95,6 +97,20 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
         Assert.False(initialTriage.DatasetAdmitted);
         Assert.False(initialTriage.HumanConflictResolved);
         Assert.False(initialTriage.ModelTrained);
+        Assert.Matches("^[0-9a-f]{64}$", initialTriage.Sha256);
+        var unchangedTriage = await triageRevalidator.RevalidateAsync(actor,
+            humanIds.ToArray(), triageCutoff, initialTriage.Sha256);
+        Assert.True(unchangedTriage.ExactTriageUnchanged);
+        Assert.False(unchangedTriage.DatasetAdmitted);
+        Assert.False(unchangedTriage.HumanConflictResolved);
+        await db.QualitativeSeverityReviews.Where(x => x.Id == humanIds[0])
+            .ExecuteUpdateAsync(setters => setters.SetProperty(
+                x => x.Rationale, "Updated stored rationale remains human reviewed"));
+        var changedTriage = await triage.PreviewAsync(actor, humanIds.ToArray(), triageCutoff);
+        Assert.NotEqual(initialTriage.Sha256, changedTriage.Sha256);
+        await Assert.ThrowsAsync<SevenFactorHumanReviewTriageStaleException>(() =>
+            triageRevalidator.RevalidateAsync(actor, humanIds.ToArray(),
+                triageCutoff, initialTriage.Sha256));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             triage.PreviewAsync(Guid.NewGuid(), humanIds, clock.UtcNow));
         await Assert.ThrowsAsync<ArgumentException>(() =>
