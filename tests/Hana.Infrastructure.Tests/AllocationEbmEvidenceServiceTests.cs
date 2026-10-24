@@ -378,6 +378,25 @@ public sealed class AllocationEbmEvidenceServiceTests
         Assert.Equal(first.Id, intake.EvaluationId);
         Assert.False(intake.RegistryRecordCreated);
         Assert.False(intake.Approved);
+        var sourceReverification = new AllocationEvaluationSourceReverificationService(learning);
+        var restored = await sourceReverification.PreviewAsync("EBM", registered.Id, first.Id);
+        Assert.Equal(first.EvaluationFingerprint, restored.EvaluationFingerprint);
+        Assert.Equal(labels.Length, restored.ReconstructedEvaluationCount);
+        Assert.True(restored.StoredEvaluationContentMatches);
+        Assert.False(restored.HistoricalSourceAuthenticityAttested);
+        Assert.False(restored.DatasetAdmitted);
+        Assert.False(restored.ModelApproved);
+
+        var changedSnapshot = snapshots[0];
+        await learning.Assessments.Where(x => x.Id == changedSnapshot.Id)
+            .ExecuteUpdateAsync(set => set.SetProperty(x => x.Health,
+                (changedSnapshot.Health + 1) % 4));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sourceReverification.PreviewAsync("EBM", registered.Id, first.Id));
+        await learning.Assessments.Where(x => x.Id == changedSnapshot.Id)
+            .ExecuteUpdateAsync(set => set.SetProperty(x => x.Health,
+                changedSnapshot.Health));
+
 
         Assert.Equal(first.EvaluationFingerprint, dossier.Evaluations[0].EvaluationFingerprint);
 
