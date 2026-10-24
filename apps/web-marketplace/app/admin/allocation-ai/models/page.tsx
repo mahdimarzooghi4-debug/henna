@@ -6,6 +6,7 @@ import { parseModelArtifactInventory, type ArtifactEvidenceItem,
 import styles from "../evidence/page.module.css";
 import { parseModelArtifactDossier, type ModelArtifactDossier } from "../../../../lib/model-artifact-dossier";
 import { parseModelVersionTechnicalPreflight, type ModelVersionTechnicalPreflight } from "../../../../lib/model-version-technical-preflight";
+import { parseRegistryIntakeReadiness, type RegistryIntakeReadiness } from "../../../../lib/registry-intake-readiness";
 
 const endpoint = "/api/admin/allocation-proposals/research/model-artifacts";
 const errorBody = async (response: Response) => {
@@ -51,6 +52,39 @@ export default function ModelArtifactEvidencePage() {
   const [dossierError, setDossierError] = useState("");
   const dossierSequence = useRef(0);
   const technicalSequence = useRef(0);
+  const intakeSequence = useRef(0);
+  const [intake, setIntake] = useState<RegistryIntakeReadiness | null>(null);
+  const [intakeBusy, setIntakeBusy] = useState(false);
+  const [intakeError, setIntakeError] = useState("");
+  async function inspectRegistryIntake() {
+    if (!technical || !dossier || intakeBusy) return;
+    const selection = {
+      family: technical.family, artifactId: technical.artifactId,
+      evaluationId: technical.evaluationId,
+    };
+    const seq = ++intakeSequence.current;
+    setIntake(null); setIntakeError(""); setIntakeBusy(true);
+    try {
+      const res = await fetch(
+        "/api/admin/allocation-proposals/research/registry-intake-readiness", {
+          method: "POST", cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selection, technical })
+        });
+      if (!res.ok) throw new Error(await errorBody(res));
+      const parsed = parseRegistryIntakeReadiness(await res.json(), selection, technical);
+      if (!parsed || parsed.artifactId !== dossier.artifactId ||
+          parsed.trainingRunId !== dossier.trainingRunId ||
+          parsed.evaluationFingerprint !== technical.evaluationFingerprint)
+        throw new Error("پیش‌نیازهای Registry با پرونده مدل انتخاب‌شده تطابق ندارد.");
+      if (seq === intakeSequence.current) setIntake(parsed);
+    } catch (e) {
+      if (seq === intakeSequence.current)
+        setIntakeError(e instanceof Error ? e.message : "خطای پیش‌نیازهای Registry");
+    } finally {
+      if (seq === intakeSequence.current) setIntakeBusy(false);
+    }
+  }
   const [technical, setTechnical] = useState<ModelVersionTechnicalPreflight | null>(null);
   const [technicalBusy, setTechnicalBusy] = useState(false);
   const [technicalError, setTechnicalError] = useState("");
@@ -60,6 +94,7 @@ export default function ModelArtifactEvidencePage() {
       family: dossier.family, artifactId: dossier.artifactId, evaluationId,
     };
     const requestSeq = ++technicalSequence.current;
+    ++intakeSequence.current; setIntake(null); setIntakeBusy(false); setIntakeError("");
     setTechnical(null); setTechnicalError(""); setTechnicalBusy(true);
     try {
       const response = await fetch(
@@ -90,6 +125,7 @@ export default function ModelArtifactEvidencePage() {
   async function inspect(family: "XGBOOST" | "EBM", id: string) {
     const requestSequence = ++dossierSequence.current;
     ++technicalSequence.current;
+    ++intakeSequence.current; setIntake(null); setIntakeBusy(false); setIntakeError("");
     setTechnical(null); setTechnicalBusy(false); setTechnicalError("");
     setDossier(null); setDossierError(""); setDossierBusy(true);
     try {
@@ -110,6 +146,7 @@ export default function ModelArtifactEvidencePage() {
     const controller = new AbortController();
     ++dossierSequence.current;
     ++technicalSequence.current;
+    ++intakeSequence.current; setIntake(null); setIntakeBusy(false); setIntakeError("");
     setTechnical(null); setTechnicalBusy(false); setTechnicalError("");
     setDossierBusy(false);
     setLoading(true); setData(null); setError(""); setDossier(null); setDossierError("");
@@ -124,7 +161,7 @@ export default function ModelArtifactEvidencePage() {
       .catch(err => { if (!controller.signal.aborted)
         setError(err instanceof Error ? err.message : "خطای دریافت"); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => { ++dossierSequence.current; ++technicalSequence.current; controller.abort(); };
+    return () => { ++dossierSequence.current; ++technicalSequence.current; ++intakeSequence.current; controller.abort(); };
   }, [page]);
   return <main className={styles.page} dir="rtl">
     <nav className={styles.nav} aria-label="مسیر راهبری">
@@ -191,6 +228,26 @@ export default function ModelArtifactEvidencePage() {
       <p>بنیاد اجرای موجود: {technical.existingExecutionFoundationVersion ?? "فقط پژوهشی؛ بدون قرارداد اجرایی Production"}</p>
       <p>هش اثر با بایت‌های ذخیره‌شده مطابق است و شناسه رکورد ارزیابی پیوند دارد؛ اما اصالت مستقل ارزیابی اثبات نشده است. ثبت نسخه، پذیرش Dataset، انتخاب مدل،
         پایلوت و فعال‌سازی Runtime همچنان ممنوع و نیازمند تصمیم انسانی و قرارداد مصوب‌اند.</p>
+      <button type="button" disabled={intakeBusy} onClick={() => void inspectRegistryIntake()}>
+        بررسی پیش‌نیازهای ورود این نسخه به Model Registry
+      </button>
+    </section>}
+{intakeBusy && <p role="status">در حال محاسبه گزارش پیش‌نیازها…</p>}
+    {intakeError && <p role="alert" className={styles.error}>{intakeError}</p>}
+    {intake && <section className={styles.panel} aria-label="پیش‌نیازهای مدل رجیستری">
+      <h2>گزارش پیش‌نیازهای ثبت نسخه — فقط‌خواندنی</h2>
+      <p><strong>{intake.status}</strong> · هیچ نسخه‌ای ثبت یا تأیید نشده است.</p>
+      <p>اثر انگشت گزارش فنی: <code dir="ltr">{intake.manifestSha256}</code></p>
+      <p>این اثر انگشت امضای تأیید، کلید ارتقا یا اثبات اصالت داده‌های ارزیابی نیست.</p>
+      <div className={styles.rows}>
+        {intake.requirements.map(gate => <div className={styles.row} key={gate.code}>
+          <div className={styles.rowInfo}>
+            <strong dir="ltr">{gate.code}</strong>
+            <small>وضعیت: بررسی‌نشده در این گزارش (نه به‌معنای رد یا تأیید)</small>
+          </div>
+        </div>)}
+      </div>
+      <p>ثبت در Registry، مجوز Production و ارتقای Runtime همچنان غیرفعال‌اند.</p>
     </section>}
     <p className={styles.footer}>تطبیق بایت و هش فقط یک کنترل یکپارچگی است، نه
       راستی‌آزمایی اصالت اسناد، استقلال Dataset، کفایت آماری، عدالت یا تأیید Production.

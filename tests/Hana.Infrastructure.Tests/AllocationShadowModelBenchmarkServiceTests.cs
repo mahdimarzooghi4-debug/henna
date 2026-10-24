@@ -269,6 +269,18 @@ public sealed class AllocationShadowModelBenchmarkServiceTests
         Assert.False(modelPreflight.ProductionRuntimeCompatible);
         Assert.False(modelPreflight.RegistrationEnabled);
         Assert.False(modelPreflight.RuntimeApplied);
+
+        var intake = await new AllocationModelRegistryIntakeReadinessService(
+            new AllocationModelVersionTechnicalPreflightService(
+                new AllocationModelArtifactDossierService(learning)))
+            .PreviewAsync("XGBOOST", runId, first.Id);
+        Assert.Equal(64, intake.ManifestSha256.Length);
+        Assert.Equal(runId, intake.TrainingRunId);
+        Assert.Equal(first.Id, intake.EvaluationId);
+        Assert.False(intake.RegistryRecordCreated);
+        Assert.False(intake.RegistrationAllowed);
+        Assert.False(intake.RuntimeApplied);
+
         await Assert.ThrowsAsync<ArgumentException>(() =>
             new AllocationModelVersionTechnicalPreflightService(
                 new AllocationModelArtifactDossierService(learning))
