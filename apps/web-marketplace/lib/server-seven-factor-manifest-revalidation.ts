@@ -45,22 +45,23 @@ export async function forwardSevenFactorManifestRevalidation(request: NextReques
     const result: unknown = JSON.parse(data);
     // Reject positive admission/activation, forged digest, stale or
     // malformed response while only exposing technical metadata.
-    if (!validServerResult(result, raw))
+    const validated = parseServerResult(result, raw);
+    if (!validated)
       return fail("شواهد بازبینی به انتخاب قبلی منطبق نیست.", 503);
-    return NextResponse.json(result, { headers: noStore });
+    return NextResponse.json(validated, { headers: noStore });
   } catch {
     return fail("پاسخ نامطمئن است؛ هیچ Dataset یا مدلی پذیرفته نشده.", 503);
   }
 }
 
-function validServerResult(
+function parseServerResult(
   raw: unknown, request: {
     expectedSha256: string; trainingReviewIds: string[];
     validationReviewIds: string[]; evaluationReviewIds: string[];
     cutoffUtc: string;
   },
-): boolean {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return false;
+): ReturnType<typeof parsePartitionRevalidationResult> {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
   const preview = parsePartitionPreflightPreview({
     contractVersion: "HENNA-SEVEN-FACTOR-HUMAN-PARTITION-PREFLIGHT-v1",
@@ -75,5 +76,5 @@ function validServerResult(
     admissionStatus: "NOT_ADMITTED_COMPLETE_RUBRIC_AND_EVALUATION_GOVERNANCE_REQUIRED",
     active: false, admitted: false, runtimeApplied: false,
   });
-  return !!preview && !!parsePartitionRevalidationResult(raw, request, preview);
+  return preview ? parsePartitionRevalidationResult(raw, request, preview) : null;
 }

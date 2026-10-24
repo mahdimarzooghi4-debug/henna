@@ -35,7 +35,7 @@ export default function SevenFactorPartitionPage() {
   const operation = useRef(0);
   const invalidatePreview = () => {
     ++operation.current; setPreview(null); setManifest(null);
-    setRenewed(null); setError(""); setRevalidating(false);
+    setRenewed(null); setError(""); setBusy(false); setRevalidating(false);
   };
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
