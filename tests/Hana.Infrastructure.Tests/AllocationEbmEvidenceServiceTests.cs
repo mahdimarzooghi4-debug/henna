@@ -126,7 +126,7 @@ public sealed class AllocationEbmEvidenceServiceTests
             ShadowArtifactSha256 = xgboostResearchArtifact.ArtifactSha256,
             ShadowArtifactBytes = xgboostResearchArtifact.ArtifactBytes,
             ShadowParametersJson = xgboostResearchArtifact.ParametersJson,
-            ShadowMetricsJson = xgboostResearchArtifact.MetricsJson
+            ShadowMetricsJson = JsonSerializer.Serialize(xgboostResearchArtifact.Metrics)
         });
         await learning.SaveChangesAsync();
 
