@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {triageContract,triageStatus,clearFinding,blockedFinding,
-  validTriageSelection,parseTriageResult} from
+  validTriageSelection,parseTriageResult,triageRevalidationContract,
+  triageRevalidationStatus,validTriageRevalidationRequest,parseTriageRevalidationResult} from
   "../apps/web-marketplace/lib/seven-factor-human-triage.ts";
 const a="b8b52eee-b4c3-4ae5-a72a-8a78dd1561c0";
 const b="b8b52eee-b4c3-4ae5-a72a-8a78dd1561c1";
@@ -66,4 +67,29 @@ test("maximum 500 reviewed IDs remains a valid bounded read-only result",()=>{
  assert.equal(parsed.runtimeApplied,false);
  assert.equal(parseTriageResult({...payload,entries:records.slice(1)},selected),null);
  assert.equal(validTriageSelection({...selected,selectedReviewIds:[...ids,ids[0]]}),false);
+});
+
+test("triage source-content fingerprint revalidation is exact and never admission",()=>{
+ const expectedSha256="a".repeat(64);
+ const request={...selection,expectedSha256};
+ const result={contractVersion:triageRevalidationContract,status:triageRevalidationStatus,
+  cutoffUtc:selection.cutoffUtc,selectedReviewCount:selection.selectedReviewIds.length,
+  expectedSha256,currentSha256:expectedSha256,exactTriageUnchanged:true,
+  datasetAdmitted:false,humanConflictResolved:false,modelTrained:false,
+  modelApproved:false,runtimeApplied:false};
+ assert.ok(validTriageRevalidationRequest(request));
+ const parsed=parseTriageRevalidationResult(result,request);
+ assert.ok(parsed);
+ assert.equal(parsed.exactTriageUnchanged,true);
+ assert.equal(parsed.datasetAdmitted,false);
+ for(const patch of [
+  {currentSha256:"b".repeat(64)},{exactTriageUnchanged:false},
+  {datasetAdmitted:true},{humanConflictResolved:true},{modelTrained:true},
+  {modelApproved:true},{runtimeApplied:true},{status:"ADMITTED"},
+  {selectedReviewCount:1},{cutoffUtc:"2026-10-08T12:00:00.000Z"}
+ ])assert.equal(parseTriageRevalidationResult({...result,...patch},request),null);
+ for(const patch of [
+  {expectedSha256:"bad"},{expectedSha256:"A".repeat(64)},
+  {extra:true},{selectedReviewIds:[a,a]},{cutoffUtc:"2099-01-01T00:00:00Z"}
+ ])assert.equal(validTriageRevalidationRequest({...request,...patch}),false);
 });
