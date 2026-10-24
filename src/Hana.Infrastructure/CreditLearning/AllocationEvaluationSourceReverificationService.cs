@@ -28,14 +28,26 @@ public sealed class AllocationEvaluationSourceReverificationService(
     public async Task<ResearchEvaluationSourceReverification> PreviewAsync(
         string family, Guid artifactId, Guid evaluationId, CancellationToken ct = default)
     {
+        await using var tx = await db.Database.BeginTransactionAsync(
+            IsolationLevel.RepeatableRead, ct);
+        var result = await InspectWithinSnapshotAsync(family, artifactId, evaluationId, ct);
+        await tx.CommitAsync(ct);
+        return result;
+    }
+
+    /// <summary>
+    /// Only invoke inside a caller-owned DB snapshot for multi-artifact audits.
+    /// </summary>
+    internal async Task<ResearchEvaluationSourceReverification> InspectWithinSnapshotAsync(
+        string family, Guid artifactId, Guid evaluationId, CancellationToken ct = default)
+    {
+        if (db.Database.CurrentTransaction is null)
+            throw new InvalidOperationException("Consistent PostgreSQL snapshot required.");
         if (family is not ("XGBOOST" or "EBM") ||
             artifactId == Guid.Empty || evaluationId == Guid.Empty)
             throw new ArgumentException("Explicit supported artifact and Evaluation required.");
 
-        // Artifact, selected benchmark, labels, first-party assessment/runtime
-        // history all belong to one consistent PostgreSQL snapshot.
-        await using var tx = await db.Database.BeginTransactionAsync(
-            IsolationLevel.RepeatableRead, ct);
+        // Caller owns the same snapshot for the entire source reconstruction.
         var benchmark = family == "XGBOOST"
             ? await db.ShadowModelBenchmarks.AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id == evaluationId &&
@@ -183,7 +195,6 @@ public sealed class AllocationEvaluationSourceReverificationService(
             metricRoot.GetProperty("CutoffUtc").GetDateTimeOffset() != cutoff)
             throw new InvalidOperationException("Current stored Evaluation content fingerprint does not match.");
 
-        await tx.CommitAsync(ct);
         return new(
             ContractVersion, family, artifactId, runId, evaluationId,
             technical.ArtifactSha256, recomputed, technical.DatasetVersion,
