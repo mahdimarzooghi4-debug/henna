@@ -35,7 +35,8 @@ public sealed class AllocationModelVersionTechnicalPreflightTests
             found.TechnicalStatus);
         Assert.Equal(HennaXGBoostRuntimeContract.RuntimeContractVersion,
             found.ExistingExecutionFoundationVersion);
-        Assert.True(found.ArtifactAndEvaluationAttested);
+        Assert.True(found.ArtifactHashVerified);
+        Assert.True(found.EvaluationRecordLinked);
         Assert.False(found.ProductionRuntimeCompatible);
         Assert.False(found.RegistrationEnabled);
         Assert.False(found.DatasetAdmitted);

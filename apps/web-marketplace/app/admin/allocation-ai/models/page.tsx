@@ -189,7 +189,7 @@ export default function ModelArtifactEvidencePage() {
       <p>اثر انگشت ارزیابی: <code dir="ltr">{technical.evaluationFingerprint}</code></p>
       <p>وضعیت قرارداد موجود: <strong>{technical.technicalStatus}</strong></p>
       <p>بنیاد اجرای موجود: {technical.existingExecutionFoundationVersion ?? "فقط پژوهشی؛ بدون قرارداد اجرایی Production"}</p>
-      <p>تطبیق فنی شواهد انجام شده؛ اما ثبت نسخه، پذیرش Dataset، انتخاب مدل،
+      <p>هش اثر با بایت‌های ذخیره‌شده مطابق است و شناسه رکورد ارزیابی پیوند دارد؛ اما اصالت مستقل ارزیابی اثبات نشده است. ثبت نسخه، پذیرش Dataset، انتخاب مدل،
         پایلوت و فعال‌سازی Runtime همچنان ممنوع و نیازمند تصمیم انسانی و قرارداد مصوب‌اند.</p>
     </section>}
     <p className={styles.footer}>تطبیق بایت و هش فقط یک کنترل یکپارچگی است، نه

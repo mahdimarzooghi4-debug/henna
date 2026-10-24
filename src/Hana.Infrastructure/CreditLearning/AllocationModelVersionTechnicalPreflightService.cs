@@ -10,7 +10,8 @@ public sealed record ModelVersionTechnicalPreflightResult(
     string ArtifactFormat, string ArtifactSha256, string DatasetVersion,
     string SourceInstructionReference, string EvaluationProtocolVersion,
     string? ExistingExecutionFoundationVersion, string TechnicalStatus,
-    bool ArtifactAndEvaluationAttested, bool ProductionRuntimeCompatible,
+    bool ArtifactHashVerified, bool EvaluationRecordLinked,
+    bool ProductionRuntimeCompatible,
     bool RegistrationEnabled, bool DatasetAdmitted, bool ModelApproved,
     bool CandidateCreated, bool RuntimeApplied);
 
@@ -95,7 +96,7 @@ public sealed class AllocationModelVersionTechnicalPreflightService(
             dossier.ArtifactFormat, dossier.ArtifactSha256, dossier.DatasetVersion,
             evidence.SourceInstructionReference, evidence.ProtocolVersion,
             executionFoundation, status,
-            true, false, false, false, false, false, false);
+            true, true, false, false, false, false, false, false);
     }
 
     private static bool IsSha(string? value) =>

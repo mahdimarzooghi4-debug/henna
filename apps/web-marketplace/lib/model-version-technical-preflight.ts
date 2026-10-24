@@ -16,7 +16,7 @@ export type ModelVersionTechnicalPreflight = {
   sourceInstructionReference: string; evaluationProtocolVersion: string;
   existingExecutionFoundationVersion: string | null;
   technicalStatus: typeof xgboostTechnicalStatus | typeof ebmTechnicalStatus;
-  artifactAndEvaluationAttested: true;
+  artifactHashVerified: true; evaluationRecordLinked: true;
   productionRuntimeCompatible: false; registrationEnabled: false;
   datasetAdmitted: false; modelApproved: false; candidateCreated: false;
   runtimeApplied: false;
@@ -48,7 +48,7 @@ export function parseModelVersionTechnicalPreflight(
       !digest(raw.artifactSha256) || !text(raw.modelVersion) ||
       !text(raw.artifactFormat) || !text(raw.datasetVersion) ||
       !text(raw.sourceInstructionReference) || !text(raw.evaluationProtocolVersion) ||
-      raw.artifactAndEvaluationAttested !== true ||
+      raw.artifactHashVerified !== true || raw.evaluationRecordLinked !== true ||
       raw.productionRuntimeCompatible !== false || raw.registrationEnabled !== false ||
       raw.datasetAdmitted !== false || raw.modelApproved !== false ||
       raw.candidateCreated !== false || raw.runtimeApplied !== false)
@@ -82,7 +82,8 @@ export function parseModelVersionTechnicalPreflight(
     existingExecutionFoundationVersion:
       raw.existingExecutionFoundationVersion as string | null,
     technicalStatus: expected.family === "XGBOOST" ? xgboostTechnicalStatus : ebmTechnicalStatus,
-    artifactAndEvaluationAttested: true, productionRuntimeCompatible: false,
+    artifactHashVerified: true, evaluationRecordLinked: true,
+    productionRuntimeCompatible: false,
     registrationEnabled: false, datasetAdmitted: false, modelApproved: false,
     candidateCreated: false, runtimeApplied: false,
   };

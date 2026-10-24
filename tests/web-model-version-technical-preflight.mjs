@@ -17,7 +17,8 @@ const base = { contractVersion: modelVersionPreflightContract,
   evaluationProtocolVersion: "henna-xgboost-shadow-benchmark-v3",
   existingExecutionFoundationVersion: xgboostExecutionFoundation,
   technicalStatus: xgboostTechnicalStatus,
-  artifactAndEvaluationAttested: true, productionRuntimeCompatible: false,
+  artifactHashVerified: true, evaluationRecordLinked: true,
+  productionRuntimeCompatible: false,
   registrationEnabled: false, datasetAdmitted: false, modelApproved: false,
   candidateCreated: false, runtimeApplied: false };
 
@@ -51,7 +52,7 @@ test("EBM is offline only and cannot claim an execution adapter", () => {
 });
 test("reject mismatched stored identity and forged registration or activation", () => {
   for (const delta of [
-    { artifactAndEvaluationAttested: false }, { productionRuntimeCompatible: true },
+    { artifactHashVerified: false }, { evaluationRecordLinked: false }, { productionRuntimeCompatible: true },
     { registrationEnabled: true }, { datasetAdmitted: true },
     { modelApproved: true }, { candidateCreated: true }, { runtimeApplied: true },
     { existingExecutionFoundationVersion: null },
