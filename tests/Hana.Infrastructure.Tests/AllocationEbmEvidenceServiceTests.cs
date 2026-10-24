@@ -368,6 +368,17 @@ public sealed class AllocationEbmEvidenceServiceTests
         Assert.False(modelPreflight.ModelApproved);
         Assert.False(modelPreflight.RegistrationEnabled);
         Assert.False(modelPreflight.RuntimeApplied);
+
+        var intake = await new AllocationModelRegistryIntakeReadinessService(
+            new AllocationModelVersionTechnicalPreflightService(
+                new AllocationModelArtifactDossierService(learning)))
+            .PreviewAsync("EBM", registered.Id, first.Id);
+        Assert.Equal(AllocationModelRegistryIntakeReadinessService.Status, intake.Status);
+        Assert.Null(intake.ExistingExecutionFoundationVersion);
+        Assert.Equal(first.Id, intake.EvaluationId);
+        Assert.False(intake.RegistryRecordCreated);
+        Assert.False(intake.Approved);
+
         Assert.Equal(first.EvaluationFingerprint, dossier.Evaluations[0].EvaluationFingerprint);
 
         var metrics = JsonSerializer.Deserialize<HennaEbmBenchmarkMetrics>(
