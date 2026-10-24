@@ -284,7 +284,7 @@ export default function ModelArtifactEvidencePage() {
       اما این نتیجه اصالت اسناد بیرونی، اعتبار Rubric عددی، عدالت یا کفایت علمی مدل را تأیید نمی‌کند.</p>
       <p>پذیرش Dataset، ثبت Model Registry و فعال‌سازی Runtime همچنان غیرفعال‌اند.</p>
     </section>}
-    {intakeBusy && <p role="status">در حال محاسبه گزارش پیش‌نیازها…</p>
+    {intakeBusy && <p role="status">در حال محاسبه گزارش پیش‌نیازها…</p>}
     {intakeError && <p role="alert" className={styles.error}>{intakeError}</p>}
     {intake && <section className={styles.panel} aria-label="پیش‌نیازهای مدل رجیستری">
       <h2>گزارش پیش‌نیازهای ثبت نسخه — فقط‌خواندنی</h2>
