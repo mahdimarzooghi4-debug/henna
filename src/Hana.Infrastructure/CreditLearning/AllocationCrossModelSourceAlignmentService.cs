@@ -100,6 +100,9 @@ public sealed class AllocationCrossModelSourceAlignmentService(
 
         var xIds = ReadIds(xRow.EvaluationLabelIdsJson);
         var eIds = ReadIds(ebmRow.EvaluationLabelIdsJson);
+        if (xIds.Length != xgboost.ReconstructedEvaluationCount ||
+            eIds.Length != ebm.ReconstructedEvaluationCount)
+            throw new InvalidOperationException("Evaluation label count no longer matches reconstructed source.");
         var xRubric = MetricRubric(xRow.MetricsJson);
         var eRubric = MetricRubric(ebmRow.MetricsJson);
         var aligned =
