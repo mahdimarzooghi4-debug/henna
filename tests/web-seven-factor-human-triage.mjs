@@ -12,8 +12,9 @@ const entry={reviewId:a,finding:clearFinding,reasons:[],
 const conflict={reviewId:b,finding:blockedFinding,
   reasons:["COMPETING_HUMAN_REVIEWS","ABSTAINED_OR_CONFLICTING_EVIDENCE"],
   householdFeatureReviewCount:1,householdHumanReviewCount:2};
+const fingerprint="a".repeat(64);
 const data={contractVersion:triageContract,status:triageStatus,
-  cutoffUtc:selection.cutoffUtc,selectedReviewCount:2,entries:[entry,conflict],
+  cutoffUtc:selection.cutoffUtc,selectedReviewCount:2,sha256:fingerprint,entries:[entry,conflict],
   datasetAdmitted:false,humanConflictResolved:false,modelTrained:false,
   modelApproved:false,runtimeApplied:false};
 test("explicit human selections yield descriptive reasons only",()=>{
