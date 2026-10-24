@@ -75,9 +75,10 @@ public sealed class AllocationEvaluationSourceReverificationService(
         var rubricVersion = "";
         var sourceReference = technical.SourceInstructionReference;
         var recordedBaseline = benchmark?.BaselineVersion ?? ebmBenchmark!.BaselineVersion;
-        var runtimeProposalId = benchmark?.RuntimeProposalId ?? ebmBenchmark!.RuntimeProposalId;
-        var runtimeSequence = benchmark?.RuntimeProfileSequence ??
-            ebmBenchmark!.RuntimeProfileSequence;
+        var runtimeProposalId = family == "XGBOOST"
+            ? benchmark!.RuntimeProposalId : ebmBenchmark!.RuntimeProposalId;
+        var runtimeSequence = family == "XGBOOST"
+            ? benchmark!.RuntimeProfileSequence : ebmBenchmark!.RuntimeProfileSequence;
 
         var labelIds = JsonSerializer.Deserialize<Guid[]>(json)
             ?? throw new InvalidOperationException("Evaluation label inventory is absent.");
