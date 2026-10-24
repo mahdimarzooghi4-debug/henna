@@ -1,6 +1,5 @@
-import {
-  validTechnicalSelection, type ModelVersionTechnicalSelection,
-  type ModelVersionTechnicalPreflight,
+import type {
+  ModelVersionTechnicalSelection, ModelVersionTechnicalPreflight,
 } from "./model-version-technical-preflight";
 
 export const registryIntakeContract = "HENNA-REGISTRY-INTAKE-READINESS-v1";
@@ -41,6 +40,10 @@ const uuid = (v: unknown): v is string =>
   typeof v === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const normalizedUuid = (v: string) => v.toLowerCase();
+const validTechnicalSelection = (v: unknown): v is ModelVersionTechnicalSelection =>
+  record(v) && Object.keys(v).sort().join("|") === "artifactId|evaluationId|family" &&
+  (v.family === "XGBOOST" || v.family === "EBM") &&
+  uuid(v.artifactId) && uuid(v.evaluationId);
 
 export function parseRegistryIntakeReadiness(
   raw: unknown, selection: ModelVersionTechnicalSelection,
