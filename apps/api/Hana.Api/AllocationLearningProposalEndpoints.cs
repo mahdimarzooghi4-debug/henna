@@ -209,6 +209,21 @@ internal static class AllocationLearningProposalEndpoints
         });
 
 
+        // Rebuild the stored Evaluation fingerprint from actual persisted
+        // human-reviewed label/first-party assessment content, read-only.
+        routes.MapPost("/research/evaluation-source-reverification/preview", async (
+            ModelVersionTechnicalPreflightRequest input,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.Family is not ("XGBOOST" or "EBM") ||
+                input.ArtifactId == Guid.Empty || input.EvaluationId == Guid.Empty)
+                return Results.BadRequest();
+            var report = await services
+                .GetRequiredService<AllocationEvaluationSourceReverificationService>()
+                .PreviewAsync(input.Family, input.ArtifactId, input.EvaluationId, ct);
+            return Results.Ok(report);
+        });
+
         // Registry readiness only: fresh, explicit technical selection and
         // stable SHA-256 digest, with every policy/authorization gate unverified.
         // This endpoint creates no model registry row or runtime candidate.
