@@ -80,6 +80,31 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
             humanIds.Add(humanId);
         }
 
+        var triage = new AllocationSevenFactorHumanReviewTriageService(db, roles, clock);
+        var initialTriage = await triage.PreviewAsync(actor,
+            humanIds.ToArray(), clock.UtcNow);
+        Assert.Equal(3, initialTriage.SelectedReviewCount);
+        Assert.All(initialTriage.Entries, entry =>
+        {
+            Assert.Equal(AllocationSevenFactorHumanReviewTriageService.NoStructuralBlocker,
+                entry.Finding);
+            Assert.Empty(entry.Reasons);
+            Assert.Equal(1, entry.HouseholdFeatureReviewCount);
+            Assert.Equal(1, entry.HouseholdHumanReviewCount);
+        });
+        Assert.False(initialTriage.DatasetAdmitted);
+        Assert.False(initialTriage.HumanConflictResolved);
+        Assert.False(initialTriage.ModelTrained);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            triage.PreviewAsync(Guid.NewGuid(), humanIds, clock.UtcNow));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            triage.PreviewAsync(actor, new[] { humanIds[0], humanIds[0] }, clock.UtcNow));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            triage.PreviewAsync(actor, new[] { Guid.NewGuid() }, clock.UtcNow));
+        var cutoffTriage = await triage.PreviewAsync(actor, humanIds.ToArray(), at);
+        Assert.All(cutoffTriage.Entries, entry =>
+            Assert.Contains(AllocationSevenFactorHumanReviewTriageService.OutsideCutoff,
+                entry.Reasons));
         var preview = new AllocationSevenFactorPartitionPreflightService(db, roles, clock);
         var cutoff = clock.UtcNow;
         var a = await preview.PreviewAsync(actor,
@@ -139,6 +164,20 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
             badReviewId, sevenId, NeedSeverityEvidenceDisposition.Conflicting,
             null, null, "conflicting-pre-allocation-evidence", at.AddHours(-1),
             "Human abstained due to contradictory evidence")));
+        var conflictTriage = await triage.PreviewAsync(actor,
+            humanIds.ToArray(), clock.UtcNow);
+        var conflicted = Assert.Single(conflictTriage.Entries,
+            x => x.ReviewId == humanIds[0]);
+        Assert.Equal(AllocationSevenFactorHumanReviewTriageService.NeedsHumanReview,
+            conflicted.Finding);
+        Assert.Contains(AllocationSevenFactorHumanReviewTriageService.CompetingHumanReviews,
+            conflicted.Reasons);
+        Assert.Equal(2, conflicted.HouseholdHumanReviewCount);
+        var abstention = await triage.PreviewAsync(actor,
+            new[] { badReviewId }, clock.UtcNow);
+        Assert.Contains(AllocationSevenFactorHumanReviewTriageService.AbstainedOrConflicting,
+            Assert.Single(abstention.Entries).Reasons);
+        Assert.False(abstention.HumanConflictResolved);
         // The earlier successful digest must not be accepted once a later,
         // unselected/conflicting human review exists for this household.
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -168,6 +207,12 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
         await Assert.ThrowsAsync<ArgumentException>(() =>
             preview.PreviewAsync(actor, new[] { humanIds[0] },
                 new[] { humanIds[1] }, new[] { humanIds[2] }, clock.UtcNow));
+
+        var featureConflictTriage = await triage.PreviewAsync(actor,
+            new[] { humanIds[2] }, clock.UtcNow);
+        Assert.Contains(AllocationSevenFactorHumanReviewTriageService.CompetingFeatureReviews,
+            Assert.Single(featureConflictTriage.Entries).Reasons);
+        Assert.Equal(2, featureConflictTriage.Entries[0].HouseholdFeatureReviewCount);
 
         // Training/evaluation provenance has been examined, not admitted:
         // the old six-feature labels and training artifacts stay untouched.
