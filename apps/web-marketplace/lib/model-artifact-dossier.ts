@@ -52,7 +52,7 @@ export function parseModelArtifactDossier(
     evaluations.push({
       id: e.id, protocolVersion: e.protocolVersion,
       evaluationFingerprint: e.evaluationFingerprint,
-      datasetVersion: e.datasetVersion,
+      datasetVersion: e.datasetVersion as string,
       sourceInstructionReference: e.sourceInstructionReference,
       cutoffUtc: e.cutoffUtc, recordedAtUtc: e.recordedAtUtc,
     });
