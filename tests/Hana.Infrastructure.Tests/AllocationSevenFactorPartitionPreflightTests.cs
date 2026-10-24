@@ -94,6 +94,29 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
         Assert.Equal(AllocationSevenFactorPartitionPreflightService.NotAdmittedStatus,
             a.AdmissionStatus);
         Assert.Equal(funding, a.SourceInstructionReference);
+        var revalidator = new AllocationSevenFactorManifestRevalidationService(preview);
+        var stable = await revalidator.RevalidateAsync(actor,
+            new[] { humanIds[0] }, new[] { humanIds[1] },
+            new[] { humanIds[2] }, cutoff, a.Sha256);
+        Assert.True(stable.ExactManifestUnchanged);
+        Assert.Equal(a.Sha256, stable.CurrentSha256);
+        Assert.Equal(a.SourceDatasetVersion, stable.SourceDatasetVersion);
+        Assert.False(stable.DatasetAdmitted);
+        Assert.False(stable.ModelTrained);
+        Assert.False(stable.ModelApproved);
+        Assert.False(stable.RuntimeApplied);
+        await Assert.ThrowsAsync<SevenFactorManifestStaleException>(() =>
+            revalidator.RevalidateAsync(actor,
+                new[] { humanIds[0] }, new[] { humanIds[1] },
+                new[] { humanIds[2] }, cutoff, new string('e', 64)));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            revalidator.RevalidateAsync(actor,
+                new[] { humanIds[0] }, new[] { humanIds[1] },
+                new[] { humanIds[2] }, cutoff, "not-a-digest"));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            revalidator.RevalidateAsync(Guid.NewGuid(),
+                new[] { humanIds[0] }, new[] { humanIds[1] },
+                new[] { humanIds[2] }, cutoff, a.Sha256));
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             preview.PreviewAsync(Guid.NewGuid(),
@@ -116,6 +139,12 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
             badReviewId, sevenId, NeedSeverityEvidenceDisposition.Conflicting,
             null, null, "conflicting-pre-allocation-evidence", at.AddHours(-1),
             "Human abstained due to contradictory evidence")));
+        // The earlier successful digest must not be accepted once a later,
+        // unselected/conflicting human review exists for this household.
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            revalidator.RevalidateAsync(actor,
+                new[] { humanIds[0] }, new[] { humanIds[1] },
+                new[] { humanIds[2] }, cutoff, a.Sha256));
         // Even if an operator silently omits the contradictory second
         // review, the original selection is now stale and must be rejected.
         // This includes abstentions and reviews created AFTER its cutoff.
