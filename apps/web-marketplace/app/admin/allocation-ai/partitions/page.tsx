@@ -9,6 +9,8 @@ import {
   type PartitionRevalidationRequest, type PartitionRevalidationResult,
 } from "../../../../lib/seven-factor-partitions";
 import styles from "../evidence/page.module.css";
+import { parseTriageResult, validTriageSelection,
+  type TriageResult } from "../../../../lib/seven-factor-human-triage";
 
 const root = "/api/admin/allocation-proposals/research/seven-factor";
 const choices = ["", "training", "validation", "evaluation"] as const;
@@ -32,10 +34,18 @@ export default function SevenFactorPartitionPage() {
   const [manifest, setManifest] = useState<PartitionRevalidationRequest | null>(null);
   const [renewed, setRenewed] = useState<PartitionRevalidationResult | null>(null);
   const [revalidating, setRevalidating] = useState(false);
+  const [triage, setTriage] = useState<TriageResult | null>(null);
+  const [triageBusy, setTriageBusy] = useState(false);
+  const triageSequence = useRef(0);
+  const invalidateTriage = () => {
+    ++triageSequence.current;
+    setTriage(null); setTriageBusy(false);
+  };
   const operation = useRef(0);
   const invalidatePreview = () => {
     ++operation.current; setPreview(null); setManifest(null);
     setRenewed(null); setError(""); setBusy(false); setRevalidating(false);
+    invalidateTriage();
   };
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,6 +56,7 @@ export default function SevenFactorPartitionPage() {
     ++operation.current;
     setLoading(true); setInventory(null); setPreview(null);
     setManifest(null); setRenewed(null); setError("");
+    invalidateTriage();
     fetch(root + "/human-reviews?page=" + page, { cache: "no-store", signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error(await errorBody(response));
@@ -130,6 +141,40 @@ export default function SevenFactorPartitionPage() {
     } finally { if (seq === operation.current) setRevalidating(false); }
   }
 
+  async function inspectTriage() {
+    const selected=Object.entries(selection).filter(([,v])=>v!=="")
+      .map(([id])=>id);
+    const request={selectedReviewIds:selected,cutoffUtc:cutoff};
+    const seq=++triageSequence.current;
+    setTriage(null);setError("");
+    if(!validTriageSelection(request)){
+      setError("برای کاربرگ، شناسه‌های انتخابی و زمان UTC معتبر لازم است.");
+      return;
+    }
+    setTriageBusy(true);
+    try{
+      const res=await fetch(root+"/human-review-triage/preview",{
+        method:"POST",cache:"no-store",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(request)
+      });
+      if(!res.ok)throw new Error(await errorBody(res));
+      const parsed=parseTriageResult(await res.json(),request);
+      if(!parsed)throw new Error("پاسخ کاربرگ با انتخاب‌ها تطابق ندارد.");
+      if(seq===triageSequence.current)setTriage(parsed);
+    }catch(e){
+      if(seq===triageSequence.current)
+        setError(e instanceof Error?e.message:"کاربرگ قابل دریافت نیست.");
+    }finally{if(seq===triageSequence.current)setTriageBusy(false);}
+  }
+
+  const triageLabel: Record<string,string>={
+    COMPETING_HUMAN_REVIEWS:"چند قضاوت انسانی برای این خانوار",
+    COMPETING_FEATURE_REVIEWS:"چند بازبینی هفت‌عاملی برای این خانوار",
+    ABSTAINED_OR_CONFLICTING_EVIDENCE:"امتناع یا تعارض در شواهد",
+    REVIEW_OR_SOURCE_AFTER_CUTOFF:"منبع یا بازبینی خارج از زمان برش",
+    FIRST_PARTY_SOURCE_LINEAGE_UNVERIFIED:"نسب‌نامه اولین‌طرف احراز نشده",
+  };
   return <main className={styles.page} dir="rtl">
     <nav className={styles.nav} aria-label="مسیر راهبری">
       <Link href="/admin/allocation-ai">هوش حنا</Link> /
@@ -149,9 +194,9 @@ export default function SevenFactorPartitionPage() {
       <div className={styles.header}>
         <h2>قضاوت‌های انسانی ثبت‌شده</h2>
         <div className={styles.pager}>
-          <button disabled={loading || busy || revalidating || page === 1} onClick={() => setPage(p => p - 1)}>قبلی</button>
+          <button disabled={loading || busy || revalidating || triageBusy || page === 1} onClick={() => setPage(p => p - 1)}>قبلی</button>
           <span>صفحه {page.toLocaleString("fa-IR")}</span>
-          <button disabled={loading || busy || revalidating || !inventory?.hasMore} onClick={() => setPage(p => p + 1)}>بعدی</button>
+          <button disabled={loading || busy || revalidating || triageBusy || !inventory?.hasMore} onClick={() => setPage(p => p + 1)}>بعدی</button>
         </div>
       </div>
       {loading && <p role="status">در حال دریافت اطلاعات…</p>}
@@ -166,7 +211,7 @@ export default function SevenFactorPartitionPage() {
           <label>
             <span className={styles.fieldLabel}>بخش بازبینی</span>
             <select aria-label={"بخش بازبینی " + item.id}
-              value={selection[item.id] ?? ""} disabled={busy || revalidating}
+              value={selection[item.id] ?? ""} disabled={busy || revalidating || triageBusy}
               onChange={event => {
                 const value = event.target.value as Choice;
                 if (!choices.includes(value)) return;
@@ -197,7 +242,7 @@ export default function SevenFactorPartitionPage() {
           onClick={() => { setCutoff(new Date().toISOString()); invalidatePreview(); }}>
           زمان فعلی UTC
         </button>
-        <button type="button" disabled={busy || revalidating || loading || !inventory || training.length < 1 ||
+        <button type="button" disabled={busy || revalidating || triageBusy || loading || !inventory || training.length < 1 ||
           validation.length < 1 || evaluation.length < 1} onClick={() => void inspect()}>
           {busy ? "در حال اعتبارسنجی…" : "بررسی سه بخش (بدون پذیرش)"}
         </button>
@@ -223,6 +268,30 @@ export default function SevenFactorPartitionPage() {
           بازاعتبارسنجی موفق: SHA-256 و نسب‌نامه انتخاب‌شده تغییر نکرده‌اند.
           این تأیید Dataset، آموزش یا فعال‌سازی مدل نیست.
         </p>}
+      </div>}
+    </section>
+    <section className={styles.panel} aria-label="کاربرگ تعارض بازبینی‌های انسانی">
+      <h2>کاربرگ بررسی تعارض بازبینی‌های انسانی</h2>
+      <p>شناسه‌هایی که برای سه گروه انتخاب کرده‌اید، به‌صورت دستی و فقط‌خواندنی بررسی می‌شوند.
+        نتیجه، تصمیم اصلاح، تأیید شواهد یا گزینش قضاوت برتر نیست.</p>
+      <button type="button" disabled={busy || revalidating || loading || triageBusy}
+        onClick={()=>void inspectTriage()}>
+        {triageBusy?"در حال بررسی تعارض…":"بررسی تعارض تمام شناسه‌های منتخب"}
+      </button>
+      {triage&&<div className={styles.rows} role="status">
+        <p>تعداد بررسی‌شده: {triage.selectedReviewCount.toLocaleString("fa-IR")} ·
+          هیچ تعارضی خودکار رفع نشده است.</p>
+        {triage.entries.map(item=><div key={item.reviewId} className={styles.row}>
+          <div className={styles.rowInfo}>
+            <strong dir="ltr">{item.reviewId}</strong>
+            <small>{item.finding==="NEEDS_EXPLICIT_HUMAN_REVIEW"
+              ?"نیازمند بررسی انسانی"
+              :"مانع ساختاری در این کاربرگ مشاهده نشد؛ بدون پذیرش داده"}</small>
+            <small>بازبینی ویژگی: {item.householdFeatureReviewCount.toLocaleString("fa-IR")} ·
+              قضاوت انسانی: {item.householdHumanReviewCount.toLocaleString("fa-IR")}</small>
+            {item.reasons.map(code=><small key={code}>{triageLabel[code]??code}</small>)}
+          </div>
+        </div>)}
       </div>}
     </section>
     <p className={styles.footer}>
