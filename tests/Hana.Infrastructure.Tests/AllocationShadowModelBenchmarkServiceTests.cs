@@ -280,6 +280,27 @@ public sealed class AllocationShadowModelBenchmarkServiceTests
         Assert.False(intake.RegistryRecordCreated);
         Assert.False(intake.RegistrationAllowed);
         Assert.False(intake.RuntimeApplied);
+        var sourceReverification = new AllocationEvaluationSourceReverificationService(learning);
+        var restored = await sourceReverification.PreviewAsync("XGBOOST", runId, first.Id);
+        Assert.Equal(first.EvaluationFingerprint, restored.EvaluationFingerprint);
+        Assert.Equal(labels.Length, restored.ReconstructedEvaluationCount);
+        Assert.True(restored.StoredEvaluationContentMatches);
+        Assert.True(restored.FirstPartyRuntimeLineageRechecked);
+        Assert.False(restored.HistoricalSourceAuthenticityAttested);
+        Assert.False(restored.RegistryRecordCreated);
+        Assert.False(restored.RuntimeApplied);
+
+        // PostgreSQL source-data drift is NOT silently accepted, even if the
+        // previously stored benchmark and model-artifact SHA are unchanged.
+        var changedLabel = labels[0];
+        await learning.NeedLabels.Where(x => x.Id == changedLabel.Id)
+            .ExecuteUpdateAsync(set => set.SetProperty(x => x.NeedScore, .9m));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sourceReverification.PreviewAsync("XGBOOST", runId, first.Id));
+        await learning.NeedLabels.Where(x => x.Id == changedLabel.Id)
+            .ExecuteUpdateAsync(set => set.SetProperty(x => x.NeedScore,
+                changedLabel.NeedScore));
+
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             new AllocationModelVersionTechnicalPreflightService(

@@ -7,6 +7,7 @@ import styles from "../evidence/page.module.css";
 import { parseModelArtifactDossier, type ModelArtifactDossier } from "../../../../lib/model-artifact-dossier";
 import { parseModelVersionTechnicalPreflight, type ModelVersionTechnicalPreflight } from "../../../../lib/model-version-technical-preflight";
 import { parseRegistryIntakeReadiness, type RegistryIntakeReadiness } from "../../../../lib/registry-intake-readiness";
+import { parseEvaluationSourceReverification, type EvaluationSourceReverification } from "../../../../lib/evaluation-source-reverification";
 
 const endpoint = "/api/admin/allocation-proposals/research/model-artifacts";
 const errorBody = async (response: Response) => {
@@ -53,6 +54,40 @@ export default function ModelArtifactEvidencePage() {
   const dossierSequence = useRef(0);
   const technicalSequence = useRef(0);
   const intakeSequence = useRef(0);
+  const sourceSequence = useRef(0);
+  const [source, setSource] = useState<EvaluationSourceReverification | null>(null);
+  const [sourceBusy, setSourceBusy] = useState(false);
+  const [sourceError, setSourceError] = useState("");
+  async function inspectEvaluationSource() {
+    if (!technical || !dossier || sourceBusy) return;
+    const selection = {family:technical.family,artifactId:technical.artifactId,
+      evaluationId:technical.evaluationId};
+    const seq = ++sourceSequence.current;
+    setSource(null);setSourceError("");setSourceBusy(true);
+    try {
+      const response=await fetch(
+        "/api/admin/allocation-proposals/research/evaluation-source-reverification",{
+          method:"POST",cache:"no-store",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(selection)
+        });
+      if(!response.ok)throw new Error(await errorBody(response));
+      const parsed=parseEvaluationSourceReverification(await response.json(),selection);
+      if(!parsed||parsed.trainingRunId!==technical.trainingRunId||
+        parsed.evaluationFingerprint!==technical.evaluationFingerprint||
+        parsed.artifactSha256!==technical.artifactSha256||
+        parsed.datasetVersion!==technical.datasetVersion||
+        parsed.evaluationProtocolVersion!==technical.evaluationProtocolVersion||
+        parsed.artifactId!==dossier.artifactId)
+        throw new Error("بازبینی داده‌های واقعی با پرونده انتخاب‌شده منطبق نیست.");
+      if(seq===sourceSequence.current)setSource(parsed);
+    }catch(e){
+      if(seq===sourceSequence.current)
+        setSourceError(e instanceof Error?e.message:"خطای بازبینی Evaluation");
+    }finally{
+      if(seq===sourceSequence.current)setSourceBusy(false);
+    }
+  }
   const [intake, setIntake] = useState<RegistryIntakeReadiness | null>(null);
   const [intakeBusy, setIntakeBusy] = useState(false);
   const [intakeError, setIntakeError] = useState("");
@@ -94,6 +129,7 @@ export default function ModelArtifactEvidencePage() {
       family: dossier.family, artifactId: dossier.artifactId, evaluationId,
     };
     const requestSeq = ++technicalSequence.current;
+    ++sourceSequence.current;setSource(null);setSourceBusy(false);setSourceError("");
     ++intakeSequence.current; setIntake(null); setIntakeBusy(false); setIntakeError("");
     setTechnical(null); setTechnicalError(""); setTechnicalBusy(true);
     try {
@@ -125,6 +161,7 @@ export default function ModelArtifactEvidencePage() {
   async function inspect(family: "XGBOOST" | "EBM", id: string) {
     const requestSequence = ++dossierSequence.current;
     ++technicalSequence.current;
+    ++sourceSequence.current;setSource(null);setSourceBusy(false);setSourceError("");
     ++intakeSequence.current; setIntake(null); setIntakeBusy(false); setIntakeError("");
     setTechnical(null); setTechnicalBusy(false); setTechnicalError("");
     setDossier(null); setDossierError(""); setDossierBusy(true);
@@ -146,6 +183,7 @@ export default function ModelArtifactEvidencePage() {
     const controller = new AbortController();
     ++dossierSequence.current;
     ++technicalSequence.current;
+    ++sourceSequence.current;setSource(null);setSourceBusy(false);setSourceError("");
     ++intakeSequence.current; setIntake(null); setIntakeBusy(false); setIntakeError("");
     setTechnical(null); setTechnicalBusy(false); setTechnicalError("");
     setDossierBusy(false);
@@ -161,7 +199,7 @@ export default function ModelArtifactEvidencePage() {
       .catch(err => { if (!controller.signal.aborted)
         setError(err instanceof Error ? err.message : "خطای دریافت"); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => { ++dossierSequence.current; ++technicalSequence.current; ++intakeSequence.current; controller.abort(); };
+    return () => { ++dossierSequence.current; ++technicalSequence.current; ++intakeSequence.current; ++sourceSequence.current; controller.abort(); };
   }, [page]);
   return <main className={styles.page} dir="rtl">
     <nav className={styles.nav} aria-label="مسیر راهبری">
@@ -228,11 +266,25 @@ export default function ModelArtifactEvidencePage() {
       <p>بنیاد اجرای موجود: {technical.existingExecutionFoundationVersion ?? "فقط پژوهشی؛ بدون قرارداد اجرایی Production"}</p>
       <p>هش اثر با بایت‌های ذخیره‌شده مطابق است و شناسه رکورد ارزیابی پیوند دارد؛ اما اصالت مستقل ارزیابی اثبات نشده است. ثبت نسخه، پذیرش Dataset، انتخاب مدل،
         پایلوت و فعال‌سازی Runtime همچنان ممنوع و نیازمند تصمیم انسانی و قرارداد مصوب‌اند.</p>
+      <button type="button" disabled={sourceBusy} onClick={() => void inspectEvaluationSource()}>
+        بازبینی دوباره محتوای Evaluation از رکوردهای PostgreSQL
+      </button>
       <button type="button" disabled={intakeBusy} onClick={() => void inspectRegistryIntake()}>
         بررسی پیش‌نیازهای ورود این نسخه به Model Registry
       </button>
     </section>}
-{intakeBusy && <p role="status">در حال محاسبه گزارش پیش‌نیازها…</p>}
+{sourceBusy && <p role="status">در حال تطبیق Labelها و Assessmentهای واقعی…</p>}
+    {sourceError && <p role="alert" className={styles.error}>{sourceError}</p>}
+    {source && <section className={styles.panel} aria-label="بازبینی محتوای Evaluation">
+      <h2>بررسی دوباره محتوای ذخیره‌شده Evaluation</h2>
+      <p><strong>{source.status}</strong></p>
+      <p>تعداد Labelهای ارزیابی بازسازی‌شده: {source.reconstructedEvaluationCount.toLocaleString("fa-IR")}</p>
+      <p>اثر انگشت بازسازی‌شده: <code dir="ltr">{source.evaluationFingerprint}</code></p>
+      <p>رکوردهای اولین‌طرف و خط سیر اجرای قبلی با Snapshot موجود مطابقت دارند؛
+      اما این نتیجه اصالت اسناد بیرونی، اعتبار Rubric عددی، عدالت یا کفایت علمی مدل را تأیید نمی‌کند.</p>
+      <p>پذیرش Dataset، ثبت Model Registry و فعال‌سازی Runtime همچنان غیرفعال‌اند.</p>
+    </section>}
+    {intakeBusy && <p role="status">در حال محاسبه گزارش پیش‌نیازها…</p>}
     {intakeError && <p role="alert" className={styles.error}>{intakeError}</p>}
     {intake && <section className={styles.panel} aria-label="پیش‌نیازهای مدل رجیستری">
       <h2>گزارش پیش‌نیازهای ثبت نسخه — فقط‌خواندنی</h2>

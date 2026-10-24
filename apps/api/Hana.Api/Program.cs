@@ -132,6 +132,7 @@ if (hasLearningDb)
         builder.Services.AddScoped<AllocationModelArtifactDossierService>();
         builder.Services.AddScoped<AllocationModelVersionTechnicalPreflightService>();
         builder.Services.AddScoped<AllocationModelRegistryIntakeReadinessService>();
+        builder.Services.AddScoped<AllocationEvaluationSourceReverificationService>();
         builder.Services.AddScoped<AllocationModelBenchmarkService>();
         builder.Services.AddScoped<AllocationShadowModelBenchmarkService>();
         builder.Services.AddScoped<AllocationEbmArtifactService>();
