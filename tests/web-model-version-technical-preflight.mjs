@@ -39,7 +39,7 @@ test("EBM is offline only and cannot claim an execution adapter", () => {
   const e = { ...base, family: "EBM", trainingRunId: runId,
     modelVersion: "henna-ebm-v1-offline",
     artifactFormat: "henna-ebm-portable-json-v1",
-    evaluationProtocolVersion: "henna-ebm-benchmark-v1",
+    evaluationProtocolVersion: "henna-ebm-shadow-benchmark-v2",
     existingExecutionFoundationVersion: null,
     technicalStatus: ebmTechnicalStatus };
   const result = parseModelVersionTechnicalPreflight(e, { ...selected, family: "EBM" });

@@ -64,10 +64,26 @@ export function parseModelVersionTechnicalPreflight(
   } else if (raw.family === "EBM") {
     if (raw.modelVersion !== "henna-ebm-v1-offline" ||
         raw.artifactFormat !== "henna-ebm-portable-json-v1" ||
-        raw.evaluationProtocolVersion !== "henna-ebm-benchmark-v1" ||
+        raw.evaluationProtocolVersion !== "henna-ebm-shadow-benchmark-v2" ||
         raw.technicalStatus !== ebmTechnicalStatus ||
         raw.existingExecutionFoundationVersion !== null)
       return null;
   }
-  return raw as ModelVersionTechnicalPreflight;
+  // Project a fixed safe DTO; unrecognized upstream fields are never sent to UI.
+  return {
+    contractVersion: modelVersionPreflightContract,
+    family: expected.family,
+    artifactId: raw.artifactId, trainingRunId: raw.trainingRunId,
+    evaluationId: raw.evaluationId, evaluationFingerprint: raw.evaluationFingerprint,
+    modelVersion: raw.modelVersion, artifactFormat: raw.artifactFormat,
+    artifactSha256: raw.artifactSha256, datasetVersion: raw.datasetVersion,
+    sourceInstructionReference: raw.sourceInstructionReference,
+    evaluationProtocolVersion: raw.evaluationProtocolVersion,
+    existingExecutionFoundationVersion:
+      raw.existingExecutionFoundationVersion as string | null,
+    technicalStatus: expected.family === "XGBOOST" ? xgboostTechnicalStatus : ebmTechnicalStatus,
+    artifactAndEvaluationAttested: true, productionRuntimeCompatible: false,
+    registrationEnabled: false, datasetAdmitted: false, modelApproved: false,
+    candidateCreated: false, runtimeApplied: false,
+  };
 }
