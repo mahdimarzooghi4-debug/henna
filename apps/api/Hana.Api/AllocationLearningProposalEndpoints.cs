@@ -48,6 +48,8 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationShadowModelBenchmarkConflictException) { return Results.Conflict(); }
             catch (AllocationEbmArtifactConflictException) { return Results.Conflict(); }
             catch (AllocationEbmBenchmarkConflictException) { return Results.Conflict(); }
+            catch (SevenFactorManifestStaleException)
+            { return Results.Conflict(new { error = "SEVEN_FACTOR_MANIFEST_STALE" }); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -181,6 +183,25 @@ internal static class AllocationLearningProposalEndpoints
                 admissionStatus = AllocationSevenFactorPartitionPreflightService.NotAdmittedStatus,
                 active = false, admitted = false, runtimeApplied = false
             });
+        });
+
+        // Re-attest the EXACT prior selection, without changing cutoff,
+        // accepting new reviews, choosing a dataset or granting admission.
+        routes.MapPost("/research/seven-factor/partition-preflight/revalidate", async (
+            SevenFactorManifestRevalidationRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.TrainingReviewIds is null ||
+                input.ValidationReviewIds is null ||
+                input.EvaluationReviewIds is null)
+                return Results.BadRequest();
+            var result = await services
+                .GetRequiredService<AllocationSevenFactorManifestRevalidationService>()
+                .RevalidateAsync((Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.TrainingReviewIds, input.ValidationReviewIds,
+                    input.EvaluationReviewIds, input.CutoffUtc,
+                    input.ExpectedSha256, ct);
+            return Results.Ok(result);
         });
 
         routes.MapPost("/research/seven-factor/partition-preflight/preview", async (
@@ -1301,6 +1322,11 @@ internal static class AllocationLearningProposalEndpoints
 
 internal sealed record ModelVersionTechnicalPreflightRequest(
     string? Family, Guid ArtifactId, Guid EvaluationId);
+internal sealed record SevenFactorManifestRevalidationRequest(
+    Guid[]? TrainingReviewIds, Guid[]? ValidationReviewIds,
+    Guid[]? EvaluationReviewIds, DateTimeOffset CutoffUtc,
+    string ExpectedSha256);
+
 internal sealed record SevenFactorPartitionPreviewRequest(
     Guid[]? TrainingReviewIds, Guid[]? ValidationReviewIds,
     Guid[]? EvaluationReviewIds, DateTimeOffset CutoffUtc);

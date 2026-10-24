@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   parseHumanReviewInventory, parsePartitionPreflightPreview,
   validPartitionChoices, type HumanReviewInventory,
   type PartitionPreflightPreview,
+  validPartitionRevalidationRequest, parsePartitionRevalidationResult,
+  type PartitionRevalidationRequest, type PartitionRevalidationResult,
 } from "../../../../lib/seven-factor-partitions";
 import styles from "../evidence/page.module.css";
 
@@ -27,13 +29,23 @@ export default function SevenFactorPartitionPage() {
   const [selection, setSelection] = useState<Record<string, Choice>>({});
   const [cutoff, setCutoff] = useState("");
   const [preview, setPreview] = useState<PartitionPreflightPreview | null>(null);
+  const [manifest, setManifest] = useState<PartitionRevalidationRequest | null>(null);
+  const [renewed, setRenewed] = useState<PartitionRevalidationResult | null>(null);
+  const [revalidating, setRevalidating] = useState(false);
+  const operation = useRef(0);
+  const invalidatePreview = () => {
+    ++operation.current; setPreview(null); setManifest(null);
+    setRenewed(null); setError(""); setBusy(false); setRevalidating(false);
+  };
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setInventory(null); setPreview(null); setError("");
+    ++operation.current;
+    setLoading(true); setInventory(null); setPreview(null);
+    setManifest(null); setRenewed(null); setError("");
     fetch(root + "/human-reviews?page=" + page, { cache: "no-store", signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error(await errorBody(response));
@@ -60,7 +72,8 @@ export default function SevenFactorPartitionPage() {
       evaluationReviewIds: evaluation,
       cutoffUtc: cutoff,
     };
-    setPreview(null); setError("");
+    const requestSequence = ++operation.current;
+    setPreview(null); setManifest(null); setRenewed(null); setError("");
     if (!validPartitionChoices(payload)) {
       setError("هر سه بخش باید دارای بازبینی‌های انسانی مجزا و زمان معتبر UTC باشند.");
       return;
@@ -78,10 +91,43 @@ export default function SevenFactorPartitionPage() {
           parsed.evaluationCount !== evaluation.length ||
           Date.parse(parsed.cutoffUtc) !== Date.parse(cutoff))
         throw new Error("پیش‌بررسی به داده انتخاب‌شده منطبق نیست.");
-      setPreview(parsed);
+      if (requestSequence === operation.current) {
+        setPreview(parsed);
+        setManifest({ ...payload, expectedSha256: parsed.sha256 });
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "هیچ مدرکی پذیرفته نشد.");
-    } finally { setBusy(false); }
+      if (requestSequence === operation.current)
+        setError(e instanceof Error ? e.message : "هیچ مدرکی پذیرفته نشد.");
+    } finally { if (requestSequence === operation.current) setBusy(false); }
+  }
+
+  async function revalidate() {
+    if (!preview || !manifest || busy || revalidating ||
+        !validPartitionRevalidationRequest(manifest)) return;
+    const seq = ++operation.current;
+    setRenewed(null); setError(""); setRevalidating(true);
+    try {
+      const response = await fetch(root + "/partition-preflight/revalidate", {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(manifest),
+      });
+      if (!response.ok) {
+        if (response.status === 400 || response.status === 409) {
+          if (seq === operation.current) {
+            setPreview(null); setManifest(null);
+          }
+        }
+        throw new Error(await errorBody(response));
+      }
+      const parsed = parsePartitionRevalidationResult(
+        await response.json(), manifest, preview);
+      if (!parsed) throw new Error("نتیجه بازاعتبارسنجی منطبق نیست؛ هیچ مدرکی پذیرفته نشد.");
+      if (seq === operation.current) setRenewed(parsed);
+    } catch (e) {
+      if (seq === operation.current)
+        setError(e instanceof Error ? e.message : "بازاعتبارسنجی ناموفق بود.");
+    } finally { if (seq === operation.current) setRevalidating(false); }
   }
 
   return <main className={styles.page} dir="rtl">
@@ -103,9 +149,9 @@ export default function SevenFactorPartitionPage() {
       <div className={styles.header}>
         <h2>قضاوت‌های انسانی ثبت‌شده</h2>
         <div className={styles.pager}>
-          <button disabled={loading || busy || page === 1} onClick={() => setPage(p => p - 1)}>قبلی</button>
+          <button disabled={loading || busy || revalidating || page === 1} onClick={() => setPage(p => p - 1)}>قبلی</button>
           <span>صفحه {page.toLocaleString("fa-IR")}</span>
-          <button disabled={loading || busy || !inventory?.hasMore} onClick={() => setPage(p => p + 1)}>بعدی</button>
+          <button disabled={loading || busy || revalidating || !inventory?.hasMore} onClick={() => setPage(p => p + 1)}>بعدی</button>
         </div>
       </div>
       {loading && <p role="status">در حال دریافت اطلاعات…</p>}
@@ -120,12 +166,12 @@ export default function SevenFactorPartitionPage() {
           <label>
             <span className={styles.fieldLabel}>بخش بازبینی</span>
             <select aria-label={"بخش بازبینی " + item.id}
-              value={selection[item.id] ?? ""} disabled={busy}
+              value={selection[item.id] ?? ""} disabled={busy || revalidating}
               onChange={event => {
                 const value = event.target.value as Choice;
                 if (!choices.includes(value)) return;
                 setSelection(old => ({ ...old, [item.id]: value }));
-                setPreview(null);
+                invalidatePreview();
               }}>
               {choices.map(choice => <option key={choice} value={choice}>{names[choice]}</option>)}
             </select>
@@ -146,12 +192,12 @@ export default function SevenFactorPartitionPage() {
       </label>
       <div className={styles.actions}>
         <input id="partition-cutoff" dir="ltr" value={cutoff} placeholder="2026-10-09T12:00:00.000Z"
-          onChange={event => { setCutoff(event.target.value); setPreview(null); }}/>
+          onChange={event => { setCutoff(event.target.value); invalidatePreview(); }}/>
         <button type="button" disabled={busy}
-          onClick={() => { setCutoff(new Date().toISOString()); setPreview(null); }}>
+          onClick={() => { setCutoff(new Date().toISOString()); invalidatePreview(); }}>
           زمان فعلی UTC
         </button>
-        <button type="button" disabled={busy || loading || !inventory || training.length < 1 ||
+        <button type="button" disabled={busy || revalidating || loading || !inventory || training.length < 1 ||
           validation.length < 1 || evaluation.length < 1} onClick={() => void inspect()}>
           {busy ? "در حال اعتبارسنجی…" : "بررسی سه بخش (بدون پذیرش)"}
         </button>
@@ -166,6 +212,17 @@ export default function SevenFactorPartitionPage() {
         <p>SHA-256 مجموعه دقیق انتخاب‌شده:</p>
         <code dir="ltr">{preview.sha256}</code>
         <p><strong>{preview.admissionStatus}</strong></p>
+        <div className={styles.actions}>
+          <button type="button" disabled={!manifest || busy || revalidating}
+            onClick={() => void revalidate()}>
+            {revalidating ? "در حال بازاعتبارسنجی…" :
+              "بازاعتبارسنجی همین انتخاب و SHA-256 در PostgreSQL"}
+          </button>
+        </div>
+        {renewed && <p role="status">
+          بازاعتبارسنجی موفق: SHA-256 و نسب‌نامه انتخاب‌شده تغییر نکرده‌اند.
+          این تأیید Dataset، آموزش یا فعال‌سازی مدل نیست.
+        </p>}
       </div>}
     </section>
     <p className={styles.footer}>

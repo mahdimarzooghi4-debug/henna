@@ -98,3 +98,82 @@ export function validPartitionChoices(input: unknown): input is PartitionChoices
   return ids.length <= 500 && new Set(ids.map(id => id.toLowerCase())).size === ids.length &&
     utc(input.cutoffUtc) && Date.parse(input.cutoffUtc) <= Date.now();
 }
+
+export const partitionRevalidationContract =
+  "HENNA-SEVEN-FACTOR-MANIFEST-REVALIDATION-v1";
+export const partitionRevalidatedStatus =
+  "UNCHANGED_HUMAN_PARTITION_STILL_NOT_ADMITTED";
+
+export type PartitionRevalidationRequest = PartitionChoices & {
+  expectedSha256: string;
+};
+export type PartitionRevalidationResult = {
+  contractVersion: typeof partitionRevalidationContract;
+  preflightContractVersion: typeof partitionContract;
+  cutoffUtc: string;
+  sourceFormulaVersion: string; sourceDatasetVersion: string;
+  sourceInstructionReference: string;
+  trainingCount: number; validationCount: number; evaluationCount: number;
+  expectedSha256: string; currentSha256: string;
+  status: typeof partitionRevalidatedStatus;
+  exactManifestUnchanged: true; datasetAdmitted: false;
+  modelTrained: false; modelApproved: false; runtimeApplied: false;
+};
+
+export function validPartitionRevalidationRequest(
+  v: unknown,
+): v is PartitionRevalidationRequest {
+  if (!isObject(v) || Object.keys(v).sort().join("|") !==
+      "cutoffUtc|evaluationReviewIds|expectedSha256|trainingReviewIds|validationReviewIds" ||
+      typeof v.expectedSha256 !== "string" || !digest.test(v.expectedSha256))
+    return false;
+  return validPartitionChoices({
+    trainingReviewIds: v.trainingReviewIds,
+    validationReviewIds: v.validationReviewIds,
+    evaluationReviewIds: v.evaluationReviewIds,
+    cutoffUtc: v.cutoffUtc,
+  });
+}
+
+export function parsePartitionRevalidationResult(
+  v: unknown, requested: PartitionRevalidationRequest,
+  previous: PartitionPreflightPreview,
+): PartitionRevalidationResult | null {
+  if (!validPartitionRevalidationRequest(requested) || !isObject(v) ||
+      v.contractVersion !== partitionRevalidationContract ||
+      v.preflightContractVersion !== partitionContract ||
+      v.status !== partitionRevalidatedStatus ||
+      v.exactManifestUnchanged !== true ||
+      v.datasetAdmitted !== false || v.modelTrained !== false ||
+      v.modelApproved !== false || v.runtimeApplied !== false ||
+      v.expectedSha256 !== requested.expectedSha256 ||
+      v.currentSha256 !== requested.expectedSha256 ||
+      v.currentSha256 !== previous.sha256 ||
+      !utc(v.cutoffUtc) ||
+      Date.parse(v.cutoffUtc) !== Date.parse(requested.cutoffUtc) ||
+      Date.parse(v.cutoffUtc) !== Date.parse(previous.cutoffUtc) ||
+      v.sourceFormulaVersion !== previous.sourceFormulaVersion ||
+      v.sourceDatasetVersion !== previous.sourceDatasetVersion ||
+      v.sourceInstructionReference !== previous.sourceInstructionReference ||
+      v.trainingCount !== requested.trainingReviewIds.length ||
+      v.validationCount !== requested.validationReviewIds.length ||
+      v.evaluationCount !== requested.evaluationReviewIds.length ||
+      v.trainingCount !== previous.trainingCount ||
+      v.validationCount !== previous.validationCount ||
+      v.evaluationCount !== previous.evaluationCount)
+    return null;
+  return {
+    contractVersion: partitionRevalidationContract,
+    preflightContractVersion: partitionContract, cutoffUtc: v.cutoffUtc,
+    sourceFormulaVersion: previous.sourceFormulaVersion,
+    sourceDatasetVersion: previous.sourceDatasetVersion,
+    sourceInstructionReference: previous.sourceInstructionReference,
+    trainingCount: previous.trainingCount,
+    validationCount: previous.validationCount,
+    evaluationCount: previous.evaluationCount,
+    expectedSha256: previous.sha256, currentSha256: previous.sha256,
+    status: partitionRevalidatedStatus,
+    exactManifestUnchanged: true, datasetAdmitted: false,
+    modelTrained: false, modelApproved: false, runtimeApplied: false,
+  };
+}

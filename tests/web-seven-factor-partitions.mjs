@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { partitionContract, partitionNotAdmitted, parseHumanReviewInventory,
-  parsePartitionPreflightPreview, validPartitionChoices } from
+  parsePartitionPreflightPreview, validPartitionChoices,
+  validPartitionRevalidationRequest, parsePartitionRevalidationResult,
+  partitionRevalidationContract, partitionRevalidatedStatus } from
   "../apps/web-marketplace/lib/seven-factor-partitions.ts";
 
 const a = "b8b52eee-b4c3-4ae5-a72a-8a78dd1561c0";
@@ -54,4 +56,41 @@ test("valid preflight result is not Dataset admission or model evaluation", () =
     { admissionStatus: "PASSED" }, { trainingCount: 0 },
     { evaluationCount: 501 }, { sha256: "not-attested" }])
     assert.equal(parsePartitionPreflightPreview({ ...result, ...changed }), null);
+});
+
+const prior = { ...choice, expectedSha256: result.sha256 };
+const unchanged = {
+  contractVersion: partitionRevalidationContract,
+  preflightContractVersion: partitionContract,
+  cutoffUtc: cutoff, sourceFormulaVersion: result.sourceFormulaVersion,
+  sourceDatasetVersion: result.sourceDatasetVersion,
+  sourceInstructionReference: result.sourceInstructionReference,
+  trainingCount: 1, validationCount: 1, evaluationCount: 1,
+  expectedSha256: result.sha256, currentSha256: result.sha256,
+  status: partitionRevalidatedStatus, exactManifestUnchanged: true,
+  datasetAdmitted: false, modelTrained: false,
+  modelApproved: false, runtimeApplied: false,
+};
+test("revalidation requires prior digest and unchanged authoritative identity", () => {
+  assert.ok(validPartitionRevalidationRequest(prior));
+  const parsed = parsePartitionRevalidationResult(unchanged, prior, result);
+  assert.ok(parsed);
+  assert.equal(parsed.datasetAdmitted, false);
+  assert.equal(parsed.modelTrained, false);
+  for (const v of [
+    { datasetAdmitted: true }, { modelTrained: true },
+    { modelApproved: true }, { runtimeApplied: true },
+    { exactManifestUnchanged: false }, { currentSha256: "b".repeat(64) },
+    { expectedSha256: "b".repeat(64) },
+    { status: "ADMITTED" }, { trainingCount: 2 },
+    { sourceInstructionReference: "different-source" },
+    { sourceDatasetVersion: "different-dataset" },
+    { cutoffUtc: "2026-10-08T11:00:00.000Z" }
+  ]) assert.equal(parsePartitionRevalidationResult(
+      { ...unchanged, ...v }, prior, result), null);
+  for (const v of [
+    { expectedSha256: "bad" }, { expectedSha256: "A".repeat(64) },
+    { cutoffUtc: "2099-01-01T00:00:00Z" }, { trainingReviewIds: [a, a] },
+    { unwanted: "auto-select" },
+  ]) assert.equal(validPartitionRevalidationRequest({ ...prior, ...v }), false);
 });
