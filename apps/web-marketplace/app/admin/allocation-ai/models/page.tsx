@@ -305,7 +305,7 @@ export default function ModelArtifactEvidencePage() {
         <p>هیچ برنده‌ای انتخاب نشده و اصالت بیرونی منابع، عدالت و کفایت علمی تأیید نشده است.</p>
       </div>}
     </section>
-    {dossierBusy && <p role="status">در حال خواندن پرونده…</p>
+    {dossierBusy && <p role="status">در حال خواندن پرونده…</p>}
     {dossierError && <p role="alert" className={styles.error}>{dossierError}</p>}
     {dossier && <section className={styles.panel} aria-label="پرونده شواهد مدل">
       <h2>پرونده فقط‌خواندنی {dossier.family}</h2>
