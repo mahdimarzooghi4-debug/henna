@@ -64,8 +64,8 @@ public sealed class AllocationModelVersionTechnicalPreflightTests
         var artifact = Guid.NewGuid();
         var eval = Guid.NewGuid();
         var dossier = Dossier("EBM", run, artifact, eval,
-            HennaEbmPortableArtifactVerifier.ModelVersion,
-            HennaEbmPortableArtifactVerifier.ArtifactFormat,
+            "henna-ebm-v1-offline",
+            "henna-ebm-portable-json-v1",
             HennaEbmBenchmarkEvaluator.ProtocolVersion);
         var found = AllocationModelVersionTechnicalPreflightService.Inspect(dossier, eval);
         Assert.Equal(AllocationModelVersionTechnicalPreflightService.EbmStatus, found.TechnicalStatus);
