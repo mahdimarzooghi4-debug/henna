@@ -98,6 +98,9 @@ public sealed class AllocationEbmEvidenceServiceTests
                     : LearningPartition.Validation);
         }).ToArray();
 
+        var xgboostResearchArtifact = HennaXGBoostOfflineLearner.Train(
+            frozenExamples, cutoff);
+
         var runId = Guid.NewGuid();
         learning.TrainingRuns.Add(new()
         {
@@ -117,7 +120,13 @@ public sealed class AllocationEbmEvidenceServiceTests
                 sourceInstructionReference = source
             }),
             CutoffUtc = cutoff,
-            RecordedAtUtc = cutoff
+            RecordedAtUtc = cutoff,
+            ShadowModelVersion = xgboostResearchArtifact.ModelVersion,
+            ShadowArtifactFormat = xgboostResearchArtifact.ArtifactFormat,
+            ShadowArtifactSha256 = xgboostResearchArtifact.ArtifactSha256,
+            ShadowArtifactBytes = xgboostResearchArtifact.ArtifactBytes,
+            ShadowParametersJson = xgboostResearchArtifact.ParametersJson,
+            ShadowMetricsJson = JsonSerializer.Serialize(xgboostResearchArtifact.Metrics)
         });
         await learning.SaveChangesAsync();
 
@@ -336,6 +345,24 @@ public sealed class AllocationEbmEvidenceServiceTests
                 labels.Select(x => x.Id).ToArray(),
                 now.AddHours(-1)));
 
+        var shadowBenchmarks = new AllocationShadowModelBenchmarkService(
+            learning, roles, clock);
+        var sameEvaluationXgboost = await shadowBenchmarks.EvaluateAsync(
+            admin, runId, labels.Select(x => x.Id).ToArray(), now.AddHours(-1));
+        Assert.Equal(first.EvaluationFingerprint,
+            sameEvaluationXgboost.EvaluationFingerprint);
+        var peerAudit = new AllocationCrossModelSourceAlignmentService(
+            learning, new AllocationEvaluationSourceReverificationService(learning));
+        var peerSelection = new CrossModelSourceSelection(
+            runId, sameEvaluationXgboost.Id, registered.Id, first.Id);
+        var alignedPeer = await peerAudit.PreviewAsync(peerSelection);
+        Assert.True(alignedPeer.BothStoredContentsReverified);
+        Assert.True(alignedPeer.EvaluationLineageAligned);
+        Assert.False(alignedPeer.ScientificComparabilityApproved);
+        Assert.False(alignedPeer.WinnerSelected);
+        Assert.False(alignedPeer.RuntimeApplied);
+        Assert.Equal(64, alignedPeer.ManifestSha256.Length);
+
         Assert.Equal(first.Id, benchmarkReplay.Id);
         Assert.Equal(registered.Id, first.EbmArtifactId);
         Assert.Equal(
@@ -393,6 +420,8 @@ public sealed class AllocationEbmEvidenceServiceTests
                 (changedSnapshot.Health + 1) % 4));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sourceReverification.PreviewAsync("EBM", registered.Id, first.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            peerAudit.PreviewAsync(peerSelection));
         await learning.Assessments.Where(x => x.Id == changedSnapshot.Id)
             .ExecuteUpdateAsync(set => set.SetProperty(x => x.Health,
                 changedSnapshot.Health));

@@ -8,6 +8,7 @@ import { parseModelArtifactDossier, type ModelArtifactDossier } from "../../../.
 import { parseModelVersionTechnicalPreflight, type ModelVersionTechnicalPreflight } from "../../../../lib/model-version-technical-preflight";
 import { parseRegistryIntakeReadiness, type RegistryIntakeReadiness } from "../../../../lib/registry-intake-readiness";
 import { parseEvaluationSourceReverification, type EvaluationSourceReverification } from "../../../../lib/evaluation-source-reverification";
+import { parsePeerAlignment, type PeerAlignment, type PeerChoice } from "../../../../lib/cross-model-source-alignment";
 
 const endpoint = "/api/admin/allocation-proposals/research/model-artifacts";
 const errorBody = async (response: Response) => {
@@ -55,6 +56,56 @@ export default function ModelArtifactEvidencePage() {
   const technicalSequence = useRef(0);
   const intakeSequence = useRef(0);
   const sourceSequence = useRef(0);
+  const peerSequence = useRef(0);
+  const [peerX, setPeerX] = useState<PeerChoice | null>(null);
+  const [peerE, setPeerE] = useState<PeerChoice | null>(null);
+  const [peer, setPeer] = useState<PeerAlignment | null>(null);
+  const [peerBusy, setPeerBusy] = useState(false);
+  const [peerError, setPeerError] = useState("");
+  function pinPeer(evaluationId:string) {
+    if(!dossier)return;
+    const entry=dossier.evaluations.find(x=>x.id===evaluationId);
+    if(!entry)return;
+    const choice:PeerChoice={
+      artifactId:dossier.artifactId,evaluationId:entry.id,
+      evaluationFingerprint:entry.evaluationFingerprint,
+      datasetVersion:entry.datasetVersion,
+    };
+    ++peerSequence.current;
+    setPeer(null);setPeerError("");setPeerBusy(false);
+    if(dossier.family==="XGBOOST")setPeerX(choice);
+    else setPeerE(choice);
+  }
+  async function inspectPeerAlignment() {
+    if(!peerX||!peerE||peerBusy)return;
+    const selection={
+      xgboostArtifactId:peerX.artifactId,xgboostEvaluationId:peerX.evaluationId,
+      ebmArtifactId:peerE.artifactId,ebmEvaluationId:peerE.evaluationId,
+    };
+    const seq=++peerSequence.current;
+    setPeer(null);setPeerError("");setPeerBusy(true);
+    try{
+      const response=await fetch(
+        "/api/admin/allocation-proposals/research/cross-model-source-alignment",{
+          method:"POST",cache:"no-store",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(selection),
+        });
+      if(!response.ok)throw new Error(await errorBody(response));
+      const parsed=parsePeerAlignment(await response.json(),selection);
+      if(!parsed||
+        parsed.xgboostEvaluationFingerprint!==peerX.evaluationFingerprint||
+        parsed.ebmEvaluationFingerprint!==peerE.evaluationFingerprint||
+        (parsed.evaluationLineageAligned&&peerX.datasetVersion!==peerE.datasetVersion))
+        throw new Error("نتیجه با دو Evaluation انتخاب‌شده منطبق نیست.");
+      if(seq===peerSequence.current)setPeer(parsed);
+    }catch(e){
+      if(seq===peerSequence.current)
+        setPeerError(e instanceof Error?e.message:"خطای تطبیق");
+    }finally{
+      if(seq===peerSequence.current)setPeerBusy(false);
+    }
+  }
   const [source, setSource] = useState<EvaluationSourceReverification | null>(null);
   const [sourceBusy, setSourceBusy] = useState(false);
   const [sourceError, setSourceError] = useState("");
@@ -183,6 +234,8 @@ export default function ModelArtifactEvidencePage() {
     const controller = new AbortController();
     ++dossierSequence.current;
     ++technicalSequence.current;
+    ++peerSequence.current;setPeer(null);setPeerBusy(false);setPeerError("");
+    setPeerX(null);setPeerE(null);
     ++sourceSequence.current;setSource(null);setSourceBusy(false);setSourceError("");
     ++intakeSequence.current; setIntake(null); setIntakeBusy(false); setIntakeError("");
     setTechnical(null); setTechnicalBusy(false); setTechnicalError("");
@@ -199,7 +252,7 @@ export default function ModelArtifactEvidencePage() {
       .catch(err => { if (!controller.signal.aborted)
         setError(err instanceof Error ? err.message : "خطای دریافت"); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => { ++dossierSequence.current; ++technicalSequence.current; ++intakeSequence.current; ++sourceSequence.current; controller.abort(); };
+    return () => { ++dossierSequence.current; ++technicalSequence.current; ++intakeSequence.current; ++sourceSequence.current; ++peerSequence.current; controller.abort(); };
   }, [page]);
   return <main className={styles.page} dir="rtl">
     <nav className={styles.nav} aria-label="مسیر راهبری">
@@ -232,6 +285,26 @@ export default function ModelArtifactEvidencePage() {
       <Records title="XGBoost — آثار آموزش آزمایشی" rows={data.xgboostItems} family="XGBOOST" inspect={inspect}/>
       <Records title="EBM — آثار رقیب پژوهشی" rows={data.ebmItems} family="EBM" inspect={inspect}/>
     </>}
+    <section className={styles.panel} aria-label="مقایسه داده‌های دو خانواده مدل">
+      <h2>تطبیق محتوای دو Evaluation واقعی</h2>
+      <p>از پرونده هر خانواده، یک Evaluation را صریحاً انتخاب کنید.</p>
+      <p>XGBoost: <code dir="ltr">{peerX?.evaluationId??"انتخاب نشده"}</code></p>
+      <p>EBM: <code dir="ltr">{peerE?.evaluationId??"انتخاب نشده"}</code></p>
+      <button type="button" disabled={!peerX||!peerE||peerBusy}
+        onClick={()=>void inspectPeerAlignment()}>
+        بازبینی هم‌زمان و تطبیق نسب‌نامه دو Evaluation
+      </button>
+      {peerBusy&&<p role="status">در حال خواندن Snapshot یکسان PostgreSQL…</p>}
+      {peerError&&<p role="alert" className={styles.error}>{peerError}</p>}
+      {peer&&<div role="status">
+        <strong>{peer.evaluationLineageAligned
+          ?"محتوای ذخیره‌شده تطبیق دارد؛ بدون تأیید کیفیت مدل"
+          :"شواهد بازسازی شدند اما نسب‌نامه Evaluationها یکسان نیست"}</strong>
+        <p>وضعیت: <code dir="ltr">{peer.status}</code></p>
+        <p>هش گزارش فنی: <code dir="ltr">{peer.manifestSha256}</code></p>
+        <p>هیچ برنده‌ای انتخاب نشده و اصالت بیرونی منابع، عدالت و کفایت علمی تأیید نشده است.</p>
+      </div>}
+    </section>
     {dossierBusy && <p role="status">در حال خواندن پرونده…</p>}
     {dossierError && <p role="alert" className={styles.error}>{dossierError}</p>}
     {dossier && <section className={styles.panel} aria-label="پرونده شواهد مدل">
@@ -247,6 +320,9 @@ export default function ModelArtifactEvidencePage() {
             <small>Protocol: {entry.protocolVersion}</small>
             <small>Evaluation fingerprint: <code dir="ltr">{entry.evaluationFingerprint}</code></small>
             <small>Dataset: {entry.datasetVersion} · Cutoff: {new Date(entry.cutoffUtc).toLocaleString("fa-IR")}</small>
+            <button type="button" onClick={() => pinPeer(entry.id)}>
+              انتخاب این Evaluation برای تطبیق XGBoost و EBM
+            </button>
             <button type="button" disabled={technicalBusy}
               onClick={() => void inspectVersion(entry.id)}>
               پیش‌بررسی فنی همین نسخه و ارزیابی

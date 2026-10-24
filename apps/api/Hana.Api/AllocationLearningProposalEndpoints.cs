@@ -209,6 +209,22 @@ internal static class AllocationLearningProposalEndpoints
         });
 
 
+        // Two human-selected existing model families reverified under one
+        // PostgreSQL snapshot. This is never a model ranking or admission.
+        routes.MapPost("/research/cross-model-source-alignment/preview", async (
+            CrossModelSourceSelection input, IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            if (input is null || input.XgboostArtifactId == Guid.Empty ||
+                input.XgboostEvaluationId == Guid.Empty ||
+                input.EbmArtifactId == Guid.Empty || input.EbmEvaluationId == Guid.Empty)
+                return Results.BadRequest();
+            var report = await services
+                .GetRequiredService<AllocationCrossModelSourceAlignmentService>()
+                .PreviewAsync(input, ct);
+            return Results.Ok(report);
+        });
+
         // Rebuild the stored Evaluation fingerprint from actual persisted
         // human-reviewed label/first-party assessment content, read-only.
         routes.MapPost("/research/evaluation-source-reverification/preview", async (
