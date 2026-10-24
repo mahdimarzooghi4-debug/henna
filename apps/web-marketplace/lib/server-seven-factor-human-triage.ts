@@ -35,7 +35,10 @@ export async function forwardHumanReviewTriage(request:NextRequest) {
       "بررسی تعارض‌های انسانی ممکن نشد.",
       [400,401,403].includes(response.status)?response.status:503);
     const raw=await response.text();
-    if(raw.length>100000)return fail("پاسخ بیش از اندازه است.",503);
+    // A bounded 500-entry response may exceed 100 KiB when every review
+    // has multiple valid structural findings; keep a finite headroom while
+    // the strict DTO below limits the result to exact selected identities.
+    if(raw.length>256000)return fail("پاسخ بیش از اندازه است.",503);
     const verified=parseTriageResult(JSON.parse(raw),parsed);
     if(!verified)return fail("پاسخ کاربرگ انسانی با انتخاب مطابقت ندارد.",503);
     return NextResponse.json(verified,{headers:noStore});

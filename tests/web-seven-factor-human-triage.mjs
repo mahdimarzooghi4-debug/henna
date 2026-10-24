@@ -49,3 +49,21 @@ test("fail closed on unknown statuses, forged approvals, changed ID and contradi
   {extra:"auto-admit"}
  ])assert.equal(validTriageSelection({...selection,...patch}),false);
 });
+
+test("maximum 500 reviewed IDs remains a valid bounded read-only result",()=>{
+ const ids=Array.from({length:500},(_,i)=>{
+   const suffix=(i+1).toString(16).padStart(12,"0");
+   return "b8b52eee-b4c3-4ae5-a72a-"+suffix;
+ });
+ const selected={selectedReviewIds:ids,cutoffUtc:selection.cutoffUtc};
+ const records=ids.map(id=>({...entry,reviewId:id}));
+ const payload={...data,selectedReviewCount:500,entries:records};
+ assert.ok(validTriageSelection(selected));
+ const parsed=parseTriageResult(payload,selected);
+ assert.ok(parsed);
+ assert.equal(parsed.entries.length,500);
+ assert.equal(parsed.modelApproved,false);
+ assert.equal(parsed.runtimeApplied,false);
+ assert.equal(parseTriageResult({...payload,entries:records.slice(1)},selected),null);
+ assert.equal(validTriageSelection({...selected,selectedReviewIds:[...ids,ids[0]]}),false);
+});
