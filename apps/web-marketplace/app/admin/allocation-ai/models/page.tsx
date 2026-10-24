@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { parseModelArtifactInventory, type ArtifactEvidenceItem,
   type ModelArtifactInventory } from "../../../../lib/model-artifact-inventory";
 import styles from "../evidence/page.module.css";
+import { parseModelArtifactDossier, type ModelArtifactDossier } from "../../../../lib/model-artifact-dossier";
 
 const endpoint = "/api/admin/allocation-proposals/research/model-artifacts";
 const errorBody = async (response: Response) => {
@@ -11,7 +12,10 @@ const errorBody = async (response: Response) => {
   return raw && typeof raw === "object" && "message" in raw &&
     typeof raw.message === "string" ? raw.message : "دریافت دفتر ممکن نشد.";
 };
-function Records({ title, rows }: { title: string; rows: ArtifactEvidenceItem[] }) {
+function Records({ title, rows, family, inspect }: {
+  title: string; rows: ArtifactEvidenceItem[]; family: "XGBOOST" | "EBM";
+  inspect: (family: "XGBOOST" | "EBM", id: string) => void;
+}) {
   return <section className={styles.panel}>
     <h2>{title}</h2>
     {rows.length === 0 && <p>برای این صفحه اثری ثبت نشده است.</p>}
@@ -25,6 +29,9 @@ function Records({ title, rows }: { title: string; rows: ArtifactEvidenceItem[] 
           <small>اثر انگشت ذخیره‌شده: <code dir="ltr">{item.artifactSha256}</code></small>
           <small>ثبت: {new Date(item.recordedAtUtc).toLocaleString("fa-IR")}</small>
           <small>سوابق ارزیابی مستقل با همین اثر: {item.evaluationCount.toLocaleString("fa-IR")}</small>
+          <button type="button" onClick={() => inspect(family, item.artifactId)}>
+            مشاهده پرونده شواهد این نسخه
+          </button>
           <small><strong>{item.artifactVerified
             ? "SHA-256 بایت‌های ذخیره‌شده مطابق است (نه تأیید مدل)"
             : "عدم تطابق یا نبود بایت اثر — فاقد تأیید یکپارچگی"}</strong></small>
@@ -38,9 +45,25 @@ export default function ModelArtifactEvidencePage() {
   const [data, setData] = useState<ModelArtifactInventory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dossier, setDossier] = useState<ModelArtifactDossier | null>(null);
+  const [dossierBusy, setDossierBusy] = useState(false);
+  const [dossierError, setDossierError] = useState("");
+  async function inspect(family: "XGBOOST" | "EBM", id: string) {
+    setDossier(null); setDossierError(""); setDossierBusy(true);
+    try {
+      const res = await fetch("/api/admin/allocation-proposals/research/model-artifact-evidence?" +
+        new URLSearchParams({ family, artifactId: id }), { cache: "no-store" });
+      if (!res.ok) throw new Error(await errorBody(res));
+      const parsed = parseModelArtifactDossier(await res.json(), family, id);
+      if (!parsed) throw new Error("پرونده با اثر انتخاب‌شده مطابقت ندارد.");
+      setDossier(parsed);
+    } catch (e) {
+      setDossierError(e instanceof Error ? e.message : "خطای بررسی پرونده");
+    } finally { setDossierBusy(false); }
+  }
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setData(null); setError("");
+    setLoading(true); setData(null); setError(""); setDossier(null); setDossierError("");
     fetch(endpoint + "?page=" + page, { cache: "no-store", signal: controller.signal })
       .then(async res => {
         if (!res.ok) throw new Error(await errorBody(res));
@@ -82,9 +105,29 @@ export default function ModelArtifactEvidencePage() {
       {error && <p className={styles.error} role="alert">{error}</p>}
     </section>
     {data && <>
-      <Records title="XGBoost — آثار آموزش آزمایشی" rows={data.xgboostItems}/>
-      <Records title="EBM — آثار رقیب پژوهشی" rows={data.ebmItems}/>
+      <Records title="XGBoost — آثار آموزش آزمایشی" rows={data.xgboostItems} family="XGBOOST" inspect={inspect}/>
+      <Records title="EBM — آثار رقیب پژوهشی" rows={data.ebmItems} family="EBM" inspect={inspect}/>
     </>}
+    {dossierBusy && <p role="status">در حال خواندن پرونده…</p>}
+    {dossierError && <p role="alert" className={styles.error}>{dossierError}</p>}
+    {dossier && <section className={styles.panel} aria-label="پرونده شواهد مدل">
+      <h2>پرونده فقط‌خواندنی {dossier.family}</h2>
+      <p>نسخه: {dossier.modelVersion} · Training Run: <code dir="ltr">{dossier.trainingRunId}</code></p>
+      <p>اثر: <code dir="ltr">{dossier.artifactId}</code> · تطبیق بایت‌های ذخیره‌شده: SHA-256</p>
+      <p>تعداد سوابق ارزیابی مستقل: {dossier.evaluations.length.toLocaleString("fa-IR")}</p>
+      {dossier.evaluations.length === 0 && <p>ارزیابی مستقلی برای این اثر ثبت نشده است.</p>}
+      <div className={styles.rows}>
+        {dossier.evaluations.map(entry => <article className={styles.row} key={entry.id}>
+          <div className={styles.rowInfo}>
+            <small>شناسه ارزیابی: <code dir="ltr">{entry.id}</code></small>
+            <small>Protocol: {entry.protocolVersion}</small>
+            <small>Evaluation fingerprint: <code dir="ltr">{entry.evaluationFingerprint}</code></small>
+            <small>Dataset: {entry.datasetVersion} · Cutoff: {new Date(entry.cutoffUtc).toLocaleString("fa-IR")}</small>
+          </div>
+        </article>)}
+      </div>
+      <p><strong>{dossier.evidenceStatus}</strong> — شواهد به‌معنای پذیرش مدل نیست.</p>
+    </section>}
     <p className={styles.footer}>تطبیق بایت و هش فقط یک کنترل یکپارچگی است، نه
       راستی‌آزمایی اصالت اسناد، استقلال Dataset، کفایت آماری، عدالت یا تأیید Production.
       ثبت نسخه سازگار و هرگونه ارتقا نیازمند قرارداد مستقل مصوب و تصمیم انسانی است.</p>
