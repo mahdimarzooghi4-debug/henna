@@ -347,6 +347,18 @@ public sealed class AllocationEbmEvidenceServiceTests
         Assert.Equal(sha, first.ArtifactSha256);
         Assert.Equal(64, first.EvaluationFingerprint.Length);
 
+        // Read the actual PostgreSQL EBM artifact + independent benchmark
+        // through one dossier snapshot, without registering a Production model.
+        var dossier = await new AllocationModelArtifactDossierService(learning)
+            .ReadAsync("EBM", registered.Id);
+        Assert.NotNull(dossier);
+        Assert.True(dossier.ArtifactVerified);
+        Assert.False(dossier.Registered);
+        Assert.False(dossier.Active);
+        Assert.Single(dossier.Evaluations);
+        Assert.Equal(first.Id, dossier.Evaluations[0].Id);
+        Assert.Equal(first.EvaluationFingerprint, dossier.Evaluations[0].EvaluationFingerprint);
+
         var metrics = JsonSerializer.Deserialize<HennaEbmBenchmarkMetrics>(
             first.MetricsJson)!;
         Assert.Equal(2, metrics.EvaluationCount);

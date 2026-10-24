@@ -129,6 +129,7 @@ if (hasLearningDb)
         builder.Services.AddScoped<AllocationProductionControlService>();
         builder.Services.AddScoped<AllocationRuntimePromotionService>();
         builder.Services.AddScoped<AllocationRetentionService>();
+        builder.Services.AddScoped<AllocationModelArtifactDossierService>();
         builder.Services.AddScoped<AllocationModelBenchmarkService>();
         builder.Services.AddScoped<AllocationShadowModelBenchmarkService>();
         builder.Services.AddScoped<AllocationEbmArtifactService>();

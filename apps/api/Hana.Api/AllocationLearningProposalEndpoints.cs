@@ -209,6 +209,15 @@ internal static class AllocationLearningProposalEndpoints
         });
 
 
+        // Exact, read-only evaluation dossier; no model registration or promotion.
+        routes.MapGet("/research/model-artifacts/{family}/{id:guid}/evidence", async (
+            string family, Guid id, IServiceProvider services, CancellationToken ct) =>
+        {
+            var dossier = await services.GetRequiredService<AllocationModelArtifactDossierService>()
+                .ReadAsync(family, id, ct);
+            return dossier is null ? Results.NotFound() : Results.Ok(dossier);
+        });
+
         // Read-only research artifacts, not an approved Model Registry.
         // Recompute stored artifact digests; never expose bytes or labels.
         routes.MapGet("/research/model-artifacts", async (

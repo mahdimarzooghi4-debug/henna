@@ -247,6 +247,20 @@ public sealed class AllocationShadowModelBenchmarkServiceTests
         Assert.Equal(0, first.RuntimeProfileSequence);
         Assert.Null(first.RuntimeProposalId);
         Assert.Equal(64, first.EvaluationFingerprint.Length);
+        // The dossier must re-attest actual PostgreSQL artifact bytes and the
+        // independently persisted benchmark, with no Production effect.
+        var dossier = await new AllocationModelArtifactDossierService(learning)
+            .ReadAsync("XGBOOST", runId);
+        Assert.NotNull(dossier);
+        Assert.True(dossier.ArtifactVerified);
+        Assert.Equal(runId, dossier.TrainingRunId);
+        Assert.False(dossier.Registered);
+        Assert.False(dossier.Approved);
+        Assert.False(dossier.RuntimeApplied);
+        Assert.Single(dossier.Evaluations);
+        Assert.Equal(first.Id, dossier.Evaluations[0].Id);
+        Assert.Equal(first.EvaluationFingerprint, dossier.Evaluations[0].EvaluationFingerprint);
+
         Assert.Single(
             await learning.ShadowModelBenchmarks.AsNoTracking()
                 .Where(x => x.Id == first.Id)
