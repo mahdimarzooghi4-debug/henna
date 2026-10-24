@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseModelArtifactInventory, type ArtifactEvidenceItem,
   type ModelArtifactInventory } from "../../../../lib/model-artifact-inventory";
 import styles from "../evidence/page.module.css";
@@ -48,7 +48,9 @@ export default function ModelArtifactEvidencePage() {
   const [dossier, setDossier] = useState<ModelArtifactDossier | null>(null);
   const [dossierBusy, setDossierBusy] = useState(false);
   const [dossierError, setDossierError] = useState("");
+  const dossierSequence = useRef(0);
   async function inspect(family: "XGBOOST" | "EBM", id: string) {
+    const requestSequence = ++dossierSequence.current;
     setDossier(null); setDossierError(""); setDossierBusy(true);
     try {
       const res = await fetch("/api/admin/allocation-proposals/research/model-artifact-evidence?" +
@@ -56,13 +58,18 @@ export default function ModelArtifactEvidencePage() {
       if (!res.ok) throw new Error(await errorBody(res));
       const parsed = parseModelArtifactDossier(await res.json(), family, id);
       if (!parsed) throw new Error("پرونده با اثر انتخاب‌شده مطابقت ندارد.");
-      setDossier(parsed);
+      if (requestSequence === dossierSequence.current) setDossier(parsed);
     } catch (e) {
-      setDossierError(e instanceof Error ? e.message : "خطای بررسی پرونده");
-    } finally { setDossierBusy(false); }
+      if (requestSequence === dossierSequence.current)
+        setDossierError(e instanceof Error ? e.message : "خطای بررسی پرونده");
+    } finally {
+      if (requestSequence === dossierSequence.current) setDossierBusy(false);
+    }
   }
   useEffect(() => {
     const controller = new AbortController();
+    ++dossierSequence.current;
+    setDossierBusy(false);
     setLoading(true); setData(null); setError(""); setDossier(null); setDossierError("");
     fetch(endpoint + "?page=" + page, { cache: "no-store", signal: controller.signal })
       .then(async res => {
@@ -75,7 +82,7 @@ export default function ModelArtifactEvidencePage() {
       .catch(err => { if (!controller.signal.aborted)
         setError(err instanceof Error ? err.message : "خطای دریافت"); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
+    return () => { ++dossierSequence.current; controller.abort(); };
   }, [page]);
   return <main className={styles.page} dir="rtl">
     <nav className={styles.nav} aria-label="مسیر راهبری">
