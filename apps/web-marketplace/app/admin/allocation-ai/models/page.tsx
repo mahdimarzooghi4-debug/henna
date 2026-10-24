@@ -5,6 +5,7 @@ import { parseModelArtifactInventory, type ArtifactEvidenceItem,
   type ModelArtifactInventory } from "../../../../lib/model-artifact-inventory";
 import styles from "../evidence/page.module.css";
 import { parseModelArtifactDossier, type ModelArtifactDossier } from "../../../../lib/model-artifact-dossier";
+import { parseModelVersionTechnicalPreflight, type ModelVersionTechnicalPreflight } from "../../../../lib/model-version-technical-preflight";
 
 const endpoint = "/api/admin/allocation-proposals/research/model-artifacts";
 const errorBody = async (response: Response) => {
@@ -49,8 +50,47 @@ export default function ModelArtifactEvidencePage() {
   const [dossierBusy, setDossierBusy] = useState(false);
   const [dossierError, setDossierError] = useState("");
   const dossierSequence = useRef(0);
+  const technicalSequence = useRef(0);
+  const [technical, setTechnical] = useState<ModelVersionTechnicalPreflight | null>(null);
+  const [technicalBusy, setTechnicalBusy] = useState(false);
+  const [technicalError, setTechnicalError] = useState("");
+  async function inspectVersion(evaluationId: string) {
+    if (!dossier || technicalBusy) return;
+    const selection = {
+      family: dossier.family, artifactId: dossier.artifactId, evaluationId,
+    };
+    const requestSeq = ++technicalSequence.current;
+    setTechnical(null); setTechnicalError(""); setTechnicalBusy(true);
+    try {
+      const response = await fetch(
+        "/api/admin/allocation-proposals/research/model-version-technical-preflight", {
+          method: "POST", cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(selection),
+        });
+      if (!response.ok) throw new Error(await errorBody(response));
+      const parsed = parseModelVersionTechnicalPreflight(
+        await response.json(), selection);
+      const matchingEvidence = dossier.evaluations.find(e => e.id === evaluationId);
+      if (!parsed || !matchingEvidence ||
+          parsed.evaluationFingerprint !== matchingEvidence.evaluationFingerprint ||
+          parsed.trainingRunId !== dossier.trainingRunId ||
+          parsed.artifactSha256 !== dossier.artifactSha256 ||
+          parsed.modelVersion !== dossier.modelVersion ||
+          parsed.datasetVersion !== dossier.datasetVersion)
+        throw new Error("پیش‌بررسی فنی با پرونده انتخاب‌شده منطبق نیست.");
+      if (requestSeq === technicalSequence.current) setTechnical(parsed);
+    } catch (e) {
+      if (requestSeq === technicalSequence.current)
+        setTechnicalError(e instanceof Error ? e.message : "خطای پیش‌بررسی");
+    } finally {
+      if (requestSeq === technicalSequence.current) setTechnicalBusy(false);
+    }
+  }
   async function inspect(family: "XGBOOST" | "EBM", id: string) {
     const requestSequence = ++dossierSequence.current;
+    ++technicalSequence.current;
+    setTechnical(null); setTechnicalBusy(false); setTechnicalError("");
     setDossier(null); setDossierError(""); setDossierBusy(true);
     try {
       const res = await fetch("/api/admin/allocation-proposals/research/model-artifact-evidence?" +
@@ -69,6 +109,8 @@ export default function ModelArtifactEvidencePage() {
   useEffect(() => {
     const controller = new AbortController();
     ++dossierSequence.current;
+    ++technicalSequence.current;
+    setTechnical(null); setTechnicalBusy(false); setTechnicalError("");
     setDossierBusy(false);
     setLoading(true); setData(null); setError(""); setDossier(null); setDossierError("");
     fetch(endpoint + "?page=" + page, { cache: "no-store", signal: controller.signal })
@@ -82,7 +124,7 @@ export default function ModelArtifactEvidencePage() {
       .catch(err => { if (!controller.signal.aborted)
         setError(err instanceof Error ? err.message : "خطای دریافت"); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => { ++dossierSequence.current; controller.abort(); };
+    return () => { ++dossierSequence.current; ++technicalSequence.current; controller.abort(); };
   }, [page]);
   return <main className={styles.page} dir="rtl">
     <nav className={styles.nav} aria-label="مسیر راهبری">
@@ -130,10 +172,25 @@ export default function ModelArtifactEvidencePage() {
             <small>Protocol: {entry.protocolVersion}</small>
             <small>Evaluation fingerprint: <code dir="ltr">{entry.evaluationFingerprint}</code></small>
             <small>Dataset: {entry.datasetVersion} · Cutoff: {new Date(entry.cutoffUtc).toLocaleString("fa-IR")}</small>
+            <button type="button" disabled={technicalBusy}
+              onClick={() => void inspectVersion(entry.id)}>
+              پیش‌بررسی فنی همین نسخه و ارزیابی
+            </button>
           </div>
         </article>)}
       </div>
       <p><strong>{dossier.evidenceStatus}</strong> — شواهد به‌معنای پذیرش مدل نیست.</p>
+    </section>}
+{technicalBusy && <p role="status">در حال پیش‌بررسی فنی…</p>}
+    {technicalError && <p role="alert" className={styles.error}>{technicalError}</p>}
+    {technical && <section className={styles.panel} aria-label="نتیجه پیش‌بررسی فنی">
+      <h2>پیش‌بررسی فنی — بدون پذیرش یا فعال‌سازی</h2>
+      <p>مدل: {technical.modelVersion} · ارزیابی انتخابی: <code dir="ltr">{technical.evaluationId}</code></p>
+      <p>اثر انگشت ارزیابی: <code dir="ltr">{technical.evaluationFingerprint}</code></p>
+      <p>وضعیت قرارداد موجود: <strong>{technical.technicalStatus}</strong></p>
+      <p>بنیاد اجرای موجود: {technical.existingExecutionFoundationVersion ?? "فقط پژوهشی؛ بدون قرارداد اجرایی Production"}</p>
+      <p>هش اثر با بایت‌های ذخیره‌شده مطابق است و شناسه رکورد ارزیابی پیوند دارد؛ اما اصالت مستقل ارزیابی اثبات نشده است. ثبت نسخه، پذیرش Dataset، انتخاب مدل،
+        پایلوت و فعال‌سازی Runtime همچنان ممنوع و نیازمند تصمیم انسانی و قرارداد مصوب‌اند.</p>
     </section>}
     <p className={styles.footer}>تطبیق بایت و هش فقط یک کنترل یکپارچگی است، نه
       راستی‌آزمایی اصالت اسناد، استقلال Dataset، کفایت آماری، عدالت یا تأیید Production.

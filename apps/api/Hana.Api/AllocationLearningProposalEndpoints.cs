@@ -209,6 +209,21 @@ internal static class AllocationLearningProposalEndpoints
         });
 
 
+        // Inspect one explicitly selected artifact and Evaluation identity.
+        // POST is a bounded read-only preview; it never registers a version.
+        routes.MapPost("/research/model-version-technical-preflight/preview", async (
+            ModelVersionTechnicalPreflightRequest input, IServiceProvider services,
+            CancellationToken ct) =>
+        {
+            if (input.Family is not ("XGBOOST" or "EBM") ||
+                input.ArtifactId == Guid.Empty || input.EvaluationId == Guid.Empty)
+                return Results.BadRequest();
+            var result = await services
+                .GetRequiredService<AllocationModelVersionTechnicalPreflightService>()
+                .PreviewAsync(input.Family, input.ArtifactId, input.EvaluationId, ct);
+            return Results.Ok(result);
+        });
+
         // Exact, read-only evaluation dossier; no model registration or promotion.
         routes.MapGet("/research/model-artifacts/{family}/{id:guid}/evidence", async (
             string family, Guid id, IServiceProvider services, CancellationToken ct) =>
@@ -1237,6 +1252,8 @@ internal static class AllocationLearningProposalEndpoints
     }
 }
 
+internal sealed record ModelVersionTechnicalPreflightRequest(
+    string? Family, Guid ArtifactId, Guid EvaluationId);
 internal sealed record SevenFactorPartitionPreviewRequest(
     Guid[]? TrainingReviewIds, Guid[]? ValidationReviewIds,
     Guid[]? EvaluationReviewIds, DateTimeOffset CutoffUtc);
