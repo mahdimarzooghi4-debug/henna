@@ -1,4 +1,6 @@
 using System.Data;
+using System.Security.Cryptography;
+using System.Text.Json;
 using Hana.Application.Time;
 using Hana.Domain.Credit;
 using Hana.Infrastructure.Identity;
@@ -16,7 +18,8 @@ public sealed record SevenFactorReviewTriageEntry(
 
 public sealed record SevenFactorHumanReviewTriageResult(
     string ContractVersion, string Status, DateTimeOffset CutoffUtc,
-    int SelectedReviewCount, IReadOnlyList<SevenFactorReviewTriageEntry> Entries,
+    int SelectedReviewCount, string Sha256,
+    IReadOnlyList<SevenFactorReviewTriageEntry> Entries,
     bool DatasetAdmitted, bool HumanConflictResolved,
     bool ModelTrained, bool ModelApproved, bool RuntimeApplied);
 
@@ -77,14 +80,14 @@ public sealed class AllocationSevenFactorHumanReviewTriageService(
         var households = selectedSources.Values.Select(x => x.HouseholdKey).Distinct().ToArray();
         var siblings = await db.Assessments.AsNoTracking()
             .Where(x => households.Contains(x.HouseholdKey))
-            .Select(x => new { x.Id, x.HouseholdKey }).ToArrayAsync(ct);
+            .ToArrayAsync(ct);
         var siblingIds = siblings.Select(x => x.Id).ToArray();
         var allFeatures = await db.ReviewedSevenFactorAssessments.AsNoTracking()
             .Where(x => siblingIds.Contains(x.SnapshotId))
-            .Select(x => new { x.Id, x.SnapshotId }).ToArrayAsync(ct);
+            .ToArrayAsync(ct);
         var allHuman = await db.QualitativeSeverityReviews.AsNoTracking()
             .Where(x => siblingIds.Contains(x.SnapshotId))
-            .Select(x => new { x.Id, x.SnapshotId }).ToArrayAsync(ct);
+            .ToArrayAsync(ct);
 
         var householdForSnapshot = siblings.ToDictionary(x => x.Id, x => x.HouseholdKey);
         var featureCounts = allFeatures.GroupBy(x => householdForSnapshot[x.SnapshotId])
@@ -139,8 +142,111 @@ public sealed class AllocationSevenFactorHumanReviewTriageService(
                 reasons.ToArray(), countFeatures, countHuman));
         }
 
+        var sha256 = ComputeFingerprint(ids, cutoffUtc, reviews, featureReviews,
+            selectedSources, siblings, allFeatures, allHuman, trusted, entries);
         await tx.CommitAsync(ct);
-        return new(ContractVersion, Status, cutoffUtc, entries.Count, entries,
+        return new(ContractVersion, Status, cutoffUtc, entries.Count, sha256, entries,
             false, false, false, false, false);
+    }
+
+    private static string ComputeFingerprint(
+        Guid[] selectedIds, DateTimeOffset cutoffUtc,
+        IReadOnlyCollection<AllocationQualitativeSeverityReviewRecord> selectedReviews,
+        IReadOnlyDictionary<Guid, AllocationReviewedSevenFactorRecord> selectedFeatures,
+        IReadOnlyDictionary<Guid, AllocationAssessmentRecord> selectedSources,
+        IReadOnlyCollection<AllocationAssessmentRecord> siblingSources,
+        IReadOnlyCollection<AllocationReviewedSevenFactorRecord> siblingFeatures,
+        IReadOnlyCollection<AllocationQualitativeSeverityReviewRecord> siblingHumanReviews,
+        IReadOnlyDictionary<Guid, AllocationTrainingLineage> trusted,
+        IReadOnlyCollection<SevenFactorReviewTriageEntry> entries)
+    {
+        // Canonical projections include persisted review content, source fields
+        // and sibling evidence, not only displayed counts. A changed rationale
+        // or source reference invalidates the old digest even if reason codes
+        // happen to remain identical.
+        var reviews = selectedReviews.OrderBy(x => x.Id).Select(x => new
+        {
+            x.Id, x.SevenFactorReviewId, x.SnapshotId, x.ReviewerAccountId,
+            x.ScaleVersion, x.CriteriaVersion, x.SourceFormulaVersion,
+            x.SourceDatasetVersion, x.SourceInstructionReference,
+            x.EvidenceDisposition, x.SeverityLevel, x.HumanSelectedBasis,
+            x.EvidenceReference, x.EvidenceObservedAtUtc, x.Rationale, x.ReviewedAtUtc
+        }).ToArray();
+        var features = selectedFeatures.Values.OrderBy(x => x.Id).Select(x => new
+        {
+            x.Id, x.SnapshotId, x.ReviewerAccountId, x.FormulaVersion,
+            x.SourceFormulaVersion, x.SourceDatasetVersion, x.SourceInstructionReference,
+            x.Health, x.NonHousingHardship, x.Age, x.Size, x.Care, x.Education,
+            x.HousingTenure, x.HousingEvidenceReference,
+            x.NonHousingHardshipEvidenceReference, x.OtherNeedsEvidenceReference,
+            x.OriginalGeographicFactor, x.ReviewedAtUtc
+        }).ToArray();
+        var sources = selectedSources.Values.OrderBy(x => x.Id).Select(x => new
+        {
+            x.Id, x.HouseholdKey, x.RecordedByAccountId, x.EvidenceReference,
+            x.FormulaVersion, x.RuntimeProposalId, x.RuntimeProfileSequence,
+            x.DatasetVersion, x.SourceInstructionReference, x.GeographicFactor,
+            x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education,
+            x.AllocatedRial, x.AssessedAtUtc, x.RecordedAtUtc
+        }).ToArray();
+        var allSources = siblingSources.OrderBy(x => x.Id).Select(x => new
+        {
+            x.Id, x.HouseholdKey, x.RecordedByAccountId, x.EvidenceReference,
+            x.FormulaVersion, x.RuntimeProposalId, x.RuntimeProfileSequence,
+            x.DatasetVersion, x.SourceInstructionReference, x.GeographicFactor,
+            x.Health, x.Hardship, x.Age, x.Size, x.Care, x.Education,
+            x.AllocatedRial, x.AssessedAtUtc, x.RecordedAtUtc
+        }).ToArray();
+        var allFeatures = siblingFeatures.OrderBy(x => x.Id).Select(x => new
+        {
+            x.Id, x.SnapshotId, x.ReviewerAccountId, x.FormulaVersion,
+            x.SourceFormulaVersion, x.SourceDatasetVersion, x.SourceInstructionReference,
+            x.Health, x.NonHousingHardship, x.Age, x.Size, x.Care, x.Education,
+            x.HousingTenure, x.HousingEvidenceReference,
+            x.NonHousingHardshipEvidenceReference, x.OtherNeedsEvidenceReference,
+            x.OriginalGeographicFactor, x.ReviewedAtUtc
+        }).ToArray();
+        var allHuman = siblingHumanReviews.OrderBy(x => x.Id).Select(x => new
+        {
+            x.Id, x.SevenFactorReviewId, x.SnapshotId, x.ReviewerAccountId,
+            x.ScaleVersion, x.CriteriaVersion, x.SourceFormulaVersion,
+            x.SourceDatasetVersion, x.SourceInstructionReference,
+            x.EvidenceDisposition, x.SeverityLevel, x.HumanSelectedBasis,
+            x.EvidenceReference, x.EvidenceObservedAtUtc, x.Rationale, x.ReviewedAtUtc
+        }).ToArray();
+        var lineage = selectedSources.Values.OrderBy(x => x.Id).Select(source =>
+        {
+            trusted.TryGetValue(source.Id, out var resolved);
+            return new
+            {
+                sourceId = source.Id,
+                eligible = resolved is not null,
+                runtimeProposalId = resolved?.RuntimeProposalId,
+                runtimeProfileSequence = resolved?.RuntimeProfileSequence,
+                baselineVersion = resolved?.Baseline.Version,
+                baselineHealth = resolved?.Baseline.Health,
+                baselineHardship = resolved?.Baseline.Hardship,
+                baselineAge = resolved?.Baseline.Age,
+                baselineSize = resolved?.Baseline.Size,
+                baselineCare = resolved?.Baseline.Care,
+                baselineEducation = resolved?.Baseline.Education
+            };
+        }).ToArray();
+        var findings = entries.OrderBy(x => x.ReviewId).Select(x => new
+        {
+            x.ReviewId, x.Finding, Reasons = x.Reasons.ToArray(),
+            x.HouseholdFeatureReviewCount, x.HouseholdHumanReviewCount
+        }).ToArray();
+        var payload = new
+        {
+            contractVersion = ContractVersion, cutoffUtc,
+            selectedReviewIds = selectedIds.OrderBy(x => x).ToArray(),
+            selectedReviews = reviews, selectedFeatures = features,
+            selectedSources = sources, siblingSources = allSources,
+            siblingFeatureReviews = allFeatures, siblingHumanReviews = allHuman,
+            resolvedLineage = lineage, findings
+        };
+        return Convert.ToHexString(SHA256.HashData(
+            JsonSerializer.SerializeToUtf8Bytes(payload))).ToLowerInvariant();
     }
 }
