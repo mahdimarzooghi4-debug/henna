@@ -209,6 +209,22 @@ internal static class AllocationLearningProposalEndpoints
         });
 
 
+        // Registry readiness only: fresh, explicit technical selection and
+        // stable SHA-256 digest, with every policy/authorization gate unverified.
+        // This endpoint creates no model registry row or runtime candidate.
+        routes.MapPost("/research/registry-intake-readiness/preview", async (
+            ModelVersionTechnicalPreflightRequest input,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.Family is not ("XGBOOST" or "EBM") ||
+                input.ArtifactId == Guid.Empty || input.EvaluationId == Guid.Empty)
+                return Results.BadRequest();
+            var report = await services
+                .GetRequiredService<AllocationModelRegistryIntakeReadinessService>()
+                .PreviewAsync(input.Family, input.ArtifactId, input.EvaluationId, ct);
+            return Results.Ok(report);
+        });
+
         // Inspect one explicitly selected artifact and Evaluation identity.
         // POST is a bounded read-only preview; it never registers a version.
         routes.MapPost("/research/model-version-technical-preflight/preview", async (
