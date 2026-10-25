@@ -115,7 +115,8 @@ public sealed class MonoLogisticsClient : IMonoLogisticsClient
         if (result.DeliveryRequestId != deliveryRequestId
             || string.IsNullOrWhiteSpace(result.ExternalReference)
             || string.IsNullOrWhiteSpace(result.Status)
-            || result.CreatedAt == default)
+            || result.CreatedAt == default
+            || !result.HasValidQuoteAndPromise())
             throw new MonoLogisticsException(HttpStatusCode.BadGateway, "INVALID_PROVIDER_RESPONSE");
         return result;
     }
@@ -316,8 +317,49 @@ public sealed record MonoDeliveryRequestDetail(
     [property: JsonPropertyName("mission_id")] string? MissionId,
     [property: JsonPropertyName("mission_status")] string? MissionStatus,
     [property: JsonPropertyName("committed_delivery_at")] DateTimeOffset? CommittedDeliveryAt,
-    [property: JsonPropertyName("quote")] JsonElement? Quote,
-    [property: JsonPropertyName("promise")] JsonElement? Promise);
+    [property: JsonPropertyName("quote")] MonoDeliveryQuote? Quote,
+    [property: JsonPropertyName("promise")] MonoDeliveryPromise? Promise)
+{
+    public bool HasValidQuoteAndPromise() =>
+        (Quote is null || Quote.IsValidFor(DeliveryRequestId))
+        && (Promise is null || Promise.IsValidFor(DeliveryRequestId));
+}
+
+public sealed record MonoDeliveryQuote(
+    [property: JsonPropertyName("quote_id")] string QuoteId,
+    [property: JsonPropertyName("delivery_request_id")] string DeliveryRequestId,
+    [property: JsonPropertyName("version")] int Version,
+    [property: JsonPropertyName("issued_at")] DateTimeOffset IssuedAt,
+    [property: JsonPropertyName("expires_at")] DateTimeOffset ExpiresAt,
+    [property: JsonPropertyName("is_expired")] bool IsExpired,
+    [property: JsonPropertyName("distance_meters")] int DistanceMeters,
+    [property: JsonPropertyName("fare_toman")] long FareToman,
+    [property: JsonPropertyName("buyer_share_toman")] long BuyerShareToman,
+    [property: JsonPropertyName("seller_share_toman")] long SellerShareToman,
+    [property: JsonPropertyName("recorded_at")] DateTimeOffset RecordedAt)
+{
+    public bool IsValidFor(string requestId) =>
+        !string.IsNullOrWhiteSpace(QuoteId) && QuoteId.Length <= 128
+        && DeliveryRequestId == requestId && Version > 0
+        && IssuedAt != default && ExpiresAt > IssuedAt && RecordedAt != default
+        && DistanceMeters > 0 && FareToman > 0
+        && BuyerShareToman >= 0 && SellerShareToman >= 0
+        && BuyerShareToman + SellerShareToman == FareToman;
+}
+
+public sealed record MonoDeliveryPromise(
+    [property: JsonPropertyName("promise_id")] string PromiseId,
+    [property: JsonPropertyName("delivery_request_id")] string DeliveryRequestId,
+    [property: JsonPropertyName("version")] int Version,
+    [property: JsonPropertyName("committed_delivery_at")] DateTimeOffset CommittedDeliveryAt,
+    [property: JsonPropertyName("outcome")] string Outcome)
+{
+    public bool IsValidFor(string requestId) =>
+        !string.IsNullOrWhiteSpace(PromiseId) && PromiseId.Length <= 128
+        && DeliveryRequestId == requestId && Version > 0
+        && CommittedDeliveryAt != default && !string.IsNullOrWhiteSpace(Outcome)
+        && Outcome.Length <= 32;
+}
 
 internal static class MonoIds
 {
