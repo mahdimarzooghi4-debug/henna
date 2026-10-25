@@ -79,6 +79,7 @@ const serviceListing = {
   AvailabilityNote: "شنبه تا چهارشنبه با هماهنگی",
   Version: 3, Published: true,
 };
+const monoPackagingProfile={Id:ORDER,SellerId:ID,ProductId:PRODUCT,ShipmentModel:"BAG_BASED",BagCount:2,LoadClass:"M",Version:1};
 const settlement = {
   Id: ID, OrderId: ORDER, SellerId: "SECRET-SELLER",
   GrossRial: 1000, RefundRial: 0, PenaltyRial: 1000,
@@ -112,6 +113,8 @@ test("staff DTOs are bounded and omit private owner fields", () => {
 
   const offers = parseStaffCommerce("seller", "offers", "GET", page([offer]));
   assert.equal(offers?.[0].stock, 4);
+  const profiles=parseStaffCommerce("seller","mono-packaging-profiles","GET",page([monoPackagingProfile])); assert.equal(profiles?.[0].loadClass,"M"); assert.equal(JSON.stringify(profiles).includes("SECRET"),false);
+  assert.equal(parseStaffCommerce("seller","mono-packaging-profiles","GET",page([{...monoPackagingProfile,LoadClass:"XL"}])),null);
   const services = parseStaffCommerce(
     "seller", "service-listings", "GET", page([serviceListing]));
   assert.equal(services?.[0].availabilityNote,
@@ -175,6 +178,7 @@ test("staff command responses validate the exact shipping shapes", () => {
   assert.equal(parseStaffCommerce(
     "seller", "service-listings", "POST",
     {...serviceListing, Version: 4})?.version, 4);
+  assert.equal(parseStaffCommerce("seller","mono-packaging-profiles","POST",monoPackagingProfile)?.bagCount,2);
   assert.equal(parseStaffCommerce(
     "seller", "tickets", "POST", {...ticket, State: "ANSWERED",
       Reply: "پاسخ"})?.state, "ANSWERED");
