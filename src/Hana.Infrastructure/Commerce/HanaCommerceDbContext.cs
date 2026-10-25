@@ -56,6 +56,44 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
         b.Entity<MonoDeliveryCorrelation>(e=>{
             e.ToTable("mono_delivery_correlations", t=>{
                 t.HasCheckConstraint("ck_mono_delivery_correlation_state", "\"State\" IN ('PREPARED','REQUEST_RECEIVED','MISSION_LINKED')");
+                t.HasCheckConstraint("ck_mono_delivery_request_fingerprint", "\"RequestFingerprint\" IS NULL OR \"RequestFingerprint\" ~ '^[0-9a-f]{64}
+                t.HasCheckConstraint("ck_mono_delivery_correlation_revision", "\"Revision\" > 0");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_request_state", "\"State\" = 'PREPARED' OR \"DeliveryRequestId\" IS NOT NULL");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_mission_state", "\"State\" <> 'MISSION_LINKED' OR \"MissionId\" IS NOT NULL");
+            });
+            e.HasKey(x=>x.OrderId);e.Property(x=>x.OrderId).ValueGeneratedNever();
+            e.Property(x=>x.IdempotencyKey).HasMaxLength(128).IsRequired();
+            e.Property(x=>x.State).HasMaxLength(32).IsRequired();
+            e.Property(x=>x.DeliveryRequestId).HasMaxLength(64);
+            e.Property(x=>x.MissionId).HasMaxLength(64);
+            e.Property(x=>x.RequestFingerprint).HasMaxLength(64);
+            e.Property(x=>x.PreparedAtUtc).IsRequired();e.Property(x=>x.UpdatedAtUtc).IsRequired();
+            e.Property(x=>x.Revision).IsConcurrencyToken();
+            e.HasIndex(x=>x.IdempotencyKey).IsUnique();
+            e.HasIndex(x=>x.DeliveryRequestId).IsUnique();
+            e.HasIndex(x=>x.MissionId).IsUnique();
+        });
+        b.Entity<MonoSellerBranchMapping>(e=>{
+            e.ToTable("mono_seller_branch_mappings", t=>
+                t.HasCheckConstraint("ck_mono_seller_branch_mapping_revision", "\"Revision\" > 0"));
+            e.HasKey(x=>x.SellerId);e.Property(x=>x.SellerId).ValueGeneratedNever();
+            e.Property(x=>x.MonoBranchId).HasMaxLength(35).IsRequired();
+            e.Property(x=>x.Revision).IsConcurrencyToken();
+            e.Property(x=>x.UpdatedByAccountId).IsRequired();
+            e.Property(x=>x.UpdatedAtUtc).IsRequired();
+            e.HasIndex(x=>x.MonoBranchId);
+        });
+    }
+    private void ValidateWrites()
+    {
+        ChangeTracker.DetectChanges();
+        if (ChangeTracker.Entries().Any(e=> (e.Entity is CommerceJournal or CommerceCommandReceipt) && (e.State is EntityState.Modified or EntityState.Deleted)))
+            throw new InvalidOperationException("Commerce journal and receipts are append-only.");
+    }
+    public override int SaveChanges(bool acceptAllChangesOnSuccess) { ValidateWrites();return base.SaveChanges(acceptAllChangesOnSuccess); }
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess,CancellationToken ct=default) { ValidateWrites();return base.SaveChangesAsync(acceptAllChangesOnSuccess,ct); }
+}
+");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_revision", "\"Revision\" > 0");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_request_state", "\"State\" = 'PREPARED' OR \"DeliveryRequestId\" IS NOT NULL");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_mission_state", "\"State\" <> 'MISSION_LINKED' OR \"MissionId\" IS NOT NULL");
