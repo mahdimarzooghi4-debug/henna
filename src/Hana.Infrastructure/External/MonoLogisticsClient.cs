@@ -17,7 +17,8 @@ public sealed class MonoLogisticsOptions
     public bool IsConfigured => Enabled && Uri.TryCreate(BaseUrl, UriKind.Absolute, out var uri)
         && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)
         && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment)
-        && !string.IsNullOrWhiteSpace(ApiKey);
+        && ApiKey is { Length: > 0 and <= 512 }
+        && ApiKey.All(character => character is >= '!' and <= '~');
 }
 
 public interface IMonoLogisticsClient
@@ -61,7 +62,9 @@ public sealed class MonoLogisticsClient : IMonoLogisticsClient
     {
         ArgumentNullException.ThrowIfNull(request);
         EnsureConfigured();
-        if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 128)
+        if (idempotencyKey is not { Length: > 0 and <= 128 }
+            || !idempotencyKey.All(character => char.IsAsciiLetterOrDigit(character)
+                || character is '.' or '_' or '~' or '-'))
             throw new ArgumentException("A stable provider idempotency key is required.", nameof(idempotencyKey));
         if (!request.IsValid())
             throw new ArgumentException("The Mono delivery request is incomplete or invalid.", nameof(request));
@@ -106,9 +109,10 @@ public sealed class MonoLogisticsClient : IMonoLogisticsClient
                 HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                var code = await ReadErrorCodeAsync(response, cancellationToken);
                 var status = response.StatusCode;
-                response.Dispose();
+                string code;
+                try { code = await ReadErrorCodeAsync(response, cancellationToken); }
+                finally { response.Dispose(); }
                 throw new MonoLogisticsException(status, code);
             }
             return response;
