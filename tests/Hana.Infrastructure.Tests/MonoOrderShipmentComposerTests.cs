@@ -51,7 +51,7 @@ public sealed class MonoOrderShipmentComposerTests
     [Fact]
     public void BlocksWhenAnyOrderProductHasNoSellerProfile()
     {
-        var order = DeliveryOrder(new(
+        var order = DeliveryOrder(new OrderItem(
             Guid.NewGuid(), Guid.NewGuid(), ProductA, 1, 1000, 0, 0, 0));
 
         var result = MonoOrderShipmentComposer.Compose(order,
@@ -84,7 +84,7 @@ public sealed class MonoOrderShipmentComposerTests
     [Fact]
     public void IgnoresOtherSellersAndRejectsDuplicateOwnProfiles()
     {
-        var order = DeliveryOrder(new(
+        var order = DeliveryOrder(new OrderItem(
             Guid.NewGuid(), Guid.NewGuid(), ProductA, 1, 1000, 0, 0, 0));
         var foreign = Profile(ProductA) with
         {
