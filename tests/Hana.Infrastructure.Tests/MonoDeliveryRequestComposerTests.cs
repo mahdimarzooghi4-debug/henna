@@ -62,7 +62,7 @@ public sealed class MonoDeliveryRequestComposerTests
         var invalidOrder = DeliveryOrder() with
         {
             Address = new BuyerAddress(Guid.NewGuid(), BuyerId, Guid.NewGuid(),
-                "", 0, 0)
+                "", 95, 181)
         };
         var branch = new MonoBranchSummary(BranchId, "Branch", null,
             null, null, null, "ACTIVE");
