@@ -157,6 +157,8 @@ public sealed class MonoDeliveryCorrelationStore(
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await LockOrderAsync(orderId, cancellationToken);
         var current = await RequireAsync(orderId, cancellationToken);
+        if (current.RequestFingerprint is null)
+            throw new MonoDeliveryCorrelationException("REQUEST_INTENT_NOT_RECORDED");
         if (current.DeliveryRequestId is not null && current.DeliveryRequestId != response.DeliveryRequestId)
             throw new MonoDeliveryCorrelationException("DELIVERY_REQUEST_CONFLICT");
         if (current.DeliveryRequestId is null)
