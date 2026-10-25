@@ -22,6 +22,7 @@ let firstUnavailability = null, unavailabilityAttempts = 0;
 let firstTicketReply = null, ticketReplyAttempts = 0;
 let firstSellerState = null, sellerStateAttempts = 0;
 let firstOfferMutation = null, offerMutationAttempts = 0;
+let monoProfile = null, monoProfileSaves = 0;
 
 function json(data, status = 200) {
   return { status, contentType: "application/json; charset=utf-8",
@@ -135,7 +136,7 @@ async function main() {
       return route.fulfill(json([offer()]));
     if (path === "/api/seller/commerce/mono-packaging-profiles" &&
         request.method() === "GET")
-      return route.fulfill(json([]));
+      return route.fulfill(json(monoProfile ? [monoProfile] : []));
     if (path === "/api/seller/commerce/settlements" && request.method() === "GET")
       return route.fulfill(json([settlement()]));
     if (path === "/api/seller/commerce/report" && request.method() === "GET")
@@ -218,6 +219,17 @@ async function main() {
         "business retry after reload must retain exact key and body");
       offerVersion++;
       return route.fulfill(json(offer()));
+    }
+    if (path === "/api/seller/commerce/mono-packaging-profiles" &&
+        request.method() === "POST") {
+      const body = request.postDataJSON();
+      assert.deepEqual(body, { productId: PRODUCT, shipmentModel: "BAG_BASED",
+        bagCount: 2, loadClass: "M", expectedVersion: monoProfile?.version ?? 0 });
+      monoProfileSaves++;
+      monoProfile = { id: ORDER, sellerId: ID, productId: PRODUCT,
+        shipmentModel: "BAG_BASED", bagCount: 2, loadClass: "M",
+        version: monoProfileSaves };
+      return route.fulfill(json(monoProfile));
     }
     if (path === "/api/seller/commerce/notifications/" + EVIDENCE + "/read" &&
         request.method() === "POST") {
@@ -335,6 +347,12 @@ async function main() {
   await page.getByRole("heading", {
     name: "پیشخوان مدیریت کسب‌وکار",
   }).waitFor();
+  await page.getByRole("heading", { name: "مشخصات بسته‌بندی برای ارسال" }).waitFor();
+  await page.getByLabel("تعداد کیسه برای هر واحد کالا").fill("2");
+  await page.getByLabel("ردهٔ بار").selectOption("M");
+  await page.getByRole("button", { name: "ذخیره مشخصات" }).click();
+  await page.getByText("مشخصات بسته‌بندی ذخیره شد.", { exact: true }).waitFor();
+  assert.equal(monoProfileSaves, 1);
   await page.getByRole("button", {
     name: "بارگیری عملیات",
     exact: true,
