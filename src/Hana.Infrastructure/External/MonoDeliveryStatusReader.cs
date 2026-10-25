@@ -11,7 +11,8 @@ public sealed record MonoDeliveryStatusRead(
     MonoDeliveryQuote? Quote,
     MonoDeliveryPromise? Promise,
     DateTimeOffset CorrelationUpdatedAtUtc,
-    int CorrelationRevision);
+    int CorrelationRevision,
+    MonoCourierCurrentLocation? CourierLocation = null);
 
 /// <summary>
 /// Reconciles one Henna order against Mono's tenant-scoped delivery detail.
@@ -21,6 +22,11 @@ public sealed class MonoDeliveryStatusReader(
     IMonoDeliveryCorrelationStore correlations,
     IMonoLogisticsClient mono)
 {
+    private static readonly HashSet<string> LocationEligibleStatuses = new(StringComparer.Ordinal)
+    {
+        "COURIER_ASSIGNED", "ARRIVED_PICKUP", "HANDED_TO_COURIER",
+        "PICKED_UP", "IN_TRANSIT", "ARRIVED_DROPOFF"
+    };
     public async Task<MonoDeliveryStatusRead> ReadAsync(
         Guid orderId, CancellationToken cancellationToken = default)
     {
@@ -45,15 +51,23 @@ public sealed class MonoDeliveryStatusReader(
             correlation = await correlations.RecordMissionAsync(
                 orderId, detail, cancellationToken);
 
-        return ToRead(correlation, detail);
+        MonoCourierCurrentLocation? courierLocation = null;
+        var missionId = correlation.MissionId ?? detail.MissionId;
+        if (missionId is not null && detail.MissionStatus is not null
+            && LocationEligibleStatuses.Contains(detail.MissionStatus))
+            courierLocation = await mono.GetCourierCurrentLocationAsync(
+                missionId, cancellationToken);
+
+        return ToRead(correlation, detail, courierLocation);
     }
 
     private static MonoDeliveryStatusRead ToRead(
         MonoDeliveryCorrelationSnapshot correlation,
-        MonoDeliveryRequestDetail? detail) =>
+        MonoDeliveryRequestDetail? detail,
+        MonoCourierCurrentLocation? courierLocation = null) =>
         new(correlation.OrderId, correlation.State, correlation.DeliveryRequestId,
             detail?.Status, correlation.MissionId ?? detail?.MissionId,
             detail?.MissionStatus, detail?.CommittedDeliveryAt,
             detail?.Quote, detail?.Promise,
-            correlation.UpdatedAtUtc, correlation.Revision);
+            correlation.UpdatedAtUtc, correlation.Revision, courierLocation);
 }
