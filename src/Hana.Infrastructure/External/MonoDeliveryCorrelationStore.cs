@@ -41,7 +41,7 @@ public interface IMonoDeliveryCorrelationStore
 {
     Task<MonoDeliveryCorrelationSnapshot> PrepareAsync(Guid orderId,
         CancellationToken cancellationToken = default);
-    Task<MonoDeliveryCorrelationSnapshot> RecordRequestIntentAsync(Guid orderId, string requestFingerprint,
+    Task<MonoDeliveryCorrelationSnapshot> RecordRequestIntentAsync(Guid orderId, MonoDeliveryRequestInput request,
         CancellationToken cancellationToken = default);
     Task<MonoDeliveryCorrelationSnapshot> RecordRequestReceivedAsync(Guid orderId,
         MonoDeliveryRequestCreated response, CancellationToken cancellationToken = default);
@@ -105,14 +105,14 @@ public sealed class MonoDeliveryCorrelationStore(
     }
 
     public async Task<MonoDeliveryCorrelationSnapshot> RecordRequestIntentAsync(
-        Guid orderId, string requestFingerprint, CancellationToken cancellationToken = default)
+        Guid orderId, MonoDeliveryRequestInput request,
+        CancellationToken cancellationToken = default)
     {
         if (orderId == Guid.Empty) throw new ArgumentException("Order id is required.", nameof(orderId));
-        if (requestFingerprint is not { Length: 64 } ||
-            requestFingerprint.Any(character =>
-                !(character >= '0' && character <= '9' ||
-                  character >= 'a' && character <= 'f')))
-            throw new ArgumentException("A lowercase SHA-256 request fingerprint is required.", nameof(requestFingerprint));
+        ArgumentNullException.ThrowIfNull(request);
+        if (!request.IsValid() || request.ExternalReference != orderId.ToString("N"))
+            throw new MonoDeliveryCorrelationException("REQUEST_PAYLOAD_INVALID");
+        var requestFingerprint = MonoDeliveryRequestFingerprint.Compute(request);
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await LockOrderAsync(orderId, cancellationToken);
