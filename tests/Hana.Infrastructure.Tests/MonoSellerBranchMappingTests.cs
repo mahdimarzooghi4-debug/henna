@@ -1,6 +1,8 @@
+using System.Security.Cryptography;
 using Hana.Application.Time;
 using Hana.Infrastructure.Commerce;
 using Hana.Infrastructure.External;
+using Hana.Infrastructure.Identity;
 using Hana.Infrastructure.Seller;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,17 +18,21 @@ public sealed class MonoSellerBranchMappingTests
 
         await using var commerce = CommerceContext(connection);
         await using var sellers = SellerContext(connection);
+        await using var identity = IdentityContext(connection);
         await commerce.Database.MigrateAsync();
         await sellers.Database.MigrateAsync();
+        await identity.Database.MigrateAsync();
         var now = DateTimeOffset.UtcNow;
         var sellerId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
         var activeBranchId = "br_0123456789abcdef0123456789abcdef";
         var secondActiveBranchId = "br_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
         var inactiveBranchId = "br_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        identity.Accounts.Add(Account(sellerId, now));
+        await identity.SaveChangesAsync();
         sellers.RegistrationDrafts.Add(new SellerRegistrationDraft
         {
-            AccountId = sellerId, StoreName = "CI", OwnerName = "CI", Phone = "09120000000",
+            AccountId = sellerId, StoreName = "CI", OwnerName = "CI", Phone = identity.Accounts.Local.Single().NormalizedPhone,
             City = "CI", Address = "CI", PostalCode = "1234567890", UpdatedAtUtc = now
         });
         sellers.SellerActivations.Add(new SellerActivationRecord
@@ -69,12 +75,16 @@ public sealed class MonoSellerBranchMappingTests
 
         await using var commerce = CommerceContext(connection);
         await using var sellers = SellerContext(connection);
+        await using var identity = IdentityContext(connection);
         await commerce.Database.MigrateAsync();
         await sellers.Database.MigrateAsync();
+        await identity.Database.MigrateAsync();
         var now = DateTimeOffset.UtcNow;
         var sellerId = Guid.NewGuid();
         var inactiveSeller = Guid.NewGuid();
         var adminId = Guid.NewGuid();
+        identity.Accounts.AddRange(Account(sellerId, now), Account(inactiveSeller, now));
+        await identity.SaveChangesAsync();
         sellers.RegistrationDrafts.AddRange(
             Draft(sellerId, now), Draft(inactiveSeller, now));
         sellers.SellerActivations.Add(new SellerActivationRecord
@@ -107,6 +117,13 @@ public sealed class MonoSellerBranchMappingTests
         Assert.Equal(0, client.ListCalls);
     }
 
+    private static AccountRecord Account(Guid id, DateTimeOffset now) => new()
+    {
+        Id = id,
+        NormalizedPhone = "09" + RandomNumberGenerator.GetInt32(0, 1_000_000_000).ToString("D9"),
+        CreatedAtUtc = now
+    };
+
     private static SellerRegistrationDraft Draft(Guid id, DateTimeOffset now) => new()
     {
         AccountId = id, StoreName = "CI", OwnerName = "CI", Phone = "09120000000",
@@ -122,6 +139,9 @@ public sealed class MonoSellerBranchMappingTests
         new DbContextOptionsBuilder<HanaSellerDbContext>()
             .UseNpgsql(connection, postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "seller"))
             .Options);
+
+    private static HanaIdentityDbContext IdentityContext(string connection) => new(
+        new DbContextOptionsBuilder<HanaIdentityDbContext>().UseNpgsql(connection).Options);
 
     private sealed class StubMonoClient(MonoBranchList branches) : IMonoLogisticsClient
     {
