@@ -44,6 +44,15 @@ def command(action,fields,response,optional=(),permission='Authenticated owner')
     commands[action]=(response,permission)
 command('SAVE_OFFER',{'offerId':uuid,'productId':uuid,'priceRial':integer(1),'stock':integer(0,1000000),'expectedVersion':integer(0,2147483647)},ref('Offer'),permission='Active SELLER')
 command('SAVE_SERVICE_LISTING',{'listingId':uuid,'productId':uuid,'priceRial':integer(1),'availabilityNote':text(500),'expectedVersion':integer(0,2147483647)},ref('ServiceListing'),permission='Active SERVICE/BOTH SELLER')
+command('SAVE_MONO_PACKAGING_PROFILE',{
+    'productId':uuid,'shipmentModel':enum('BAG_BASED'),'bagCount':integer(1),
+    'loadClass':enum('S','M','L'),'estimatedWeightKg':{'type':'number','exclusiveMinimum':0},
+    'fragile':boolean,'liquid':boolean,'keepUpright':boolean,'packageCount':integer(1),
+    'estimatedVolumeM3':{'type':'number','exclusiveMinimum':0},
+    'temperatureClass':enum('AMBIENT','CHILLED','FROZEN'),
+    'expectedVersion':integer(0,2147483647)},ref('MonoSellerProductPackagingProfile'),
+    ('estimatedWeightKg','fragile','liquid','keepUpright','packageCount','estimatedVolumeM3','temperatureClass'),
+    permission='Active seller with own offer for product')
 command('SET_CART_ITEM',{'productId':uuid,'quantity':integer(0,999),'expectedVersion':integer(0,2147483647)},ref('Cart'),('expectedVersion',))
 command('COMPARE_CART',{},arr(comparison))
 command('SAVE_ADDRESS',{'addressId':uuid,'cityId':uuid,'text':text(1000),'latitude':{'type':'number','minimum':-90,'maximum':90},'longitude':{'type':'number','minimum':-180,'maximum':180}},ref('BuyerAddress'))
@@ -105,7 +114,7 @@ for path,action,key in re.findall(r'\("(/[^"]+)","([A-Z_]+)"(?:,"([a-zA-Z]+)")?\
         params=[{'name':'id','in':'path','required':True,'schema':uuid}]
     response,permission=commands[action]
     paths.setdefault('/api/v1'+path,{})['post']=operation('post',response,permission+'; alias of '+action+'. A supplied body ID must match the route ID.',fields,params)
-resource_models={'OFFER':'Offer','SERVICE_LISTING':'ServiceListing','CART':'Cart','ADDRESS':'BuyerAddress','QUOTE':'Quote','ORDER':'Order','WALLET':'CashWallet','CREDIT':'CreditGrant','PROGRAM':'CreditProgram','INCIDENT':'Incident','SETTLEMENT':'Settlement','WITHDRAWAL':'Withdrawal','TICKET':'SupportTicket','NOTIFICATION':'CommerceNotification','CONTENT':'CommerceContent','ORGANIZATION':'CommerceOrganization','MEMBERSHIP':'OrganizationMembership','PERMISSION':'CommerceStaffPermission','FEE_VERSION':'FeePolicy','HOUSEHOLD':'CommerceHouseholdLink'}
+resource_models={'OFFER':'Offer','SERVICE_LISTING':'ServiceListing','MONO_PACKAGING_PROFILE':'MonoSellerProductPackagingProfile','CART':'Cart','ADDRESS':'BuyerAddress','QUOTE':'Quote','ORDER':'Order','WALLET':'CashWallet','CREDIT':'CreditGrant','PROGRAM':'CreditProgram','INCIDENT':'Incident','SETTLEMENT':'Settlement','WITHDRAWAL':'Withdrawal','TICKET':'SupportTicket','NOTIFICATION':'CommerceNotification','CONTENT':'CommerceContent','ORGANIZATION':'CommerceOrganization','MEMBERSHIP':'OrganizationMembership','PERMISSION':'CommerceStaffPermission','FEE_VERSION':'FeePolicy','HOUSEHOLD':'CommerceHouseholdLink'}
 page={'name':'page','in':'query','schema':integer(1,10000)}
 def envelope(model): return obj({'items':arr(ref(model)),'page':integer(1),'pageSize':{'const':20}})
 for path,kind in re.findall(r'\("(/[^"]+)","([A-Z_]+)"\)',endpoints):
@@ -145,7 +154,7 @@ S['OrganizationDashboard']=obj({
  'unreadNotifications':integer(),'openTickets':integer()
 })
 paths['/api/v1/commerce/resources/{kind}']={'get':operation('get',{'anyOf':[envelope(n) for n in resource_models.values()]+[ref('OperationalSummary'),ref('AuditPage'),ref('CommerceIntegrity')]},'Kind-specific scoped aggregates; AUDIT, SUMMARY and INTEGRITY require ADMIN. INTEGRITY checks internal persisted invariants only and is not external bank/logistics reconciliation.',parameters=[{'name':'kind','in':'path','required':True,'schema':enum(*resource_models,'AUDIT','SUMMARY','INTEGRITY')},{'name':'id','in':'query','schema':uuid},page])}
-spec={'openapi':'3.1.0','info':{'title':'Henna internal pilot commerce API','version':'2026-10-04','description':'Backend contract only; SMS, PSP and logistics excluded. Command and stored resource records retain PascalCase; public typed records use camelCase. Runtime OpenAPI can remain generic for JsonElement endpoints.'},'paths':paths,'components':{'securitySchemes':{'session':{'type':'http','scheme':'bearer','description':'Current server-backed opaque session; not a user-provided account ID.'}},'schemas':S}}
+spec={'openapi':'3.1.0','info':{'title':'Henna internal pilot commerce API','version':'2026-10-04','description':'Backend contract only; SMS, PSP and external delivery dispatch are not configured. Seller Mono packaging profiles are metadata only and do not create delivery requests. Command and stored resource records retain PascalCase; public typed records use camelCase. Runtime OpenAPI can remain generic for JsonElement endpoints.'},'paths':paths,'components':{'securitySchemes':{'session':{'type':'http','scheme':'bearer','description':'Current server-backed opaque session; not a user-provided account ID.'}},'schemas':S}}
 output=json.dumps(spec,ensure_ascii=False,indent=2)+'\n'
 target=ROOT/'docs/api/HANA-COMMERCE-OPENAPI.json'
 if '--check' in sys.argv:
