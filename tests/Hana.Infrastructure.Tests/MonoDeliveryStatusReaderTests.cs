@@ -67,7 +67,7 @@ public sealed class MonoDeliveryStatusReaderTests
     private static MonoDeliveryCorrelationSnapshot Correlation(
         Guid orderId, string? requestId, string? missionId, string state, int revision) =>
         new(orderId, MonoDeliveryCorrelationStore.CreateIdempotencyKey(orderId),
-            state, requestId, missionId, null, DateTimeOffset.Parse("2026-10-25T12:00:00Z"),
+            state, requestId, missionId, null, null, DateTimeOffset.Parse("2026-10-25T12:00:00Z"),
             DateTimeOffset.Parse("2026-10-25T12:00:00Z"), revision);
 
     private sealed class FakeStore(MonoDeliveryCorrelationSnapshot correlation)
