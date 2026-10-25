@@ -226,7 +226,7 @@ async function main() {
       assert.deepEqual(body, { productId: PRODUCT, shipmentModel: "BAG_BASED",
         bagCount: 2, loadClass: "M", expectedVersion: monoProfile?.version ?? 0 });
       monoProfileSaves++;
-      monoProfile = { id: ORDER, sellerId: ID, productId: PRODUCT,
+      monoProfile = { id: ORDER, sellerId: EVIDENCE, productId: PRODUCT,
         shipmentModel: "BAG_BASED", bagCount: 2, loadClass: "M",
         version: monoProfileSaves };
       return route.fulfill(json(monoProfile));
