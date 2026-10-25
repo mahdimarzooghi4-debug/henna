@@ -20,6 +20,7 @@ public sealed class MonoDeliveryCorrelation
     public string State { get; set; } = MonoDeliveryCorrelationStates.Prepared;
     public string? DeliveryRequestId { get; set; }
     public string? MissionId { get; set; }
+    public string? RequestFingerprint { get; set; }
     public DateTimeOffset PreparedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
     public int Revision { get; set; }
@@ -31,6 +32,7 @@ public sealed record MonoDeliveryCorrelationSnapshot(
     string State,
     string? DeliveryRequestId,
     string? MissionId,
+    string? RequestFingerprint,
     DateTimeOffset PreparedAtUtc,
     DateTimeOffset UpdatedAtUtc,
     int Revision);
@@ -38,6 +40,8 @@ public sealed record MonoDeliveryCorrelationSnapshot(
 public interface IMonoDeliveryCorrelationStore
 {
     Task<MonoDeliveryCorrelationSnapshot> PrepareAsync(Guid orderId,
+        CancellationToken cancellationToken = default);
+    Task<MonoDeliveryCorrelationSnapshot> RecordRequestIntentAsync(Guid orderId, string requestFingerprint,
         CancellationToken cancellationToken = default);
     Task<MonoDeliveryCorrelationSnapshot> RecordRequestReceivedAsync(Guid orderId,
         MonoDeliveryRequestCreated response, CancellationToken cancellationToken = default);
@@ -98,6 +102,48 @@ public sealed class MonoDeliveryCorrelationStore(
         {
             throw new MonoDeliveryCorrelationException("CORRELATION_ALREADY_EXISTS");
         }
+    }
+
+    public async Task<MonoDeliveryCorrelationSnapshot> RecordRequestIntentAsync(
+        Guid orderId, string requestFingerprint, CancellationToken cancellationToken = default)
+    {
+        if (orderId == Guid.Empty) throw new ArgumentException("Order id is required.", nameof(orderId));
+        if (requestFingerprint is not { Length: 64 } ||
+            requestFingerprint.Any(character => character is not (>= '0' and <= '9')
+                and not (>= 'a' and <= 'f')))
+            throw new ArgumentException("A lowercase SHA-256 request fingerprint is required.", nameof(requestFingerprint));
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await LockOrderAsync(orderId, cancellationToken);
+        var current = await RequireAsync(orderId, cancellationToken);
+        if (current.DeliveryRequestId is not null)
+        {
+            if (current.RequestFingerprint != requestFingerprint)
+                throw new MonoDeliveryCorrelationException("REQUEST_PAYLOAD_CONFLICT");
+            await transaction.CommitAsync(cancellationToken);
+            return Snapshot(current);
+        }
+        if (current.RequestFingerprint is not null)
+        {
+            if (current.RequestFingerprint != requestFingerprint)
+                throw new MonoDeliveryCorrelationException("REQUEST_PAYLOAD_CONFLICT");
+            await transaction.CommitAsync(cancellationToken);
+            return Snapshot(current);
+        }
+
+        var changed = await db.MonoDeliveryCorrelations.Where(item =>
+                item.OrderId == orderId && item.RequestFingerprint == null)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(item => item.RequestFingerprint, requestFingerprint)
+                .SetProperty(item => item.UpdatedAtUtc, clock.UtcNow)
+                .SetProperty(item => item.Revision, item => item.Revision + 1),
+                cancellationToken);
+        if (changed != 1)
+            throw new MonoDeliveryCorrelationException("REQUEST_PAYLOAD_CONFLICT");
+
+        var saved = await RequireAsync(orderId, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return Snapshot(saved);
     }
 
     public async Task<MonoDeliveryCorrelationSnapshot> RecordRequestReceivedAsync(Guid orderId,
@@ -211,7 +257,7 @@ public sealed class MonoDeliveryCorrelationStore(
 
     private static MonoDeliveryCorrelationSnapshot Snapshot(MonoDeliveryCorrelation record) => new(
         record.OrderId, record.IdempotencyKey, record.State, record.DeliveryRequestId,
-        record.MissionId, record.PreparedAtUtc, record.UpdatedAtUtc, record.Revision);
+        record.MissionId, record.RequestFingerprint, record.PreparedAtUtc, record.UpdatedAtUtc, record.Revision);
 }
 
 public sealed class MonoDeliveryCorrelationException(string code)
