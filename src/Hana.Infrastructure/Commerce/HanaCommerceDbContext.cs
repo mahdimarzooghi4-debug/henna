@@ -34,6 +34,7 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
     public DbSet<CommerceCommandReceipt> Receipts => Set<CommerceCommandReceipt>();
     public DbSet<CommerceJournal> Journal => Set<CommerceJournal>();
     public DbSet<MonoDeliveryCorrelation> MonoDeliveryCorrelations => Set<MonoDeliveryCorrelation>();
+    public DbSet<MonoSellerBranchMapping> MonoSellerBranchMappings => Set<MonoSellerBranchMapping>();
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.HasDefaultSchema("commerce");
@@ -69,6 +70,16 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
             e.HasIndex(x=>x.IdempotencyKey).IsUnique();
             e.HasIndex(x=>x.DeliveryRequestId).IsUnique();
             e.HasIndex(x=>x.MissionId).IsUnique();
+        });
+        b.Entity<MonoSellerBranchMapping>(e=>{
+            e.ToTable("mono_seller_branch_mappings", t=>
+                t.HasCheckConstraint("ck_mono_seller_branch_mapping_revision", "\"Revision\" > 0"));
+            e.HasKey(x=>x.SellerId);e.Property(x=>x.SellerId).ValueGeneratedNever();
+            e.Property(x=>x.MonoBranchId).HasMaxLength(35).IsRequired();
+            e.Property(x=>x.Revision).IsConcurrencyToken();
+            e.Property(x=>x.UpdatedByAccountId).IsRequired();
+            e.Property(x=>x.UpdatedAtUtc).IsRequired();
+            e.HasIndex(x=>x.MonoBranchId);
         });
     }
     private void ValidateWrites()

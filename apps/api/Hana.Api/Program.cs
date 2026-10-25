@@ -158,6 +158,7 @@ if (hasCommerceDb)
         pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "commerce")));
     builder.Services.AddScoped<CommerceService>();
     builder.Services.AddScoped<IMonoDeliveryCorrelationStore, MonoDeliveryCorrelationStore>();
+    builder.Services.AddScoped<MonoSellerBranchMappingService>();
     if (Guid.TryParse(builder.Configuration["Commerce:AutomationAccountId"], out var automationAccount) && automationAccount != Guid.Empty)
         builder.Services.AddHostedService(services => new CommerceAutomation(
             services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<IClock>(),
@@ -480,7 +481,7 @@ app.MapCommerce(hasCommerceDb);
 app.MapAllocationLearningProposals(hasIdentityDb && hasLearningDb);
 app.MapAdminSellerActivation(hasIdentityDb);
 app.MapAdminSellerSuspensions(hasIdentityDb);
-app.MapAdminExternalIntegrations(hasIdentityDb);
+app.MapAdminExternalIntegrations(hasIdentityDb, hasCommerceDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 
