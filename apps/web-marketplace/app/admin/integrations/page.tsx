@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   parseExternalIntegrationStatus,
   type ExternalIntegrationStatus,
@@ -67,7 +67,7 @@ function MonoDeliveryStatusLookup() {
   const [orderId, setOrderId] = useState("");
   const [state, setState] = useState<LookupState>({ kind: "idle" });
 
-  const lookup = async (event: React.FormEvent<HTMLFormElement>) => {
+  const lookup = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalized = orderId.trim();
     if (!orderIdPattern.test(normalized)) {
