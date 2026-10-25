@@ -73,7 +73,7 @@ export function parseMonoDeliveryStatusView(
         !safeInteger(quoteRow.fareToman, 1) ||
         !safeInteger(quoteRow.buyerShareToman) ||
         !safeInteger(quoteRow.sellerShareToman) ||
-        quoteRow.buyerShareToman + quoteRow.sellerShareToman !== quoteRow.fareToman)
+        BigInt(quoteRow.buyerShareToman) + BigInt(quoteRow.sellerShareToman) !== BigInt(quoteRow.fareToman))
       return null;
     quote = {
       quoteId: quoteRow.quoteId,
