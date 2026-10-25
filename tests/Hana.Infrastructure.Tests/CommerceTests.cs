@@ -87,6 +87,8 @@ public sealed class CommerceTests
  Assert.Equal(1,(await Command(seller,"SAVE_MONO_PACKAGING_PROFILE",packagingInput,packagingKey)).GetProperty("Version").GetInt32());
  var packagingUpdate=new{productId,shipmentModel="BAG_BASED",bagCount=2,loadClass="M",estimatedWeightKg=2.5m,packageCount=2,expectedVersion=1};
  Assert.Equal(2,(await Command(seller,"SAVE_MONO_PACKAGING_PROFILE",packagingUpdate)).GetProperty("Version").GetInt32());
+ var packagingRead=JsonSerializer.SerializeToElement(await service.ReadAsync(seller,"MONO_PACKAGING_PROFILE",null,1,view:"SELLER"));
+ Assert.Equal(product,packagingRead.GetProperty("items")[0].GetProperty("ProductId").GetGuid());
  var stalePackaging=await Assert.ThrowsAsync<CommerceConflict>(()=>Command(seller,"SAVE_MONO_PACKAGING_PROFILE",packagingUpdate));
  Assert.Equal("PACKAGING_PROFILE_VERSION_CHANGED",stalePackaging.Message);
  await Assert.ThrowsAsync<ArgumentException>(()=>Command(seller,"SAVE_MONO_PACKAGING_PROFILE",new{productId,shipmentModel="BAG_BASED",bagCount=1,loadClass="XL",expectedVersion=2}));
