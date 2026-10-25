@@ -205,6 +205,47 @@ public sealed class MonoLogisticsClientTests
         Assert.Equal("INVALID_PROVIDER_RESPONSE", exception.ProviderCode);
     }
 
+    [Fact]
+    public async Task GetParsesAndValidatesQuoteAndPromiseWithoutTreatingThemAsMissionAcceptance()
+    {
+        var handler = new StubHandler((_, _) => Task.FromResult(JsonResponse("""
+            {"delivery_request_id":"drq_0123456789abcdef0123456789abcdef","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z","mission_id":null,"mission_status":null,"committed_delivery_at":null,"quote":{"quote_id":"qte_test_001","delivery_request_id":"drq_0123456789abcdef0123456789abcdef","version":1,"issued_at":"2026-10-25T12:01:00Z","expires_at":"2026-10-25T12:16:00Z","is_expired":false,"distance_meters":1500,"fare_toman":35000,"buyer_share_toman":17500,"seller_share_toman":17500,"recorded_at":"2026-10-25T12:01:00Z"},"promise":{"promise_id":"prm_test_001","delivery_request_id":"drq_0123456789abcdef0123456789abcdef","version":1,"committed_delivery_at":"2026-10-25T15:00:00Z","outcome":"ACCEPTED"}}
+            """)));
+        using var http = new HttpClient(handler);
+        var client = new MonoLogisticsClient(http, Options.Create(Configured()));
+
+        var result = await client.GetDeliveryRequestAsync(
+            "drq_0123456789abcdef0123456789abcdef", CancellationToken.None);
+
+        Assert.Equal(35000, result.Quote!.FareToman);
+        Assert.Equal(1, result.Promise!.Version);
+        Assert.Null(result.MissionId);
+        Assert.Null(result.MissionStatus);
+    }
+
+    [Fact]
+    public async Task GetRejectsMalformedQuoteAndPromisePayloads()
+    {
+        var requestId = "drq_0123456789abcdef0123456789abcdef";
+        var bodies = new[]
+        {
+            """{"delivery_request_id":"REQ_ID","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z","quote":{"quote_id":"qte_test_001","delivery_request_id":"REQ_ID","version":1,"issued_at":"2026-10-25T12:01:00Z","expires_at":"2026-10-25T12:16:00Z","is_expired":false,"distance_meters":1500,"fare_toman":35000,"buyer_share_toman":20000,"seller_share_toman":10000,"recorded_at":"2026-10-25T12:01:00Z"},"promise":null}""".Replace("REQ_ID", requestId, StringComparison.Ordinal),
+            """{"delivery_request_id":"REQ_ID","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z","quote":null,"promise":{"promise_id":"prm_test_001","delivery_request_id":"drq_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","version":1,"committed_delivery_at":"2026-10-25T15:00:00Z","outcome":"ACCEPTED"}}""".Replace("REQ_ID", requestId, StringComparison.Ordinal)
+        };
+
+        foreach (var body in bodies)
+        {
+            using var http = new HttpClient(new StubHandler((_, _) =>
+                Task.FromResult(JsonResponse(body))));
+            var client = new MonoLogisticsClient(http, Options.Create(Configured()));
+
+            var exception = await Assert.ThrowsAsync<MonoLogisticsException>(() =>
+                client.GetDeliveryRequestAsync(requestId, CancellationToken.None));
+
+            Assert.Equal("INVALID_PROVIDER_RESPONSE", exception.ProviderCode);
+        }
+    }
+
     private static MonoLogisticsOptions Configured() => new()
     {
         Enabled = true,
