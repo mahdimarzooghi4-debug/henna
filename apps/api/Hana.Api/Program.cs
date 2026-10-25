@@ -49,8 +49,11 @@ builder.Services.AddSingleton<IExternalPaymentProvider,
     UnconfiguredExternalPaymentProvider>();
 builder.Services.AddSingleton<IExternalIbanOwnershipVerifier,
     UnconfiguredExternalIbanOwnershipVerifier>();
+builder.Services.Configure<MonoLogisticsOptions>(
+    builder.Configuration.GetSection(MonoLogisticsOptions.SectionName));
+builder.Services.AddHttpClient<IMonoLogisticsClient, MonoLogisticsClient>();
 builder.Services.AddSingleton<IExternalLogisticsProvider,
-    UnconfiguredExternalLogisticsProvider>();
+    MonoExternalLogisticsProvider>();
 var otpKeyConfigured = false;
 try
 {
