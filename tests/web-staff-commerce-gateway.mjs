@@ -46,6 +46,7 @@ const rawServiceListing = (version = 1) => ({
   CategoryId: ITEM, PriceRial: 2400,
   AvailabilityNote: "CI weekdays", Version: version, Published: true,
 });
+const rawMonoPackagingProfile=(version=1)=>({Id:ORDER,SellerId:ID,ProductId:PRODUCT,ShipmentModel:"BAG_BASED",BagCount:2,LoadClass:"M",EstimatedWeightKg:null,Fragile:null,Liquid:null,KeepUpright:null,PackageCount:null,EstimatedVolumeM3:null,TemperatureClass:null,Version:version,UpdatedAtUtc:"2026-10-05T03:30:00Z"});
 const rawSettlement = {
   Id: ID, OrderId: ORDER, SellerId: "SECRET-SELLER",
   GrossRial: 1000, RefundRial: 0, PenaltyRial: 1000,
@@ -101,6 +102,7 @@ async function main() {
       if (req.method === "GET" && req.url === "/api/v1/seller/offers?page=1")
         return res.end(JSON.stringify({ items: [rawOffer()],
           page: 1, pageSize: 20 }));
+      if(req.method==="GET"&&req.url==="/api/v1/seller/mono-packaging-profiles?page=1") return res.end(JSON.stringify({items:[rawMonoPackagingProfile()],page:1,pageSize:20}));
       if (req.method === "GET" &&
           req.url === "/api/v1/seller/service-listings?page=1")
         return res.end(JSON.stringify({ items: [rawServiceListing()],
@@ -126,6 +128,7 @@ async function main() {
           page: 1, pageSize: 20 }));
       if (req.method === "POST" && req.url === "/api/v1/seller/offers")
         return res.end(JSON.stringify(rawOffer(2)));
+      if(req.method==="POST"&&req.url==="/api/v1/seller/mono-packaging-profiles") return res.end(JSON.stringify(rawMonoPackagingProfile(2)));
       if (req.method === "POST" &&
           req.url === "/api/v1/seller/service-listings")
         return res.end(JSON.stringify(rawServiceListing(2)));
@@ -263,6 +266,8 @@ async function main() {
   assert.equal(savedService.status, 200);
   assert.equal((await savedService.json()).version, 2);
 
+  const profiles=await sellerGet("mono-packaging-profiles?page=1"); assert.equal(profiles.status,200); assert.equal((await profiles.json())[0].bagCount,2);
+  const savedProfile=await post("seller","mono-packaging-profiles",{productId:PRODUCT,shipmentModel:"BAG_BASED",bagCount:2,loadClass:"M",expectedVersion:1}); assert.equal(savedProfile.status,200); assert.equal((await savedProfile.json()).version,2);
   const settlements = await sellerGet("settlements?page=1");
   assert.equal(settlements.status, 200);
   assert.equal((await settlements.json())[0].netRial, -500);
