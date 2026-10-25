@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 16640)
+Total output lines: 696
+
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -26,7 +29,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
   else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
-  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
+  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SAVE_MONO_PACKAGING_PROFILE","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   transactionActor=actor;transactionCommand=command;
   // Pilot correctness boundary: serialize commerce mutations across API processes. Never an in-memory lock.
   await using var tx=await db.Database.BeginTransactionAsync(ct);
@@ -35,14 +38,14 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
   else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
-  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
+  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SAVE_MONO_PACKAGING_PROFILE","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   var fingerprint=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(action+Canonical(input))));
   var prior=await db.Receipts.SingleOrDefaultAsync(x=>x.ActorId==actor && x.CommandId==command,ct);
   if(prior!=null) { if(prior.Fingerprint!=fingerprint) throw new CommerceConflict("IDEMPOTENCY_PAYLOAD_CHANGED"); return JsonSerializer.Deserialize<JsonElement>(prior.ResultJson); }
   if(await db.Receipts.CountAsync(r=>r.ActorId==actor&&r.CreatedAtUtc>clock.UtcNow.AddMinutes(-1),ct)>=120)
    throw new CommerceConflict("COMMAND_RATE_LIMITED");
   object result=action switch {
-   "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SAVE_SERVICE_LISTING"=>await SaveServiceListing(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct), "COMPARE_CART"=>await CompareCart(actor,ct),
+   "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SAVE_SERVICE_LISTING"=>await SaveServiceListing(actor,input,ct), "SAVE_MONO_PACKAGING_PROFILE"=>await SaveMonoPackagingProfile(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct), "COMPARE_CART"=>await CompareCart(actor,ct),
    "SAVE_ADDRESS"=>await SaveAddress(actor,input,ct), "CREATE_QUOTE"=>await CreateQuote(actor,input,ct),
    "PLACE_ORDER"=>await PlaceOrder(actor,input,ct), "CANCEL_ORDER"=>await Cancel(actor,input,ct),
    "SELLER_ORDER_STATE"=>await SellerState(actor,input,ct), "CONFIRM_PICKUP"=>await ConfirmPickup(actor,input,ct),
@@ -84,6 +87,9 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private static string Text(JsonElement x,string key,int max=240) { if(!x.TryGetProperty(key,out var p)||p.ValueKind!=JsonValueKind.String||string.IsNullOrWhiteSpace(p.GetString())||p.GetString()!.Length>max) throw new ArgumentException(key);return p.GetString()!.Trim(); }
  private static long Money(JsonElement x,string key,bool zero=false) { if(!x.TryGetProperty(key,out var p)||!p.TryGetInt64(out var n)||n<(zero?0:1)) throw new ArgumentException(key);return n; }
  private static int Count(JsonElement x,string key,int min=1,int max=999) { if(!x.TryGetProperty(key,out var p)||!p.TryGetInt32(out var n)||n<min||n>max) throw new ArgumentException(key);return n; }
+ private static decimal? OptionalDecimal(JsonElement x,string key) { if(!x.TryGetProperty(key,out var p)||p.ValueKind==JsonValueKind.Null)return null;if(!p.TryGetDecimal(out var n))throw new ArgumentException(key);return n; }
+ private static bool? OptionalBoolean(JsonElement x,string key) { if(!x.TryGetProperty(key,out var p)||p.ValueKind==JsonValueKind.Null)return null;if(p.ValueKind is not(JsonValueKind.True or JsonValueKind.False))throw new ArgumentException(key);return p.GetBoolean(); }
+ private static string? OptionalText(JsonElement x,string key,int max=32) { if(!x.TryGetProperty(key,out var p)||p.ValueKind==JsonValueKind.Null)return null;if(p.ValueKind!=JsonValueKind.String||p.GetString()!.Length>max)throw new ArgumentException(key);return p.GetString(); }
  private static DateTimeOffset Utc(JsonElement x,string key) { if(!x.TryGetProperty(key,out var p)||!p.TryGetDateTimeOffset(out var n)||n.Offset!=TimeSpan.Zero) throw new ArgumentException(key);return n; }
  private async Task Admin(Guid actor,CancellationToken ct) { if(!await roles.HasRoleAsync(actor,HanaRoles.Admin,ct)) throw new CommerceForbidden(); }
  private async Task<object> SaveEvidence(Guid actor,JsonElement x,CancellationToken ct) {
@@ -147,6 +153,28 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(old==null&&Count(x,"expectedVersion",0,int.MaxValue)!=0)throw new CommerceConflict("OFFER_VERSION_CHANGED");
   var offer=new Offer(offerId,actor,product.Id,product.CategoryId,Money(x,"priceRial"),Count(x,"stock",0,1000000),checked((old?.Version??0)+1),true);
   await Put(offer.Id,actor,"OFFER",offer,ct);return offer;
+ }
+ private async Task<object> SaveMonoPackagingProfile(Guid actor,JsonElement x,CancellationToken ct) {
+  await SellerOffering(actor,"GOOD",ct);
+  var productId=Id(x,"productId");
+  if(!(await All<Offer>("OFFER",ct)).Any(item=>item.SellerId==actor&&item.ProductId==productId))
+   throw new CommerceMissing();
+  var profiles=await All<MonoSellerProductPackagingProfile>("MONO_PACKAGING_PROFILE",ct);
+  var old=profiles.SingleOrDefault(item=>item.SellerId==actor&&item.ProductId==productId);
+  var expected=Count(x,"expectedVersion",0,int.MaxValue);
+  if((old?.Version??0)!=expected)throw new CommerceConflict("PACKAGING_PROFILE_VERSION_CHANGED");
+  var loadClass=Text(x,"loadClass",1);
+  var profile=new MonoSellerProductPackagingProfile(old?.Id??Guid.NewGuid(),actor,productId,
+   Text(x,"shipmentModel",32),Count(x,"bagCount",1,int.MaxValue),loadClass,
+   OptionalDecimal(x,"estimatedWeightKg"),OptionalBoolean(x,"fragile"),
+   OptionalBoolean(x,"liquid"),OptionalBoolean(x,"keepUpright"),
+   x.TryGetProperty("packageCount",out var packageCount)&&packageCount.ValueKind!=JsonValueKind.Null
+    ? Count(x,"packageCount",1,int.MaxValue) : null,
+   OptionalDecimal(x,"estimatedVolumeM3"),OptionalText(x,"temperatureClass"),
+   checked(expected+1),clock.UtcNow);
+  if(!profile.IsValid())throw new ArgumentException("Packaging profile is incomplete or invalid.");
+  await Put(profile.Id,actor,"MONO_PACKAGING_PROFILE",profile,ct);
+  return profile;
  }
  private async Task<object> SaveServiceListing(Guid actor,JsonElement x,CancellationToken ct) {
   await SellerOffering(actor,"SERVICE",ct);
@@ -247,24 +275,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  }
  private static void Version(Order o,JsonElement x) {if(o.Version!=Count(x,"expectedVersion",1,int.MaxValue))throw new CommerceConflict("ORDER_VERSION_CHANGED");}
  private async Task Refund(Order o,long cash,long credit,CancellationToken ct) {
-  Transfer(o.Id,"ORDER_CASH:"+o.Id,"BUYER_CASH:"+o.BuyerId,cash,"CASH");Transfer(o.Id,"ORDER_CREDIT:"+o.Id,"HOUSEHOLD_CREDIT:"+o.CreditGrantId,credit,"SUPPORT");
-  var wallet=await Wallet(o.BuyerId,ct);await SetWallet(o.BuyerId,checked(wallet.Wallet.BalanceRial+cash),ct);
-  if(credit>0&&o.CreditGrantId is Guid grantId){var g=await Get<CreditGrant>(grantId,"CREDIT",ct);await Put(g.Id,o.BuyerId,"CREDIT",g with{AvailableRial=checked(g.AvailableRial+credit)},ct);}
- }
- private async Task<object> Cancel(Guid actor,JsonElement x,CancellationToken ct) {
-  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();Version(o,x);if(o.State is "COLLECTED" or "CANCELLED"||o.HandoffAtUtc!=null)throw new CommerceConflict("CANCEL_CUTOFF_PASSED");
-  await Refund(o,o.CashPaidRial,o.CreditPaidRial,ct);foreach(var item in o.Items){var offer=await Get<Offer>(item.OfferId,"OFFER",ct);await Put(offer.Id,offer.SellerId,"OFFER",offer with{Stock=checked(offer.Stock+item.Quantity),Version=checked(offer.Version+1)},ct);}
-  o=o with{State="CANCELLED",RefundState="REFUNDED",Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
- }
- private async Task<object> SellerState(Guid actor,JsonElement x,CancellationToken ct) {
-  await Seller(actor,ct);var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.SellerId!=actor)throw new CommerceForbidden();Version(o,x);var target=Text(x,"state");if(!(o.State=="PAID"&&target=="PREPARING"||o.State=="PREPARING"&&target=="READY_FOR_PICKUP"))throw new CommerceConflict("ORDER_TRANSITION_INVALID");o=o with{State=target,Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
- }
- private async Task<object> ConfirmPickup(Guid actor,JsonElement x,CancellationToken ct) {
-  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();Version(o,x);if(o.State!="READY_FOR_PICKUP"||o.FulfillmentMode!="PICKUP")throw new CommerceConflict("ORDER_TRANSITION_INVALID");o=o with{State="COLLECTED",ReceivedAtUtc=clock.UtcNow,Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
- }
- private async Task<object> ReportIncident(Guid actor,JsonElement x,CancellationToken ct) {
-  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();if(o.ReceivedAtUtc==null||clock.UtcNow>o.ReceivedAtUtc.Value.AddHours(1))throw new CommerceConflict("INCIDENT_WINDOW_EXPIRED");
-  var item=o.Items.SingleOrDefault(i=>i.Id==Id(x,"orderItemId"))??throw new CommerceMissing();var quantity=Count(x,"quantity");var type=Text(x,"type");if(type is not("DAMAGED_ITEM" or "MISSING_ITEM"))throw new ArgumentException("Incident type.");
+  Tran…640 tokens truncated…);var quantity=Count(x,"quantity");var type=Text(x,"type");if(type is not("DAMAGED_ITEM" or "MISSING_ITEM"))throw new ArgumentException("Incident type.");
   var pending=(await All<Incident>("INCIDENT",ct)).Where(i=>i.OrderItemId==item.Id&&i.State=="UNDER_REVIEW").Sum(i=>i.Quantity);
   if(quantity>item.Quantity-item.RefundedQuantity-pending)throw new CommerceConflict("INCIDENT_QUANTITY_EXCEEDED");
   var evidenceId=Id(x,"evidenceId");var evidence=await Get<CommerceEvidence>(evidenceId,"EVIDENCE",ct);if(evidence.AccountId!=actor)throw new CommerceForbidden();
