@@ -142,6 +142,21 @@ public sealed class MonoLogisticsClientTests
         Assert.Equal("https://mono.example/v1/delivery-requests/drq_0123456789abcdef0123456789abcdef", sentUri!.ToString());
     }
 
+    [Fact]
+    public async Task GetRejectsResponseForDifferentDeliveryRequest()
+    {
+        var handler = new StubHandler((_, _) => Task.FromResult(JsonResponse("""
+            {"delivery_request_id":"drq_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z"}
+            """)));
+        using var http = new HttpClient(handler);
+        var client = new MonoLogisticsClient(http, Options.Create(Configured()));
+
+        var exception = await Assert.ThrowsAsync<MonoLogisticsException>(() =>
+            client.GetDeliveryRequestAsync("drq_0123456789abcdef0123456789abcdef", CancellationToken.None));
+
+        Assert.Equal("INVALID_PROVIDER_RESPONSE", exception.ProviderCode);
+    }
+
     private static MonoLogisticsOptions Configured() => new()
     {
         Enabled = true,
