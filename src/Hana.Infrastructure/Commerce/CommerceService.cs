@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 16640)
-Total output lines: 696
-
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -275,7 +272,24 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  }
  private static void Version(Order o,JsonElement x) {if(o.Version!=Count(x,"expectedVersion",1,int.MaxValue))throw new CommerceConflict("ORDER_VERSION_CHANGED");}
  private async Task Refund(Order o,long cash,long credit,CancellationToken ct) {
-  Tran…640 tokens truncated…);var quantity=Count(x,"quantity");var type=Text(x,"type");if(type is not("DAMAGED_ITEM" or "MISSING_ITEM"))throw new ArgumentException("Incident type.");
+  Transfer(o.Id,"ORDER_CASH:"+o.Id,"BUYER_CASH:"+o.BuyerId,cash,"CASH");Transfer(o.Id,"ORDER_CREDIT:"+o.Id,"HOUSEHOLD_CREDIT:"+o.CreditGrantId,credit,"SUPPORT");
+  var wallet=await Wallet(o.BuyerId,ct);await SetWallet(o.BuyerId,checked(wallet.Wallet.BalanceRial+cash),ct);
+  if(credit>0&&o.CreditGrantId is Guid grantId){var g=await Get<CreditGrant>(grantId,"CREDIT",ct);await Put(g.Id,o.BuyerId,"CREDIT",g with{AvailableRial=checked(g.AvailableRial+credit)},ct);}
+ }
+ private async Task<object> Cancel(Guid actor,JsonElement x,CancellationToken ct) {
+  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();Version(o,x);if(o.State is "COLLECTED" or "CANCELLED"||o.HandoffAtUtc!=null)throw new CommerceConflict("CANCEL_CUTOFF_PASSED");
+  await Refund(o,o.CashPaidRial,o.CreditPaidRial,ct);foreach(var item in o.Items){var offer=await Get<Offer>(item.OfferId,"OFFER",ct);await Put(offer.Id,offer.SellerId,"OFFER",offer with{Stock=checked(offer.Stock+item.Quantity),Version=checked(offer.Version+1)},ct);}
+  o=o with{State="CANCELLED",RefundState="REFUNDED",Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
+ }
+ private async Task<object> SellerState(Guid actor,JsonElement x,CancellationToken ct) {
+  await Seller(actor,ct);var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.SellerId!=actor)throw new CommerceForbidden();Version(o,x);var target=Text(x,"state");if(!(o.State=="PAID"&&target=="PREPARING"||o.State=="PREPARING"&&target=="READY_FOR_PICKUP"))throw new CommerceConflict("ORDER_TRANSITION_INVALID");o=o with{State=target,Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
+ }
+ private async Task<object> ConfirmPickup(Guid actor,JsonElement x,CancellationToken ct) {
+  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();Version(o,x);if(o.State!="READY_FOR_PICKUP"||o.FulfillmentMode!="PICKUP")throw new CommerceConflict("ORDER_TRANSITION_INVALID");o=o with{State="COLLECTED",ReceivedAtUtc=clock.UtcNow,Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
+ }
+ private async Task<object> ReportIncident(Guid actor,JsonElement x,CancellationToken ct) {
+  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();if(o.ReceivedAtUtc==null||clock.UtcNow>o.ReceivedAtUtc.Value.AddHours(1))throw new CommerceConflict("INCIDENT_WINDOW_EXPIRED");
+  var item=o.Items.SingleOrDefault(i=>i.Id==Id(x,"orderItemId"))??throw new CommerceMissing();var quantity=Count(x,"quantity");var type=Text(x,"type");if(type is not("DAMAGED_ITEM" or "MISSING_ITEM"))throw new ArgumentException("Incident type.");
   var pending=(await All<Incident>("INCIDENT",ct)).Where(i=>i.OrderItemId==item.Id&&i.State=="UNDER_REVIEW").Sum(i=>i.Quantity);
   if(quantity>item.Quantity-item.RefundedQuantity-pending)throw new CommerceConflict("INCIDENT_QUANTITY_EXCEEDED");
   var evidenceId=Id(x,"evidenceId");var evidence=await Get<CommerceEvidence>(evidenceId,"EVIDENCE",ct);if(evidence.AccountId!=actor)throw new CommerceForbidden();
@@ -646,7 +660,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    return new{orders=orders.Count,cancelled=orders.Count(o=>o.State=="CANCELLED"),collected=orders.Count(o=>o.State=="COLLECTED"),openIncidents=cases.Count(i=>i.State is "UNDER_REVIEW" or "AWAITING_RETURN"),preparedSettlements=settlements.Count,grossRial=orders.Where(o=>o.State!="CANCELLED").Aggregate(0L,(n,o)=>checked(n+o.TotalRial))};
   }
   if(kind=="INTEGRITY")return await IntegrityAsync(actor,ct);
-  var allowed=new[]{"OFFER","SERVICE_LISTING","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION","FEE_VERSION","HOUSEHOLD"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
+  var allowed=new[]{"OFFER","SERVICE_LISTING","MONO_PACKAGING_PROFILE","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION","FEE_VERSION","HOUSEHOLD"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
   if(view=="SUPPORT")await Permission(actor,"SUPPORT",ct);
   var admin=await roles.HasRoleAsync(actor,HanaRoles.Admin,ct);
   var supportAccess=new[]{"ORDER","INCIDENT","TICKET"}.Contains(kind)&&await HasPermission(actor,"SUPPORT",ct);
