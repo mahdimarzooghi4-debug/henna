@@ -56,6 +56,7 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
         b.Entity<MonoDeliveryCorrelation>(e=>{
             e.ToTable("mono_delivery_correlations", t=>{
                 t.HasCheckConstraint("ck_mono_delivery_correlation_state", "\"State\" IN ('PREPARED','REQUEST_RECEIVED','MISSION_LINKED')");
+                t.HasCheckConstraint("ck_mono_delivery_request_fingerprint", "\"RequestFingerprint\" IS NULL OR \"RequestFingerprint\" ~ '^[0-9a-f]{64}$'");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_revision", "\"Revision\" > 0");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_request_state", "\"State\" = 'PREPARED' OR \"DeliveryRequestId\" IS NOT NULL");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_mission_state", "\"State\" <> 'MISSION_LINKED' OR \"MissionId\" IS NOT NULL");
@@ -65,6 +66,7 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
             e.Property(x=>x.State).HasMaxLength(32).IsRequired();
             e.Property(x=>x.DeliveryRequestId).HasMaxLength(64);
             e.Property(x=>x.MissionId).HasMaxLength(64);
+            e.Property(x=>x.RequestFingerprint).HasMaxLength(64);
             e.Property(x=>x.PreparedAtUtc).IsRequired();e.Property(x=>x.UpdatedAtUtc).IsRequired();
             e.Property(x=>x.Revision).IsConcurrencyToken();
             e.HasIndex(x=>x.IdempotencyKey).IsUnique();

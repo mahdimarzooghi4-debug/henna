@@ -45,6 +45,26 @@ public sealed class MonoDeliveryCorrelationStoreTests
         Assert.Equal(prepared.IdempotencyKey, repeated.IdempotencyKey);
         Assert.Equal(1, repeated.Revision);
 
+        var request = new MonoDeliveryRequestInput(
+            orderId.ToString("N"), "br_0123456789abcdef0123456789abcdef",
+            new MonoDeliveryLocation("test pickup", 35.7m, 51.4m),
+            new MonoDeliveryLocation("test dropoff", 35.8m, 51.5m),
+            new MonoShipment("BAG_BASED", 1, "S"));
+        var intent = await store.RecordRequestIntentAsync(orderId, request);
+        var intentReplay = await store.RecordRequestIntentAsync(orderId, request);
+        Assert.NotNull(intent.RequestFingerprint);
+        Assert.Equal(intent.RequestFingerprint, intentReplay.RequestFingerprint);
+        Assert.Equal(2, intentReplay.Revision);
+        Assert.False(JsonSerializer.Serialize(intent).Contains("test dropoff", StringComparison.Ordinal));
+
+        var changedRequest = request with
+        {
+            Dropoff = new MonoDeliveryLocation("changed test dropoff", 35.8m, 51.5m)
+        };
+        var changedIntent = await Assert.ThrowsAsync<MonoDeliveryCorrelationException>(
+            () => store.RecordRequestIntentAsync(orderId, changedRequest));
+        Assert.Equal("REQUEST_PAYLOAD_CONFLICT", changedIntent.Code);
+
         var requestId = "drq_0123456789abcdef0123456789abcdef";
         var receivedResponse = new MonoDeliveryRequestCreated(
             requestId, "RECEIVED", "pickup_location", "dropoff_location", "READY");
@@ -52,7 +72,7 @@ public sealed class MonoDeliveryCorrelationStoreTests
         var receivedReplay = await store.RecordRequestReceivedAsync(orderId, receivedResponse);
         Assert.Equal(MonoDeliveryCorrelationStates.RequestReceived, received.State);
         Assert.Equal(requestId, received.DeliveryRequestId);
-        Assert.Equal(2, receivedReplay.Revision);
+        Assert.Equal(3, receivedReplay.Revision);
 
         var secondOrderId = Guid.NewGuid();
         db.Documents.Add(new CommerceDocument
@@ -69,6 +89,8 @@ public sealed class MonoDeliveryCorrelationStoreTests
         });
         await db.SaveChangesAsync();
         await store.PrepareAsync(secondOrderId);
+        var secondRequest = request with { ExternalReference = secondOrderId.ToString("N") };
+        await store.RecordRequestIntentAsync(secondOrderId, secondRequest);
         var duplicateLink = await Assert.ThrowsAsync<MonoDeliveryCorrelationException>(() =>
             store.RecordRequestReceivedAsync(secondOrderId, receivedResponse));
         Assert.Equal("PROVIDER_REFERENCE_ALREADY_LINKED", duplicateLink.Code);
