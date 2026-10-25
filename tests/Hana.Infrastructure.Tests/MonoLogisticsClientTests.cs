@@ -59,7 +59,7 @@ public sealed class MonoLogisticsClientTests
     }
 
     [Fact]
-    public async Task CreateRejectsUnknownNullContractFieldsBeforeNetworkCall()
+    public async Task CreateRejectsIncompleteLocationBeforeNetworkCall()
     {
         var handler = new StubHandler((_, _) => throw new InvalidOperationException("Unexpected network call."));
         using var http = new HttpClient(handler);
@@ -98,14 +98,16 @@ public sealed class MonoLogisticsClientTests
     }
 
     [Fact]
-    public async Task GetRequestUsesTenantScopedProviderPath()
+    public async Task GetRequestUsesApiKeyAndProviderScopedDetailPath()
     {
         Uri? sentUri = null;
         HttpMethod? sentMethod = null;
+        string? apiKey = null;
         var handler = new StubHandler((request, _) =>
         {
             sentUri = request.RequestUri;
             sentMethod = request.Method;
+            apiKey = request.Headers.GetValues("X-Mono-API-Key").Single();
             return Task.FromResult(JsonResponse("""
                 {"delivery_request_id":"drq_0123456789abcdef0123456789abcdef","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z","mission_id":null,"mission_status":null,"committed_delivery_at":null,"quote":null,"promise":null}
                 """));
@@ -118,6 +120,7 @@ public sealed class MonoLogisticsClientTests
 
         Assert.Equal("RECEIVED", result.Status);
         Assert.Equal(HttpMethod.Get, sentMethod);
+        Assert.Equal("secret-test-key", apiKey);
         Assert.Equal("https://mono.example/v1/delivery-requests/drq_0123456789abcdef0123456789abcdef", sentUri!.ToString());
     }
 
