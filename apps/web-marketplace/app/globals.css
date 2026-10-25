@@ -1614,6 +1614,10 @@ a { color: inherit; }
   border-radius: 14px;
   background: #fcfbf9;
 }
+.seller-mono-packaging__fields { display:flex; align-items:end; flex-wrap:wrap; gap:14px; margin-top:18px; }
+.seller-mono-packaging__fields label { display:grid; gap:7px; min-width:170px; color:var(--hana-ink); font-size:13px; }
+.seller-mono-packaging__fields input,.seller-mono-packaging__fields select { min-height:44px; padding:8px 12px; border:1px solid #d8d2ca; border-radius:10px; background:#fff; color:var(--hana-ink); font:inherit; }
+.seller-mono-packaging__fields button { min-height:44px; }
 .seller-commerce__card-head,
 .support-incident__summary {
   display: flex;
