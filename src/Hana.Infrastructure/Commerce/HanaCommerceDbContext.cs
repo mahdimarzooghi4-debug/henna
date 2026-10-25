@@ -56,7 +56,7 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
         b.Entity<MonoDeliveryCorrelation>(e=>{
             e.ToTable("mono_delivery_correlations", t=>{
                 t.HasCheckConstraint("ck_mono_delivery_correlation_state", "\"State\" IN ('PREPARED','REQUEST_RECEIVED','MISSION_LINKED')");
-                t.HasCheckConstraint("ck_mono_delivery_request_fingerprint", "\"RequestFingerprint\" IS NULL OR \"RequestFingerprint\" ~ '^[0-9a-f]{64}
+                t.HasCheckConstraint("ck_mono_delivery_request_fingerprint", "\"RequestFingerprint\" IS NULL OR \"RequestFingerprint\" ~ '^[0-9a-f]{64}$'");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_revision", "\"Revision\" > 0");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_request_state", "\"State\" = 'PREPARED' OR \"DeliveryRequestId\" IS NOT NULL");
                 t.HasCheckConstraint("ck_mono_delivery_correlation_mission_state", "\"State\" <> 'MISSION_LINKED' OR \"MissionId\" IS NOT NULL");
