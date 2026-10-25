@@ -45,8 +45,8 @@ async function main(){
       providerStatus:"RECEIVED",
       missionId:"mis_0123456789abcdef0123456789abcdef",
       missionStatus:"IN_TRANSIT",
-      courierLocation:{latitude:35.7,longitude:51.4,accuracyMeters:8,
-        observedAt:new Date().toISOString(),courierId:"must-not-forward"},
+      courierLocation:{latitude:35.7,longitude:51.4,accuracy_meters:8,
+        observed_at:new Date().toISOString(),courier_id:"must-not-forward"},
       committedDeliveryAt:null,
       correlationUpdatedAtUtc:"2026-10-25T12:00:00Z",
       correlationRevision:2,
@@ -114,6 +114,7 @@ async function main(){
   assert.deepEqual(statusBody.courierLocation,{latitude:35.7,longitude:51.4,
     accuracyMeters:8,observedAt:statusBody.courierLocation.observedAt});
   assert.equal("courierId" in statusBody.courierLocation,false);
+  assert.equal("courier_id" in statusBody.courierLocation,false);
   assert.equal("pickup" in statusBody,false);
   assert.equal(calls,2);
   console.log("External integration readiness and Mono delivery status BFF: auth, no cookie leak and bounded DTO passed.");
