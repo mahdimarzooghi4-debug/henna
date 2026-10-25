@@ -84,6 +84,8 @@ export type StaffOffer = {
   published: boolean;
 };
 
+export type StaffMonoPackagingProfile = { id:string; sellerId:string; productId:string; shipmentModel:"BAG_BASED"; bagCount:number; loadClass:"S"|"M"|"L"; version:number; };
+
 export type StaffServiceListing = {
   id: string;
   productId: string;
@@ -219,6 +221,11 @@ const offer = (value: unknown): StaffOffer => {
   };
 };
 
+const monoPackagingProfile = (value: unknown): StaffMonoPackagingProfile => {
+ const data=row(value); if(data.ShipmentModel!=="BAG_BASED"||!["S","M","L"].includes(String(data.LoadClass)))throw Error();
+ return {id:id(data.Id),sellerId:id(data.SellerId),productId:id(data.ProductId),shipmentModel:"BAG_BASED",bagCount:integer(data.BagCount,1,2147483647),loadClass:data.LoadClass as StaffMonoPackagingProfile["loadClass"],version:integer(data.Version,1,2147483647)};
+};
+
 const serviceListing = (value: unknown): StaffServiceListing => {
   const data = row(value);
   if (typeof data.Published !== "boolean") throw Error();
@@ -337,6 +344,7 @@ export function parseStaffCommerce(
       return page(value, incident, expectedPage);
     if (scope === "seller" && path === "offers" && method === "GET")
       return page(value, offer, expectedPage);
+    if (scope === "seller" && path === "mono-packaging-profiles" && method === "GET") return page(value,monoPackagingProfile,expectedPage);
     if (scope === "seller" && path === "service-listings" && method === "GET")
       return page(value, serviceListing, expectedPage);
     if (scope === "seller" && path === "settlements" && method === "GET")
@@ -353,6 +361,7 @@ export function parseStaffCommerce(
       return page(value, ticket, expectedPage);
     if (scope === "seller" && path === "offers" && method === "POST")
       return offer(value);
+    if (scope === "seller" && path === "mono-packaging-profiles" && method === "POST") return monoPackagingProfile(value);
     if (scope === "seller" && path === "service-listings" && method === "POST")
       return serviceListing(value);
     if (scope === "seller" && path === "tickets" && method === "POST")
