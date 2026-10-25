@@ -102,6 +102,44 @@ internal static class AdminExternalIntegrationEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status503ServiceUnavailable);
 
+        app.MapGet("/api/v1/admin/integrations/mono/orders/{orderId:guid}/status", async (
+            Guid orderId, HttpContext context, IServiceProvider services,
+            CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            var admin = await ResolveAdminAsync(context, services,
+                hasIdentityDatabase, cancellationToken);
+            if (admin.Error is not null) return admin.Error;
+            if (!hasCommerceDatabase) return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            try
+            {
+                var status = await services.GetRequiredService<MonoDeliveryStatusReader>()
+                    .ReadAsync(orderId, cancellationToken);
+                return Results.Ok(status);
+            }
+            catch (MonoDeliveryCorrelationException exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return exception.Code switch
+                {
+                    "CORRELATION_NOT_FOUND" => Results.NotFound(),
+                    _ => Results.Conflict(new { code = exception.Code })
+                };
+            }
+            catch (MonoLogisticsException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        })
+        .WithName("GetAdminMonoOrderDeliveryStatus")
+        .WithTags("Admin")
+        .Produces<MonoDeliveryStatusRead>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status503ServiceUnavailable);
+
         app.MapGet("/api/v1/admin/integrations/mono/branches", async (
             HttpContext context, IServiceProvider services,
             CancellationToken cancellationToken) =>
