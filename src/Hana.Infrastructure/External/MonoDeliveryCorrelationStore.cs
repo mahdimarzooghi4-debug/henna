@@ -109,8 +109,9 @@ public sealed class MonoDeliveryCorrelationStore(
     {
         if (orderId == Guid.Empty) throw new ArgumentException("Order id is required.", nameof(orderId));
         if (requestFingerprint is not { Length: 64 } ||
-            requestFingerprint.Any(character => character is not (>= '0' and <= '9')
-                and not (>= 'a' and <= 'f')))
+            requestFingerprint.Any(character =>
+                !(character >= '0' && character <= '9' ||
+                  character >= 'a' && character <= 'f')))
             throw new ArgumentException("A lowercase SHA-256 request fingerprint is required.", nameof(requestFingerprint));
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
