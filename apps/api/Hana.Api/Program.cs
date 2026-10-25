@@ -157,6 +157,7 @@ if (hasCommerceDb)
     builder.Services.AddDbContext<HanaCommerceDbContext>(options => options.UseNpgsql(commerceConnectionString,
         pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "commerce")));
     builder.Services.AddScoped<CommerceService>();
+    builder.Services.AddScoped<IMonoDeliveryCorrelationStore, MonoDeliveryCorrelationStore>();
     if (Guid.TryParse(builder.Configuration["Commerce:AutomationAccountId"], out var automationAccount) && automationAccount != Guid.Empty)
         builder.Services.AddHostedService(services => new CommerceAutomation(
             services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<IClock>(),
