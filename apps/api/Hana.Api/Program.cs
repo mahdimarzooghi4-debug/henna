@@ -125,6 +125,7 @@ if (hasLearningDb)
         builder.Services.AddScoped<AllocationSevenFactorPartitionPreflightService>();
         builder.Services.AddScoped<AllocationSevenFactorManifestRevalidationService>();
         builder.Services.AddScoped<AllocationSevenFactorHumanReviewTriageService>();
+        builder.Services.AddScoped<AllocationSevenFactorHumanReviewTriageRevalidationService>();
         builder.Services.AddScoped<AllocationLearningAutomationExecutor>();
         builder.Services.AddScoped<AllocationReviewedOutcomeService>();
         builder.Services.AddScoped<AllocationPilotService>();

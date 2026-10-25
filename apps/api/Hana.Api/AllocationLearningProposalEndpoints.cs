@@ -50,6 +50,8 @@ internal static class AllocationLearningProposalEndpoints
             catch (AllocationEbmBenchmarkConflictException) { return Results.Conflict(); }
             catch (SevenFactorManifestStaleException)
             { return Results.Conflict(new { error = "SEVEN_FACTOR_MANIFEST_STALE" }); }
+            catch (SevenFactorHumanReviewTriageStaleException)
+            { return Results.Conflict(new { error = "SEVEN_FACTOR_HUMAN_TRIAGE_STALE" }); }
             catch (ArgumentException) { return Results.BadRequest(new { error = "INVALID_ALLOCATION_PROPOSAL" }); }
             catch (Exception) when (!http.RequestAborted.IsCancellationRequested) { return Results.StatusCode(503); }
         });
@@ -199,6 +201,18 @@ internal static class AllocationLearningProposalEndpoints
                 .GetRequiredService<AllocationSevenFactorHumanReviewTriageService>()
                 .PreviewAsync((Guid)http.Items["AllocationReviewerAccount"]!,
                     input.SelectedReviewIds, input.CutoffUtc, ct);
+            return Results.Ok(result);
+        });
+
+        routes.MapPost("/research/seven-factor/human-review-triage/revalidate", async (
+            SevenFactorHumanReviewTriageRevalidationRequest input, HttpContext http,
+            IServiceProvider services, CancellationToken ct) =>
+        {
+            if (input.SelectedReviewIds is null) return Results.BadRequest();
+            var result = await services
+                .GetRequiredService<AllocationSevenFactorHumanReviewTriageRevalidationService>()
+                .RevalidateAsync((Guid)http.Items["AllocationReviewerAccount"]!,
+                    input.SelectedReviewIds, input.CutoffUtc, input.ExpectedSha256, ct);
             return Results.Ok(result);
         });
 
@@ -1339,6 +1353,8 @@ internal sealed record ModelVersionTechnicalPreflightRequest(
     string? Family, Guid ArtifactId, Guid EvaluationId);
 internal sealed record SevenFactorHumanReviewTriageRequest(
     Guid[]? SelectedReviewIds, DateTimeOffset CutoffUtc);
+internal sealed record SevenFactorHumanReviewTriageRevalidationRequest(
+    Guid[]? SelectedReviewIds, DateTimeOffset CutoffUtc, string ExpectedSha256);
 
 internal sealed record SevenFactorManifestRevalidationRequest(
     Guid[]? TrainingReviewIds, Guid[]? ValidationReviewIds,

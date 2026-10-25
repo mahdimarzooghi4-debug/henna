@@ -10,7 +10,8 @@ import {
 } from "../../../../lib/seven-factor-partitions";
 import styles from "../evidence/page.module.css";
 import { parseTriageResult, validTriageSelection,
-  type TriageResult } from "../../../../lib/seven-factor-human-triage";
+  parseTriageRevalidationResult, validTriageRevalidationRequest,
+  type TriageResult, type TriageRevalidationResult } from "../../../../lib/seven-factor-human-triage";
 
 const root = "/api/admin/allocation-proposals/research/seven-factor";
 const choices = ["", "training", "validation", "evaluation"] as const;
@@ -35,11 +36,14 @@ export default function SevenFactorPartitionPage() {
   const [renewed, setRenewed] = useState<PartitionRevalidationResult | null>(null);
   const [revalidating, setRevalidating] = useState(false);
   const [triage, setTriage] = useState<TriageResult | null>(null);
+  const [triageRevalidation, setTriageRevalidation] = useState<TriageRevalidationResult | null>(null);
+  const [triageRevalidating, setTriageRevalidating] = useState(false);
   const [triageBusy, setTriageBusy] = useState(false);
   const triageSequence = useRef(0);
   const invalidateTriage = () => {
     ++triageSequence.current;
-    setTriage(null); setTriageBusy(false);
+    setTriage(null); setTriageRevalidation(null);
+    setTriageBusy(false); setTriageRevalidating(false);
   };
   const operation = useRef(0);
   const invalidatePreview = () => {
@@ -146,7 +150,7 @@ export default function SevenFactorPartitionPage() {
       .map(([id])=>id);
     const request={selectedReviewIds:selected,cutoffUtc:cutoff};
     const seq=++triageSequence.current;
-    setTriage(null);setError("");
+    setTriage(null);setTriageRevalidation(null);setError("");
     if(!validTriageSelection(request)){
       setError("برای کاربرگ، شناسه‌های انتخابی و زمان UTC معتبر لازم است.");
       return;
@@ -166,6 +170,40 @@ export default function SevenFactorPartitionPage() {
       if(seq===triageSequence.current)
         setError(e instanceof Error?e.message:"کاربرگ قابل دریافت نیست.");
     }finally{if(seq===triageSequence.current)setTriageBusy(false);}
+  }
+
+  async function revalidateTriage() {
+    if(!triage||triageBusy||triageRevalidating)return;
+    const selected=Object.entries(selection).filter(([,v])=>v!=="").map(([id])=>id);
+    const request={selectedReviewIds:selected,cutoffUtc:cutoff,expectedSha256:triage.sha256};
+    const matches=selected.length===triage.selectedReviewCount&&
+      selected.every(id=>triage.entries.some(entry=>entry.reviewId.toLowerCase()===id.toLowerCase()))&&
+      Date.parse(triage.cutoffUtc)===Date.parse(cutoff);
+    const seq=++triageSequence.current;
+    setTriageRevalidation(null);setError("");
+    if(!matches||!validTriageRevalidationRequest(request)){
+      setTriage(null);
+      setError("انتخاب‌ها یا زمان برش با کاربرگ قبلی یکسان نیست؛ کاربرگ تازه بگیرید.");
+      return;
+    }
+    setTriageBusy(true);setTriageRevalidating(true);
+    try{
+      const response=await fetch(root+"/human-review-triage/revalidate",{
+        method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(request)
+      });
+      if(!response.ok){
+        if(response.status===400||response.status===409){if(seq===triageSequence.current)setTriage(null);}
+        throw new Error(await errorBody(response));
+      }
+      const parsed=parseTriageRevalidationResult(await response.json(),request);
+      if(!parsed)throw new Error("نتیجه بازاعتبارسنجی با اثرانگشت قبلی مطابقت ندارد.");
+      if(seq===triageSequence.current)setTriageRevalidation(parsed);
+    }catch(e){
+      if(seq===triageSequence.current)setError(e instanceof Error?e.message:"بازاعتبارسنجی کاربرگ ناموفق بود.");
+    }finally{
+      if(seq===triageSequence.current){setTriageBusy(false);setTriageRevalidating(false);}
+    }
   }
 
   const triageLabel: Record<string,string>={
@@ -281,6 +319,15 @@ export default function SevenFactorPartitionPage() {
       {triage&&<div className={styles.rows} role="status">
         <p>تعداد بررسی‌شده: {triage.selectedReviewCount.toLocaleString("fa-IR")} ·
           هیچ تعارضی خودکار رفع نشده است.</p>
+        <p>اثر انگشت محتوای کاربرگ:</p><code dir="ltr">{triage.sha256}</code>
+        <button type="button" disabled={busy||revalidating||loading||triageBusy}
+          onClick={()=>void revalidateTriage()}>
+          {triageRevalidating?"در حال بازبینی مجدد محتوای PostgreSQL…":"بازاعتبارسنجی محتوای همین کاربرگ در PostgreSQL"}
+        </button>
+        {triageRevalidation&&<p role="status">
+          اثرانگشت و محتوای فعلی تغییر نکرده‌اند. این نتیجه فقط ثبات کاربرگ را تأیید می‌کند؛
+          تعارض انسانی رفع نشده و Dataset یا مدل پذیرفته نشده است.
+        </p>}
         {triage.entries.map(item=><div key={item.reviewId} className={styles.row}>
           <div className={styles.rowInfo}>
             <strong dir="ltr">{item.reviewId}</strong>
