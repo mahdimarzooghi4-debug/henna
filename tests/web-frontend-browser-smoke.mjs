@@ -345,6 +345,11 @@ async function fakeApi(route) {
       },
     }));
   }
+  if (path === "/api/seller/commerce/offers" && req.method() === "GET")
+    return route.fulfill(json([]));
+  if (path === "/api/seller/commerce/mono-packaging-profiles" &&
+      req.method() === "GET")
+    return route.fulfill(json([]));
   if (path === "/api/geography/provinces" && req.method() === "GET") {
     provinceReads++;
     return route.fulfill(json({ items: [province] }));

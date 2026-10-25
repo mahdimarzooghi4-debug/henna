@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SellerCommerceOperations } from "./commerce-operations";
 import { SellerBusinessOperations } from "./business-operations";
+import { SellerMonoPackagingOperations } from "./mono-packaging-operations";
 
 type SellerAccess = {
   sellerAccess: true;
@@ -218,6 +219,7 @@ export function SellerDashboardView() {
         </section>
 
         {seller.capabilities.orders && <SellerCommerceOperations />}
+        {seller.capabilities.inventory && <SellerMonoPackagingOperations />}
         {seller.capabilities.orders && (
           <SellerBusinessOperations
             offerManagementEnabled={seller.capabilities.inventory}

@@ -97,10 +97,11 @@ function routeFor(
         page: 1,
       };
     if (scope === "seller" &&
-        ["offers", "service-listings", "settlements", "notifications", "tickets"].includes(path))
+        ["offers", "service-listings", "mono-packaging-profiles", "settlements", "notifications", "tickets"].includes(path))
       return {
         upstream: path === "offers" ? "/seller/offers" :
           path === "service-listings" ? "/seller/service-listings" :
+          path === "mono-packaging-profiles" ? "/seller/mono-packaging-profiles" :
           path === "settlements" ? "/seller/settlements" :
             path === "notifications" ? "/me/notifications" : "/me/tickets",
         parsePath: path,
@@ -126,6 +127,8 @@ function routeFor(
     return { upstream: "/seller/offers", parsePath: path, page: 1 };
   if (scope === "seller" && path === "service-listings")
     return { upstream: "/seller/service-listings", parsePath: path, page: 1 };
+  if (scope === "seller" && path === "mono-packaging-profiles")
+    return { upstream: "/seller/mono-packaging-profiles", parsePath: path, page: 1 };
   if (scope === "seller" && path === "tickets")
     return { upstream: "/support/tickets", parsePath: path, page: 1 };
   if (scope === "seller" && segments.length === 3 &&
