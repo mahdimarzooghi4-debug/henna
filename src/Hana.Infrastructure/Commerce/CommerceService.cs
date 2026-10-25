@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 16713)
-Total output lines: 700
-
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -255,7 +252,79 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  }
  private async Task<(CommerceDocument? Document,CashWallet Wallet)> Wallet(Guid actor,CancellationToken ct) {var d=await db.Documents.SingleOrDefaultAsync(d=>d.Kind=="WALLET"&&d.OwnerId==actor,ct);return(d,d==null?new(actor,0):JsonSerializer.Deserialize<CashWallet>(d.Body)!);}
  private async Task SetWallet(Guid actor,long balance,CancellationToken ct) {if(balance<0)throw new CommerceConflict("WALLET_FUNDS_INSUFFICIENT");var w=await Wallet(actor,ct);await Put(w.Document?.Id??Guid.NewGuid(),actor,"WALLET",new CashWallet(actor,balance),ct);}
- private async Task<objec…2713 tokens truncated…NT",i,ct);return i;
+ private async Task<object> PlaceOrder(Guid actor,JsonElement x,CancellationToken ct) {
+  var q=await Get<Quote>(Id(x,"quoteId"),"QUOTE",ct);if(q.BuyerId!=actor)throw new CommerceForbidden();if(q.Used||q.ExpiresAtUtc<=clock.UtcNow)throw new CommerceConflict("QUOTE_EXPIRED_OR_USED");await Seller(q.SellerId,ct);
+  var disposition=Text(x,"unavailableDisposition");if(disposition is not("KEEP" or "REMOVE"))throw new ArgumentException("Explicit cart disposition.");
+  if(q.Unavailable.Count>0&&(!x.TryGetProperty("confirmUnavailable",out var confirmation)||confirmation.ValueKind!=JsonValueKind.True))throw new CommerceConflict("PARTIAL_BASKET_CONFIRMATION_REQUIRED");
+  var address=await Get<BuyerAddress>(q.AddressId,"ADDRESS",ct);
+  var store=await sellers.RegistrationDrafts.AsNoTracking().SingleAsync(s=>s.AccountId==q.SellerId,ct);if(store.Pickup!=true||store.ActivityCityId!=address.CityId)throw new CommerceConflict("PICKUP_COVERAGE_UNAVAILABLE");
+  var productNames=new Dictionary<Guid,string>();var actual=new List<(QuoteItem Item,Offer Offer)>();foreach(var item in q.Items){
+   var offer=await Get<Offer>(item.OfferId,"OFFER",ct);if(!offer.Published||offer.SellerId!=q.SellerId||offer.ProductId!=item.ProductId||offer.Version!=item.OfferVersion||offer.PriceRial!=item.UnitPriceRial||offer.Stock<item.Quantity)throw new CommerceConflict("QUOTE_CHANGED");
+   var product=await catalog.Products.AsNoTracking().SingleOrDefaultAsync(p=>p.Id==item.ProductId&&p.State==PublicationStates.Published&&p.Kind==CatalogProductKinds.Good,ct)??throw new CommerceConflict("PRODUCT_NOT_PUBLISHED");
+   if(!await catalog.Categories.AnyAsync(c=>c.Id==product.CategoryId&&c.State==PublicationStates.Published,ct)||product.CategoryId!=offer.CategoryId)throw new CommerceConflict("CATEGORY_NOT_PUBLISHED");
+   productNames[item.ProductId]=product.Name;actual.Add((item,offer));
+  }
+  CreditGrant? grant=null;long credit=0;
+  if(x.TryGetProperty("creditGrantId",out var creditId)&&creditId.ValueKind!=JsonValueKind.Null){grant=await Get<CreditGrant>(creditId.GetGuid(),"CREDIT",ct);if(grant.AccountId!=actor)throw new CommerceForbidden();if(q.PurchaseType!="PERSONAL"||grant.ExpiresAtUtc<=clock.UtcNow||actual.Any(i=>!grant.CategoryIds.Contains(i.Offer.CategoryId)))throw new CommerceConflict("CREDIT_NOT_ELIGIBLE");credit=Math.Min(grant.AvailableRial,q.ItemsTotalRial);}
+  var cash=q.ItemsTotalRial-credit;var wallet=await Wallet(actor,ct);if(wallet.Wallet.BalanceRial<cash)throw new CommerceConflict("PAYMENT_REQUIRED_PROVIDER_UNCONFIGURED");
+  await SetWallet(actor,wallet.Wallet.BalanceRial-cash,ct);if(grant!=null)await Put(grant.Id,actor,"CREDIT",grant with{AvailableRial=grant.AvailableRial-credit},ct);
+  var items=new List<OrderItem>();long remaining=credit;foreach(var(a,o)in actual){var value=checked(a.UnitPriceRial*a.Quantity);var part=Math.Min(remaining,value);remaining-=part;items.Add(new(Guid.NewGuid(),o.Id,o.ProductId,a.Quantity,a.UnitPriceRial,value-part,part,0,productNames[a.ProductId]));await Put(o.Id,o.SellerId,"OFFER",o with{Stock=o.Stock-a.Quantity,Version=checked(o.Version+1)},ct);}
+  var order=new Order(Guid.NewGuid(),actor,q.SellerId,q.PurchaseType,q.FulfillmentMode,address,items,q.ItemsTotalRial,cash,credit,grant?.Id,"PAID","NONE",1,clock.UtcNow,null,null);
+  Transfer(order.Id,"BUYER_CASH:"+actor,"ORDER_CASH:"+order.Id,cash,"CASH");Transfer(order.Id,"HOUSEHOLD_CREDIT:"+grant?.Id,"ORDER_CREDIT:"+order.Id,credit,"SUPPORT");
+  await Put(order.Id,actor,"ORDER",order,ct);await Put(q.Id,actor,"QUOTE",q with{Used=true},ct);
+  var cart=await Owned<Cart>(actor,"CART",ct);if(cart!=null){foreach(var item in q.Items){var current=cart.Items.Find(i=>i.ProductId==item.ProductId);if(current!=null){cart.Items.Remove(current);if(current.Quantity>item.Quantity)cart.Items.Add(current with{Quantity=current.Quantity-item.Quantity});}}if(disposition=="REMOVE")cart.Items.RemoveAll(i=>q.Unavailable.Any(u=>u.ProductId==i.ProductId));await Put(cart.Id,actor,"CART",cart with{Version=checked(cart.Version+1)},ct);}return order;
+ }
+ private static void Version(Order o,JsonElement x) {if(o.Version!=Count(x,"expectedVersion",1,int.MaxValue))throw new CommerceConflict("ORDER_VERSION_CHANGED");}
+ private async Task Refund(Order o,long cash,long credit,CancellationToken ct) {
+  Transfer(o.Id,"ORDER_CASH:"+o.Id,"BUYER_CASH:"+o.BuyerId,cash,"CASH");Transfer(o.Id,"ORDER_CREDIT:"+o.Id,"HOUSEHOLD_CREDIT:"+o.CreditGrantId,credit,"SUPPORT");
+  var wallet=await Wallet(o.BuyerId,ct);await SetWallet(o.BuyerId,checked(wallet.Wallet.BalanceRial+cash),ct);
+  if(credit>0&&o.CreditGrantId is Guid grantId){var g=await Get<CreditGrant>(grantId,"CREDIT",ct);await Put(g.Id,o.BuyerId,"CREDIT",g with{AvailableRial=checked(g.AvailableRial+credit)},ct);}
+ }
+ private async Task<object> Cancel(Guid actor,JsonElement x,CancellationToken ct) {
+  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();Version(o,x);if(o.State is "COLLECTED" or "CANCELLED"||o.HandoffAtUtc!=null)throw new CommerceConflict("CANCEL_CUTOFF_PASSED");
+  await Refund(o,o.CashPaidRial,o.CreditPaidRial,ct);foreach(var item in o.Items){var offer=await Get<Offer>(item.OfferId,"OFFER",ct);await Put(offer.Id,offer.SellerId,"OFFER",offer with{Stock=checked(offer.Stock+item.Quantity),Version=checked(offer.Version+1)},ct);}
+  o=o with{State="CANCELLED",RefundState="REFUNDED",Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
+ }
+ private async Task<object> SellerState(Guid actor,JsonElement x,CancellationToken ct) {
+  await Seller(actor,ct);var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.SellerId!=actor)throw new CommerceForbidden();Version(o,x);var target=Text(x,"state");if(!(o.State=="PAID"&&target=="PREPARING"||o.State=="PREPARING"&&target=="READY_FOR_PICKUP"))throw new CommerceConflict("ORDER_TRANSITION_INVALID");o=o with{State=target,Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
+ }
+ private async Task<object> ConfirmPickup(Guid actor,JsonElement x,CancellationToken ct) {
+  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();Version(o,x);if(o.State!="READY_FOR_PICKUP"||o.FulfillmentMode!="PICKUP")throw new CommerceConflict("ORDER_TRANSITION_INVALID");o=o with{State="COLLECTED",ReceivedAtUtc=clock.UtcNow,Version=checked(o.Version+1)};await Put(o.Id,o.BuyerId,"ORDER",o,ct);return o;
+ }
+ private async Task<object> ReportIncident(Guid actor,JsonElement x,CancellationToken ct) {
+  var o=await Get<Order>(Id(x,"orderId"),"ORDER",ct);if(o.BuyerId!=actor)throw new CommerceForbidden();if(o.ReceivedAtUtc==null||clock.UtcNow>o.ReceivedAtUtc.Value.AddHours(1))throw new CommerceConflict("INCIDENT_WINDOW_EXPIRED");
+  var item=o.Items.SingleOrDefault(i=>i.Id==Id(x,"orderItemId"))??throw new CommerceMissing();var quantity=Count(x,"quantity");var type=Text(x,"type");if(type is not("DAMAGED_ITEM" or "MISSING_ITEM"))throw new ArgumentException("Incident type.");
+  var pending=(await All<Incident>("INCIDENT",ct)).Where(i=>i.OrderItemId==item.Id&&i.State=="UNDER_REVIEW").Sum(i=>i.Quantity);
+  if(quantity>item.Quantity-item.RefundedQuantity-pending)throw new CommerceConflict("INCIDENT_QUANTITY_EXCEEDED");
+  var evidenceId=Id(x,"evidenceId");var evidence=await Get<CommerceEvidence>(evidenceId,"EVIDENCE",ct);if(evidence.AccountId!=actor)throw new CommerceForbidden();
+  var incident=new Incident(Guid.NewGuid(),o.Id,item.Id,actor,o.SellerId,type,quantity,evidenceId.ToString(),"UNDER_REVIEW",clock.UtcNow,null,null,null,null,null,false,0);
+  await Put(incident.Id,actor,"INCIDENT",incident,ct);return incident;
+ }
+ private async Task<object> DecideIncident(Guid actor,JsonElement x,CancellationToken ct) {
+  await Permission(actor,"SUPPORT",ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.State!="UNDER_REVIEW")throw new CommerceConflict("INCIDENT_ALREADY_DECIDED");var decision=Text(x,"decision");var reason=Text(x,"reason",1000);
+  if(decision=="REJECT"){i=i with{State="REJECTED"};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return new{incident=i,reason};}
+  if(decision!="APPROVE")throw new ArgumentException("Decision.");var o=await Get<Order>(i.OrderId,"ORDER",ct);var item=o.Items.Single(t=>t.Id==i.OrderItemId);
+  if(i.Quantity>item.Quantity-item.RefundedQuantity)throw new CommerceConflict("REFUND_LIMIT_EXCEEDED");
+  // Difference of cumulative fractions makes repeated partial refunds add up exactly.
+  var before=decimal.Floor((decimal)item.CreditRial*item.RefundedQuantity/item.Quantity);
+  var after=decimal.Floor((decimal)item.CreditRial*(item.RefundedQuantity+i.Quantity)/item.Quantity);
+  var credit=checked((long)(after-before));var amount=checked(item.UnitPriceRial*i.Quantity);await Refund(o,amount-credit,credit,ct);
+  var updated=o.Items.Select(t=>t.Id==item.Id?t with{RefundedQuantity=t.RefundedQuantity+i.Quantity}:t).ToList();
+  o=o with{Items=updated,RefundState=updated.All(t=>t.RefundedQuantity==t.Quantity)?"REFUNDED":"PARTIAL",Version=checked(o.Version+1)};
+  await Put(o.Id,o.BuyerId,"ORDER",o,ct);i=i with{State=i.Type=="DAMAGED_ITEM"?"AWAITING_RETURN":"RESOLVED",ApprovedAtUtc=clock.UtcNow,ReturnDueAtUtc=i.Type=="DAMAGED_ITEM"?clock.UtcNow.AddHours(1):null,RefundRial=amount};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return new{incident=i,reason};
+ }
+ private async Task<object> ReturnContact(Guid actor,JsonElement x,CancellationToken ct) {
+  await Seller(actor,ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.SellerId!=actor)throw new CommerceForbidden();if(i.State!="AWAITING_RETURN"||i.FirstContactAtUtc!=null)throw new CommerceConflict("RETURN_STATE_INVALID");
+  var evidence=Text(x,"evidenceReference");i=i with{FirstContactAtUtc=clock.UtcNow};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return new{incident=i,evidence};
+ }
+ private async Task<object> ReturnVisit(Guid actor,JsonElement x,CancellationToken ct) {
+  await Seller(actor,ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.SellerId!=actor)throw new CommerceForbidden();if(i.State!="AWAITING_RETURN"||i.FirstContactAtUtc==null||i.DoorVisitAtUtc!=null)throw new CommerceConflict("RETURN_CONTACT_REQUIRED");
+  var evidence=Text(x,"evidenceReference");i=i with{DoorVisitAtUtc=clock.UtcNow};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return new{incident=i,evidence};
+ }
+ private async Task<object> ConfirmReturn(Guid actor,JsonElement x,CancellationToken ct) {
+  // Buyer confirms actual physical collection; seller alone cannot fabricate receipt.
+  var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.BuyerId!=actor)throw new CommerceForbidden();if(i.State!="AWAITING_RETURN")throw new CommerceConflict("RETURN_STATE_INVALID");
+  i=i with{State="COLLECTED",CollectedAtUtc=clock.UtcNow,PenaltyApplied=clock.UtcNow>i.ReturnDueAtUtc};await Put(i.Id,i.BuyerId,"INCIDENT",i,ct);return i;
  }
  private async Task<object> VerifyUnavailable(Guid actor,JsonElement x,CancellationToken ct) {
   await Permission(actor,"SUPPORT",ct);var i=await Get<Incident>(Id(x,"incidentId"),"INCIDENT",ct);if(i.State!="AWAITING_RETURN"||i.FirstContactAtUtc==null||i.DoorVisitAtUtc==null||i.DoorVisitAtUtc>i.ReturnDueAtUtc)throw new CommerceConflict("TIMELY_CALL_AND_DOOR_EVIDENCE_REQUIRED");
