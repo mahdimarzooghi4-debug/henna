@@ -20,11 +20,15 @@
   این dependency مستقل از PSP است و از روی فرمت شبا، نام واردشده یا موفقیت
   پرداخت قبلی استنتاج نمی‌شود.
 - `IExternalLogisticsProvider` برای سرویس مستقل لجستیک؛ implementation
-  پیش‌فرض readiness=false دارد. منطق ناوگان، تخصیص پیک و مسیر داخل marketplace
-  ساخته نمی‌شود.
+  وضعیت پیکربندی را گزارش می‌کند. backend دارای transport client اولیهٔ Mono
+  برای ساخت/خواندن delivery request است؛ checkout هنوز آن را فراخوانی نمی‌کند.
+  منطق ناوگان، تخصیص پیک و مسیر داخل marketplace ساخته نمی‌شود.
 
-سه interface آخر عمداً فقط boundary آمادگی‌اند؛ متدهای provider-specific قبل
-از دریافت قرارداد واقعی اختراع نشده‌اند. قراردادهای داخلی سفارش، کیف پول،
+دو interface مربوط به PSP و احراز مالکیت شبا عمداً فقط boundary آمادگی‌اند؛
+متدهای provider-specific آن‌ها قبل از دریافت قرارداد واقعی اختراع نشده‌اند.
+برای Mono قرارداد v1 موجود است و transport اولیه طبق
+[HANA-LOGISTICS-002](HANA-LOGISTICS-002-MONO-TRANSPORT-ADAPTER.md) پیاده شده،
+اما هنوز بخشی از چرخهٔ سفارش نیست. قراردادهای داخلی سفارش، کیف پول،
 اعتبار، settlement و PICKUP موجود همچنان مستقل باقی می‌مانند.
 
 ## گیت ادمین
