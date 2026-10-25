@@ -9,6 +9,54 @@ namespace Hana.Infrastructure.Tests;
 public sealed class MonoLogisticsClientTests
 {
     [Fact]
+    public async Task ListBranchesUsesReadOnlyTenantScopedEndpoint()
+    {
+        Uri? sentUri = null;
+        HttpMethod? sentMethod = null;
+        string? apiKey = null;
+        string? idempotencyKey = null;
+        var handler = new StubHandler((request, _) =>
+        {
+            sentUri = request.RequestUri;
+            sentMethod = request.Method;
+            apiKey = request.Headers.GetValues("X-Mono-API-Key").Single();
+            idempotencyKey = request.Headers.Contains("Idempotency-Key") ? "unexpected" : null;
+            return Task.FromResult(JsonResponse("""
+                {"branches":[{"branchId":"br_0123456789abcdef0123456789abcdef","name":"شعبهٔ آزمایشی","address":"تهران","latitude":35.7,"longitude":51.4,"zoneId":"tehran","status":"ACTIVE"}]}
+                """));
+        });
+        using var http = new HttpClient(handler);
+        var client = new MonoLogisticsClient(http, Options.Create(Configured()));
+
+        var result = await client.ListBranchesAsync(CancellationToken.None);
+
+        Assert.Single(result.Branches);
+        Assert.Equal("br_0123456789abcdef0123456789abcdef", result.Branches[0].BranchId);
+        Assert.Equal(HttpMethod.Get, sentMethod);
+        Assert.Equal("https://mono.example/v1/branches", sentUri!.ToString());
+        Assert.Equal("secret-test-key", apiKey);
+        Assert.Null(idempotencyKey);
+    }
+
+    [Fact]
+    public async Task ListBranchesRejectsMalformedOrDuplicateProviderRows()
+    {
+        foreach (var body in new[]
+        {
+            """{"branches":[{"branchId":"bad","name":"x","status":"ACTIVE"}]}""",
+            """{"branches":[{"branchId":"br_0123456789abcdef0123456789abcdef","name":"x","status":"ACTIVE"},{"branchId":"br_0123456789abcdef0123456789abcdef","name":"y","status":"ACTIVE"}]}"""
+        })
+        {
+            using var http = new HttpClient(new StubHandler((_, _) =>
+                Task.FromResult(JsonResponse(body))));
+            var client = new MonoLogisticsClient(http, Options.Create(Configured()));
+            var exception = await Assert.ThrowsAsync<MonoLogisticsException>(() =>
+                client.ListBranchesAsync(CancellationToken.None));
+            Assert.Equal("INVALID_PROVIDER_RESPONSE", exception.ProviderCode);
+        }
+    }
+
+    [Fact]
     public async Task CreateUsesServerCredentialAndStableIdempotencyKey()
     {
         Uri? sentUri = null;
