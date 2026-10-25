@@ -344,7 +344,7 @@ public sealed record MonoDeliveryQuote(
         && IssuedAt != default && ExpiresAt > IssuedAt && RecordedAt != default
         && DistanceMeters > 0 && FareToman > 0
         && BuyerShareToman >= 0 && SellerShareToman >= 0
-        && BuyerShareToman + SellerShareToman == FareToman;
+        && (decimal)BuyerShareToman + SellerShareToman == FareToman;
 }
 
 public sealed record MonoDeliveryPromise(
