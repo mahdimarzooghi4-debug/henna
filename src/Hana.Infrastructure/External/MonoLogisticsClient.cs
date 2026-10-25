@@ -88,7 +88,13 @@ public sealed class MonoLogisticsClient : IMonoLogisticsClient
         using var message = CreateMessage(HttpMethod.Get,
             "v1/delivery-requests/" + Uri.EscapeDataString(deliveryRequestId));
         using var response = await SendAsync(message, cancellationToken);
-        return await ReadAsync<MonoDeliveryRequestDetail>(response, cancellationToken);
+        var result = await ReadAsync<MonoDeliveryRequestDetail>(response, cancellationToken);
+        if (result.DeliveryRequestId != deliveryRequestId
+            || string.IsNullOrWhiteSpace(result.ExternalReference)
+            || string.IsNullOrWhiteSpace(result.Status)
+            || result.CreatedAt == default)
+            throw new MonoLogisticsException(HttpStatusCode.BadGateway, "INVALID_PROVIDER_RESPONSE");
+        return result;
     }
 
     private HttpRequestMessage CreateMessage(HttpMethod method, string relativePath)
