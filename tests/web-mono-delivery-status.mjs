@@ -14,6 +14,7 @@ const valid = {
   committedDeliveryAt: null,
   correlationUpdatedAtUtc: "2026-10-25T12:00:00Z",
   correlationRevision: 2,
+  courierLocation: null,
   quote: {
     quoteId: "qte_0123456789abcdef0123456789abcdef",
     version: 1,
@@ -73,4 +74,24 @@ test("Mono delivery status parser keeps a prepared local correlation distinguish
   });
   assert.equal(parsed?.correlationState, "PREPARED");
   assert.equal(parsed?.deliveryRequestId, null);
+});
+
+test("Mono status parser exposes only validated minimal courier coordinates", () => {
+  const parsed = parseMonoDeliveryStatusView({
+    ...valid,
+    missionId: "mis_0123456789abcdef0123456789abcdef",
+    missionStatus: "IN_TRANSIT",
+    courierLocation: {
+      latitude: 35.7, longitude: 51.4, accuracy_meters: 8,
+      observed_at: "2026-10-25T12:00:00Z", courier_id: "must-not-forward",
+    },
+  });
+  assert.deepEqual(parsed?.courierLocation, {
+    latitude: 35.7, longitude: 51.4, accuracyMeters: 8,
+    observedAt: "2026-10-25T12:00:00Z",
+  });
+  assert.equal(parseMonoDeliveryStatusView({
+    ...valid, courierLocation: { latitude: 95, longitude: 51.4, accuracy_meters: null,
+      observed_at: "2026-10-25T12:00:00Z" },
+  }), null);
 });

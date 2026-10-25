@@ -67,13 +67,7 @@ function MonoDeliveryStatusLookup() {
   const [orderId, setOrderId] = useState("");
   const [state, setState] = useState<LookupState>({ kind: "idle" });
 
-  const lookup = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const normalized = orderId.trim();
-    if (!orderIdPattern.test(normalized)) {
-      setState({ kind: "error", message: "شناسه سفارش معتبر نیست." });
-      return;
-    }
+  const loadOrder = useCallback(async (normalized: string) => {
     setState({ kind: "loading" });
     try {
       const response = await fetch(
@@ -100,9 +94,27 @@ function MonoDeliveryStatusLookup() {
       setState({ kind: "error", message: error instanceof Error
         ? error.message : "وضعیت سفارش قابل دریافت نیست." });
     }
+  }, []);
+
+  const lookup = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalized = orderId.trim();
+    if (!orderIdPattern.test(normalized)) {
+      setState({ kind: "error", message: "شناسه سفارش معتبر نیست." });
+      return;
+    }
+    void loadOrder(normalized);
   };
 
   const value = state.kind === "ready" ? state.value : null;
+  useEffect(() => {
+    if (state.kind !== "ready" || !state.value.missionId ||
+        !["COURIER_ASSIGNED", "ARRIVED_PICKUP", "HANDED_TO_COURIER",
+          "PICKED_UP", "IN_TRANSIT", "ARRIVED_DROPOFF"].includes(state.value.missionStatus ?? ""))
+      return;
+    const timer = window.setInterval(() => void loadOrder(state.value.orderId), 15_000);
+    return () => window.clearInterval(timer);
+  }, [state, loadOrder]);
   return (
     <section className="admin-ops__section">
       <h2>وضعیت درخواست حمل مونو</h2>
@@ -137,6 +149,19 @@ function MonoDeliveryStatusLookup() {
             {value.missionId && <p>شناسه مأموریت: {value.missionId}</p>}
             {value.missionStatus && <p>وضعیت مأموریت: {value.missionStatus}</p>}
           </article>
+          {value.missionId && <article className="admin-ops__section" aria-live="polite">
+            <h3>موقعیت فعلی پیک</h3>
+            {value.courierLocation ? <>
+              <p>آخرین دریافت: {new Date(value.courierLocation.observedAt).toLocaleString("fa-IR")}</p>
+              {value.courierLocation.accuracyMeters !== null &&
+                <p>دقت گزارش‌شده: حدود {Math.round(value.courierLocation.accuracyMeters).toLocaleString("fa-IR")} متر</p>}
+              <p dir="ltr">{value.courierLocation.latitude.toFixed(5)}, {value.courierLocation.longitude.toFixed(5)}</p>
+              <a href={`geo:${value.courierLocation.latitude},${value.courierLocation.longitude}?q=${value.courierLocation.latitude},${value.courierLocation.longitude}`}>
+                بازکردن موقعیت در نقشهٔ دستگاه
+              </a>
+              <small>تنها آخرین موقعیت تازهٔ مأموریت فعال نمایش داده می‌شود.</small>
+            </> : <p>موقعیت تازه‌ای برای این مأموریت در دسترس نیست.</p>}
+          </article>}
           <article className="admin-ops__section">
             <h3>قیمت و زمان تحویل اعلام‌شده</h3>
             {value.quote ? <>

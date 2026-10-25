@@ -156,6 +156,8 @@ public sealed class MonoSellerBranchMappingTests
             string idempotencyKey, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<MonoDeliveryRequestDetail> GetDeliveryRequestAsync(string deliveryRequestId,
             CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<MonoCourierCurrentLocation?> GetCourierCurrentLocationAsync(string missionId,
+            CancellationToken cancellationToken) => Task.FromResult<MonoCourierCurrentLocation?>(null);
     }
 
     private sealed class TestClock(DateTimeOffset now) : IClock

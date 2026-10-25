@@ -10,6 +10,7 @@ export type MonoDeliveryStatusView = {
   committedDeliveryAt: string | null;
   correlationUpdatedAtUtc: string;
   correlationRevision: number;
+  courierLocation: null | { latitude: number; longitude: number; accuracyMeters: number | null; observedAt: string };
   quote: null | {
     quoteId: string;
     version: number;
@@ -63,6 +64,25 @@ export function parseMonoDeliveryStatusView(
       !safeInteger(x.correlationRevision, 1))
     return null;
 
+  const courierLocationRow = x.courierLocation == null ? null : row(x.courierLocation);
+  let courierLocation: MonoDeliveryStatusView["courierLocation"] = null;
+  if (x.courierLocation != null) {
+    if (!courierLocationRow || typeof courierLocationRow.latitude !== "number" ||
+        !Number.isFinite(courierLocationRow.latitude) || courierLocationRow.latitude < -90 || courierLocationRow.latitude > 90 ||
+        typeof courierLocationRow.longitude !== "number" || !Number.isFinite(courierLocationRow.longitude) ||
+        courierLocationRow.longitude < -180 || courierLocationRow.longitude > 180 ||
+        !(courierLocationRow.accuracy_meters === null || typeof courierLocationRow.accuracy_meters === "number" &&
+          Number.isFinite(courierLocationRow.accuracy_meters) && courierLocationRow.accuracy_meters >= 0) ||
+        !iso(courierLocationRow.observed_at))
+      return null;
+    courierLocation = {
+      latitude: courierLocationRow.latitude,
+      longitude: courierLocationRow.longitude,
+      accuracyMeters: courierLocationRow.accuracy_meters as number | null,
+      observedAt: courierLocationRow.observed_at,
+    };
+  }
+
   const quoteRow = x.quote === null ? null : row(x.quote);
   let quote: MonoDeliveryStatusView["quote"] = null;
   if (x.quote !== null) {
@@ -113,6 +133,7 @@ export function parseMonoDeliveryStatusView(
     committedDeliveryAt: x.committedDeliveryAt,
     correlationUpdatedAtUtc: x.correlationUpdatedAtUtc,
     correlationRevision: x.correlationRevision,
+    courierLocation,
     quote,
     promise,
   };

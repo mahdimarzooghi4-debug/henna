@@ -246,6 +246,50 @@ public sealed class MonoLogisticsClientTests
         }
     }
 
+    [Fact]
+    public async Task CourierLocationUsesCustomerApiKeyAndRejectsStalePoints()
+    {
+        Uri? sentUri = null;
+        string? apiKey = null;
+        var handler = new StubHandler((request, _) =>
+        {
+            sentUri = request.RequestUri;
+            apiKey = request.Headers.GetValues("X-Mono-API-Key").Single();
+            var body = JsonSerializer.Serialize(new
+            {
+                latitude = 35.7, longitude = 51.4, accuracy_meters = 8,
+                observed_at = DateTimeOffset.UtcNow.AddMinutes(-5)
+            });
+            return Task.FromResult(JsonResponse(body));
+        });
+        using var http = new HttpClient(handler);
+        var client = new MonoLogisticsClient(http, Options.Create(Configured()));
+
+        var exception = await Assert.ThrowsAsync<MonoLogisticsException>(() =>
+            client.GetCourierCurrentLocationAsync(
+                "mis_0123456789abcdef0123456789abcdef", CancellationToken.None));
+
+        Assert.Equal("INVALID_PROVIDER_RESPONSE", exception.ProviderCode);
+        Assert.Equal("secret-test-key", apiKey);
+        Assert.Equal("https://mono.example/v1/missions/mis_0123456789abcdef0123456789abcdef/courier-location", sentUri!.ToString());
+    }
+
+    [Fact]
+    public async Task CourierLocationTreatsUnavailablePointAsNoLivePosition()
+    {
+        var handler = new StubHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent("{\\\"error\\\":{\\\"code\\\":\\\"COURIER_LOCATION_UNAVAILABLE\\\"}}", Encoding.UTF8, "application/json")
+        }));
+        using var http = new HttpClient(handler);
+        var client = new MonoLogisticsClient(http, Options.Create(Configured()));
+
+        var result = await client.GetCourierCurrentLocationAsync(
+            "mis_0123456789abcdef0123456789abcdef", CancellationToken.None);
+
+        Assert.Null(result);
+    }
+
     private static MonoLogisticsOptions Configured() => new()
     {
         Enabled = true,
