@@ -133,6 +133,9 @@ async function main() {
     }
     if (path === "/api/seller/commerce/offers" && request.method() === "GET")
       return route.fulfill(json([offer()]));
+    if (path === "/api/seller/commerce/mono-packaging-profiles" &&
+        request.method() === "GET")
+      return route.fulfill(json([]));
     if (path === "/api/seller/commerce/settlements" && request.method() === "GET")
       return route.fulfill(json([settlement()]));
     if (path === "/api/seller/commerce/report" && request.method() === "GET")
