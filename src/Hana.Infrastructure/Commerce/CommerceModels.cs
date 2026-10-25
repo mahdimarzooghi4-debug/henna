@@ -13,12 +13,7 @@ public sealed record OrderItem(Guid Id,Guid OfferId,Guid ProductId,int Quantity,
 public sealed record MonoSellerProductPackagingProfile(Guid Id,Guid SellerId,Guid ProductId,
     string ShipmentModel,int BagCount,string LoadClass,decimal? EstimatedWeightKg,bool? Fragile,
     bool? Liquid,bool? KeepUpright,int? PackageCount,decimal? EstimatedVolumeM3,
-    string? TemperatureClass,int Version,DateTimeOffset UpdatedAtUtc)
-{
-    public MonoShipment ToMonoShipment() => new(ShipmentModel,BagCount,LoadClass,
-        EstimatedWeightKg,Fragile,Liquid,KeepUpright,PackageCount,EstimatedVolumeM3,TemperatureClass);
-    public bool IsValid() => Version > 0 && ToMonoShipment().IsValid();
-}
+    string? TemperatureClass,int Version,DateTimeOffset UpdatedAtUtc);
 public sealed record Order(Guid Id,Guid BuyerId,Guid SellerId,string PurchaseType,string FulfillmentMode,
     BuyerAddress Address,List<OrderItem> Items,long TotalRial,long CashPaidRial,long CreditPaidRial,
     Guid? CreditGrantId,string State,string RefundState,int Version,DateTimeOffset CreatedAtUtc,
