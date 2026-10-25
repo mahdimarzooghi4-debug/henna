@@ -30,6 +30,8 @@ public interface IMonoLogisticsClient
         CancellationToken cancellationToken);
     Task<MonoDeliveryRequestDetail> GetDeliveryRequestAsync(
         string deliveryRequestId, CancellationToken cancellationToken);
+    Task<MonoCourierCurrentLocation?> GetCourierCurrentLocationAsync(
+        string missionId, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -119,6 +121,33 @@ public sealed class MonoLogisticsClient : IMonoLogisticsClient
             || !result.HasValidQuoteAndPromise())
             throw new MonoLogisticsException(HttpStatusCode.BadGateway, "INVALID_PROVIDER_RESPONSE");
         return result;
+    }
+
+    public async Task<MonoCourierCurrentLocation?> GetCourierCurrentLocationAsync(
+        string missionId, CancellationToken cancellationToken)
+    {
+        EnsureConfigured();
+        if (!MonoIds.IsMissionId(missionId))
+            throw new ArgumentException("Invalid Mono Mission identifier.", nameof(missionId));
+
+        HttpResponseMessage response;
+        try
+        {
+            using var message = CreateMessage(HttpMethod.Get,
+                "v1/missions/" + Uri.EscapeDataString(missionId) + "/courier-location");
+            response = await SendAsync(message, cancellationToken);
+        }
+        catch (MonoLogisticsException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        using (response)
+        {
+            var result = await ReadAsync<MonoCourierCurrentLocation>(response, cancellationToken);
+            if (!result.IsValidAt(DateTimeOffset.UtcNow))
+                throw new MonoLogisticsException(HttpStatusCode.BadGateway, "INVALID_PROVIDER_RESPONSE");
+            return result;
+        }
     }
 
     private HttpRequestMessage CreateMessage(HttpMethod method, string relativePath)
@@ -229,6 +258,20 @@ public sealed class MonoLogisticsException(HttpStatusCode statusCode, string pro
 {
     public HttpStatusCode StatusCode { get; } = statusCode;
     public string ProviderCode { get; } = providerCode;
+}
+
+public sealed record MonoCourierCurrentLocation(
+    [property: JsonPropertyName("latitude")] double Latitude,
+    [property: JsonPropertyName("longitude")] double Longitude,
+    [property: JsonPropertyName("accuracy_meters")] double? AccuracyMeters,
+    [property: JsonPropertyName("observed_at")] DateTimeOffset ObservedAt)
+{
+    public bool IsValidAt(DateTimeOffset now) =>
+        double.IsFinite(Latitude) && Latitude is >= -90 and <= 90
+        && double.IsFinite(Longitude) && Longitude is >= -180 and <= 180
+        && (AccuracyMeters is null || double.IsFinite(AccuracyMeters.Value) && AccuracyMeters.Value >= 0)
+        && ObservedAt != default && ObservedAt <= now
+        && now - ObservedAt <= TimeSpan.FromSeconds(60);
 }
 
 public sealed record MonoDeliveryRequestInput(
@@ -365,6 +408,7 @@ internal static class MonoIds
 {
     public static bool IsBranchId(string? value) => IsPrefixedHexId(value, "br_");
     public static bool IsDeliveryRequestId(string? value) => IsPrefixedHexId(value, "drq_");
+    public static bool IsMissionId(string? value) => IsPrefixedHexId(value, "mis_");
     private static bool IsPrefixedHexId(string? value, string prefix) =>
         value is not null && value.Length == prefix.Length + 32
         && value.StartsWith(prefix, StringComparison.Ordinal)
