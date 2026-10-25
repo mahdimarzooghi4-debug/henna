@@ -229,8 +229,8 @@ public sealed class MonoLogisticsClientTests
         var requestId = "drq_0123456789abcdef0123456789abcdef";
         var bodies = new[]
         {
-            $"""{"delivery_request_id":"{{requestId}}","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z","quote":{"quote_id":"qte_test_001","delivery_request_id":"{{requestId}}","version":1,"issued_at":"2026-10-25T12:01:00Z","expires_at":"2026-10-25T12:16:00Z","is_expired":false,"distance_meters":1500,"fare_toman":35000,"buyer_share_toman":20000,"seller_share_toman":10000,"recorded_at":"2026-10-25T12:01:00Z"},"promise":null}""",
-            $"""{"delivery_request_id":"{{requestId}}","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z","quote":null,"promise":{"promise_id":"prm_test_001","delivery_request_id":"drq_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","version":1,"committed_delivery_at":"2026-10-25T15:00:00Z","outcome":"ACCEPTED"}}"""
+            """{"delivery_request_id":"REQ_ID","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z","quote":{"quote_id":"qte_test_001","delivery_request_id":"REQ_ID","version":1,"issued_at":"2026-10-25T12:01:00Z","expires_at":"2026-10-25T12:16:00Z","is_expired":false,"distance_meters":1500,"fare_toman":35000,"buyer_share_toman":20000,"seller_share_toman":10000,"recorded_at":"2026-10-25T12:01:00Z"},"promise":null}""".Replace("REQ_ID", requestId, StringComparison.Ordinal),
+            """{"delivery_request_id":"REQ_ID","external_reference":"henna-order-0123","status":"RECEIVED","created_at":"2026-10-25T12:00:00Z","quote":null,"promise":{"promise_id":"prm_test_001","delivery_request_id":"drq_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","version":1,"committed_delivery_at":"2026-10-25T15:00:00Z","outcome":"ACCEPTED"}}""".Replace("REQ_ID", requestId, StringComparison.Ordinal)
         };
 
         foreach (var body in bodies)
