@@ -24,6 +24,7 @@ public sealed class MonoLogisticsOptions
 public interface IMonoLogisticsClient
 {
     bool IsAvailable { get; }
+    Task<MonoBranchList> ListBranchesAsync(CancellationToken cancellationToken);
     Task<MonoDeliveryRequestCreated> CreateDeliveryRequestAsync(
         MonoDeliveryRequestInput request, string idempotencyKey,
         CancellationToken cancellationToken);
@@ -55,6 +56,28 @@ public sealed class MonoLogisticsClient : IMonoLogisticsClient
     }
 
     public bool IsAvailable => options.IsConfigured;
+
+    public async Task<MonoBranchList> ListBranchesAsync(CancellationToken cancellationToken)
+    {
+        EnsureConfigured();
+        using var message = CreateMessage(HttpMethod.Get, "v1/branches");
+        using var response = await SendAsync(message, cancellationToken);
+        var result = await ReadAsync<MonoBranchList>(response, cancellationToken);
+        if (result.Branches is null || result.Branches.Count > 500
+            || result.Branches.Any(branch => branch is null
+                || !MonoIds.IsBranchId(branch.BranchId)
+                || string.IsNullOrWhiteSpace(branch.Name) || branch.Name.Length > 200
+                || string.IsNullOrWhiteSpace(branch.Status) || branch.Status.Length > 32
+                || (branch.Latitude is null) != (branch.Longitude is null)
+                || branch.Latitude is < -90 or > 90
+                || branch.Longitude is < -180 or > 180
+                || branch.Address is { Length: > 500 }
+                || branch.ZoneId is { Length: > 128 })
+            || result.Branches.Select(branch => branch.BranchId)
+                .Distinct(StringComparer.Ordinal).Count() != result.Branches.Count)
+            throw new MonoLogisticsException(HttpStatusCode.BadGateway, "INVALID_PROVIDER_RESPONSE");
+        return result;
+    }
 
     public async Task<MonoDeliveryRequestCreated> CreateDeliveryRequestAsync(
         MonoDeliveryRequestInput request, string idempotencyKey,
@@ -226,6 +249,18 @@ public sealed record MonoDeliveryRequestInput(
         && RequestedService == "URBAN_DELIVERY"
         && RequestedPriority == "STANDARD";
 }
+
+public sealed record MonoBranchList(
+    [property: JsonPropertyName("branches")] List<MonoBranchSummary> Branches);
+
+public sealed record MonoBranchSummary(
+    [property: JsonPropertyName("branchId")] string BranchId,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("address")] string? Address,
+    [property: JsonPropertyName("latitude")] decimal? Latitude,
+    [property: JsonPropertyName("longitude")] decimal? Longitude,
+    [property: JsonPropertyName("zoneId")] string? ZoneId,
+    [property: JsonPropertyName("status")] string Status);
 
 public sealed record MonoDeliveryLocation(
     [property: JsonPropertyName("address_text")] string? AddressText,
