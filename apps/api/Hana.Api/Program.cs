@@ -158,6 +158,7 @@ if (hasCommerceDb)
         pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "commerce")));
     builder.Services.AddScoped<CommerceService>();
     builder.Services.AddScoped<IMonoDeliveryCorrelationStore, MonoDeliveryCorrelationStore>();
+    builder.Services.AddScoped<MonoDeliveryStatusReader>();
     builder.Services.AddScoped<MonoSellerBranchMappingService>();
     if (Guid.TryParse(builder.Configuration["Commerce:AutomationAccountId"], out var automationAccount) && automationAccount != Guid.Empty)
         builder.Services.AddHostedService(services => new CommerceAutomation(
