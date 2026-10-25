@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Hana.Infrastructure.External;
 namespace Hana.Infrastructure.Commerce;
 // Versioned aggregate documents; writes go through CommerceService's atomic command boundary.
 public sealed class CommerceDocument
@@ -32,6 +33,7 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
     public DbSet<CommerceDocument> Documents => Set<CommerceDocument>();
     public DbSet<CommerceCommandReceipt> Receipts => Set<CommerceCommandReceipt>();
     public DbSet<CommerceJournal> Journal => Set<CommerceJournal>();
+    public DbSet<MonoDeliveryCorrelation> MonoDeliveryCorrelations => Set<MonoDeliveryCorrelation>();
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.HasDefaultSchema("commerce");
@@ -49,6 +51,24 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
             e.ToTable("journal");e.HasKey(x=>x.Id);e.Property(x=>x.Id).ValueGeneratedNever();
             e.Property(x=>x.Event).HasMaxLength(64).IsRequired();e.Property(x=>x.Body).HasColumnType("jsonb").IsRequired();
             e.HasIndex(x=>new{x.ResourceId,x.CreatedAtUtc});
+        });
+        b.Entity<MonoDeliveryCorrelation>(e=>{
+            e.ToTable("mono_delivery_correlations", t=>{
+                t.HasCheckConstraint("ck_mono_delivery_correlation_state", "\"State\" IN ('PREPARED','REQUEST_RECEIVED','MISSION_LINKED')");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_revision", "\"Revision\" > 0");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_request_state", "\"State\" = 'PREPARED' OR \"DeliveryRequestId\" IS NOT NULL");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_mission_state", "\"State\" <> 'MISSION_LINKED' OR \"MissionId\" IS NOT NULL");
+            });
+            e.HasKey(x=>x.OrderId);e.Property(x=>x.OrderId).ValueGeneratedNever();
+            e.Property(x=>x.IdempotencyKey).HasMaxLength(128).IsRequired();
+            e.Property(x=>x.State).HasMaxLength(32).IsRequired();
+            e.Property(x=>x.DeliveryRequestId).HasMaxLength(64);
+            e.Property(x=>x.MissionId).HasMaxLength(64);
+            e.Property(x=>x.PreparedAtUtc).IsRequired();e.Property(x=>x.UpdatedAtUtc).IsRequired();
+            e.Property(x=>x.Revision).IsConcurrencyToken();
+            e.HasIndex(x=>x.IdempotencyKey).IsUnique();
+            e.HasIndex(x=>x.DeliveryRequestId).IsUnique();
+            e.HasIndex(x=>x.MissionId).IsUnique();
         });
     }
     private void ValidateWrites()
