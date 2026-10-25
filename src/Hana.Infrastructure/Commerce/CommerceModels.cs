@@ -1,4 +1,5 @@
 namespace Hana.Infrastructure.Commerce;
+using Hana.Infrastructure.External;
 public sealed record Offer(Guid Id,Guid SellerId,Guid ProductId,Guid CategoryId,long PriceRial,int Stock,int Version,bool Published);
 public sealed record ServiceListing(Guid Id,Guid SellerId,Guid ProductId,Guid CategoryId,long PriceRial,string AvailabilityNote,int Version,bool Published);
 public sealed record CartItem(Guid ProductId,int Quantity);
@@ -9,6 +10,15 @@ public sealed record Quote(Guid Id,Guid BuyerId,Guid SellerId,Guid AddressId,str
     string FulfillmentMode,List<QuoteItem> Items,List<CartItem> Unavailable,long ItemsTotalRial,
     DateTimeOffset ExpiresAtUtc,bool Used);
 public sealed record OrderItem(Guid Id,Guid OfferId,Guid ProductId,int Quantity,long UnitPriceRial,long CashRial,long CreditRial,int RefundedQuantity,string? ProductName=null);
+public sealed record MonoSellerProductPackagingProfile(Guid Id,Guid SellerId,Guid ProductId,
+    string ShipmentModel,int BagCount,string LoadClass,decimal? EstimatedWeightKg,bool? Fragile,
+    bool? Liquid,bool? KeepUpright,int? PackageCount,decimal? EstimatedVolumeM3,
+    string? TemperatureClass,int Version,DateTimeOffset UpdatedAtUtc)
+{
+    public MonoShipment ToMonoShipment() => new(ShipmentModel,BagCount,LoadClass,
+        EstimatedWeightKg,Fragile,Liquid,KeepUpright,PackageCount,EstimatedVolumeM3,TemperatureClass);
+    public bool IsValid() => Version > 0 && ToMonoShipment().IsValid();
+}
 public sealed record Order(Guid Id,Guid BuyerId,Guid SellerId,string PurchaseType,string FulfillmentMode,
     BuyerAddress Address,List<OrderItem> Items,long TotalRial,long CashPaidRial,long CreditPaidRial,
     Guid? CreditGrantId,string State,string RefundState,int Version,DateTimeOffset CreatedAtUtc,
