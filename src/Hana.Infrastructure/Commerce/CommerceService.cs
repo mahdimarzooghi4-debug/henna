@@ -26,7 +26,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
   else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
-  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
+  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SAVE_MONO_PACKAGING_PROFILE","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   transactionActor=actor;transactionCommand=command;
   // Pilot correctness boundary: serialize commerce mutations across API processes. Never an in-memory lock.
   await using var tx=await db.Database.BeginTransactionAsync(ct);
@@ -35,14 +35,14 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(finance.Contains(action))await Permission(actor,"FINANCE",ct);
   else if(support.Contains(action))await Permission(actor,"SUPPORT",ct);
   else if(privileged.Contains(action)||action=="SET_STAFF_PERMISSION")await Admin(actor,ct);
-  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
+  if(new[]{"SAVE_OFFER","SAVE_SERVICE_LISTING","SAVE_MONO_PACKAGING_PROFILE","SELLER_ORDER_STATE","RETURN_CONTACT","RETURN_VISIT"}.Contains(action))await Seller(actor,ct);
   var fingerprint=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(action+Canonical(input))));
   var prior=await db.Receipts.SingleOrDefaultAsync(x=>x.ActorId==actor && x.CommandId==command,ct);
   if(prior!=null) { if(prior.Fingerprint!=fingerprint) throw new CommerceConflict("IDEMPOTENCY_PAYLOAD_CHANGED"); return JsonSerializer.Deserialize<JsonElement>(prior.ResultJson); }
   if(await db.Receipts.CountAsync(r=>r.ActorId==actor&&r.CreatedAtUtc>clock.UtcNow.AddMinutes(-1),ct)>=120)
    throw new CommerceConflict("COMMAND_RATE_LIMITED");
   object result=action switch {
-   "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SAVE_SERVICE_LISTING"=>await SaveServiceListing(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct), "COMPARE_CART"=>await CompareCart(actor,ct),
+   "SAVE_OFFER"=>await SaveOffer(actor,input,ct), "SAVE_SERVICE_LISTING"=>await SaveServiceListing(actor,input,ct), "SAVE_MONO_PACKAGING_PROFILE"=>await SaveMonoPackagingProfile(actor,input,ct), "SET_CART_ITEM"=>await SetCart(actor,input,ct), "COMPARE_CART"=>await CompareCart(actor,ct),
    "SAVE_ADDRESS"=>await SaveAddress(actor,input,ct), "CREATE_QUOTE"=>await CreateQuote(actor,input,ct),
    "PLACE_ORDER"=>await PlaceOrder(actor,input,ct), "CANCEL_ORDER"=>await Cancel(actor,input,ct),
    "SELLER_ORDER_STATE"=>await SellerState(actor,input,ct), "CONFIRM_PICKUP"=>await ConfirmPickup(actor,input,ct),
@@ -84,6 +84,9 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
  private static string Text(JsonElement x,string key,int max=240) { if(!x.TryGetProperty(key,out var p)||p.ValueKind!=JsonValueKind.String||string.IsNullOrWhiteSpace(p.GetString())||p.GetString()!.Length>max) throw new ArgumentException(key);return p.GetString()!.Trim(); }
  private static long Money(JsonElement x,string key,bool zero=false) { if(!x.TryGetProperty(key,out var p)||!p.TryGetInt64(out var n)||n<(zero?0:1)) throw new ArgumentException(key);return n; }
  private static int Count(JsonElement x,string key,int min=1,int max=999) { if(!x.TryGetProperty(key,out var p)||!p.TryGetInt32(out var n)||n<min||n>max) throw new ArgumentException(key);return n; }
+ private static decimal? OptionalDecimal(JsonElement x,string key) { if(!x.TryGetProperty(key,out var p)||p.ValueKind==JsonValueKind.Null)return null;if(!p.TryGetDecimal(out var n))throw new ArgumentException(key);return n; }
+ private static bool? OptionalBoolean(JsonElement x,string key) { if(!x.TryGetProperty(key,out var p)||p.ValueKind==JsonValueKind.Null)return null;if(p.ValueKind is not(JsonValueKind.True or JsonValueKind.False))throw new ArgumentException(key);return p.GetBoolean(); }
+ private static string? OptionalText(JsonElement x,string key,int max=32) { if(!x.TryGetProperty(key,out var p)||p.ValueKind==JsonValueKind.Null)return null;if(p.ValueKind!=JsonValueKind.String||p.GetString()!.Length>max)throw new ArgumentException(key);return p.GetString(); }
  private static DateTimeOffset Utc(JsonElement x,string key) { if(!x.TryGetProperty(key,out var p)||!p.TryGetDateTimeOffset(out var n)||n.Offset!=TimeSpan.Zero) throw new ArgumentException(key);return n; }
  private async Task Admin(Guid actor,CancellationToken ct) { if(!await roles.HasRoleAsync(actor,HanaRoles.Admin,ct)) throw new CommerceForbidden(); }
  private async Task<object> SaveEvidence(Guid actor,JsonElement x,CancellationToken ct) {
@@ -147,6 +150,32 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
   if(old==null&&Count(x,"expectedVersion",0,int.MaxValue)!=0)throw new CommerceConflict("OFFER_VERSION_CHANGED");
   var offer=new Offer(offerId,actor,product.Id,product.CategoryId,Money(x,"priceRial"),Count(x,"stock",0,1000000),checked((old?.Version??0)+1),true);
   await Put(offer.Id,actor,"OFFER",offer,ct);return offer;
+ }
+ private async Task<object> SaveMonoPackagingProfile(Guid actor,JsonElement x,CancellationToken ct) {
+  await SellerOffering(actor,"GOOD",ct);
+  var productId=Id(x,"productId");
+  if(!(await All<Offer>("OFFER",ct)).Any(item=>item.SellerId==actor&&item.ProductId==productId))
+   throw new CommerceMissing();
+  var profiles=await All<MonoSellerProductPackagingProfile>("MONO_PACKAGING_PROFILE",ct);
+  var old=profiles.SingleOrDefault(item=>item.SellerId==actor&&item.ProductId==productId);
+  var expected=Count(x,"expectedVersion",0,int.MaxValue);
+  if((old?.Version??0)!=expected)throw new CommerceConflict("PACKAGING_PROFILE_VERSION_CHANGED");
+  var loadClass=Text(x,"loadClass",1);
+  var profile=new MonoSellerProductPackagingProfile(old?.Id??Guid.NewGuid(),actor,productId,
+   Text(x,"shipmentModel",32),Count(x,"bagCount",1,int.MaxValue),loadClass,
+   OptionalDecimal(x,"estimatedWeightKg"),OptionalBoolean(x,"fragile"),
+   OptionalBoolean(x,"liquid"),OptionalBoolean(x,"keepUpright"),
+   x.TryGetProperty("packageCount",out var packageCount)&&packageCount.ValueKind!=JsonValueKind.Null
+    ? Count(x,"packageCount",1,int.MaxValue) : null,
+   OptionalDecimal(x,"estimatedVolumeM3"),OptionalText(x,"temperatureClass"),
+   checked(expected+1),clock.UtcNow);
+  if(!new Hana.Infrastructure.External.MonoShipment(profile.ShipmentModel,profile.BagCount,
+    profile.LoadClass,profile.EstimatedWeightKg,profile.Fragile,profile.Liquid,
+    profile.KeepUpright,profile.PackageCount,profile.EstimatedVolumeM3,
+    profile.TemperatureClass).IsValid())
+   throw new ArgumentException("Packaging profile is incomplete or invalid.");
+  await Put(profile.Id,actor,"MONO_PACKAGING_PROFILE",profile,ct);
+  return profile;
  }
  private async Task<object> SaveServiceListing(Guid actor,JsonElement x,CancellationToken ct) {
   await SellerOffering(actor,"SERVICE",ct);
@@ -635,7 +664,7 @@ public sealed class CommerceService(HanaCommerceDbContext db,HanaCatalogDbContex
    return new{orders=orders.Count,cancelled=orders.Count(o=>o.State=="CANCELLED"),collected=orders.Count(o=>o.State=="COLLECTED"),openIncidents=cases.Count(i=>i.State is "UNDER_REVIEW" or "AWAITING_RETURN"),preparedSettlements=settlements.Count,grossRial=orders.Where(o=>o.State!="CANCELLED").Aggregate(0L,(n,o)=>checked(n+o.TotalRial))};
   }
   if(kind=="INTEGRITY")return await IntegrityAsync(actor,ct);
-  var allowed=new[]{"OFFER","SERVICE_LISTING","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION","FEE_VERSION","HOUSEHOLD"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
+  var allowed=new[]{"OFFER","SERVICE_LISTING","MONO_PACKAGING_PROFILE","CART","ADDRESS","QUOTE","ORDER","WALLET","CREDIT","PROGRAM","INCIDENT","SETTLEMENT","WITHDRAWAL","TICKET","NOTIFICATION","CONTENT","ORGANIZATION","MEMBERSHIP","PERMISSION","FEE_VERSION","HOUSEHOLD"};if(!allowed.Contains(kind))throw new ArgumentException("Resource kind.");
   if(view=="SUPPORT")await Permission(actor,"SUPPORT",ct);
   var admin=await roles.HasRoleAsync(actor,HanaRoles.Admin,ct);
   var supportAccess=new[]{"ORDER","INCIDENT","TICKET"}.Contains(kind)&&await HasPermission(actor,"SUPPORT",ct);

@@ -3,7 +3,7 @@
   "info": {
     "title": "Henna internal pilot commerce API",
     "version": "2026-10-04",
-    "description": "Backend contract only; SMS, PSP and logistics excluded. Command and stored resource records retain PascalCase; public typed records use camelCase. Runtime OpenAPI can remain generic for JsonElement endpoints."
+    "description": "Backend contract only; SMS, PSP and external delivery dispatch are not configured. Seller Mono packaging profiles are metadata only and do not create delivery requests. Command and stored resource records retain PascalCase; public typed records use camelCase. Runtime OpenAPI can remain generic for JsonElement endpoints."
   },
   "paths": {
     "/api/v1/commerce/commands/SAVE_OFFER": {
@@ -64,6 +64,134 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SAVE_OFFERInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/commerce/commands/SAVE_SERVICE_LISTING": {
+      "post": {
+        "description": "Active SERVICE/BOTH SELLER; persisted idempotency, all monetary values in IRR.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceListing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SAVE_SERVICE_LISTINGInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/commerce/commands/SAVE_MONO_PACKAGING_PROFILE": {
+      "post": {
+        "description": "Active seller with own offer for product; persisted idempotency, all monetary values in IRR.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonoSellerProductPackagingProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SAVE_MONO_PACKAGING_PROFILEInput"
               }
             }
           }
@@ -2349,6 +2477,83 @@
         }
       }
     },
+    "/api/v1/commerce/commands/DELETE_EVIDENCE": {
+      "post": {
+        "description": "Authenticated owner; persisted idempotency, all monetary values in IRR.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "evidenceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "evidenceId",
+                    "deleted"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DELETE_EVIDENCEInput"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/carts/current/items": {
       "post": {
         "description": "Authenticated owner; alias of SET_CART_ITEM. A supplied body ID must match the route ID.",
@@ -2995,6 +3200,383 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/Offer"
+                      }
+                    },
+                    "page": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 1
+                    },
+                    "pageSize": {
+                      "const": 20
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/seller/service-listings": {
+      "post": {
+        "description": "Active SERVICE/BOTH SELLER; alias of SAVE_SERVICE_LISTING. A supplied body ID must match the route ID.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceListing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "listingId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "productId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "priceRial": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 1
+                  },
+                  "availabilityNote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "listingId",
+                  "productId",
+                  "priceRial",
+                  "availabilityNote",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "description": "Scoped before pagination. /me and /orders show the buyer; /seller requires active SELLER.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceListing"
+                      }
+                    },
+                    "page": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 1
+                    },
+                    "pageSize": {
+                      "const": 20
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/seller/mono-packaging-profiles": {
+      "post": {
+        "description": "Active seller with own offer for product; alias of SAVE_MONO_PACKAGING_PROFILE. A supplied body ID must match the route ID.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonoSellerProductPackagingProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "shipmentModel": {
+                    "type": "string",
+                    "enum": [
+                      "BAG_BASED"
+                    ]
+                  },
+                  "bagCount": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 1
+                  },
+                  "loadClass": {
+                    "type": "string",
+                    "enum": [
+                      "S",
+                      "M",
+                      "L"
+                    ]
+                  },
+                  "estimatedWeightKg": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fragile": {
+                    "type": "boolean"
+                  },
+                  "liquid": {
+                    "type": "boolean"
+                  },
+                  "keepUpright": {
+                    "type": "boolean"
+                  },
+                  "packageCount": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 1
+                  },
+                  "estimatedVolumeM3": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperatureClass": {
+                    "type": "string",
+                    "enum": [
+                      "AMBIENT",
+                      "CHILLED",
+                      "FROZEN"
+                    ]
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  }
+                },
+                "required": [
+                  "productId",
+                  "shipmentModel",
+                  "bagCount",
+                  "loadClass",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "description": "Scoped before pagination. /me and /orders show the buyer; /seller requires active SELLER.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MonoSellerProductPackagingProfile"
                       }
                     },
                     "page": {
@@ -4488,6 +5070,99 @@
         }
       }
     },
+    "/api/v1/me/evidence/{id}/discard": {
+      "post": {
+        "description": "Authenticated owner; alias of DELETE_EVIDENCE. A supplied body ID must match the route ID.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "evidenceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "evidenceId",
+                    "deleted"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "evidenceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/support/tickets/{id}/reply": {
       "post": {
         "description": "SUPPORT or ADMIN; alias of REPLY_TICKET. A supplied body ID must match the route ID.",
@@ -5551,6 +6226,86 @@
         }
       }
     },
+    "/api/v1/service-listings": {
+      "get": {
+        "description": "Published service listings belonging to currently activated sellers. This is not a booking or logistics promise.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PublicServiceListing"
+                      }
+                    },
+                    "page": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 1
+                    },
+                    "pageSize": {
+                      "const": 20
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "page",
+                    "pageSize"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/content/{slug}": {
       "get": {
         "description": "Only explicitly published content.",
@@ -5618,6 +6373,50 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OrganizationDashboard"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing UUID Idempotency-Key"
+          },
+          "401": {
+            "description": "Missing/invalid/expired session"
+          },
+          "403": {
+            "description": "Current role or ownership denied"
+          },
+          "404": {
+            "description": "Missing or concealed resource"
+          },
+          "409": {
+            "description": "State, balance, inventory, version or idempotency conflict"
+          },
+          "429": {
+            "description": "New command limit exceeded"
+          },
+          "503": {
+            "description": "Backend/integration unconfigured or temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/seller/report": {
+      "get": {
+        "description": "Active seller only. Aggregate order, incident and prepared-settlement metrics scoped to the current seller; no buyer identities.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerOperationalReport"
                 }
               }
             }
@@ -5731,6 +6530,7 @@
               "enum": [
                 "OFFER",
                 "SERVICE_LISTING",
+                "MONO_PACKAGING_PROFILE",
                 "CART",
                 "ADDRESS",
                 "QUOTE",
@@ -5812,6 +6612,30 @@
                           "type": "array",
                           "items": {
                             "$ref": "#/components/schemas/ServiceListing"
+                          }
+                        },
+                        "page": {
+                          "type": "integer",
+                          "format": "int64",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "const": 20
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "page",
+                        "pageSize"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/MonoSellerProductPackagingProfile"
                           }
                         },
                         "page": {
@@ -6298,535 +7122,6 @@
           }
         }
       }
-    },
-    "/api/v1/seller/report": {
-      "get": {
-        "description": "Active seller only. Aggregate order, incident and prepared-settlement metrics scoped to the current seller; no buyer identities.",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SellerOperationalReport"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or missing UUID Idempotency-Key"
-          },
-          "401": {
-            "description": "Missing/invalid/expired session"
-          },
-          "403": {
-            "description": "Current role or ownership denied"
-          },
-          "404": {
-            "description": "Missing or concealed resource"
-          },
-          "409": {
-            "description": "State, balance, inventory, version or idempotency conflict"
-          },
-          "429": {
-            "description": "New command limit exceeded"
-          },
-          "503": {
-            "description": "Backend/integration unconfigured or temporarily unavailable"
-          }
-        }
-      }
-    },
-    "/api/v1/commerce/commands/DELETE_EVIDENCE": {
-      "post": {
-        "description": "Authenticated owner; persisted idempotency, all monetary values in IRR.",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "evidenceId": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "deleted": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "evidenceId",
-                    "deleted"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or missing UUID Idempotency-Key"
-          },
-          "401": {
-            "description": "Missing/invalid/expired session"
-          },
-          "403": {
-            "description": "Current role or ownership denied"
-          },
-          "404": {
-            "description": "Missing or concealed resource"
-          },
-          "409": {
-            "description": "State, balance, inventory, version or idempotency conflict"
-          },
-          "429": {
-            "description": "New command limit exceeded"
-          },
-          "503": {
-            "description": "Backend/integration unconfigured or temporarily unavailable"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DELETE_EVIDENCEInput"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/me/evidence/{id}/discard": {
-      "post": {
-        "description": "Authenticated owner; alias of DELETE_EVIDENCE. A supplied body ID must match the route ID.",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "evidenceId": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "deleted": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "evidenceId",
-                    "deleted"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or missing UUID Idempotency-Key"
-          },
-          "401": {
-            "description": "Missing/invalid/expired session"
-          },
-          "403": {
-            "description": "Current role or ownership denied"
-          },
-          "404": {
-            "description": "Missing or concealed resource"
-          },
-          "409": {
-            "description": "State, balance, inventory, version or idempotency conflict"
-          },
-          "429": {
-            "description": "New command limit exceeded"
-          },
-          "503": {
-            "description": "Backend/integration unconfigured or temporarily unavailable"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "evidenceId": {
-                    "type": "string",
-                    "format": "uuid"
-                  }
-                },
-                "required": []
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/commerce/commands/SAVE_SERVICE_LISTING": {
-      "post": {
-        "description": "Active SERVICE/BOTH SELLER; persisted idempotency, all monetary values in IRR.",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServiceListing"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or missing UUID Idempotency-Key"
-          },
-          "401": {
-            "description": "Missing/invalid/expired session"
-          },
-          "403": {
-            "description": "Current role or ownership denied"
-          },
-          "404": {
-            "description": "Missing or concealed resource"
-          },
-          "409": {
-            "description": "State, balance, inventory, version or idempotency conflict"
-          },
-          "429": {
-            "description": "New command limit exceeded"
-          },
-          "503": {
-            "description": "Backend/integration unconfigured or temporarily unavailable"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SAVE_SERVICE_LISTINGInput"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/seller/service-listings": {
-      "post": {
-        "description": "Active SERVICE/BOTH SELLER; alias of SAVE_SERVICE_LISTING. A supplied body ID must match the route ID.",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServiceListing"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or missing UUID Idempotency-Key"
-          },
-          "401": {
-            "description": "Missing/invalid/expired session"
-          },
-          "403": {
-            "description": "Current role or ownership denied"
-          },
-          "404": {
-            "description": "Missing or concealed resource"
-          },
-          "409": {
-            "description": "State, balance, inventory, version or idempotency conflict"
-          },
-          "429": {
-            "description": "New command limit exceeded"
-          },
-          "503": {
-            "description": "Backend/integration unconfigured or temporarily unavailable"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "listingId": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "productId": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "priceRial": {
-                    "type": "integer",
-                    "format": "int64",
-                    "minimum": 1
-                  },
-                  "availabilityNote": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 500
-                  },
-                  "expectedVersion": {
-                    "type": "integer",
-                    "format": "int64",
-                    "minimum": 0,
-                    "maximum": 2147483647
-                  }
-                },
-                "required": [
-                  "listingId",
-                  "productId",
-                  "priceRial",
-                  "availabilityNote",
-                  "expectedVersion"
-                ]
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "description": "Scoped before pagination. /me and /orders show the buyer; /seller requires active SELLER.",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1,
-              "maximum": 10000
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ServiceListing"
-                      }
-                    },
-                    "page": {
-                      "type": "integer",
-                      "format": "int64",
-                      "minimum": 1
-                    },
-                    "pageSize": {
-                      "const": 20
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "page",
-                    "pageSize"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or missing UUID Idempotency-Key"
-          },
-          "401": {
-            "description": "Missing/invalid/expired session"
-          },
-          "403": {
-            "description": "Current role or ownership denied"
-          },
-          "404": {
-            "description": "Missing or concealed resource"
-          },
-          "409": {
-            "description": "State, balance, inventory, version or idempotency conflict"
-          },
-          "429": {
-            "description": "New command limit exceeded"
-          },
-          "503": {
-            "description": "Backend/integration unconfigured or temporarily unavailable"
-          }
-        }
-      }
-    },
-    "/api/v1/service-listings": {
-      "get": {
-        "description": "Published service listings belonging to currently activated sellers. This is not a booking or logistics promise.",
-        "security": [],
-        "parameters": [
-          {
-            "name": "productId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1,
-              "maximum": 10000
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/PublicServiceListing"
-                      }
-                    },
-                    "page": {
-                      "type": "integer",
-                      "format": "int64",
-                      "minimum": 1
-                    },
-                    "pageSize": {
-                      "const": 20
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "page",
-                    "pageSize"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or missing UUID Idempotency-Key"
-          },
-          "401": {
-            "description": "Missing/invalid/expired session"
-          },
-          "403": {
-            "description": "Current role or ownership denied"
-          },
-          "404": {
-            "description": "Missing or concealed resource"
-          },
-          "409": {
-            "description": "State, balance, inventory, version or idempotency conflict"
-          },
-          "429": {
-            "description": "New command limit exceeded"
-          },
-          "503": {
-            "description": "Backend/integration unconfigured or temporarily unavailable"
-          }
-        }
-      }
     }
   },
   "components": {
@@ -6931,6 +7226,102 @@
           "categoryId",
           "priceRial",
           "stock",
+          "version",
+          "published",
+          "storeName"
+        ]
+      },
+      "ServiceListing": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "SellerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ProductId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "CategoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "PriceRial": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "AvailabilityNote": {
+            "type": "string"
+          },
+          "Version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "Published": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "Id",
+          "SellerId",
+          "ProductId",
+          "CategoryId",
+          "PriceRial",
+          "AvailabilityNote",
+          "Version",
+          "Published"
+        ]
+      },
+      "PublicServiceListing": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sellerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priceRial": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "availabilityNote": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "storeName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "id",
+          "sellerId",
+          "productId",
+          "categoryId",
+          "priceRial",
+          "availabilityNote",
           "version",
           "published",
           "storeName"
@@ -7402,6 +7793,254 @@
           "creditRial",
           "refundedQuantity",
           "productName"
+        ]
+      },
+      "MonoSellerProductPackagingProfile": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "SellerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ProductId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ShipmentModel": {
+            "type": "string"
+          },
+          "BagCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "LoadClass": {
+            "type": "string"
+          },
+          "EstimatedWeightKg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "Fragile": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "Liquid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "KeepUpright": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "PackageCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "EstimatedVolumeM3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "TemperatureClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "Version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "UpdatedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC timestamp with zero offset."
+          }
+        },
+        "required": [
+          "Id",
+          "SellerId",
+          "ProductId",
+          "ShipmentModel",
+          "BagCount",
+          "LoadClass",
+          "EstimatedWeightKg",
+          "Fragile",
+          "Liquid",
+          "KeepUpright",
+          "PackageCount",
+          "EstimatedVolumeM3",
+          "TemperatureClass",
+          "Version",
+          "UpdatedAtUtc"
+        ]
+      },
+      "PublicMonoSellerProductPackagingProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sellerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shipmentModel": {
+            "type": "string"
+          },
+          "bagCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "loadClass": {
+            "type": "string"
+          },
+          "estimatedWeightKg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fragile": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "liquid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keepUpright": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "packageCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estimatedVolumeM3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "temperatureClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC timestamp with zero offset."
+          }
+        },
+        "required": [
+          "id",
+          "sellerId",
+          "productId",
+          "shipmentModel",
+          "bagCount",
+          "loadClass",
+          "estimatedWeightKg",
+          "fragile",
+          "liquid",
+          "keepUpright",
+          "packageCount",
+          "estimatedVolumeM3",
+          "temperatureClass",
+          "version",
+          "updatedAtUtc"
         ]
       },
       "Order": {
@@ -8945,6 +9584,113 @@
           "expectedVersion"
         ]
       },
+      "SAVE_SERVICE_LISTINGInput": {
+        "type": "object",
+        "properties": {
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priceRial": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "availabilityNote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        },
+        "required": [
+          "listingId",
+          "productId",
+          "priceRial",
+          "availabilityNote",
+          "expectedVersion"
+        ]
+      },
+      "SAVE_MONO_PACKAGING_PROFILEInput": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shipmentModel": {
+            "type": "string",
+            "enum": [
+              "BAG_BASED"
+            ]
+          },
+          "bagCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "loadClass": {
+            "type": "string",
+            "enum": [
+              "S",
+              "M",
+              "L"
+            ]
+          },
+          "estimatedWeightKg": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "fragile": {
+            "type": "boolean"
+          },
+          "liquid": {
+            "type": "boolean"
+          },
+          "keepUpright": {
+            "type": "boolean"
+          },
+          "packageCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "estimatedVolumeM3": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "temperatureClass": {
+            "type": "string",
+            "enum": [
+              "AMBIENT",
+              "CHILLED",
+              "FROZEN"
+            ]
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        },
+        "required": [
+          "productId",
+          "shipmentModel",
+          "bagCount",
+          "loadClass",
+          "expectedVersion"
+        ]
+      },
       "SET_CART_ITEMInput": {
         "type": "object",
         "properties": {
@@ -9720,6 +10466,18 @@
           "contentBase64"
         ]
       },
+      "DELETE_EVIDENCEInput": {
+        "type": "object",
+        "properties": {
+          "evidenceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "evidenceId"
+        ]
+      },
       "OperationalSummary": {
         "type": "object",
         "properties": {
@@ -9761,6 +10519,108 @@
           "openIncidents",
           "preparedSettlements",
           "grossRial"
+        ]
+      },
+      "SellerOperationalReport": {
+        "type": "object",
+        "properties": {
+          "orders": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "paid": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "preparing": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "readyForPickup": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "collected": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "cancelled": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "grossRial": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "openIncidents": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "incidentRefundRial": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "preparedSettlements": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "settlementGrossRial": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "settlementRefundRial": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "settlementPenaltyRial": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "settlementFeeRial": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "settlementNetRial": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "financeReviewRequired": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "orders",
+          "paid",
+          "preparing",
+          "readyForPickup",
+          "collected",
+          "cancelled",
+          "grossRial",
+          "openIncidents",
+          "incidentRefundRial",
+          "preparedSettlements",
+          "settlementGrossRial",
+          "settlementRefundRial",
+          "settlementPenaltyRial",
+          "settlementFeeRial",
+          "settlementNetRial",
+          "financeReviewRequired"
         ]
       },
       "AuditPage": {
@@ -9817,363 +10677,6 @@
         "required": [
           "items",
           "page"
-        ]
-      },
-      "OrganizationDashboard": {
-        "type": "object",
-        "properties": {
-          "organizations": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                "name": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 200
-                },
-                "managerCount": {
-                  "type": "integer",
-                  "format": "int64",
-                  "minimum": 0
-                },
-                "beneficiaryCount": {
-                  "type": "integer",
-                  "format": "int64",
-                  "minimum": 0
-                },
-                "programCount": {
-                  "type": "integer",
-                  "format": "int64",
-                  "minimum": 0
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "managerCount",
-                "beneficiaryCount",
-                "programCount"
-              ]
-            }
-          },
-          "programs": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                "organizationId": {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                "name": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 120
-                },
-                "fundedRial": {
-                  "type": "integer",
-                  "format": "int64",
-                  "minimum": 0
-                },
-                "unallocatedRial": {
-                  "type": "integer",
-                  "format": "int64",
-                  "minimum": 0
-                },
-                "expiresAtUtc": {
-                  "type": "string",
-                  "format": "date-time",
-                  "description": "UTC timestamp with zero offset."
-                },
-                "categoryCount": {
-                  "type": "integer",
-                  "format": "int64",
-                  "minimum": 1,
-                  "maximum": 100
-                }
-              },
-              "required": [
-                "id",
-                "organizationId",
-                "name",
-                "fundedRial",
-                "unallocatedRial",
-                "expiresAtUtc",
-                "categoryCount"
-              ]
-            }
-          },
-          "unreadNotifications": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
-          },
-          "openTickets": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "organizations",
-          "programs",
-          "unreadNotifications",
-          "openTickets"
-        ]
-      },
-      "SellerOperationalReport": {
-        "type": "object",
-        "properties": {
-          "orders": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "paid": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "preparing": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "readyForPickup": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "collected": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "cancelled": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "grossRial": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "openIncidents": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "incidentRefundRial": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "preparedSettlements": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "settlementGrossRial": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "settlementRefundRial": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "settlementPenaltyRial": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "settlementFeeRial": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          },
-          "settlementNetRial": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "financeReviewRequired": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          }
-        },
-        "required": [
-          "orders",
-          "paid",
-          "preparing",
-          "readyForPickup",
-          "collected",
-          "cancelled",
-          "grossRial",
-          "openIncidents",
-          "incidentRefundRial",
-          "preparedSettlements",
-          "settlementGrossRial",
-          "settlementRefundRial",
-          "settlementPenaltyRial",
-          "settlementFeeRial",
-          "settlementNetRial",
-          "financeReviewRequired"
-        ]
-      },
-      "DELETE_EVIDENCEInput": {
-        "type": "object",
-        "properties": {
-          "evidenceId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "evidenceId"
-        ]
-      },
-      "ServiceListing": {
-        "type": "object",
-        "properties": {
-          "Id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "SellerId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "ProductId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "CategoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "PriceRial": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "AvailabilityNote": {
-            "type": "string"
-          },
-          "Version": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "Published": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "Id",
-          "SellerId",
-          "ProductId",
-          "CategoryId",
-          "PriceRial",
-          "AvailabilityNote",
-          "Version",
-          "Published"
-        ]
-      },
-      "PublicServiceListing": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sellerId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "productId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "priceRial": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "availabilityNote": {
-            "type": "string"
-          },
-          "version": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "published": {
-            "type": "boolean"
-          },
-          "storeName": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          }
-        },
-        "required": [
-          "id",
-          "sellerId",
-          "productId",
-          "categoryId",
-          "priceRial",
-          "availabilityNote",
-          "version",
-          "published",
-          "storeName"
-        ]
-      },
-      "SAVE_SERVICE_LISTINGInput": {
-        "type": "object",
-        "properties": {
-          "listingId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "productId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "priceRial": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
-          },
-          "availabilityNote": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          },
-          "expectedVersion": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0,
-            "maximum": 2147483647
-          }
-        },
-        "required": [
-          "listingId",
-          "productId",
-          "priceRial",
-          "availabilityNote",
-          "expectedVersion"
         ]
       },
       "CommerceIntegrityViolation": {
@@ -10292,6 +10795,117 @@
           "truncated",
           "violations",
           "counts"
+        ]
+      },
+      "OrganizationDashboard": {
+        "type": "object",
+        "properties": {
+          "organizations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "managerCount": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "beneficiaryCount": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "programCount": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "managerCount",
+                "beneficiaryCount",
+                "programCount"
+              ]
+            }
+          },
+          "programs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "organizationId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "fundedRial": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "unallocatedRial": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "expiresAtUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "UTC timestamp with zero offset."
+                },
+                "categoryCount": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "id",
+                "organizationId",
+                "name",
+                "fundedRial",
+                "unallocatedRial",
+                "expiresAtUtc",
+                "categoryCount"
+              ]
+            }
+          },
+          "unreadNotifications": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "openTickets": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "organizations",
+          "programs",
+          "unreadNotifications",
+          "openTickets"
         ]
       }
     }
