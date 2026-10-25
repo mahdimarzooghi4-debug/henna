@@ -51,7 +51,12 @@ builder.Services.AddSingleton<IExternalIbanOwnershipVerifier,
     UnconfiguredExternalIbanOwnershipVerifier>();
 builder.Services.Configure<MonoLogisticsOptions>(
     builder.Configuration.GetSection(MonoLogisticsOptions.SectionName));
-builder.Services.AddHttpClient<IMonoLogisticsClient, MonoLogisticsClient>();
+builder.Services.AddHttpClient<IMonoLogisticsClient, MonoLogisticsClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        // Never forward the Mono API key through an HTTP redirect.
+        AllowAutoRedirect = false
+    });
 builder.Services.AddSingleton<IExternalLogisticsProvider,
     MonoExternalLogisticsProvider>();
 var otpKeyConfigured = false;
