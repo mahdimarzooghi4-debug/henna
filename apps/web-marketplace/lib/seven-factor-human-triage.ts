@@ -87,3 +87,56 @@ export function parseTriageResult(raw:unknown, selection:TriageSelection):Triage
     modelApproved:false,runtimeApplied:false
   };
 }
+
+export const triageRevalidationContract =
+  "HENNA-SEVEN-FACTOR-HUMAN-REVIEW-TRIAGE-REVALIDATION-v1";
+export const triageRevalidationStatus =
+  "UNCHANGED_CURRENT_TRIAGE_STILL_NOT_ADMITTED";
+export type TriageRevalidationRequest = TriageSelection & {expectedSha256:string};
+export type TriageRevalidationResult = {
+  contractVersion:typeof triageRevalidationContract;
+  status:typeof triageRevalidationStatus;
+  cutoffUtc:string; selectedReviewCount:number;
+  expectedSha256:string; currentSha256:string; exactTriageUnchanged:true;
+  datasetAdmitted:false; humanConflictResolved:false; modelTrained:false;
+  modelApproved:false; runtimeApplied:false;
+};
+
+export function validTriageRevalidationRequest(value:unknown):value is TriageRevalidationRequest {
+  if(!obj(value)||
+    Object.keys(value).sort().join("|")!=="cutoffUtc|expectedSha256|selectedReviewIds"||
+    typeof value.expectedSha256!=="string"||
+    !/^[0-9a-f]{64}$/.test(value.expectedSha256))return false;
+  return validTriageSelection({
+    selectedReviewIds:value.selectedReviewIds,cutoffUtc:value.cutoffUtc
+  });
+}
+
+export function parseTriageRevalidationResult(
+  raw:unknown, request:TriageRevalidationRequest
+):TriageRevalidationResult|null {
+  if(!validTriageRevalidationRequest(request)||!obj(raw)||
+    raw.contractVersion!==triageRevalidationContract||
+    raw.status!==triageRevalidationStatus||
+    !utc(raw.cutoffUtc)||
+    Date.parse(raw.cutoffUtc)!==Date.parse(request.cutoffUtc)||
+    raw.selectedReviewCount!==request.selectedReviewIds.length||
+    raw.expectedSha256!==request.expectedSha256||
+    raw.currentSha256!==request.expectedSha256||
+    raw.exactTriageUnchanged!==true||
+    raw.datasetAdmitted!==false||raw.humanConflictResolved!==false||
+    raw.modelTrained!==false||raw.modelApproved!==false||raw.runtimeApplied!==false)
+    return null;
+  // Return only the approved non-admission DTO fields; discard any extra data.
+  return {
+    contractVersion:triageRevalidationContract,
+    status:triageRevalidationStatus,
+    cutoffUtc:request.cutoffUtc,
+    selectedReviewCount:request.selectedReviewIds.length,
+    expectedSha256:request.expectedSha256,
+    currentSha256:request.expectedSha256,
+    exactTriageUnchanged:true,
+    datasetAdmitted:false,humanConflictResolved:false,
+    modelTrained:false,modelApproved:false,runtimeApplied:false
+  };
+}

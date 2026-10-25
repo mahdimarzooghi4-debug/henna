@@ -103,14 +103,6 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
         Assert.True(unchangedTriage.ExactTriageUnchanged);
         Assert.False(unchangedTriage.DatasetAdmitted);
         Assert.False(unchangedTriage.HumanConflictResolved);
-        await db.QualitativeSeverityReviews.Where(x => x.Id == humanIds[0])
-            .ExecuteUpdateAsync(setters => setters.SetProperty(
-                x => x.Rationale, "Updated stored rationale remains human reviewed"));
-        var changedTriage = await triage.PreviewAsync(actor, humanIds.ToArray(), triageCutoff);
-        Assert.NotEqual(initialTriage.Sha256, changedTriage.Sha256);
-        await Assert.ThrowsAsync<SevenFactorHumanReviewTriageStaleException>(() =>
-            triageRevalidator.RevalidateAsync(actor, humanIds.ToArray(),
-                triageCutoff, initialTriage.Sha256));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             triage.PreviewAsync(Guid.NewGuid(), humanIds, clock.UtcNow));
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -180,6 +172,14 @@ public sealed class AllocationSevenFactorPartitionPreflightTests
             badReviewId, sevenId, NeedSeverityEvidenceDisposition.Conflicting,
             null, null, "conflicting-pre-allocation-evidence", at.AddHours(-1),
             "Human abstained due to contradictory evidence")));
+        // New append-only competing human evidence must invalidate the
+        // previously displayed fingerprint without rewriting existing reviews.
+        var changedTriage = await triage.PreviewAsync(actor,
+            humanIds.ToArray(), triageCutoff);
+        Assert.NotEqual(initialTriage.Sha256, changedTriage.Sha256);
+        await Assert.ThrowsAsync<SevenFactorHumanReviewTriageStaleException>(() =>
+            triageRevalidator.RevalidateAsync(actor, humanIds.ToArray(),
+                triageCutoff, initialTriage.Sha256));
         var conflictTriage = await triage.PreviewAsync(actor,
             humanIds.ToArray(), clock.UtcNow);
         var conflicted = Assert.Single(conflictTriage.Entries,
