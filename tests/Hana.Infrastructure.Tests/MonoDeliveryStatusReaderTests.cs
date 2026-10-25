@@ -64,6 +64,47 @@ public sealed class MonoDeliveryStatusReaderTests
         Assert.Equal("INVALID_PROVIDER_RESPONSE", exception.ProviderCode);
     }
 
+    [Fact]
+    public async Task ReadIncludesFreshLocationOnlyForAnActiveAssignedMission()
+    {
+        var orderId = Guid.ParseExact("0123456789abcdef0123456789abcdef", "N");
+        const string requestId = "drq_0123456789abcdef0123456789abcdef";
+        const string missionId = "mis_0123456789abcdef0123456789abcdef";
+        var correlation = Correlation(orderId, requestId, missionId, "MISSION_LINKED", 3);
+        var detail = new MonoDeliveryRequestDetail(
+            requestId, orderId.ToString("N"), "RECEIVED", DateTimeOffset.UtcNow,
+            missionId, "IN_TRANSIT", null, null, null);
+        var location = new MonoCourierCurrentLocation(35.7, 51.4, 8,
+            DateTimeOffset.UtcNow);
+        var mono = new FakeMonoClient(detail, location);
+        var reader = new MonoDeliveryStatusReader(new FakeStore(correlation), mono);
+
+        var result = await reader.ReadAsync(orderId);
+
+        Assert.Equal(1, mono.LocationReads);
+        Assert.Equal(35.7, result.CourierLocation!.Latitude);
+        Assert.Equal(51.4, result.CourierLocation.Longitude);
+    }
+
+    [Fact]
+    public async Task ReadDoesNotRequestLocationForTerminalMission()
+    {
+        var orderId = Guid.ParseExact("0123456789abcdef0123456789abcdef", "N");
+        const string requestId = "drq_0123456789abcdef0123456789abcdef";
+        const string missionId = "mis_0123456789abcdef0123456789abcdef";
+        var correlation = Correlation(orderId, requestId, missionId, "MISSION_LINKED", 3);
+        var detail = new MonoDeliveryRequestDetail(
+            requestId, orderId.ToString("N"), "RECEIVED", DateTimeOffset.UtcNow,
+            missionId, "DELIVERED", DateTimeOffset.UtcNow, null, null);
+        var mono = new FakeMonoClient(detail);
+        var reader = new MonoDeliveryStatusReader(new FakeStore(correlation), mono);
+
+        var result = await reader.ReadAsync(orderId);
+
+        Assert.Null(result.CourierLocation);
+        Assert.Equal(0, mono.LocationReads);
+    }
+
     private static MonoDeliveryCorrelationSnapshot Correlation(
         Guid orderId, string? requestId, string? missionId, string state, int revision) =>
         new(orderId, MonoDeliveryCorrelationStore.CreateIdempotencyKey(orderId),
@@ -108,9 +149,10 @@ public sealed class MonoDeliveryStatusReaderTests
             throw new NotImplementedException();
     }
 
-    private sealed class FakeMonoClient(MonoDeliveryRequestDetail? detail) : IMonoLogisticsClient
+    private sealed class FakeMonoClient(MonoDeliveryRequestDetail? detail, MonoCourierCurrentLocation? location = null) : IMonoLogisticsClient
     {
         public int DetailReads { get; private set; }
+        public int LocationReads { get; private set; }
         public bool IsAvailable => true;
 
         public Task<MonoBranchList> ListBranchesAsync(CancellationToken cancellationToken) =>
@@ -128,6 +170,13 @@ public sealed class MonoDeliveryStatusReaderTests
             return detail is null
                 ? throw new InvalidOperationException("Unexpected Mono read.")
                 : Task.FromResult(detail);
+        }
+
+        public Task<MonoCourierCurrentLocation?> GetCourierCurrentLocationAsync(
+            string missionId, CancellationToken cancellationToken)
+        {
+            LocationReads++;
+            return Task.FromResult(location);
         }
     }
 }
