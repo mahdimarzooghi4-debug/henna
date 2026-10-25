@@ -67,13 +67,7 @@ function MonoDeliveryStatusLookup() {
   const [orderId, setOrderId] = useState("");
   const [state, setState] = useState<LookupState>({ kind: "idle" });
 
-  const lookup = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const normalized = orderId.trim();
-    if (!orderIdPattern.test(normalized)) {
-      setState({ kind: "error", message: "شناسه سفارش معتبر نیست." });
-      return;
-    }
+  const loadOrder = useCallback(async (normalized: string) => {
     setState({ kind: "loading" });
     try {
       const response = await fetch(
@@ -100,9 +94,27 @@ function MonoDeliveryStatusLookup() {
       setState({ kind: "error", message: error instanceof Error
         ? error.message : "وضعیت سفارش قابل دریافت نیست." });
     }
+  }, []);
+
+  const lookup = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalized = orderId.trim();
+    if (!orderIdPattern.test(normalized)) {
+      setState({ kind: "error", message: "شناسه سفارش معتبر نیست." });
+      return;
+    }
+    void loadOrder(normalized);
   };
 
   const value = state.kind === "ready" ? state.value : null;
+  useEffect(() => {
+    if (state.kind !== "ready" || !state.value.missionId ||
+        !["COURIER_ASSIGNED", "ARRIVED_PICKUP", "HANDED_TO_COURIER",
+          "PICKED_UP", "IN_TRANSIT", "ARRIVED_DROPOFF"].includes(state.value.missionStatus ?? ""))
+      return;
+    const timer = window.setInterval(() => void loadOrder(state.value.orderId), 15_000);
+    return () => window.clearInterval(timer);
+  }, [state, loadOrder]);
   return (
     <section className="admin-ops__section">
       <h2>وضعیت درخواست حمل مونو</h2>
