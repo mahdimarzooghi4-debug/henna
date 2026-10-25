@@ -438,6 +438,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-admin-operations.mjs
       - name: Test external integration readiness DTO
         run: node --experimental-strip-types --test tests/web-external-integrations.mjs
+      - name: Test Mono delivery status DTO
+        run: node --experimental-strip-types --test tests/web-mono-delivery-status.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
