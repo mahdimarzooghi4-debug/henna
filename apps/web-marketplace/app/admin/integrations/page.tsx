@@ -137,6 +137,19 @@ function MonoDeliveryStatusLookup() {
             {value.missionId && <p>شناسه مأموریت: {value.missionId}</p>}
             {value.missionStatus && <p>وضعیت مأموریت: {value.missionStatus}</p>}
           </article>
+          {value.missionId && <article className="admin-ops__section" aria-live="polite">
+            <h3>موقعیت فعلی پیک</h3>
+            {value.courierLocation ? <>
+              <p>آخرین دریافت: {new Date(value.courierLocation.observedAt).toLocaleString("fa-IR")}</p>
+              {value.courierLocation.accuracyMeters !== null &&
+                <p>دقت گزارش‌شده: حدود {Math.round(value.courierLocation.accuracyMeters).toLocaleString("fa-IR")} متر</p>}
+              <p dir="ltr">{value.courierLocation.latitude.toFixed(5)}, {value.courierLocation.longitude.toFixed(5)}</p>
+              <a href={`geo:${value.courierLocation.latitude},${value.courierLocation.longitude}?q=${value.courierLocation.latitude},${value.courierLocation.longitude}`}>
+                بازکردن موقعیت در نقشهٔ دستگاه
+              </a>
+              <small>تنها آخرین موقعیت تازهٔ مأموریت فعال نمایش داده می‌شود.</small>
+            </> : <p>موقعیت تازه‌ای برای این مأموریت در دسترس نیست.</p>}
+          </article>}
           <article className="admin-ops__section">
             <h3>قیمت و زمان تحویل اعلام‌شده</h3>
             {value.quote ? <>
