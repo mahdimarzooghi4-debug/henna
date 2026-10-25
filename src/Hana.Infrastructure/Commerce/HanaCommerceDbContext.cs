@@ -39,7 +39,7 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
     {
         b.HasDefaultSchema("commerce");
         b.Entity<CommerceDocument>(e => {
-            e.ToTable("documents", t=>t.HasCheckConstraint("ck_document_revision","\\"Revision\\" > 0"));
+            e.ToTable("documents", t=>t.HasCheckConstraint("ck_document_revision","\"Revision\" > 0"));
             e.HasKey(x=>x.Id); e.Property(x=>x.Id).ValueGeneratedNever();
             e.Property(x=>x.Kind).HasMaxLength(32).IsRequired(); e.Property(x=>x.Body).HasColumnType("jsonb").IsRequired();
             e.Property(x=>x.Revision).IsConcurrencyToken(); e.HasIndex(x=>new{x.Kind,x.OwnerId,x.Id});
@@ -55,11 +55,11 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
         });
         b.Entity<MonoDeliveryCorrelation>(e=>{
             e.ToTable("mono_delivery_correlations", t=>{
-                t.HasCheckConstraint("ck_mono_delivery_correlation_state", "\\"State\\" IN ('PREPARED','REQUEST_RECEIVED','MISSION_LINKED')");
-                t.HasCheckConstraint("ck_mono_delivery_request_fingerprint", "\\"RequestFingerprint\\" IS NULL OR \\"RequestFingerprint\\" ~ '^[0-9a-f]{64}$'");
-                t.HasCheckConstraint("ck_mono_delivery_correlation_revision", "\\"Revision\\" > 0");
-                t.HasCheckConstraint("ck_mono_delivery_correlation_request_state", "\\"State\\" = 'PREPARED' OR \\"DeliveryRequestId\\" IS NOT NULL");
-                t.HasCheckConstraint("ck_mono_delivery_correlation_mission_state", "\\"State\\" <> 'MISSION_LINKED' OR \\"MissionId\\" IS NOT NULL");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_state", "\"State\" IN ('PREPARED','REQUEST_RECEIVED','MISSION_LINKED')");
+                t.HasCheckConstraint("ck_mono_delivery_request_fingerprint", "\"RequestFingerprint\" IS NULL OR \"RequestFingerprint\" ~ '^[0-9a-f]{64}$'");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_revision", "\"Revision\" > 0");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_request_state", "\"State\" = 'PREPARED' OR \"DeliveryRequestId\" IS NOT NULL");
+                t.HasCheckConstraint("ck_mono_delivery_correlation_mission_state", "\"State\" <> 'MISSION_LINKED' OR \"MissionId\" IS NOT NULL");
             });
             e.HasKey(x=>x.OrderId);e.Property(x=>x.OrderId).ValueGeneratedNever();
             e.Property(x=>x.IdempotencyKey).HasMaxLength(128).IsRequired();
@@ -75,7 +75,7 @@ public sealed class HanaCommerceDbContext(DbContextOptions<HanaCommerceDbContext
         });
         b.Entity<MonoSellerBranchMapping>(e=>{
             e.ToTable("mono_seller_branch_mappings", t=>
-                t.HasCheckConstraint("ck_mono_seller_branch_mapping_revision", "\\"Revision\\" > 0"));
+                t.HasCheckConstraint("ck_mono_seller_branch_mapping_revision", "\"Revision\" > 0"));
             e.HasKey(x=>x.SellerId);e.Property(x=>x.SellerId).ValueGeneratedNever();
             e.Property(x=>x.MonoBranchId).HasMaxLength(35).IsRequired();
             e.Property(x=>x.Revision).IsConcurrencyToken();
