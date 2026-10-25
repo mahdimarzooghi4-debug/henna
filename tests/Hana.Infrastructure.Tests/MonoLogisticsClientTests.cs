@@ -74,6 +74,17 @@ public sealed class MonoLogisticsClientTests
     }
 
     [Fact]
+    public async Task CreateRejectsHeaderInjectionInIdempotencyKey()
+    {
+        using var http = new HttpClient(new StubHandler((_, _) =>
+            throw new InvalidOperationException("Unexpected network call.")));
+        var client = new MonoLogisticsClient(http, Options.Create(Configured()));
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            client.CreateDeliveryRequestAsync(ValidRequest(), "valid\r\nX-Injected: yes", CancellationToken.None));
+    }
+
+    [Fact]
     public async Task MissingOrNonHttpsConfigurationFailsClosed()
     {
         using var http = new HttpClient(new StubHandler((_, _) =>
@@ -90,9 +101,16 @@ public sealed class MonoLogisticsClientTests
             BaseUrl = "http://mono.example",
             ApiKey = "secret-test-key"
         }));
+        var unsafeCredential = new MonoLogisticsClient(http, Options.Create(new MonoLogisticsOptions
+        {
+            Enabled = true,
+            BaseUrl = "https://mono.example",
+            ApiKey = "key\r\nX-Injected: yes"
+        }));
 
         Assert.False(disabled.IsAvailable);
         Assert.False(invalidEndpoint.IsAvailable);
+        Assert.False(unsafeCredential.IsAvailable);
         await Assert.ThrowsAsync<MonoLogisticsException>(() =>
             disabled.GetDeliveryRequestAsync("drq_0123456789abcdef0123456789abcdef", CancellationToken.None));
     }
