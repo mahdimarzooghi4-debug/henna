@@ -51,3 +51,7 @@
   .summary h1 { grid-column: 1; grid-row: 2; }
   .summary p { grid-column: 1; grid-row: 3; }
 }
+
+/* The three social cards read left to right in Figma; keep their contents RTL. */
+.actionCards { direction: ltr; }
+.actionCards article { direction: rtl; }
