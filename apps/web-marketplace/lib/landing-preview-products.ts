@@ -9,7 +9,7 @@ export type LandingPreviewProduct = {
 };
 
 export const LANDING_PREVIEW_PRODUCTS: LandingPreviewProduct[] = [
-  { id: "cheese", title: "پنیر سفید ایرانی ممتاز", detail: "۴۰۰ گرم - لبنیات هراز", image: "product-1.png", badge: "ویژه کالابرگ", oldPrice: "۶۵,۰۰۰", price: "۵۴,۰۰۰" },
+  { id: "cheese", title: "پنیر سفید ایرانی ممتاز هراز", detail: "۴۰۰ گرم - هراز", image: "product-1.png", badge: "ویژه کالابرگ", oldPrice: "۶۵,۰۰۰", price: "۵۴,۰۰۰" },
   { id: "yogurt", title: "ماست سون همزده پرچرب", detail: "۹۰۰ گرم - کاله", image: "product-2.png", badge: "تخفیف ویژه", price: "۴۸,۵۰۰" },
   { id: "rice", title: "برنج هاشمی درجه یک", detail: "۵ کیلوگرم - کشتزار شمال", image: "product-3.png", badge: "طرح حمایتی", oldPrice: "۷۲۰,۰۰۰", price: "۶۴۰,۰۰۰" },
   { id: "oil", title: "روغن آفتابگردان خالص", detail: "۱.۵ لیتر - لادن", image: "product-4.png", price: "۸۹,۰۰۰" },

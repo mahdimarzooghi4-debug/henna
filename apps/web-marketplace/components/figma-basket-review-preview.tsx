@@ -66,7 +66,7 @@ export function FigmaBasketReviewPreview() {
       <section className={styles.lines}>
         <div className={styles.seller}>
           <div><span>فروشگاه انتخابی: </span><strong>{seller.name}</strong>
-            <p>فاصله تا مقصد شما: {seller.distance} · ارسال از فروشگاه انتخاب‌شده</p></div>
+            <p>فاصله سوپرمارکت تا مقصد شما: {seller.distance} | تحویل از فروشگاه انتخابی</p></div>
           <span className={styles.sellerBadge}>فروشگاه انتخابی</span>
         </div>
         <h1>اقلام سبد خرید شما</h1>
@@ -78,9 +78,11 @@ export function FigmaBasketReviewPreview() {
               <Image src={"/landing/" + product.image} alt={product.title} width={64} height={64} />
               <div><h2>{product.title}</h2><p>{product.detail}</p></div>
             </div>
-            <span className={styles.quantity}>تعداد: {format(item.quantity)}</span>
-            <strong className={styles.price}>{product.price} تومان</strong>
-            <span className={styles.available}>موجود در انبار فروشگاه</span>
+            <span className={styles.quantity}>تعداد: {format(item.quantity)} عدد</span>
+            <div className={styles.priceStatus}>
+              <span className={styles.available}>موجود در انبار فروشگاه</span>
+              <strong className={styles.price}>{product.price} تومان</strong>
+            </div>
           </li>;
         })}</ul>
         <div className={styles.actions}>
@@ -90,14 +92,19 @@ export function FigmaBasketReviewPreview() {
       </section>
       <aside className={styles.summary}>
         <h2>فاکتور و خلاصه خرید شما</h2>
-        <div><span>جمع کالاها: {format(count)} کالا</span><strong>{format(subtotal + discount)} تومان</strong></div>
-        <div><span>تخفیف ویژه کالابرگ:</span><strong className={styles.discount}>{format(discount)} تومان</strong></div>
-        <div><span>هزینه ارسال محلی:</span><strong>رایگان</strong></div>
-        <div className={styles.total}><span>مبلغ نهایی:</span><strong>{format(subtotal)} تومان</strong></div>
-        <p>قیمت‌ها تا زمان نهایی‌سازی سفارش نمونه هستند.</p>
+        <div className={styles.divider} />
+        <div className={styles.metrics}>
+          <div><span>جمع کالاها:</span><strong>{format(subtotal + discount)} تومان</strong></div>
+          <div><span>تخفیف ویژه کالابرگ:</span><strong className={styles.discount}>{format(discount)} تومان</strong></div>
+          <div><span>هزینه ارسال محلی:</span><strong>رایگان</strong></div>
+          <div className={styles.total}><span>مبلغ نهایی:</span><strong>{format(subtotal)} تومان</strong></div>
+        </div>
+        <div className={styles.divider} />
+        <div className={styles.reviewActions}>
+          <Link className={styles.checkout} href="/buyer/checkout?mode=preview">ادامه ثبت سفارش</Link>
+          <Link className={styles.compare} href="/buyer/compare?mode=preview">بازگشت به مقایسه فروشگاه‌ها</Link>
+        </div>
         {checkoutNotice && <p role="status">{checkoutNotice}</p>}
-        <Link className={styles.checkout} href="/buyer/checkout?mode=preview">ادامه ثبت سفارش</Link>
-        <Link className={styles.compare} href="/buyer/compare?mode=preview">بازگشت به مقایسه فروشگاه‌ها</Link>
       </aside>
     </div>}
   </main>;

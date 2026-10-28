@@ -39,7 +39,7 @@ export function FigmaSellerComparisonPreview() {
     <main className={styles.page} dir="rtl">
       <div className={styles.intro}>
         <h1>مقایسه فروشگاه‌های نزدیک</h1>
-        <p>برای یک سبد یکسان، فروشگاه‌ها را بر اساس قیمت، موجودی و زمان ارسال مقایسه کنید.</p>
+        <p>برای یک سبد یکسان، فروشگاه‌ها را بر اساس قیمت کل، موجودی و زمان ارسال مقایسه کنید. انتخاب فروشگاه الزامی است.</p>
       </div>
       {itemCount === 0 ? <div className={styles.empty}>
         سبد نمونه خالی است. ابتدا یک کالا اضافه کنید.

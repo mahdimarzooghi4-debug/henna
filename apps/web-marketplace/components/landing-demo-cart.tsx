@@ -93,7 +93,6 @@ export function LandingDemoCartPage() {
                       alt={product.title} width={70} height={70} />
                     <div className={styles.productInfo}><h3>{product.title}</h3><p>{product.detail}</p></div>
                   </div>
-                  <strong className={styles.price}>{product.price} تومان</strong>
                   <div className={styles.quantity} aria-label={"تعداد " + product.title}>
                     <button type="button" aria-label={"افزایش تعداد " + product.title}
                       disabled={item.quantity >= 99}
@@ -105,26 +104,29 @@ export function LandingDemoCartPage() {
                       onClick={() => save(items.map((entry) => entry.productId === item.productId
                         ? { ...entry, quantity: Math.max(1, entry.quantity - 1) } : entry))}>−</button>
                   </div>
-                  <button type="button" className={styles.remove} onClick={() => {
-                    removeLandingPreviewProduct(item.productId);
-                    sync();
-                    window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
-                  }}>حذف کالا</button>
+                  <div className={styles.actionsPrice}>
+                    <button type="button" className={styles.remove} onClick={() => {
+                      removeLandingPreviewProduct(item.productId);
+                      sync();
+                      window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
+                    }}>حذف کالا ×</button>
+                    <strong className={styles.price}>{product.price} تومان</strong>
+                  </div>
                 </li>;
               })}
             </ul>
           </section>
           <aside className={styles.summary} aria-labelledby="cart-summary-title">
             <h2 id="cart-summary-title">خلاصه سبد خرید</h2>
-            <div className={styles.line}><span>تعداد اقلام:</span><strong>{format(totalCount)} کالا</strong></div>
-            <div className={styles.line}><span>قیمت پایه کل کالاها:</span><strong>{format(subtotal + discount)} تومان</strong></div>
+            <div className={styles.divider} />
+            <div className={styles.metrics}>
+              <div className={styles.line}><span>تعداد اقلام:</span><strong>{format(totalCount)} کالا</strong></div>
+              <div className={styles.line}><span>قیمت پایه کل کالاها:</span><strong>{format(subtotal + discount)} تومان</strong></div>
+            </div>
             <div className={styles.comparison}>
               <h3>مقایسه فروشگاه‌ها برای همین سبد</h3>
-              <p>حنا فروشگاه‌های محله را بر اساس موجودی کامل کالاها، قیمت، فاصله و سرعت ارسال با هم مقایسه می‌کند.</p>
+              <p>حنا فروشگاه‌های محله را بر اساس موجودی کامل کالاها، قیمت کل، فاصله و اطلاعات شناخته‌شده ارسال برای همین سبد مقایسه می‌کند.</p>
             </div>
-            <div className={styles.line}><span>تخفیف‌های قابل اعمال:</span><strong>{format(discount)} تومان</strong></div>
-            <div className={styles.divider} />
-            <div className={styles.line}><strong>قیمت حدودی سبد:</strong><strong>{format(subtotal)} تومان</strong></div>
             <Link className={styles.compareButton} href="/buyer/compare?mode=preview">مشاهده مقایسه فروشگاه‌ها</Link>
           </aside>
         </div>

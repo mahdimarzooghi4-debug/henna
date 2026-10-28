@@ -12,13 +12,13 @@ import {
 
 const gallery = [
   { src: "/landing/product-detail-main.png", alt: "پنیر سفید ایرانی ممتاز" },
-  { src: "/landing/product-detail-cheese.png", alt: "نمای نزدیک پنیر سفید" },
   { src: "/landing/product-detail-flatbread.png", alt: "پنیر روی نان محلی" },
+  { src: "/landing/product-detail-cheese.png", alt: "نمای نزدیک پنیر سفید" },
 ] as const;
 
 export function FigmaProductDetailPreview() {
   const [activeImage, setActiveImage] = useState(0);
-  const [activeThumbnail, setActiveThumbnail] = useState(1);
+  const [activeThumbnail, setActiveThumbnail] = useState(2);
   const [quantity, setQuantity] = useState(1);
   const [notice, setNotice] = useState("");
 
@@ -70,15 +70,16 @@ export function FigmaProductDetailPreview() {
 
         <section className={styles.information}>
           <p className={styles.category}>لبنیات ممتاز</p>
-          <h1>پنیر سفید ایرانی ممتاز</h1>
+          <h1>پنیر سفید ایرانی ممتاز هراز</h1>
           <p className={styles.weight}>وزن خالص: ۴۰۰ گرم</p>
 
           <section className={styles.purchase} aria-label="قیمت و افزودن به سبد">
             <div className={styles.priceRow}>
-              <span>قیمت پایه بازار (حدودی):</span>
+              <span>قیمت پایه بازارگاه (حدودی):</span>
               <div><del>۶۵,۰۰۰ تومان</del><strong>۵۴,۰۰۰ تومان</strong></div>
             </div>
-            <p className={styles.hint}>💡 بعد از افزودن به سبد، می‌توانید فروشگاه‌های نزدیک را مقایسه کنید و از فروشگاه موردنظرتان برای ادامه خرید انتخاب کنید.</p>
+            <hr className={styles.purchaseDivider} />
+            <p className={styles.hint}>💡 بعد از افزودن به سبد، می‌توانید فروشگاه‌های نزدیک را مقایسه کنید و فروشگاه موردنظر خود را برای ادامه خرید انتخاب کنید.</p>
             <div className={styles.controls}>
               <div className={styles.stepper} aria-label="تعداد کالا">
                 <button type="button" aria-label="افزایش تعداد" disabled={quantity >= 99}
@@ -92,7 +93,6 @@ export function FigmaProductDetailPreview() {
               </button>
             </div>
             {notice && <p className={styles.notice} role="status">{notice}</p>}
-            <Link className={styles.cartLink} href="/buyer/cart?mode=preview">مشاهده سبد خرید</Link>
           </section>
 
           <section className={styles.specifications}>
@@ -100,7 +100,6 @@ export function FigmaProductDetailPreview() {
             <dl><dt>برند تولیدکننده</dt><dd>هراز</dd>
               <dt>وزن خالص</dt><dd>۴۰۰ گرم</dd></dl>
           </section>
-          <p className={styles.disclosure}>قیمت این صفحه نمایشی است و سفارش واقعی ثبت نمی‌کند.</p>
         </section>
       </div>
     </main>

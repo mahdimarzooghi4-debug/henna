@@ -307,6 +307,6 @@
 .addMessage{display:block;flex-basis:100%;margin-top:6px;color:#9f4531;font-size:11px;line-height:1.6;text-align:right}
 
 /* Shared marketplace chrome follows the desktop Figma frames. */
-.announcement{height:40px}.headerTop{height:82px;width:auto;margin:0;padding-inline:80px}.nav{height:48px;padding-inline:80px;gap:28px}.footer{padding:64px 80px 32px}.footerGrid,.footerBottom{width:100%;max-width:none;margin:0}.footerGrid{gap:48px;padding-bottom:32px}.footerBottom{padding-top:16px}
+.announcement{height:40px}.headerTop{height:82px;width:auto;margin:0;padding-inline:80px}.nav{height:48px;padding-inline:80px;gap:24px}.footer{padding:64px 80px 32px}.footerGrid,.footerBottom{width:100%;max-width:none;margin:0}.footerGrid{gap:48px;padding-bottom:32px}.footerBottom{padding-top:16px}
 @media(max-width:1000px){.headerTop{width:auto;margin:0;padding:14px 32px}.nav{padding-inline:32px}.footer{padding:40px 32px 24px}}
 @media(max-width:640px){.headerTop{width:auto;margin:0;padding:14px 16px}.nav{padding-inline:16px}.footer{padding:32px 16px 20px}.footerGrid{gap:20px}.footerBottom{gap:12px;align-items:flex-start;flex-direction:column}}
