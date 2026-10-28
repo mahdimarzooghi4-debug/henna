@@ -336,3 +336,9 @@
   .chrome .nav { height: 52px; }
   .chrome .nav a { padding: 6px 10px; }
 }
+
+.chrome .nav { gap: 24px; font-size: 14px; }
+.chrome .nav a:first-child { color: var(--green); font-weight: 600; }
+@media (max-width: 900px) {
+  .chrome .nav { gap: 8px; font-size: 12px; }
+}
