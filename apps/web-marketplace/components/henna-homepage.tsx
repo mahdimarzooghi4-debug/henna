@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import HeroCarousel from "./hero-carousel";
 import { LandingFooter, LandingHeader } from "./landing-chrome";
 import { LandingAddButton } from "./landing-add-button";
+import { LANDING_PREVIEW_PRODUCTS } from "../lib/landing-preview-products";
 import styles from "./henna-homepage.module.css";
 
 const categories = [
@@ -19,14 +20,6 @@ const categories = [
 function categoryHref(label: string) {
   return `/products?categoryName=${encodeURIComponent(label)}#buyer-categories-title`;
 }
-
-const previewProducts: { title: string; detail: string; image: string; badge?: string; oldPrice?: string; price: string }[] = [
-  { title: "پنیر سفید ایرانی ممتاز", detail: "۴۰۰ گرم - لبنیات هراز", image: "product-1.png", badge: "ویژه کالابرگ", oldPrice: "۶۵,۰۰۰", price: "۵۴,۰۰۰" },
-  { title: "ماست سون همزده پرچرب", detail: "۹۰۰ گرم - کاله", image: "product-2.png", badge: "تخفیف ویژه", price: "۴۸,۵۰۰" },
-  { title: "برنج هاشمی درجه یک", detail: "۵ کیلوگرم - کشتزار شمال", image: "product-3.png", badge: "طرح حمایتی", oldPrice: "۷۲۰,۰۰۰", price: "۶۴۰,۰۰۰" },
-  { title: "روغن آفتابگردان خالص", detail: "۱.۵ لیتر - لادن", image: "product-4.png", price: "۸۹,۰۰۰" },
-  { title: "چای سیاه ارگانیک لاهیجان", detail: "۴۵۰ گرم - ممتاز باروتی", image: "product-5.png", badge: "تخفیف ویژه", oldPrice: "۱۴۵,۰۰۰", price: "۱۲۸,۰۰۰" },
-] as const;
 
 const steps = [
   ["انتخاب آزادانه کالاها", "کالاها، لبنیات، نان روزانه، تخفیف‌ها یا اقلام کالابرگی مورد نیاز خود را مستقیماً جست‌وجو کرده و بدون محدودیت به سبد خریدتان اضافه کنید.", "۱"],
@@ -65,8 +58,8 @@ export default function HennaHomepage() {
           <div className={styles.sectionHeading}><h2>پیشنهادهای امروز</h2><Link href="/products">مشاهده همه محصولات</Link></div>
           <p className={styles.previewNotice}>اطلاعات قیمت و کالا در این بخش نمونهٔ طراحی فیگماست؛ برای موجودی واقعی به کاتالوگ مراجعه کنید.</p>
           <div className={styles.productGrid}>
-            {previewProducts.map((product) => (
-              <article className={styles.productCard} key={product.title}>
+            {LANDING_PREVIEW_PRODUCTS.map((product) => (
+              <article className={styles.productCard} key={product.id}>
                 <div className={styles.productImage}>
                   <Image src={`/landing/${product.image}`} alt={product.title} width={400} height={300} />
                   {product.badge && <span>{product.badge}</span>}
@@ -76,7 +69,7 @@ export default function HennaHomepage() {
                   <p>{product.detail}</p>
                 </div>
                 <div className={styles.productAction}>
-                  <LandingAddButton productName={product.title} className={styles.addButton} messageClassName={styles.addMessage} />
+                  <LandingAddButton productId={product.id} className={styles.addButton} messageClassName={styles.addMessage} />
                   <div className={styles.productPrice}>
                     {product.oldPrice && <del>{product.oldPrice}</del>}
                     <strong><span>{product.price}</span> <small>تومان</small></strong>
