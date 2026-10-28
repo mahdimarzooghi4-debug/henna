@@ -73,8 +73,8 @@ export function FigmaCheckoutPreview() {
 
         <section className={styles.card}>
           <h2>۲. آدرس و موقعیت تحویل</h2>
-          <button type="button" className={styles.map} onClick={() => setNotice("موقعیت نمونه روی نقشه انتخاب شد.")}>
-            <span className={styles.mapPin}>●</span><span className={styles.mapAction}>تغییر موقعیت روی نقشه</span>
+          <button type="button" className={styles.map} onClick={() => setNotice("موقعیت نمونه روی نقشه انتخاب شد.")} aria-label="تغییر موقعیت روی نقشه">
+            <img src="/landing/checkout-map.png" alt="" />
           </button>
           <label className={styles.inputLabel}>آدرس دقیق پستی<input defaultValue="آدرس نمونه" /></label>
           <div className={styles.inputGrid}>

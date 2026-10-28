@@ -9,7 +9,7 @@ const categoryHref = (label: string) => `/products?categoryName=${encodeURICompo
 export function LandingHeader() {
   return (
     <Fragment>
-      <div className={styles.announcement}>🎉 طرح جدید کالابرگ حنا فعال شد؛ خریدی هوشمندانه با بیشترین حمایت اجتماعی</div>
+      <div className={styles.announcement}>بازارگاه حنا؛ کالاها و خدمات در یک تجربه یکپارچه</div>
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.actions}>
@@ -27,7 +27,7 @@ export function LandingHeader() {
           </Link>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی">
-          <Link href="/products#buyer-categories-title">همه‌ دسته‌ها</Link><Link href={categoryHref("میوه و سبزیجات")}>میوه و سبزیجات</Link><Link href={categoryHref("نوشیدنی‌ها")}>نوشیدنی‌ها</Link><Link href={categoryHref("خواربار و نان")}>خواربار و نان</Link><Link href={categoryHref("لبنیات و تخم مرغ")}>لبنیات و تخم مرغ</Link><Link href="/benefits#special-plans">طرح‌های ویژه حنا</Link><Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link><Link href="/discounts">تخفیف‌های طلایی</Link>
+          <Link href="/products#buyer-categories-title">نیازهای روزمره</Link><Link href="/products?categoryName=فروشندگان">فروشندگان / تأمین‌کنندگان</Link><Link href="/products">کالاها و خدمات</Link><Link href="/products#buyer-categories-title">همه دسته‌ها</Link><Link href="/products#buyer-categories-title">دسته‌بندی‌های منتخب</Link><Link href="/benefits#special-plans">طرح‌های ویژه</Link><Link href="/benefits#food-credit">کالابرگ / اعتبارها</Link><Link href="/#offers">پیشنهادها</Link>
         </nav>
       </header>
     </Fragment>
