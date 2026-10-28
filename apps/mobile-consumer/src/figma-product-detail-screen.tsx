@@ -18,6 +18,11 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
   const [showComparison, setShowComparison] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showTracking, setShowTracking] = useState(false);
+  const [showOrders, setShowOrders] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
+  const [subpage, setSubpage] = useState<"profile" | "addresses" | "credits" | "social" | "support" | "notifications" | "empty" | null>(null);
   const [selectedSeller, setSelectedSeller] = useState("");
   const [checkoutNotice, setCheckoutNotice] = useState("");
   const [paymentChoice, setPaymentChoice] = useState("online");
@@ -35,15 +40,81 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
       <StatusBar barStyle="dark-content" backgroundColor={colors.cream} />
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="بازگشت"
-          onPress={() => showCheckout ? setShowCheckout(false) : showReview ? setShowReview(false) : showComparison ? setShowComparison(false) : showCart ? setShowCart(false) : onBack()}
+          onPress={() => subpage ? setSubpage(null) : showTracking ? setShowTracking(false) : showSuccess ? setShowSuccess(false) : showCheckout ? setShowCheckout(false) : showReview ? setShowReview(false) : showComparison ? setShowComparison(false) : showCart ? setShowCart(false) : showOrders || showAccount ? (setShowOrders(false), setShowAccount(false)) : onBack()}
           style={styles.headerBack}>
           <Text style={styles.backIcon}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>{showCheckout ? "ثبت سفارش" : showReview ? "بررسی سبد" : showComparison ? "مقایسه فروشگاه‌ها" : showCart ? "سبد خرید" : "جزئیات محصول"}</Text>
+        <Text style={styles.headerTitle}>{subpage ? ({profile:"تکمیل اطلاعات حساب",addresses:"آدرس‌های من",credits:"اعتبارها و طرح‌ها",social:"مشارکت اجتماعی",support:"پشتیبانی حنا",notifications:"اعلان‌ها",empty:"حالت‌های خالی و خطا"} as const)[subpage] : showTracking ? "پیگیری سفارش" : showSuccess ? "ثبت سفارش" : showCheckout ? "ثبت سفارش" : showReview ? "بررسی سبد" : showComparison ? "مقایسه فروشگاه‌ها" : showCart ? "سبد خرید" : showOrders ? "سفارش‌ها" : showAccount ? "حساب کاربری" : "جزئیات محصول"}</Text>
         <Image source={logo} style={styles.logo} resizeMode="contain" accessibilityLabel="حنا" />
       </View>
 
-      {showCheckout ? (
+      {subpage ? (
+        <ScrollView contentContainerStyle={styles.cartView} showsVerticalScrollIndicator={false}>
+          {subpage === "profile" && <>
+            <View style={styles.cartSummary}><Text style={styles.cartTitle}>تکمیل اطلاعات حساب</Text><Text style={styles.cartProduct}>مشخصات شخص حقیقی</Text></View>
+            <View style={styles.formCard}><Text style={styles.checkoutHeading}>نام و نام خانوادگی</Text><TextInput style={styles.checkoutAddress} defaultValue="کاربر نمونه" textAlign="right"/></View>
+            <View style={styles.formCard}><Text style={styles.checkoutHeading}>شماره موبایل</Text><TextInput style={styles.checkoutAddress} defaultValue="۰۹۱۲۳۴۵۶۷۸۹" editable={false} textAlign="right"/><Text style={styles.checkoutMuted}>غیرقابل ویرایش</Text></View>
+            <View style={styles.formCard}><Text style={styles.checkoutHeading}>کد ملی (اختیاری)</Text><Text style={styles.checkoutMuted}>جهت استفاده از خدمات رسمی و اعتباری</Text><TextInput style={styles.checkoutAddress} placeholder="کد ملی" textAlign="right" keyboardType="number-pad"/></View>
+            <View style={styles.formCard}><Text style={styles.checkoutHeading}>تاریخ تولد (اختیاری)</Text><Text style={styles.checkoutMuted}>جهت فعال‌سازی خدمات ویژه سنی</Text><TextInput style={styles.checkoutAddress} placeholder="روز / ماه / سال" textAlign="right"/></View>
+            <Pressable style={styles.compareButton} onPress={()=>setSubpage(null)}><Text style={styles.chooseSellerText}>ثبت و ذخیره اطلاعات</Text></Pressable><Pressable style={styles.continueReview} onPress={()=>setSubpage(null)}><Text style={styles.continueReviewText}>انصراف</Text></Pressable>
+          </>}
+          {subpage === "addresses" && <>
+            <View style={styles.cartSummary}><Text style={styles.cartTitle}>آدرس‌های من</Text><Text style={styles.cartProduct}>افزودن آدرس جدید</Text><Text style={styles.cartMuted}>لیست آدرس‌های ثبت‌شده</Text></View>
+            <View style={styles.formCard}><Text style={styles.legalBadge}>آدرس پیش‌فرض</Text><Text style={styles.checkoutHeading}>خانه (تهران)</Text><Text style={styles.checkoutMuted}>تهران، خیابان ولیعصر، نرسیده به میدان ونک، کوچه بابک، پلاک ۱۲، واحد ۴</Text><Text style={styles.checkoutMuted}>شماره تماس: ۰۹۱۲۳۴۵۶۷۸۹ · گیرنده: کاربر نمونه · کد پستی: ۱۴۳۵۶۷۸۹۰۱</Text><View style={styles.cartSummaryLine}><Text style={styles.removeText}>حذف</Text><Text style={styles.cartProduct}>ویرایش</Text></View></View>
+            <View style={styles.formCard}><Text style={styles.checkoutHeading}>دفتر کار</Text><Text style={styles.checkoutMuted}>تهران، بزرگراه صدر، خروجی قلندری، بن‌بست مریم، پلاک ۵، طبقه سوم</Text><Text style={styles.checkoutMuted}>گیرنده: شرکت نمونه</Text><View style={styles.cartSummaryLine}><Text style={styles.removeText}>حذف</Text><Text style={styles.cartProduct}>ویرایش</Text></View></View>
+            <View style={styles.formCard}><Text style={styles.checkoutHeading}>فرم ثبت آدرس جدید</Text>{["محله / منطقه","شهر","نشانی دقیق پستی","کد پستی (اختیاری)","تلفن همراه تحویل‌گیرنده","نام تحویل‌گیرنده"].map(label=><TextInput key={label} style={styles.checkoutAddress} placeholder={label} textAlign="right"/>)}<Text style={styles.checkoutMuted}>موقعیت روی نقشه</Text><Pressable style={styles.continueReview}><Text style={styles.continueReviewText}>تغییر موقعیت روی نقشه</Text></Pressable><Pressable style={styles.compareButton} onPress={()=>setSubpage(null)}><Text style={styles.chooseSellerText}>ثبت آدرس و مشخصات</Text></Pressable></View>
+          </>}
+          {subpage === "credits" && <>
+            <View style={styles.cartSummary}><Text style={styles.cartTitle}>اعتبارها و طرح‌ها</Text><Text style={styles.cartMuted}>در این بخش، اعتبارات سازمانی، طرح‌های فعال و کالابرگ‌های اختصاصی شما قابل مشاهده و مدیریت است.</Text></View><Text style={styles.checkoutHeading}>اعتبارهای فعال حساب شما</Text>
+            {[["عمومی","کالابرگ عمومی حنا","قابل استفاده برای خرید مستقیم اقلام پرمصرف و طرح‌های منتخب بازار اجتماعی."],["اختصاصی","اعتبار حمایتی اجتماعی","تسهیلات غیرنقدی تخصیص‌یافته جهت مشارکت‌های اجتماعی و خرید معیشتی."],["سازمانی","تسهیلات رفاهی کارکنان","اعتبار اختصاص‌یافته از طرف نهادهای همکار برای خرید محصولات بازار اجتماعی حنا."]].map(item=><View style={styles.formCard} key={item[1]}><Text style={styles.legalBadge}>{item[0]}</Text><Text style={styles.checkoutHeading}>{item[1]}</Text><Text style={styles.checkoutMuted}>{item[2]}</Text><Text style={styles.success}>وضعیت: فعال</Text></View>)}
+            <View style={styles.compareHint}><Text style={styles.cartProduct}>سایر طرح‌ها</Text><Text style={styles.cartMuted}>در حال حاضر اعتبار فعالی برای این حساب ثبت نشده است. برای عضویت در طرح‌ها، کدهای اختصاصی یا معرفی‌نامه خود را از بخش پشتیبانی ثبت کنید.</Text></View><Pressable style={styles.compareButton} onPress={()=>setSubpage("support")}><Text style={styles.chooseSellerText}>درخواست طرح یا ثبت معرفی‌نامه</Text></Pressable>
+          </>}
+          {subpage === "social" && <>
+            <View style={styles.cartSummary}><Text style={styles.cartTitle}>مشارکت اجتماعی</Text><Text style={styles.cartProduct}>خرید و مشارکتی که اثرش ادامه پیدا می‌کند</Text><Text style={styles.cartMuted}>در بازار اجتماعی حنا، هر معامله دریچه‌ای است به سوی توسعه پایدار محلی و توانمندسازی افراد جامعه.</Text></View><Text style={styles.checkoutHeading}>اقدامات و خدمات اجتماعی حنا</Text>
+            {[["مشاهده طرح‌های اجتماعی فعال","لیست پروژه‌های همیاری، سازندگی و زیست‌محیطی جاری در کشور."],["مشارکت در یک طرح","به‌عنوان یک فرد یا سازمان در یکی از پروژه‌های فعال اجتماعی سهم داشته باشید."],["پیگیری مشارکت‌های من","پیگیری وضعیت مشارکت‌های ثبت‌شده در حنا."]].map(item=><Pressable key={item[0]} style={styles.formCard} onPress={()=>setSubpage("support")}><Text style={styles.checkoutHeading}>{item[0]}</Text><Text style={styles.checkoutMuted}>{item[1]}</Text></Pressable>)}
+            <View style={styles.compareHint}><Text style={styles.cartProduct}>معرفی پروژه‌های همیاری حنا</Text><Text style={styles.cartMuted}>طرح‌های اجتماعی در حنا به‌صورت اختیاری و در کنار تجربه بازارگاه نمایش داده می‌شوند. جزئیات هر طرح پیش از مشارکت در دسترس است.</Text></View><Pressable style={styles.compareButton} onPress={()=>setSubpage("support")}><Text style={styles.chooseSellerText}>ورود به تالار همیاری حنا</Text></Pressable>
+          </>}
+          {subpage === "support" && <>
+            <View style={styles.cartSummary}><Text style={styles.cartTitle}>پشتیبانی حنا</Text><Text style={styles.cartProduct}>چگونه می‌توانیم کمکتان کنیم؟</Text><Text style={styles.cartMuted}>تیم پشتیبانی حنا همواره در کنار شماست تا بهترین تجربه خرید و فروش اجتماعی را داشته باشید.</Text></View>
+            <View style={styles.formCard}><Text style={styles.checkoutHeading}>سوالات متداول</Text><Text style={styles.checkoutMuted}>نحوه استفاده از طرح کالابرگ اجتماعی</Text><Text style={styles.checkoutMuted}>شرایط مرجوعی کالا در بازار محلی</Text></View><Text style={styles.checkoutHeading}>پیگیری درخواست‌ها</Text>
+            {[["پاسخ داده شده","T-8921","عدم ثبت نهایی تراکنش بانکی","۲۴ دی ۱۴۰۴"],["در حال بررسی","T-8740","درخواست تغییر آدرس پیش‌فرض","۱۹ دی ۱۴۰۴"],["ثبت شده","T-8612","پیشنهاد افزودن غرفه محلی جدید","۱۵ دی ۱۴۰۴"]].map(item=><View style={styles.formCard} key={item[1]}><Text style={styles.legalBadge}>{item[0]}</Text><Text style={styles.checkoutHeading}>کد درخواست: {item[1]}</Text><Text style={styles.checkoutMuted}>موضوع: {item[2]}</Text><Text style={styles.checkoutMuted}>آخرین به‌روزرسانی: {item[3]}</Text></View>)}
+            <Pressable style={styles.compareButton} onPress={()=>setCheckoutNotice("درخواست نمونه ثبت شد.")}><Text style={styles.chooseSellerText}>ثبت درخواست جدید</Text></Pressable><Pressable style={styles.continueReview}><Text style={styles.continueReviewText}>تماس با پشتیبانی تلفنی</Text></Pressable>{checkoutNotice!==""&&<Text style={styles.success}>{checkoutNotice}</Text>}
+          </>}
+          {subpage === "notifications" && <>
+            <View style={styles.cartSummary}><View style={styles.cartSummaryLine}><Text style={styles.cartTitle}>اعلان‌ها</Text><Pressable onPress={()=>setCheckoutNotice("همه اعلان‌ها خوانده شدند.")}><Text style={styles.cartProduct}>خوانده شده کردن همه</Text></Pressable></View><Text style={styles.checkoutHeading}>اعلان‌های اخیر</Text></View>
+            {[["۱۰ دقیقه پیش","سفارش","سفارش شما تحویل سفیر شد","اقلام سفارش شماره ۲۴۹۱ برای ارسال بسته‌بندی گردید."],["۳ ساعت پیش","طرح‌ها","فعال‌سازی کالابرگ حمایتی جدید","طرح خرید معیشتی فصلی برای حساب کاربری شما فعال شد."],["دیروز","حساب","تغییر رمز عبور موفقیت‌آمیز بود","امنیت حساب شما اولویت ماست. تغییر با موفقیت انجام شد."],["۲ روز پیش","اعتبارها","ثبت اعتبار اولیه سازمانی","تسهیلات رفاهی کارکنان از نهاد همکار به کیف پول شما افزوده شد."],["۵ روز پیش","اطلاع‌رسانی عمومی","بروزرسانی جدید بازار اجتماعی حنا","طرح گرافیکی جدید و دسترسی سریع‌تر به آدرس‌ها اضافه شد."]].map(item=><Pressable key={item[2]} style={styles.formCard}><Text style={styles.checkoutMuted}>{item[0]} · {item[1]}</Text><Text style={styles.checkoutHeading}>{item[2]}</Text><Text style={styles.checkoutMuted}>{item[3]}</Text></Pressable>)}{checkoutNotice!==""&&<Text style={styles.success}>{checkoutNotice}</Text>}
+          </>}
+          {subpage === "empty" && <>
+            <View style={styles.cartSummary}><Text style={styles.cartTitle}>حالت‌های خالی و خطا</Text><Text style={styles.cartMuted}>مجموعه پیام‌های خطا و حالت‌های خالی برای برنامه.</Text></View>
+            {[["سبد خرید خالی است","هنوز محصولی به سبد خرید خود اضافه نکرده‌اید.","مشاهده محصولات بازار"],["سفارشی وجود ندارد","لیست سفارش‌های شما در حال حاضر خالی است.","بازگشت به صفحه اصلی"],["نتیجه‌ای پیدا نشد","کالا یا غرفه‌ای با مشخصات جستجو شده یافت نشد.","تغییر عبارت جستجو"],["فروشگاه مناسبی برای این سبد پیدا نشد","فروشگاه مناسبی برای اقلام این سبد در نزدیکی شما پیدا نشد.","تغییر محدوده دریافت کالا"],["اعتبار فعالی وجود ندارد","هیچ بن خرید یا کالابرگ فعالی برای حساب شما ثبت نشده است.","ثبت کد معرفی‌نامه"],["خطای اتصال به شبکه","ارتباط شما با سرور برقرار نشد. لطفاً اینترنت خود را بررسی کنید.","تلاش مجدد"],["خطای عمومی در برنامه","متأسفانه مشکلی در بارگذاری اطلاعات پیش آمده است.","تلاش دوباره"]].map(item=><View style={styles.formCard} key={item[0]}><Text style={styles.checkoutHeading}>{item[0]}</Text><Text style={styles.checkoutMuted}>{item[1]}</Text><Pressable style={styles.continueReview}><Text style={styles.continueReviewText}>{item[2]}</Text></Pressable></View>)}
+          </>}
+        </ScrollView>
+      ) : showSuccess ? (
+        <ScrollView contentContainerStyle={styles.cartView} showsVerticalScrollIndicator={false}>
+          <View style={styles.successHero}><View style={styles.successMark}><Text style={styles.successCheck}>✓</Text></View><Text style={styles.successTitle}>سفارش نمونه با موفقیت ثبت شد.</Text><Text style={styles.cartMuted}>کد سفارش: نمونه</Text></View>
+          <View style={styles.cartSummary}><Text style={styles.checkoutHeading}>خلاصه سفارش</Text><View style={styles.cartSummaryLine}><Text style={styles.checkoutMuted}>فروشگاه تأمین‌کننده:</Text><Text style={styles.cartProduct}>فروشگاه نمونه ۱</Text></View><View style={styles.cartSummaryLine}><Text style={styles.checkoutMuted}>تحویل‌گیرنده:</Text><Text style={styles.cartProduct}>کاربر نمونه</Text></View><View style={styles.cartSummaryLine}><Text style={styles.checkoutMuted}>مبلغ کل پرداختی:</Text><Text style={styles.sellerPrice}>{fa(cartQuantity * 185000)} تومان</Text></View><View style={styles.cartSummaryLine}><Text style={styles.checkoutMuted}>وضعیت پرداخت:</Text><Text style={styles.cartProduct}>پرداخت نمونه</Text></View></View>
+          <View style={styles.compareHint}><Text style={styles.cartProduct}>سفارش نمونه ثبت شد</Text><Text style={styles.cartMuted}>خلاصه سفارش و مراحل بعدی در این صفحه نمایش داده می‌شود.</Text></View>
+          <Pressable accessibilityRole="button" style={styles.compareButton} onPress={() => { setShowSuccess(false); setShowTracking(true); }}><Text style={styles.chooseSellerText}>پیگیری سفارش</Text></Pressable><Pressable accessibilityRole="button" style={styles.continueReview} onPress={onBack}><Text style={styles.continueReviewText}>بازگشت به بازارگاه</Text></Pressable><Text style={styles.disclosure}>این خرید نمونه است و پرداخت واقعی انجام نشده است.</Text>
+        </ScrollView>
+      ) : showTracking ? (
+        <ScrollView contentContainerStyle={styles.cartView} showsVerticalScrollIndicator={false}>
+          <View style={styles.cartSummary}><View style={styles.trackingHeading}><Text style={styles.cartTitle}>پیگیری سفارش</Text><Text style={styles.legalBadge}>خرید حقوقی</Text></View><Text style={styles.cartMuted}>سفارش فعال محله · فروشنده منتخب: فروشگاه نمونه ۱</Text><Text style={styles.cartProduct}>خلاصه اقلام: ۲ کالا • {fa(cartQuantity * 185000)} تومان</Text></View>
+          <View style={styles.timelineCard}>{["تحویل سفارش","در حال ارسال","آماده‌سازی سفارش","ثبت سفارش"].map((stage,index)=><View key={stage} style={styles.timelineRow}><View style={[styles.timelineDot,index<2&&styles.timelineDotDone]}/><View style={styles.timelineCopy}><Text style={styles.cartProduct}>{stage}</Text><Text style={styles.cartMuted}>{["سفارش تحویل داده شد","سفارش در حال ارسال است","اقلام بسته‌بندی شد","سفارش ثبت شد"][index]}</Text></View></View>)}</View>
+          <View style={styles.compareHint}><Text style={styles.cartProduct}>سوالی دارید؟</Text><Text style={styles.cartMuted}>در هر مرحله از سفارش همراه شما هستیم.</Text></View>
+        </ScrollView>
+      ) : showOrders ? (
+        <ScrollView contentContainerStyle={styles.cartView} showsVerticalScrollIndicator={false}>
+          <View style={styles.orderTabs}><Text style={styles.orderTabActive}>جاری</Text><Text style={styles.orderTab}>تحویل‌شده</Text><Text style={styles.orderTab}>لغوشده</Text></View>
+          {[["در حال ارسال با پیک","۱۴ اسفند ۱۴۰۲","۲۶۵,۰۰۰ تومان"],["تحویل نهایی شده","۲ اسفند ۱۴۰۲","۱۴۲,۰۰۰ تومان"]].map((row,index)=><View style={styles.orderCard} key={row[1]}><View style={styles.cartSummaryLine}><Text style={styles.orderStatus}>{row[0]}</Text><Text style={styles.sellerPrice}>{row[2]}</Text></View><Text style={styles.checkoutMuted}>فروشگاه: فروشگاه نمونه {index+1}</Text><Text style={styles.checkoutMuted}>محصولات: برنج طارم ایرانی درجه یک، پنیر سفید صبحانه حنا</Text><Text style={styles.checkoutMuted}>تاریخ ثبت: {row[1]}</Text><Pressable style={styles.continueReview} onPress={()=>{setShowOrders(false);setShowTracking(true);}}><Text style={styles.continueReviewText}>مشاهده جزئیات</Text></Pressable></View>)}
+        </ScrollView>
+      ) : showAccount ? (
+        <ScrollView contentContainerStyle={styles.cartView} showsVerticalScrollIndicator={false}>
+          <View style={styles.cartSummary}><Text style={styles.cartTitle}>حساب کاربری</Text><Text style={styles.cartProduct}>کاربر نمونه · شخص حقیقی</Text><Text style={styles.cartMuted}>شماره تماس نمونه</Text></View>
+          <View style={styles.cartSummary}><Text style={styles.checkoutHeading}>اعتبارهای من</Text><Text style={styles.sellerPrice}>۰ تومان</Text><Text style={styles.cartMuted}>در حال حاضر اعتباری ثبت نشده است</Text></View>
+          <View style={styles.cartSummary}><Text style={styles.checkoutHeading}>خرید حقوقی</Text><Text style={styles.cartMuted}>برای خرید به نام شرکت و دریافت فاکتور رسمی، اطلاعات شرکت را ثبت کنید.</Text><Text style={styles.cartProduct}>اطلاعات شرکت ثبت شده است</Text></View>
+          {["اطلاعات حساب","آدرس‌های من","سفارش‌های من","روش‌های پرداخت","اعتبارهای من","طرح‌های فعال","مشارکت‌های اجتماعی","پشتیبانی","اعلان‌ها","حالت‌های خالی و خطا","خروج از حساب کاربری"].map((label,index)=><Pressable key={label} style={styles.accountRow} onPress={()=>{if(index===0)setSubpage("profile");else if(index===1)setSubpage("addresses");else if(index===2){setShowAccount(false);setShowOrders(true);}else if(index===4||index===5)setSubpage("credits");else if(index===6)setSubpage("social");else if(index===7)setSubpage("support");else if(index===8)setSubpage("notifications");else if(index===9)setSubpage("empty");else if(index===10)onBack();}}><Text style={styles.cartProduct}>{label}</Text><Text style={styles.chevron}>‹</Text></Pressable>)}
+        </ScrollView>
+      ) : showCheckout ? (
         <ScrollView contentContainerStyle={styles.checkoutView} showsVerticalScrollIndicator={false}>
           <View style={styles.checkoutCard}>
             <Text style={styles.checkoutHeading}>آدرس و مشخصات تحویل‌گیرنده  ◉</Text>
@@ -72,7 +143,7 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
             <View style={styles.cartSummaryLine}><Text style={styles.cartProduct}>جمع فعلی کالاها:</Text><Text style={styles.sellerPrice}>{fa(cartQuantity * 185000)} تومان</Text></View>
           </View>
           {checkoutNotice ? <Text style={styles.success} accessibilityLiveRegion="polite">{checkoutNotice}</Text> : null}
-          <Pressable accessibilityRole="button" style={styles.compareButton} onPress={() => setCheckoutNotice("این صفحه پیش‌نمایش است و پرداخت یا سفارش واقعی انجام نمی‌شود.")}>
+          <Pressable accessibilityRole="button" style={styles.compareButton} onPress={() => { setCheckoutNotice(""); setShowCheckout(false); setShowSuccess(true); }}>
             <Text style={styles.chooseSellerText}>ثبت نهایی و پرداخت سفارش</Text>
           </Pressable>
         </ScrollView>
@@ -249,19 +320,10 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
       )}
 
       <View style={styles.bottomNav}>
-        <Pressable onPress={() => setShowCart(false)} style={styles.navItem}>
-          <Text style={styles.navIcon}>♙</Text><Text style={styles.navLabel}>حساب</Text>
-        </Pressable>
-        <Pressable onPress={() => setShowCart(false)} style={styles.navItem}>
-          <Text style={styles.navIcon}>▤</Text><Text style={styles.navLabel}>سفارش‌ها</Text>
-        </Pressable>
-        <Pressable onPress={() => { setShowCart(true); setShowComparison(false); setShowReview(false); }} style={styles.navItem}>
-          <Text style={[styles.navIcon, showCart && styles.navSelected]}>▱</Text>
-          <Text style={[styles.navLabel, showCart && styles.navSelected]}>سبد{cartQuantity ? ` · ${fa(cartQuantity)}` : ""}</Text>
-        </Pressable>
-        <Pressable onPress={onBack} style={styles.navItem}>
-          <Text style={styles.navIcon}>⌂</Text><Text style={styles.navLabel}>خانه</Text>
-        </Pressable>
+        <Pressable onPress={() => { setShowAccount(true); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Text style={[styles.navIcon, showAccount && styles.navSelected]}>♙</Text><Text style={[styles.navLabel, showAccount && styles.navSelected]}>حساب</Text></Pressable>
+        <Pressable onPress={() => { setShowOrders(true); setShowAccount(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Text style={[styles.navIcon, showOrders && styles.navSelected]}>▤</Text><Text style={[styles.navLabel, showOrders && styles.navSelected]}>سفارش‌ها</Text></Pressable>
+        <Pressable onPress={() => { setShowCart(true); setShowAccount(false); setShowOrders(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Text style={[styles.navIcon, showCart && styles.navSelected]}>▱</Text><Text style={[styles.navLabel, showCart && styles.navSelected]}>سبد{cartQuantity ? ` · ${fa(cartQuantity)}` : ""}</Text></Pressable>
+        <Pressable onPress={() => { setShowAccount(false); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); onBack(); }} style={styles.navItem}><Text style={styles.navIcon}>⌂</Text><Text style={styles.navLabel}>خانه</Text></Pressable>
       </View>
     </SafeAreaView>
   );
@@ -355,4 +417,22 @@ const styles = StyleSheet.create({
   chooseSellerText: { color: colors.surface, fontSize: 13, fontWeight: "700", ...rtl },
   continueReview: { minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: colors.terracotta, alignItems: "center", justifyContent: "center" },
   continueReviewText: { color: colors.terracotta, fontSize: 13, fontWeight: "700", ...rtl },
+  formCard: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "#F0E7DD", backgroundColor: colors.surface, gap: 10 },
+  successHero: { minHeight: 190, padding: 20, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: "#F0E7DD", alignItems: "center", justifyContent: "center", gap: 12 },
+  successMark: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", backgroundColor: "#E8F2F2" },
+  successCheck: { color: colors.teal, fontSize: 34, fontWeight: "800" },
+  successTitle: { color: colors.teal, fontSize: 18, fontWeight: "800", textAlign: "center", writingDirection: "rtl" },
+  legalBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: "#FDF1EE", color: colors.terracotta, fontSize: 11, fontWeight: "700", ...rtl },
+  trackingHeading: { flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" },
+  timelineCard: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#F0E7DD", backgroundColor: colors.surface, gap: 0 },
+  timelineRow: { flexDirection: "row-reverse", gap: 12, paddingVertical: 12, alignItems: "flex-start" },
+  timelineDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: "#C7C1B9", marginTop: 3 },
+  timelineDotDone: { borderColor: colors.teal, backgroundColor: colors.teal },
+  timelineCopy: { flex: 1, gap: 4 },
+  orderTabs: { flexDirection: "row-reverse", justifyContent: "space-around", padding: 12, borderRadius: 12, backgroundColor: colors.surface },
+  orderTab: { color: colors.muted, fontSize: 12, ...rtl },
+  orderTabActive: { color: colors.terracotta, fontSize: 12, fontWeight: "800", ...rtl },
+  orderCard: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "#F0E7DD", backgroundColor: colors.surface, gap: 10 },
+  orderStatus: { color: colors.teal, fontSize: 12, fontWeight: "700", ...rtl },
+  accountRow: { minHeight: 48, paddingHorizontal: 14, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center", borderRadius: 12, borderWidth: 1, borderColor: "#F0E7DD", backgroundColor: colors.surface },
 });
