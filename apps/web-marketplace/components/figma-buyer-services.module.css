@@ -55,3 +55,21 @@
 /* The three social cards read left to right in Figma; keep their contents RTL. */
 .actionCards { direction: ltr; }
 .actionCards article { direction: rtl; }
+
+.supportForm { display: grid; gap: 16px; padding: 24px; border: 1px solid #eae6e1; border-radius: 16px; background: #fff; }
+.supportForm > h2 { margin: 0; padding-bottom: 14px; border-bottom: 1px solid #eae6e1; color: #1c3f3a; font-size: 16px; font-weight: 800; }
+.supportForm form { display: grid; gap: 16px; }
+.supportFormGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px 16px; }
+.supportFormGrid label { display: grid; gap: 6px; color: #706963; font-size: 12px; }
+.supportFormGrid input,.supportFormGrid textarea { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #eae6e1; border-radius: 8px; background: #faf8f5; color: #2d2d2d; font: inherit; font-size: 12px; }
+.supportFormGrid input { height: 42px; }
+.supportFormGrid textarea { min-height: 72px; resize: vertical; }
+.supportMessage { grid-column: 1 / -1; }
+.supportActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.supportActions button { min-height: 40px; padding: 9px 16px; border: 0; border-radius: 8px; background: #1c3f3a; color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.supportActions a { padding: 9px 13px; border: 1px solid #b5523b; border-radius: 8px; color: #b5523b; font-size: 12px; text-decoration: none; }
+@media(max-width:850px) {
+  .supportForm { padding: 18px; }
+  .supportFormGrid { grid-template-columns: 1fr; }
+  .supportMessage { grid-column: auto; }
+}
