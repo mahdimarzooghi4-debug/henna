@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import styles from "./marketplace-chrome.module.css";
+import { LandingCartCount } from "./landing-demo-cart";
 
 const navItems = [
   ["نیازهای روزمره", "/products"],
@@ -24,7 +25,7 @@ export function MarketplaceChrome({ footerOnly = false, initialSearch = "" }: { 
             </Link>
             <p>حنا، بازارگاه خرید روزمره با هدف پشتیبانی از فروشگاه‌های محلی و توسعه اجتماعی.</p>
           </div>
-          <div><h2>دسترسی سریع</h2><Link href="/products">کالاها و خدمات</Link><Link href="/auth">ورود یا ثبت‌نام</Link><Link href="/buyer/cart">سبد خرید</Link></div>
+          <div><h2>دسترسی سریع</h2><Link href="/products">کالاها و خدمات</Link><Link href="/auth">ورود یا ثبت‌نام</Link><Link href="/buyer/cart?mode=preview">سبد خرید</Link></div>
           <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/courier-partners">همکاری پیک‌ها</Link><Link href="/careers">فرصت‌های شغلی</Link></div>
           <div><h2>پشتیبانی</h2><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/support">تماس با پشتیبانی</Link></div>
         </div>
@@ -35,17 +36,17 @@ export function MarketplaceChrome({ footerOnly = false, initialSearch = "" }: { 
 
   return (
     <>
-      <div className={styles.announcement} dir="rtl">بازارگاه حنا؛ کالاها و خدمات در یک تجربه خرید یکپارچه</div>
+      <div className={styles.announcement} dir="rtl">بازارگاه حنا؛ کالاها و خدمات در یک تجربه یکپارچه</div>
       <header className={styles.header} dir="rtl">
         <div className={styles.headerTop}>
           <div className={styles.actions}>
-            <Link className={styles.cart} href="/buyer/cart"><span aria-hidden="true">۰</span> سبد خرید</Link>
+            <Link className={styles.cart} href="/buyer/cart?mode=preview"><span aria-hidden="true"><LandingCartCount /></span> سبد خرید</Link>
             <Link className={styles.login} href="/auth">ورود یا ثبت‌نام</Link>
             <span className={styles.divider} aria-hidden="true" />
             <Link className={styles.seller} href="/seller/register">ثبت‌نام فروشگاه‌ها</Link>
           </div>
           <form className={styles.search} action="/products" role="search">
-            <input name="search" type="search" defaultValue={initialSearch} placeholder="جست‌وجوی کالاها و خدمات..." aria-label="جست‌وجو در کالاها و خدمات" />
+            <input name="search" type="search" defaultValue={initialSearch} placeholder="جست‌وجوی کالاها، خدمات و نیازهای روزمره..." aria-label="جست‌وجو در کالاها و خدمات" />
             <button type="submit" aria-label="جست‌وجو"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4 4" /></svg></button>
           </form>
           <Link href="/" className={styles.brand} aria-label="حنا، صفحه اصلی">

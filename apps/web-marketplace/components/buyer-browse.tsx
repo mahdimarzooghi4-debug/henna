@@ -2,6 +2,9 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import {
+  LANDING_PREVIEW_PRODUCTS, LANDING_PREVIEW_CART_EVENT, addLandingPreviewProduct,
+} from "../lib/landing-preview-products";
 import styles from "./buyer-marketplace.module.css";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref, findLandingBuyerCategory,
@@ -316,14 +319,25 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
           <p className="buyer-panel" role="status">{categoryRecovery}</p>
         )}
       </section>
+          <div className={styles.figmaFilterGroup}>
+            <h3>محدوده قیمت</h3>
+            <div className={styles.priceInputs}><span>از ۱۰,۰۰۰</span><span>تا ۵۰۰,۰۰۰</span></div>
+          </div>
+          <div className={styles.figmaFilterGroup}>
+            <h3>ویژگی‌ها</h3>
+            <label><input type="checkbox" defaultChecked /> کالابرگ / اعتبارها (در صورت وجود)</label>
+            <label><input type="checkbox" /> دارای پیشنهادها</label>
+          </div>
           <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
         </aside>
         <div className={styles.results}>
-      <div className={styles.toolbar}>
-        <strong>{search ? `نتایج جست‌وجو برای «${search}»` : selected && categories.status === "ok"
-          ? categories.data.find((item) => item.id === selected)?.name ?? "کالاها و خدمات"
-          : "همه کالاها و خدمات"}</strong>
-        <span>{current.status === "ok" ? `${current.data.total} کالا و خدمت` : "کاتالوگ منتشرشدهٔ حنا"}</span>
+      <div className={styles.toolbar} dir="rtl">
+        <div className={styles.sortOptions}><span>مرتب‌سازی براساس:</span><button type="button" aria-pressed="true">جدیدترین</button><button type="button">ارزان‌ترین</button><button type="button">پربازدیدترین</button></div>
+        <div className={styles.promotionalFilters}>
+          <button type="button" className={styles.activePromo} onClick={() => chooseCategory(null)}>همه</button>
+          <button type="button" onClick={() => { const c = categories.status === "ok" ? categories.data.find(x => /لبنیات|تخم.?مرغ/.test(x.name)) : undefined; if (c) chooseCategory(c.id); }}>لبنیات محلی</button>
+          <button type="button" onClick={() => { const c = categories.status === "ok" ? categories.data.find(x => /روغن|خواربار/.test(x.name)) : undefined; if (c) chooseCategory(c.id); }}>روغن و خواربار</button>
+        </div>
       </div>
       <section className="buyer-section" aria-labelledby="buyer-products-title">
         <h2 id="buyer-products-title">کالاها</h2>
@@ -334,6 +348,8 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
           <p className="buyer-panel buyer-products-status" role="status">پس از تعیین دسته‌بندی، کالاهای همان دسته نمایش داده می‌شوند…</p>
         ) : categoryNameStatus === "unavailable" || categoryNameStatus === "not-found" ? (
           <p className="buyer-panel buyer-products-status">برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.</p>
+        ) : !search && !selected && (current.status === "loading" || current.status === "unavailable" || current.data.items.length === 0) ? (
+          <FigmaCatalogPreview />
         ) : current.status === "loading" ? (
           <p className="buyer-panel buyer-products-status" role="status">در حال دریافت کالاها…</p>
         ) : current.status === "unavailable" ? (
@@ -379,5 +395,43 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
         </div>
       </div>
     </main>
+  );
+}
+
+
+function FigmaCatalogPreview() {
+  const [notice, setNotice] = useState("");
+  function add(productId: string) {
+    const result = addLandingPreviewProduct(productId);
+    if (result === "added") {
+      window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
+      setNotice("کالا به سبد خرید اضافه شد.");
+    } else if (result === "limit") setNotice("حداکثر تعداد مجاز در سبد ۹۹ عدد است.");
+    else setNotice("افزودن کالا انجام نشد؛ دوباره تلاش کنید.");
+  }
+  return (
+    <div className={styles.catalogPreview} aria-label="محصولات فروشگاه" dir="rtl">
+      <div className={styles.catalogGrid}>
+        {LANDING_PREVIEW_PRODUCTS.map((product) => (
+          <article key={product.id} className={styles.catalogCard}>
+            <div className={styles.catalogImage}>
+              <img src={"/landing/" + product.image} alt={product.title} />
+              {product.badge && <span className={`${styles.catalogBadge} ${/عسل|خواربار/.test(product.badge) ? styles.catalogBadgeGreen : ""}`}>{product.badge}</span>}
+            </div>
+            <div className={styles.catalogInfo}>
+              <h3>{product.title}</h3><p>{product.detail}</p>
+            </div>
+            <div className={styles.catalogActions}>
+              <button type="button" onClick={() => add(product.id)}>افزودن +</button>
+              <div className={styles.catalogPrice}>
+                {product.oldPrice && <del>{product.oldPrice}</del>}
+                <strong>{product.price} تومان</strong>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      {notice && <p className={styles.catalogNotice} role="status" aria-live="polite">{notice} <Link href="/buyer/cart?mode=preview">مشاهده سبد خرید</Link></p>}
+    </div>
   );
 }
