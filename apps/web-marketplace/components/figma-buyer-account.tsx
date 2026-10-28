@@ -11,7 +11,7 @@ export function FigmaBuyerAccount(){
    <section className={styles.summary} id="account-info"><div className={styles.summaryCopy}><h1>حساب من</h1><p>همه بخش‌های حساب، سفارش‌ها، آدرس‌ها، روش‌های پرداخت و اعتبارهای شما در یک صفحه جمع‌وجور نمایش داده می‌شود.</p></div>
     <article className={styles.infoCard}><h2>اطلاعات حساب</h2><div className={styles.divider}/>
      <div className={styles.fields}><div><span>نام و نام خانوادگی</span><strong>کاربر نمونه</strong></div><div><span>شماره تلفن همراه</span><strong>شماره تماس نمونه</strong></div><div><span>ایمیل</span><strong>ایمیل نمونه</strong></div></div>
-     <button type="button" className={styles.save} onClick={()=>setNotice("ویرایش اطلاعات حساب در نسخه نمونه فعال نیست.")}>ویرایش اطلاعات حساب</button>
+     <Link href="/buyer/profile?mode=preview" className={styles.save}>ویرایش اطلاعات حساب</Link>
     </article>
    </section>
    </section>
