@@ -1132,6 +1132,7 @@ export function RegistrationForm() {
     "شروع ثبت‌نام", "نوع متقاضی", "احراز هویت", "اطلاعات کسب‌وکار",
     "محدوده فعالیت", "اطلاعات تکمیلی", "بازبینی و ثبت", "وضعیت درخواست",
   ];
+  const registrationStepNumbers = ["۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸"];
 
   return (
     <>
@@ -1140,7 +1141,7 @@ export function RegistrationForm() {
         key={label}
         className={activeRegistrationStep === index + 1 ? "registration-steps__active" : ""}
         aria-current={activeRegistrationStep === index + 1 ? "step" : undefined}>
-        <b>{index + 1}</b><span>{label}</span>
+        <b>{registrationStepNumbers[index]}</b><span>{label}</span>
       </span>)}
     </nav>
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
@@ -1174,7 +1175,7 @@ export function RegistrationForm() {
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
             maxLength={120} autoComplete="name" value={fields.ownerName} error={Boolean(fieldErrors.ownerName)} errorMessage={fieldErrors.ownerName} required
             disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("ownerName", e.target.value)} />
-          <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
+          <FormField id="seller-phone" label="شماره موبایل" placeholder="۰۹xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
             className="field__input--phone" value={fields.phone} error={Boolean(fieldErrors.phone)} errorMessage={fieldErrors.phone} required
             disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("phone", e.target.value)} />
@@ -1326,7 +1327,7 @@ export function RegistrationForm() {
                   }} />
                 <FormField id="seller-representative-phone"
                   label="شماره موبایل نماینده"
-                  placeholder="09xxxxxxxxx"
+                  placeholder="۰۹xxxxxxxxx"
                   inputMode="numeric" type="tel" maxLength={11}
                   className="field__input--phone"
                   value={legalRepresentativePhone} required
@@ -1807,7 +1808,7 @@ export function RegistrationForm() {
 
                 <FormField id="seller-backup-phone"
                   label="تلفن همراه دوم / پشتیبان (اختیاری)"
-                  placeholder="09xxxxxxxxx"
+                  placeholder="۰۹xxxxxxxxx"
                   type="tel"
                   inputMode="numeric"
                   maxLength={11}
