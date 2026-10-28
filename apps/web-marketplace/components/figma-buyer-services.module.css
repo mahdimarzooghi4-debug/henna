@@ -32,3 +32,22 @@
   .planRow { grid-template-columns: 30px minmax(0,1fr); }
   .planRow strong { grid-column: 2; justify-self: start; }
 }
+
+/* Social/support summary card and participation emphasis from WEB / 15. */
+.summary { padding: 20px; border: 1px solid #eae6e1; border-radius: 12px; background: #fff; }
+.summaryCopy { display: grid; grid-template-columns: minmax(0,1fr) max-content; grid-template-rows: auto auto; align-items: center; gap: 6px 18px; max-width: none; }
+.summaryCopy .kicker { grid-column: 2; grid-row: 1 / 3; justify-self: start; padding: 8px 12px; border-radius: 999px; background: #fbefeb; color: #b5523b; font-size: 11px; }
+.summary h1 { grid-column: 1; grid-row: 1; margin: 0; font-size: 18px; }
+.summary p { grid-column: 1; grid-row: 2; font-size: 12px; }
+.emotional { padding: 24px; }
+.emotional h2 { font-size: 20px; }
+.emotional p { font-size: 12px; }
+.actionCards article:nth-child(2) { border-color: #b5523b; background: #faf8f5; }
+.actionCards article:nth-child(2) a { justify-self: end; padding: 9px 12px; border-radius: 8px; background: #b5523b; color: #fff; }
+@media(max-width:850px) {
+  .summary { padding: 16px; }
+  .summaryCopy { grid-template-columns: minmax(0,1fr); }
+  .summaryCopy .kicker { grid-column: 1; grid-row: 1; justify-self: end; }
+  .summary h1 { grid-column: 1; grid-row: 2; }
+  .summary p { grid-column: 1; grid-row: 3; }
+}
