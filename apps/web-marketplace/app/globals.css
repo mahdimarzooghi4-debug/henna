@@ -1998,3 +1998,111 @@ a { color: inherit; }
 .organization-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 720px) { .organization-form-grid { grid-template-columns: 1fr; } }
 @media (max-width: 800px) { .organization-programs-content, .organization-program-form-area { padding: 0; } .organization-program-actions { flex-wrap: wrap; } }
+
+
+/* Figma WEB / 18 — seller registration */
+.seller-registration-page { padding-top: 48px; }
+.seller-intro-summary {
+  width: min(1280px, calc(100% - 160px));
+  margin: 0 auto;
+  padding: 28px 32px;
+  border: 1px solid #eae6e1;
+  border-radius: 20px;
+  background: #fff;
+  text-align: right;
+}
+.seller-intro-summary h1 {
+  margin: 0;
+  color: #1c3f3a;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.6;
+}
+.seller-intro-summary p {
+  margin: 8px 0 0;
+  color: #706963;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.registration-steps {
+  width: min(1280px, calc(100% - 160px));
+  min-height: 66px;
+  margin: 24px auto 0;
+  padding: 12px 16px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  text-align: right;
+}
+.registration-steps > span {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.registration-steps > span:not(:last-child)::after {
+  position: absolute;
+  top: 50%;
+  left: -3px;
+  width: 10px;
+  height: 1px;
+  background: #eae6e1;
+  content: "";
+}
+.registration-steps > span > b {
+  display: inline-flex;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #eae6e1;
+  border-radius: 50%;
+  background: #faf8f5;
+  color: #706963;
+  font-size: 11px;
+}
+.registration-steps > span.registration-steps__active {
+  color: #b5523b;
+}
+.registration-steps > span.registration-steps__active > b {
+  border-color: #b5523b;
+  background: #b5523b;
+  color: #fff;
+}
+.seller-card {
+  width: min(1280px, calc(100% - 160px));
+  margin: 24px auto 64px;
+  padding: 24px;
+  border-radius: 16px;
+}
+.seller-card h2 { margin-bottom: 16px; font-size: 18px; line-height: 1.7; }
+.seller-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+.seller-card .account-note { min-height: 0; margin-top: 18px; padding: 12px 14px; }
+@media (max-width: 1100px) {
+  .seller-intro-summary,
+  .registration-steps,
+  .seller-card { width: calc(100% - 48px); }
+  .registration-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 10px; }
+  .registration-steps > span:not(:last-child)::after { display: none; }
+}
+@media (max-width: 700px) {
+  .seller-registration-page { padding-top: 24px; }
+  .seller-intro-summary,
+  .registration-steps,
+  .seller-card { width: calc(100% - 28px); }
+  .seller-intro-summary { padding: 20px; }
+  .seller-intro-summary h1 { font-size: 18px; }
+  .registration-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; }
+  .registration-steps > span { justify-content: flex-start; white-space: normal; }
+  .seller-card { margin-top: 16px; padding: 18px; }
+  .seller-card h2 { font-size: 17px; }
+  .seller-fields { grid-template-columns: 1fr; gap: 16px; }
+}
