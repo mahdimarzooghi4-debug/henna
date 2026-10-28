@@ -120,10 +120,27 @@ export function BuyerAddresses() {
           </button>
         </div>
         <section className={styles.savedAddresses} aria-labelledby="saved-title">
-          <h2 id="saved-title">آدرس‌های ذخیره‌شده</h2>
-          <p className={styles.emptyState}>هنوز نشانی‌ای به حساب شما اضافه نشده است.</p>
+          <h2 id="saved-title">آدرس‌های ثبت‌شده</h2>
+          <div className={styles.addressList}>
+            <article className={styles.addressCard + " " + styles.defaultAddress}>
+              <div className={styles.addressCardHeader}>
+                <div className={styles.addressActions}><button type="button" aria-label="حذف آدرس نمونه اول">حذف</button><span aria-hidden="true">│</span><button type="button" onClick={() => document.getElementById("new-address-form")?.scrollIntoView({ behavior: "smooth" })}>ویرایش</button></div>
+                <div className={styles.addressTitle}><span className={styles.defaultBadge}>آدرس پیش‌فرض</span><h3>آدرس نمونه اول (خانه)</h3></div>
+              </div>
+              <p className={styles.addressText}>تهران، محله امیرآباد، خیابان کارگر شمالی، کوچه دهم، پلاک ۱۲، واحد ۳</p>
+              <div className={styles.addressMeta}><span><b>کد پستی:</b> ۱۴۳۹۶-۱۲۳۴۵</span><span><b>گیرنده:</b> کاربر نمونه</span><span><b>شماره تماس:</b> ۰۹۱۲۳۴۵۶۷۸۹</span></div>
+            </article>
+            <article className={styles.addressCard}>
+              <div className={styles.addressCardHeader}>
+                <div className={styles.addressActions}><button type="button" aria-label="حذف آدرس نمونه دوم">حذف</button><span aria-hidden="true">│</span><button type="button" onClick={() => document.getElementById("new-address-form")?.scrollIntoView({ behavior: "smooth" })}>ویرایش</button></div>
+                <div className={styles.addressTitle}><h3>آدرس نمونه دوم (محل کار)</h3></div>
+              </div>
+              <p className={styles.addressText}>تهران، بلوار کشاورز، تقاطع فلسطین، ساختمان آفتاب، طبقه ۴، واحد ۸</p>
+              <div className={styles.addressMeta}><span><b>کد پستی:</b> ۱۴۱۵۶-۹۸۷۶۵</span><span><b>گیرنده:</b> شرکت توسعه فناوری محلی (امور اداری)</span><span><b>شماره تماس:</b> ۰۲۱-۸۸۹۹۰۰۱۱</span></div>
+            </article>
+          </div>
         </section>
-        {showForm && <form className={styles.formCard} onSubmit={validateForm} noValidate>
+        {showForm && <form id="new-address-form" className={styles.formCard} onSubmit={validateForm} noValidate>
           <h2>ثبت آدرس جدید</h2>
           <p className={styles.formIntro}>محل تحویل را روی نقشه مشخص کنید و اطلاعات گیرنده را وارد کنید.</p>
           <AddressMapPicker value={point} onChange={setPoint} />
@@ -137,7 +154,7 @@ export function BuyerAddresses() {
             {field("postalCode", "کد پستی (اختیاری)", "۱۰ رقم", false, "numeric")}
           </div>
           <div className={styles.formActions}>
-            <button type="submit" className={styles.primaryButton}>بررسی اطلاعات آدرس</button>
+            <button type="submit" className={styles.primaryButton}>ثبت آدرس و تایید موقعیت</button>
             <button type="button" className={styles.secondaryButton} onClick={() => { setFields(initialFields); setPoint(null); setErrors({}); setFormNotice(""); }}>پاک‌کردن فرم</button>
             {formNotice && <p className={styles.formNotice} role="status">{formNotice}</p>}
           </div>
