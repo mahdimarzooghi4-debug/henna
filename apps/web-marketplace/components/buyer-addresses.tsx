@@ -114,9 +114,9 @@ export function BuyerAddresses() {
     <main className={styles.layout}>
       <section className={styles.content} aria-labelledby="addresses-title">
         <div className={styles.titleRow}>
-          <div><h1 id="addresses-title">مدیریت آدرس‌های من</h1><p>نشانی‌های تحویل را ثبت کنید تا هنگام خرید سریع‌تر انتخاب شوند.</p></div>
-          <button type="button" className={styles.addButton} onClick={() => { setShowForm((open) => !open); setFormNotice(""); }}>
-            {showForm ? "بستن فرم" : "+ افزودن آدرس جدید"}
+          <div><h1 id="addresses-title">مدیریت آدرس‌های من</h1><p>آدرس‌های تحویل خود را ثبت و ویرایش کنید تا برای مقایسه فروشگاه‌های اطراف و محاسبه زمان تحویل استفاده شوند.</p></div>
+          <button type="button" className={styles.addButton} onClick={() => { setShowForm(true); setFormNotice(""); document.getElementById("new-address-form")?.scrollIntoView({ behavior: "smooth" }); }}>
+            افزودن آدرس جدید
           </button>
         </div>
         <section className={styles.savedAddresses} aria-labelledby="saved-title">
