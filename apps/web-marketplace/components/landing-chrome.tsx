@@ -8,7 +8,7 @@ const categoryHref = (label: string) => `/products?categoryName=${encodeURICompo
 export function LandingHeader() {
   return (
     <div className={styles.chrome}>
-      <div className={styles.announcement}>بازارگاه حنا؛ کالاها و خدمات در یک تجربه یکپارچه</div>
+      <div className={styles.announcement}>🎉 طرح جدید کالابرگ حنا فعال شد؛ خریدی هوشمندانه با بیشترین حمایت اجتماعی</div>
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.actions}>
