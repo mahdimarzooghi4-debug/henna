@@ -30,7 +30,7 @@ export function FigmaBuyerServices({kind}:{kind:ServiceKind}){
    </>}
    {kind==="social"&&<><div className={styles.emotional}><span>حنا</span><h2>خرید و مشارکتی که اثرش ادامه پیدا می‌کند</h2><p>مشارکت اجتماعی در حنا یک امکان اختیاری و ثانویه در کنار تجربه بازارگاه است.</p></div><section className={styles.actionsSection}><h2>اقدامات و پیگیری برنامه‌های همبستگی محلی</h2><div className={styles.actionCards}>
     <article><div className={styles.actionIcon}>⌕</div><h3>مشاهده طرح‌های اجتماعی</h3><p>مرور فهرست و جزئیات طرح‌های اجتماعی موجود در حنا.</p><Link href="/impact">مشاهده لیست ←</Link></article>
-    <article><div className={styles.actionIcon}>＋</div><h3>مشارکت در یک طرح</h3><p>انتخاب یک طرح و ثبت مشارکت به‌صورت آگاهانه و اختیاری.</p><Link href="/impact#projects">انتخاب طرح جدید</Link></article>
+    <article className={styles.selectedAction}><div className={styles.actionIcon}>＋</div><h3>مشارکت در یک طرح</h3><p>انتخاب یک طرح و ثبت مشارکت به‌صورت آگاهانه و اختیاری.</p><Link href="/impact#projects">انتخاب طرح جدید</Link></article>
     <article><div className={styles.actionIcon}>◷</div><h3>پیگیری مشارکت‌های من</h3><p>مشاهده تاریخچه تراکنش‌ها، سبدهای تحویل‌یافته و گزارش‌های آماری کلی و مستمر.</p><Link href="/impact">گزارش‌ها و سوابق</Link></article>
    </div></section><div className={styles.note}><strong>تذکر مهم درباره نقش اجتماعی حنا</strong><p>مشارکت اجتماعی اختیاری است و بر تجربه خرید روزمره تأثیری نمی‌گذارد.</p></div></>}
    {kind==="support"&&<><section className={styles.faq}><h2>سوالات متداول</h2>{supportFaq.map((q,i)=><details key={q}><summary>{q}</summary><p>{i===0?"جزئیات و شرایط طرح‌های فعال در صفحه اعتبارها نمایش داده می‌شود.":"برای پیگیری، درخواست خود را ثبت کنید یا از فهرست درخواست‌های قبلی وضعیت را ببینید."}</p></details>)}</section>
