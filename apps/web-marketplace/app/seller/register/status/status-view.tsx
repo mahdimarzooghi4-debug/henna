@@ -22,6 +22,9 @@ type StatusPayload = {
   }>;
 };
 
+const digits = "۰۱۲۳۴۵۶۷۸۹";
+const faDigits = (value: string | number) =>
+  String(value).replace(/[0-9]/g, (digit) => digits[Number(digit)]);
 const labels: Record<StatusPayload["steps"][number]["key"], string> = {
   IDENTITY: "اطلاعات هویتی",
   BUSINESS: "اطلاعات کسب‌وکار",
@@ -29,29 +32,6 @@ const labels: Record<StatusPayload["steps"][number]["key"], string> = {
   ADDITIONAL: "اطلاعات تکمیلی",
   REVIEW: "بررسی درخواست",
 };
-
-const reviewCopy = {
-  UNDER_REVIEW: {
-    badge: "در حال بررسی",
-    title: "درخواست در حال بررسی است",
-    message: "اطلاعات ثبت‌نام شما دریافت شده و درخواست در حال بررسی است.",
-  },
-  NEEDS_INFORMATION: {
-    badge: "نیازمند تکمیل اطلاعات",
-    title: "اطلاعات بیشتری برای بررسی لازم است",
-    message: "بررسی‌کننده برای ادامه فرایند، تکمیل اطلاعات را درخواست کرده است.",
-  },
-  APPROVED: {
-    badge: "تأیید شده",
-    title: "درخواست فروشندگی تأیید شده است",
-    message: "بررسی درخواست با تأیید پایان یافته است؛ فعال‌سازی پنل فروشنده مرحله‌ای مستقل است.",
-  },
-  REJECTED: {
-    badge: "رد شده",
-    title: "درخواست فروشندگی تأیید نشد",
-    message: "نتیجه بررسی درخواست ثبت شده است.",
-  },
-} as const;
 
 function statusLabel(status: StatusPayload["steps"][number]["status"]) {
   switch (status) {
@@ -61,6 +41,12 @@ function statusLabel(status: StatusPayload["steps"][number]["status"]) {
     case "APPROVED": return "تأیید شده";
     case "REJECTED": return "رد شده";
   }
+}
+
+function StatusIcon({ kind }: { kind: "file" | "map" | "store" }) {
+  if (kind === "file") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4M9 12h6M9 16h6"/></svg>;
+  if (kind === "map") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M8 7V4h8v3M4 11h16M10 11v3h4v-3"/></svg>;
 }
 
 export function SellerApplicationStatusView() {
@@ -90,152 +76,111 @@ export function SellerApplicationStatusView() {
       setState({ kind: "ready", value: body });
     }).catch(() => {
       if (!controller.signal.aborted)
-        setState({
-          kind: "error",
-          message: "وضعیت درخواست فعلاً در دسترس نیست.",
-        });
+        setState({ kind: "error", message: "وضعیت درخواست فعلاً در دسترس نیست." });
     });
     return () => controller.abort();
   }, []);
 
-  if (state.kind === "loading") {
-    return <p className="form-status" role="status">
-      در حال دریافت وضعیت درخواست…
-    </p>;
-  }
+  const actual = state.kind === "ready" ? state.value : null;
+  const statusExamples = [
+    {
+      kind: "incomplete",
+      badge: "نیازمند تکمیل اطلاعات",
+      code: "۷۸۴۰",
+      name: "کسب‌وکار نمونه",
+      text: "تصویر مجوز کسب ارائه شده ناخوانا است یا اعتبار آن منقضی شده است. لطفاً مدرک جدید را مجدداً بارگذاری کنید.",
+      action: "ویرایش و ارسال مجدد مدارک",
+      href: "/seller/register/amendment",
+    },
+    {
+      kind: "reviewing",
+      badge: "در حال بررسی کارشناسی",
+      code: "۷۸۳۹",
+      name: "لبنیات محلی البرز",
+      text: "مدارک هویتی و محدوده توزیع در حال انطباق با بانک اطلاعات اصناف است. این فرآیند معمولاً کمتر از ۲۴ ساعت به طول می‌انجامد.",
+      action: "پیگیری از پشتیبانی",
+      href: "/support",
+    },
+    {
+      kind: "approved",
+      badge: "تأیید نهایی شده",
+      code: "۷۸۳۸",
+      name: "نانوایی سنتی برکت محله",
+      text: "نمونه وضعیت تأیید شده: در صورت تأیید درخواست، مراحل بعدی و دسترسی‌های مرتبط در همین بخش اعلام می‌شود.",
+      action: "ورود به پنل کار و مدیریت فروشگاه",
+      href: "/seller",
+    },
+  ] as const;
 
-  if (state.kind === "error") {
-    return (
-      <section className="seller-status-card seller-status-card--error">
-        <h2>وضعیت درخواست</h2>
-        <p role="alert">{state.message}</p>
-        <Link className="auth-card__secondary" href="/seller/register">
-          بازگشت به ثبت‌نام
-        </Link>
-      </section>
-    );
-  }
-
-  const value = state.value;
-  const copy = reviewCopy[value.overallStatus];
-  return (
-    <section className="seller-status-card"
-      aria-labelledby="seller-status-title">
-      <div className="seller-status-card__hero">
-        <span className="seller-status-card__badge">{copy.badge}</span>
-        <div>
-          <h2 id="seller-status-title">{copy.title}</h2>
-          <p>{copy.message}</p>
-        </div>
-        <strong dir="ltr">کد پیگیری: {value.trackingCode}</strong>
-      </div>
-
-      <dl className="seller-status-card__summary">
-        <div>
-          <dt>نوع حساب</dt>
-          <dd>{value.applicantType === "LEGAL"
-            ? "شخص حقوقی"
-            : "شخص حقیقی"}</dd>
-        </div>
-        <div>
-          <dt>احراز هویت</dt>
-          <dd>{value.identityStatus === "VERIFIED"
-            ? "تأیید شده"
-            : "اطلاعات ثبت شده"}</dd>
-        </div>
-        <div>
-          <dt>زمان ثبت درخواست</dt>
-          <dd>
-            <time dateTime={value.submittedAtUtc}>
-              {new Intl.DateTimeFormat("fa-IR", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(new Date(value.submittedAtUtc))}
-            </time>
-          </dd>
-        </div>
-      </dl>
-
-      <div className="seller-status-card__timeline">
-        <h3>وضعیت ثبت‌نام فروشنده</h3>
-        {value.steps.map((step) => (
-          <div className="seller-status-card__step" key={step.key}>
-            <span className={step.status === "COMPLETED"
-              ? "seller-status-card__state seller-status-card__state--done"
-              : "seller-status-card__state"}>
-              {statusLabel(step.status)}
-            </span>
-            <strong>{labels[step.key]}</strong>
-          </div>
-        ))}
-      </div>
-
-      {value.reviewReason && (
-        <div className="seller-status-card__review-note" role="status">
-          <strong>یادداشت بررسی</strong>
-          <p>{value.reviewReason}</p>
-          {value.reviewedAtUtc && (
-            <time dateTime={value.reviewedAtUtc}>
-              {new Intl.DateTimeFormat("fa-IR", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(new Date(value.reviewedAtUtc))}
-            </time>
-          )}
-        </div>
-      )}
-
-      {value.overallStatus === "NEEDS_INFORMATION" && (
-        <div className="seller-status-card__action-required">
-          <strong>اقدام شما لازم است</strong>
-          <p>
-            برای ادامه بررسی، پاسخ اصلاحی را ثبت و درخواست را دوباره
-            ارسال کنید.
-          </p>
-          <Link className="primary-button"
-            href="/seller/register/amendment">
-            تکمیل اطلاعات و ارسال مجدد
-          </Link>
-        </div>
-      )}
-
-      <div className="seller-status-card__panel-lock">
-        <strong>
-          {value.sellerAccessEnabled
-            ? "دسترسی فروشندگی فعال شد"
-            : "ورود به پنل فروشنده"}
-        </strong>
-        <p>
-          {value.sellerAccessEnabled
-            ? "نقش فروشنده و پنل پایه برای این حساب فعال است."
-            : "پس از تأیید نهایی و فعال‌سازی، دسترسی فروشندگی برای این حساب ایجاد می‌شود."}
-        </p>
-        {value.activatedAtUtc && (
-          <time dateTime={value.activatedAtUtc}>
-            زمان فعال‌سازی: {new Intl.DateTimeFormat("fa-IR", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            }).format(new Date(value.activatedAtUtc))}
-          </time>
-        )}
-        {value.sellerPanelEnabled ? (
-          <Link className="primary-button" href="/seller">
-            ورود به پنل فروشنده
-          </Link>
-        ) : (
-          <button type="button" disabled>
-            ورود به پنل فروشنده
-          </button>
-        )}
-      </div>
-
-      <p className="seller-status-card__note">
-        تأیید هویت مستقل از بررسی نهایی درخواست فروشندگی است.
-      </p>
-
-      <Link className="auth-card__secondary" href="/">
-        بازگشت به حنا
-      </Link>
+  return <main className="seller-status-page" dir="rtl">
+    <section className="seller-status-intro">
+      <h1>بررسی وضعیت درخواست عضویت کسب‌وکارها و فروشگاه‌ها</h1>
+      <p>در این بخش می‌توانید وضعیت درخواست، بخش‌های ارسال‌شده و موارد نیازمند تکمیل را پیگیری کنید. بررسی درخواست بدون تضمین نتیجه انجام می‌شود.</p>
     </section>
-  );
+
+    <section className="seller-status-showcases" aria-label="نمونه وضعیت درخواست‌های فروشندگی">
+      <div className="seller-status-heading-row">
+        <span>مراحل تقاضای ثبت‌نام در یک نگاه</span>
+        <h2>وضعیت تقاضاهای فعال کسب‌وکار</h2>
+      </div>
+      <div className="seller-status-grid">
+        {statusExamples.map((item) => <article
+          className={`seller-status-example seller-status-example--${item.kind}`}
+          key={item.code}>
+          <div className="seller-status-example__top">
+            <span className="seller-status-example__badge">{item.badge}</span>
+            <span>کد پیگیری: <bdi dir="ltr">#{item.code}</bdi></span>
+          </div>
+          <h3>{item.name}</h3>
+          <p>{item.text}</p>
+          <div className="seller-status-example__actions">
+            <Link href={item.href}>{item.action}</Link>
+          </div>
+        </article>)}
+      </div>
+    </section>
+
+    <section className="seller-submitted-sections">
+      <h2>جزئیات بخش‌های ارسال‌شده درخواست شماره <bdi dir="ltr">#۷۸۴۰</bdi></h2>
+      <div className="seller-submitted-sections__grid">
+        <article className="seller-submitted-section seller-submitted-section--review">
+          <div className="seller-submitted-section__top"><span>نیازمند بازنگری</span><StatusIcon kind="file"/></div>
+          <h3>بارگذاری مجوز فعالیت و صنف</h3>
+          <p>تصویر جواز کسب فاقد کیفیت است. لطفاً یک عکس واضح با فرمت JPG بارگذاری کنید.</p>
+        </article>
+        <article className="seller-submitted-section">
+          <div className="seller-submitted-section__top seller-submitted-section__top--approved"><span>تأیید شده</span><StatusIcon kind="map"/></div>
+          <h3>محدوده فعالیت و تحویل محلی</h3>
+          <p>توزیع کالاها تا شعاع ۳ کیلومتری محله شما تعیین گردید و مورد تأیید سامانه ترافیکی است.</p>
+        </article>
+        <article className="seller-submitted-section">
+          <div className="seller-submitted-section__top seller-submitted-section__top--approved"><span>تأیید شده</span><StatusIcon kind="store"/></div>
+          <h3>مشخصات کسب‌وکار و آدرس</h3>
+          <p>نام تجاری، تلفن تماس و آدرس پستی دقیق انبار یا فروشگاه تأیید شد.</p>
+        </article>
+      </div>
+    </section>
+
+    {actual && <details className="seller-status-actual">
+      <summary>وضعیت واقعی درخواست این حساب</summary>
+      <div className="seller-status-actual__content">
+        <p><strong>کد پیگیری:</strong> <bdi dir="ltr">#{faDigits(actual.trackingCode)}</bdi></p>
+        <p><strong>وضعیت درخواست:</strong> {actual.overallStatus === "NEEDS_INFORMATION"
+          ? "نیازمند تکمیل اطلاعات"
+          : actual.overallStatus === "UNDER_REVIEW" ? "در حال بررسی"
+            : actual.overallStatus === "APPROVED" ? "تأیید شده" : "رد شده"}</p>
+        <p><strong>نوع حساب:</strong> {actual.applicantType === "LEGAL" ? "شخص حقوقی" : "شخص حقیقی"}</p>
+        <p><strong>زمان ثبت:</strong> {new Intl.DateTimeFormat("fa-IR", {
+          dateStyle: "medium", timeStyle: "short",
+        }).format(new Date(actual.submittedAtUtc))}</p>
+        {actual.steps.map((step) => <p key={step.key}>
+          <strong>{labels[step.key]}:</strong> {statusLabel(step.status)}
+        </p>)}
+        {actual.reviewReason && <p><strong>یادداشت بررسی:</strong> {actual.reviewReason}</p>}
+        {actual.sellerPanelEnabled && <Link href="/seller">ورود به پنل فروشنده</Link>}
+      </div>
+    </details>}
+    {state.kind === "error" && state.message !== "برای مشاهده وضعیت درخواست ابتدا وارد شوید." &&
+      <p className="seller-status-service-note" role="status">{state.message}</p>}
+  </main>;
 }
