@@ -14,6 +14,7 @@ export function FigmaBuyerAccount(){
      <button type="button" className={styles.save} onClick={()=>setNotice("ویرایش اطلاعات حساب در نسخه نمونه فعال نیست.")}>ویرایش اطلاعات حساب</button>
     </article>
    </section>
+   </section>
    <aside className={styles.navCard} aria-label="بخش‌های حساب کاربری">{nav.map(([label,href])=><Link key={label} href={href}>{label}<span>‹</span></Link>)}</aside>
   </div>{notice&&<p className={styles.notice} role="status">{notice}</p>}</main>;
 }
