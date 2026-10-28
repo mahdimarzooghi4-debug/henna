@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./figma-checkout-preview.module.css";
-import { LANDING_PREVIEW_CART_EVENT, LANDING_PREVIEW_PRODUCTS, readLandingPreviewCart, type LandingPreviewCartItem } from "../lib/landing-preview-products";
+import { LANDING_PREVIEW_CART_EVENT, LANDING_PREVIEW_PRODUCTS, readLandingPreviewCart, saveLandingPreviewCart, type LandingPreviewCartItem } from "../lib/landing-preview-products";
 
 const selectedSellerKey = "henna:figma-preview-selected-seller:v1";
 const sellers: Record<string, string> = {
@@ -17,6 +18,7 @@ function amount(value: string) {
 const format = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 
 export function FigmaCheckoutPreview() {
+  const router = useRouter();
   const [items, setItems] = useState<LandingPreviewCartItem[]>([]);
   const [sellerId, setSellerId] = useState("store-1");
   const [payment, setPayment] = useState("online");
@@ -39,6 +41,28 @@ export function FigmaCheckoutPreview() {
   }, 0);
   const selectedSeller = sellers[sellerId] ?? sellers["store-1"];
 
+  function placePreviewOrder() {
+    if (!items.length) {
+      setNotice("برای ثبت سفارش، ابتدا کالا را به سبد اضافه کنید.");
+      return;
+    }
+    try {
+      window.sessionStorage.setItem("henna:figma-preview-order:v1", JSON.stringify({
+        total: subtotal, sellerName: selectedSeller, address: "نشانی تحویل نمونه",
+        legal, items,
+      }));
+    } catch {
+      setNotice("ثبت اطلاعات نمونه انجام نشد؛ دوباره تلاش کنید.");
+      return;
+    }
+    if (!saveLandingPreviewCart([])) {
+      setNotice("سبد خرید نمونه پاک نشد؛ دوباره تلاش کنید.");
+      return;
+    }
+    window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
+    router.push("/buyer/success?mode=preview");
+  }
+
   if (!items.length) return <main className={styles.page} dir="rtl"><section className={styles.empty}>
     <h1>سبد خرید خالی است</h1><p>برای تکمیل سفارش، ابتدا کالاها را به سبد اضافه کنید.</p>
     <Link href="/#offers">رفتن به کالاها</Link>
@@ -55,7 +79,7 @@ export function FigmaCheckoutPreview() {
           <div><span>اعتبار حمایتی:</span><strong>در صورت موجود بودن</strong></div>
           <div><span>اعتبار شخصی:</span><strong>اعتبار شخصی تأمین‌شده توسط کاربر</strong></div>
           <div className={styles.total}><span>مبلغ قابل پرداخت:</span><strong>{format(subtotal)} تومان</strong></div>
-          <button type="button" className={styles.primary} onClick={() => setNotice("این صفحه پیش‌نمایش است؛ سفارش واقعی ثبت نمی‌شود.")}>ثبت سفارش</button>
+          <button type="button" className={styles.primary} onClick={placePreviewOrder}>ثبت سفارش</button>
           {notice && <p className={styles.notice} role="status">{notice}</p>}
         </section>
         <section className={styles.hint}><strong>خرید حقوقی و دریافت فاکتور رسمی</strong><p>با فعال‌کردن این گزینه، فاکتور سفارش به نام شرکت ثبت‌شده صادر می‌شود.</p></section>
