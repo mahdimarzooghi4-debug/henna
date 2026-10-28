@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Fragment } from "react";
 import styles from "./henna-homepage.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
 
@@ -8,7 +7,7 @@ const categoryHref = (label: string) => `/products?categoryName=${encodeURICompo
 
 export function LandingHeader() {
   return (
-    <Fragment>
+    <div className={styles.chrome}>
       <div className={styles.announcement}>بازارگاه حنا؛ کالاها و خدمات در یک تجربه یکپارچه</div>
       <header className={styles.header}>
         <div className={styles.headerTop}>
@@ -30,12 +29,13 @@ export function LandingHeader() {
           <Link href="/products#buyer-categories-title">نیازهای روزمره</Link><Link href="/products?categoryName=فروشندگان">فروشندگان / تأمین‌کنندگان</Link><Link href="/products">کالاها و خدمات</Link><Link href="/products#buyer-categories-title">همه دسته‌ها</Link><Link href="/products#buyer-categories-title">دسته‌بندی‌های منتخب</Link><Link href="/benefits#special-plans">طرح‌های ویژه</Link><Link href="/benefits#food-credit">کالابرگ / اعتبارها</Link><Link href="/#offers">پیشنهادها</Link>
         </nav>
       </header>
-    </Fragment>
+    </div>
   );
 }
 
 export function LandingFooter() {
   return (
+    <div className={styles.chrome}>
       <footer className={styles.footer} id="footer">
         <div className={`${styles.container} ${styles.footerGrid}`}>
           <div className={styles.footerSupport}><h3>طرح‌های حمایتی</h3><Link href="/benefits#food-credit">ثبت‌نام کالابرگ</Link><Link href="/organization">اعتبارات سازمانی</Link><Link href="/benefits#food-credit">کارت‌های معیشتی</Link><Link href="/impact">گزارش شفافیت مالی</Link></div>
@@ -45,5 +45,6 @@ export function LandingFooter() {
         </div>
         <div className={`${styles.container} ${styles.footerBottom}`}><span>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است. کلیه حقوق برای حنا محفوظ است.</span><div aria-label="شبکه‌های اجتماعی"><Link href="/social#instagram" aria-label="اینستاگرام حنا"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.8" r=".8" fill="currentColor"/></svg></Link><Link href="/social#twitter" aria-label="توییتر حنا"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 3H22l-6.8 7.8L23.2 21h-6.3L12 14.6 6.4 21H3.2l7.3-8.4L2.8 3h6.4l4.5 5.9L18.9 3Zm-1.1 16h1.7L8.2 4.9H6.4L17.8 19Z"/></svg></Link><Link href="/social#linkedin" aria-label="لینکدین حنا"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM3.6 9h3.2v11H3.6V9Zm5.3 0H12v1.5h.1a3.6 3.6 0 0 1 3.3-1.8c3.5 0 4.1 2.3 4.1 5.2V20h-3.3v-5.4c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V20H8.9V9Z"/></svg></Link></div></div>
       </footer>
+    </div>
   );
 }
