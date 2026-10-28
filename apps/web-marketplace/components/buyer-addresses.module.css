@@ -122,3 +122,7 @@
   .addressMeta { flex-direction: column; }
   .formCard { padding: 16px; }
 }
+
+/* Keep the desktop column order aligned with Figma in the RTL page. */
+.layout { direction: ltr; }
+.content, .accountNav { direction: rtl; }
