@@ -13,12 +13,12 @@ export function LandingHeader() {
         <div className={styles.headerTop}>
           <div className={styles.actions}>
             <Link className={styles.cart} href="/buyer/cart?mode=preview"><span className={styles.cartCount}><LandingCartCount /></span> سبد خرید <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 4h2l2.2 11h10.7L20 8H6"/><circle cx="9" cy="19" r="1"/><circle cx="17" cy="19" r="1"/></svg></Link>
-            <Link className={styles.login} href="/auth">ورود یا ثبت‌نام <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 21c.5-4 2.8-6 7-6s6.5 2 7 6"/></svg></Link>
+            <Link className={styles.login} href="/account/profile">حساب کاربری <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 21c.5-4 2.8-6 7-6s6.5 2 7 6"/></svg></Link>
             <span className={styles.divider} />
-            <Link className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها</Link>
+            <Link className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها و ارائه‌دهندگان</Link>
           </div>
           <form className={styles.search} action="/products">
-            <input name="search" placeholder="جست‌وجوی نان، لبنیات، برنج و اقلام روزانه..." aria-label="جست‌وجو در کالاها" />
+            <input name="search" placeholder="جست‌وجوی کالاها، خدمات و نیازهای روزمره..." aria-label="جست‌وجو در کالاها" />
             <button aria-label="جست‌وجو"><svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg></button>
           </form>
           <Link href="/" className={styles.brand} aria-label="حنا، صفحه اصلی">
@@ -26,7 +26,7 @@ export function LandingHeader() {
           </Link>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی">
-          <Link href="/products#buyer-categories-title">نیازهای روزمره</Link><Link href="/products?categoryName=فروشندگان">فروشندگان / تأمین‌کنندگان</Link><Link href="/products">کالاها و خدمات</Link><Link href="/products#buyer-categories-title">همه دسته‌ها</Link><Link href="/products#buyer-categories-title">دسته‌بندی‌های منتخب</Link><Link href="/benefits#special-plans">طرح‌های ویژه</Link><Link href="/benefits#food-credit">کالابرگ / اعتبارها</Link><Link href="/#offers">پیشنهادها</Link>
+          <Link href="/#offers">تخفیف‌های طلایی</Link><Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link><Link href="/benefits#special-plans">طرح‌های ویژه حنا</Link><Link href="/products">کالاها و خدمات</Link><Link href={categoryHref("فروشندگان و ارائه‌دهندگان")}>فروشندگان و ارائه‌دهندگان</Link><Link href={categoryHref("نیازمندی‌های محلی")}>نیازمندی‌های محلی</Link><Link href="/products#buyer-categories-title">همه دسته‌ها</Link>
         </nav>
       </header>
     </div>
