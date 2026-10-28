@@ -1121,14 +1121,27 @@ export function RegistrationForm() {
       fields, readyConflict.fields, readyConflict.choices,
     )
     : 0;
-  const registrationPhase = completedStep <= 1 ? 1 : completedStep <= 3 ? 2 : 3;
+  const activeRegistrationStep = submittedAtUtc ? 8
+    : completedStep === 1 ? (revision > 0 ? (applicantType ? 3 : 2) : 1)
+    : completedStep === 2 ? 3
+    : completedStep === 3 ? 4
+    : completedStep === 4 ? 5
+    : completedStep === 5 ? 6
+    : 7;
+  const registrationStepLabels = [
+    "شروع ثبت‌نام", "نوع متقاضی", "احراز هویت", "اطلاعات کسب‌وکار",
+    "محدوده فعالیت", "اطلاعات تکمیلی", "بازبینی و ثبت", "وضعیت درخواست",
+  ];
 
   return (
     <>
     <nav className="registration-steps" aria-label="مراحل ثبت‌نام فروشگاه">
-      <span className={registrationPhase === 1 ? "registration-steps__active" : ""} aria-current={registrationPhase === 1 ? "step" : undefined}>۱ اطلاعات اولیه</span>
-      <span className={registrationPhase === 2 ? "registration-steps__active" : ""} aria-current={registrationPhase === 2 ? "step" : undefined}>۲ احراز و مدارک</span>
-      <span className={registrationPhase === 3 ? "registration-steps__active" : ""} aria-current={registrationPhase === 3 ? "step" : undefined}>۳ فعال‌سازی فروشگاه</span>
+      {registrationStepLabels.map((label, index) => <span
+        key={label}
+        className={activeRegistrationStep === index + 1 ? "registration-steps__active" : ""}
+        aria-current={activeRegistrationStep === index + 1 ? "step" : undefined}>
+        <b>{index + 1}</b><span>{label}</span>
+      </span>)}
     </nav>
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
