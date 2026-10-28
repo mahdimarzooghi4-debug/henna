@@ -310,3 +310,10 @@
 .announcement{height:40px}.headerTop{height:82px;width:auto;margin:0;padding-inline:80px}.nav{height:48px;padding-inline:80px;gap:24px}.footer{padding:64px 80px 32px}.footerGrid,.footerBottom{width:100%;max-width:none;margin:0}.footerGrid{gap:48px;padding-bottom:32px}.footerBottom{padding-top:16px}
 @media(max-width:1000px){.headerTop{width:auto;margin:0;padding:14px 32px}.nav{padding-inline:32px}.footer{padding:40px 32px 24px}}
 @media(max-width:640px){.headerTop{width:auto;margin:0;padding:14px 16px}.nav{padding-inline:16px}.footer{padding:32px 16px 20px}.footerGrid{gap:20px}.footerBottom{gap:12px;align-items:flex-start;flex-direction:column}}
+
+/* The shared chrome renders outside the homepage page wrapper on buyer subpages. */
+.chrome { --green:#1c3f3a; --terracotta:#b5523b; --cream:#faf8f5; --beige:#d7b895; --muted:#706963; --line:#eae6e1; color:var(--green); font-family:var(--hana-font-family); font-size:14px; line-height:1.8; }
+.chrome a { color:inherit; text-decoration:none; }
+.chrome .announcement { height:40px; }
+.chrome .brand { display:flex; align-items:center; justify-content:flex-end; height:58px; }
+.chrome .brand img { display:block; width:145px; height:58px; object-fit:contain; object-position:right center; }
