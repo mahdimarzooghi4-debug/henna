@@ -21,7 +21,7 @@ export function FigmaBuyerNotifications(){
   <div className={styles.content}>
    <header className={styles.heading}><div className={styles.summaryCopy}><h1>اعلان‌های کاربری</h1><p>پیگیری پیام‌های سفارش‌ها، تغییرات امنیتی حساب کاربری، زمان‌بندی طرح‌های ویژه و گزارش‌های شفاف حمایت اجتماعی حنا.</p></div><span className={styles.unread}>۱ اعلان خوانده نشده</span></header>
    <nav className={styles.filters} aria-label="دسته‌بندی اعلان‌ها">{filters.map(item=><button key={item} aria-pressed={filter===item} onClick={()=>setFilter(item)}>{item}</button>)}</nav>
-   <section className={styles.list} aria-label="اعلان‌های اخیر">{visible.map(item=><article className={styles.item} key={item.title}><div className={styles.copy}><div className={styles.cardHeading}><h2>{item.title}</h2>{item.unread&&<b>جدید</b>}</div>{item.text&&<p>{item.text}</p>}</div><div className={styles.meta}><span>{item.category}</span><time>{item.time}</time></div></article>)}</section>
+   <section className={styles.list} aria-label="اعلان‌های اخیر">{visible.map(item=><article className={styles.item} key={item.title}><div className={styles.copy}><div className={styles.cardHeading}><h2>{item.title}</h2><span className={styles.category}>{item.category}</span></div>{item.text&&<p>{item.text}</p>}</div><div className={styles.meta}>{item.unread&&<b>جدید</b>}<time>{item.time}</time></div></article>)}</section>
   </div>
   <aside className={styles.sidebar} aria-label="منوی حساب کاربری">{accountLinks.map(([label,href])=><a key={label} href={href} aria-current={label==="اعلان‌ها"?"page":undefined}>{label}</a>)}</aside>
  </div></main>;
