@@ -317,3 +317,14 @@
 .chrome .announcement { height:40px; }
 .chrome .brand { display:flex; align-items:center; justify-content:flex-end; height:58px; }
 .chrome .brand img { display:block; width:145px; height:58px; object-fit:contain; object-position:right center; }
+
+.chrome .headerTop { height: 90px; }
+.chrome .nav {
+  height: 65px;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 80px;
+  direction: ltr;
+}
+.chrome .nav a { padding: 8px 12px; white-space: nowrap; }
+.chrome .nav a:last-child { color: var(--terracotta); }
