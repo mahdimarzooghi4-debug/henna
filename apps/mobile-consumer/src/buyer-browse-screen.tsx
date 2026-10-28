@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MobileCatalogClient } from "./mobile-catalog.ts";
 import { type BuyerLinkEvent } from "./buyer-link.ts";
 import { BuyerProductDetailScreen } from "./buyer-product-detail-screen";
+import { FigmaProductDetailScreen } from "./figma-product-detail-screen";
 import {
   BROWSE_PAGE_SIZE, BuyerBrowseController, initialBuyerBrowseState,
   type BuyerBrowseState,
@@ -15,6 +16,7 @@ import {
 import { colors } from "./theme";
 
 const logo = require("../assets/hana-app-logo.png");
+const ricePreviewImage = require("../assets/rice-product-detail.png");
 
 // Public catalog access is deliberately independent of MobileAuthClient,
 // SecureStore and OTP: the API only sends published identities, never offers.
@@ -65,6 +67,8 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   const products = browse.products;
   const categories = browse.categories;
   // Keep the mounted browse coordinator and its real search/filter/page state.
+  if (detailId === "cheese") return <FigmaProductDetailScreen
+    onBack={() => setDetailId(null)} />;
   if (detailId !== null) return (
     <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
       onBack={() => {
@@ -127,6 +131,19 @@ export function BuyerBrowseScreen({ onLogin, link }: {
                 {searchError}
               </Text>
             ) : null}
+
+            <Pressable accessibilityRole="button"
+              accessibilityLabel="مشاهده نمونه صفحه برنج طارم ایرانی درجه یک"
+              onPress={() => setDetailId("cheese")}
+              style={({ pressed }) => [styles.previewCard, pressed && styles.pressed]}>
+              <Image source={ricePreviewImage} style={styles.previewImage}
+                resizeMode="cover" accessibilityLabel="برنج طارم ایرانی درجه یک" />
+              <View style={styles.previewCopy}>
+                <Text style={styles.previewEyebrow}>نمونه طراحی فیگما</Text>
+                <Text style={styles.productTitle}>برنج طارم ایرانی درجه یک</Text>
+                <Text style={styles.productKind}>کیسه ۱۰ کیلویی · مشاهده صفحه محصول</Text>
+              </View>
+            </Pressable>
 
             <Text style={styles.sectionHeading} accessibilityRole="header">
               دسته‌بندی‌ها
@@ -305,6 +322,14 @@ const styles = StyleSheet.create({
   headerLink: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
   headerLinkText: { color: colors.teal, fontSize: 14, fontWeight: "700", ...rtl },
   pressed: { opacity: .75 },
+  previewCard: {
+    marginTop: 14, padding: 10, borderWidth: 1, borderColor: colors.beige,
+    borderRadius: 14, backgroundColor: colors.cream,
+    flexDirection: "row-reverse", alignItems: "center", gap: 12,
+  },
+  previewImage: { width: 76, height: 76, borderRadius: 10 },
+  previewCopy: { flex: 1, gap: 4 },
+  previewEyebrow: { color: colors.terracotta, fontSize: 11, fontWeight: "700", ...rtl },
   content: {
     width: "100%", maxWidth: 560, alignSelf: "center",
     paddingHorizontal: 20, paddingTop: 25, paddingBottom: 48,

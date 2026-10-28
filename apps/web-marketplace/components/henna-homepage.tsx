@@ -65,7 +65,9 @@ export default function HennaHomepage() {
                   {product.badge && <span>{product.badge}</span>}
                 </div>
                 <div className={styles.productInfo}>
-                  <h3>{product.title}</h3>
+                  <h3>{product.id === "cheese"
+                    ? <Link href="/products/cheese" style={{ color: "inherit", textDecoration: "none" }}>{product.title}</Link>
+                    : product.title}</h3>
                   <p>{product.detail}</p>
                 </div>
                 <div className={styles.productAction}>
