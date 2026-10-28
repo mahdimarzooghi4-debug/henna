@@ -328,3 +328,11 @@
 }
 .chrome .nav a { padding: 8px 12px; white-space: nowrap; }
 .chrome .nav a:last-child { color: var(--terracotta); }
+
+@media (max-width: 900px) {
+  .chrome .nav { justify-content: flex-start; overflow-x: auto; padding: 8px 24px; }
+}
+@media (max-width: 700px) {
+  .chrome .nav { height: 52px; }
+  .chrome .nav a { padding: 6px 10px; }
+}
