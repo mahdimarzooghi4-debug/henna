@@ -11,10 +11,10 @@ const product = require("../assets/rice-product-detail.png");
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 const fa = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 
-export function FigmaProductDetailScreen({ onBack }: { onBack: () => void }) {
+export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, startAtCart = false, onCartQuantityChange }: { onBack: () => void; initialCartQuantity?: number; startAtCart?: boolean; onCartQuantityChange?: (quantity: number) => void }) {
   const [quantity, setQuantity] = useState(1);
-  const [cartQuantity, setCartQuantity] = useState(0);
-  const [showCart, setShowCart] = useState(false);
+  const [cartQuantity, setCartQuantity] = useState(initialCartQuantity);
+  const [showCart, setShowCart] = useState(startAtCart);
   const [showComparison, setShowComparison] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -24,6 +24,11 @@ export function FigmaProductDetailScreen({ onBack }: { onBack: () => void }) {
   const [specificationsOpen, setSpecificationsOpen] = useState(true);
   const [descriptionOpen, setDescriptionOpen] = useState(true);
   const [favorite, setFavorite] = useState(false);
+  function changeCart(next: number | ((current: number) => number)) {
+    const value = typeof next === "function" ? next(cartQuantity) : next;
+    setCartQuantity(value);
+    onCartQuantityChange?.(value);
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -132,13 +137,13 @@ export function FigmaProductDetailScreen({ onBack }: { onBack: () => void }) {
                 <Text style={styles.cartProduct}>برنج طارم ایرانی درجه یک (۱۰ کیلویی)</Text>
                 <Text style={styles.cartMuted}>قیمت مبنا: ۱۸۵,۰۰۰ تومان</Text>
                 <View style={styles.cartItemActions}>
-                  <Pressable accessibilityRole="button" onPress={() => setCartQuantity(0)}>
+                  <Pressable accessibilityRole="button" onPress={() => changeCart(0)}>
                     <Text style={styles.removeText}>حذف</Text>
                   </Pressable>
                   <View style={styles.cartStepper}>
-                    <Pressable accessibilityLabel="افزایش تعداد سبد" onPress={() => setCartQuantity((n) => Math.min(99, n + 1))}><Text style={styles.stepPlus}>+</Text></Pressable>
+                    <Pressable accessibilityLabel="افزایش تعداد سبد" onPress={() => changeCart((n) => Math.min(99, n + 1))}><Text style={styles.stepPlus}>+</Text></Pressable>
                     <Text style={styles.quantity}>{fa(cartQuantity)}</Text>
-                    <Pressable accessibilityLabel="کاهش تعداد سبد" onPress={() => setCartQuantity((n) => Math.max(1, n - 1))}><Text style={styles.stepMinus}>−</Text></Pressable>
+                    <Pressable accessibilityLabel="کاهش تعداد سبد" onPress={() => changeCart((n) => Math.max(1, n - 1))}><Text style={styles.stepMinus}>−</Text></Pressable>
                   </View>
                 </View>
               </View>
@@ -199,7 +204,7 @@ export function FigmaProductDetailScreen({ onBack }: { onBack: () => void }) {
 
           <View style={styles.buyBar}>
             <Pressable accessibilityRole="button"
-              onPress={() => setCartQuantity((value) => Math.min(99, value + quantity))}
+              onPress={() => changeCart((value) => Math.min(99, value + quantity))}
               style={styles.addButton}>
               <Text style={styles.addText}>افزودن به سبد خرید</Text>
             </Pressable>

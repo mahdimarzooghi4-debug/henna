@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Image, KeyboardAvoidingView, Pressable, ScrollView,
+  Image, Pressable, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,13 +10,22 @@ import { type BuyerLinkEvent } from "./buyer-link.ts";
 import { BuyerProductDetailScreen } from "./buyer-product-detail-screen";
 import { FigmaProductDetailScreen } from "./figma-product-detail-screen";
 import {
-  BROWSE_PAGE_SIZE, BuyerBrowseController, initialBuyerBrowseState,
+  BuyerBrowseController, initialBuyerBrowseState,
   type BuyerBrowseState,
 } from "./buyer-browse-controller.ts";
 import { colors } from "./theme";
 
 const logo = require("../assets/hana-app-logo.png");
-const ricePreviewImage = require("../assets/rice-product-detail.png");
+const catalogCards = [
+  { id: "rice", title: "برنج طارم ایرانی درجه یک", category: "خواربار", price: "۱۸۵,۰۰۰ تومان", image: require("../assets/figma-catalog-1.png") },
+  { id: "oil", title: "روغن مایع آفتابگردان", category: "خواربار", price: "۶۸,۰۰۰ تومان", image: require("../assets/figma-catalog-2.png") },
+  { id: "cheese", title: "پنیر سفید صبحانه", category: "لبنیات", price: "۴۵,۰۰۰ تومان", image: require("../assets/figma-catalog-3.png") },
+  { id: "yogurt", title: "ماست کم‌چرب پاستوریزه", category: "لبنیات", price: "۱۲,۰۰۰ تومان", image: require("../assets/figma-catalog-4.png") },
+] as const;
+const navUser = require("../assets/figma-nav-user.png");
+const navReceipt = require("../assets/figma-nav-receipt.png");
+const navCart = require("../assets/figma-nav-cart.png");
+const navHome = require("../assets/figma-nav-home.png");
 
 // Public catalog access is deliberately independent of MobileAuthClient,
 // SecureStore and OTP: the API only sends published identities, never offers.
@@ -68,7 +77,9 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   const categories = browse.categories;
   // Keep the mounted browse coordinator and its real search/filter/page state.
   if (detailId === "cheese") return <FigmaProductDetailScreen
-    onBack={() => setDetailId(null)} />;
+    initialCartQuantity={cartCount} startAtCart={openCartFromTab}
+    onCartQuantityChange={setCartCount}
+    onBack={() => { setDetailId(null); setOpenCartFromTab(false); }} />;
   if (detailId !== null) return (
     <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
       onBack={() => {
@@ -77,233 +88,147 @@ export function BuyerBrowseScreen({ onLogin, link }: {
         void controller.refreshCategories();
       }} />
   );
+  const [selectedChip, setSelectedChip] = useState("پیشنهادها");
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const [openCartFromTab, setOpenCartFromTab] = useState(false);
+  const query = browse.search.trim();
+  const cards = catalogCards.filter((item) => !query || item.title.includes(query));
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <KeyboardAvoidingView style={styles.fill}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f7f3ed" />
+      <View style={styles.fill}>
+        <View style={styles.header}>
+          <Pressable accessibilityRole="button" accessibilityLabel="بازگشت"
+            onPress={onLogin} style={({ pressed }) => [styles.headerBack, pressed && styles.pressed]}>
+            <Text style={styles.backIcon}>‹</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>کالاها و خدمات</Text>
+          <Image source={logo} resizeMode="contain" style={styles.logo}
+            accessibilityLabel="حنا" />
+        </View>
+
         <ScrollView ref={scroll} style={styles.fill}
           contentContainerStyle={styles.scrollBody}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Image source={logo} resizeMode="contain" style={styles.logo}
-              accessibilityLabel="حنا" />
-            <Pressable onPress={onLogin} accessibilityRole="button"
-              accessibilityLabel="ورود / ثبت‌نام"
-              style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}>
-              <Text style={styles.headerLinkText}>ورود</Text>
+          <View style={styles.searchRow}>
+            <Pressable accessibilityRole="button" accessibilityLabel="فیلترها"
+              onPress={() => setAdvancedFiltersOpen((value) => !value)}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+              <Text style={styles.filterIcon}>☷</Text>
+            </Pressable>
+            <TextInput accessibilityLabel="جست‌وجو در کالاها و خدمات"
+              style={styles.searchInput} placeholder="جست‌وجوی کالاها و خدمات..."
+              placeholderTextColor="#8e8e93" textAlign="right"
+              returnKeyType="search" maxLength={80} value={draftSearch}
+              onChangeText={(value) => { setDraftSearch(value); setSearchError(""); }}
+              onSubmitEditing={search} />
+            <Pressable accessibilityRole="button" accessibilityLabel="جست‌وجو"
+              onPress={search} style={({ pressed }) => [styles.searchIconButton, pressed && styles.pressed]}>
+              <Text style={styles.searchIcon}>⌕</Text>
+            </Pressable>
+          </View>
+          {searchError ? <Text accessibilityRole="alert" style={styles.errorText}>{searchError}</Text> : null}
+
+          <View style={styles.categoriesRow}>
+            {["پیشنهادها", "دسته‌بندی‌ها", "نمونه کالا"].map((label) => (
+              <Pressable key={label} accessibilityRole="button"
+                accessibilityState={{ selected: selectedChip === label }}
+                onPress={() => {
+                  setSelectedChip(label);
+                  if (label === "دسته‌بندی‌ها") setAdvancedFiltersOpen((value) => !value);
+                  if (label === "پیشنهادها") { setDraftSearch(""); controller.submitSearch(""); }
+                }}
+                style={({ pressed }) => [styles.categoryChip, selectedChip === label && styles.categoryChipActive, pressed && styles.pressed]}>
+                <Text style={[styles.categoryText, selectedChip === label && styles.categoryTextActive]}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.controlsRow}>
+            <Text style={styles.sortLabel}>مرتب‌سازی: جدیدترین</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="فیلتر پیشرفته"
+              onPress={() => setAdvancedFiltersOpen((value) => !value)}
+              style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}>
+              <Text style={styles.filterButtonText}>{advancedFiltersOpen ? "بستن فیلترها" : "فیلتر پیشرفته"}</Text>
+              <Text style={styles.filterIconSmall}>☷</Text>
             </Pressable>
           </View>
 
-          <View style={styles.content}>
-            <View style={styles.intro}>
-              <Text style={styles.eyebrow}>مرور کاتالوگ حنا</Text>
-              <Text style={styles.title} accessibilityRole="header">
-                کالاها را در حنا مرور کنید
-              </Text>
-              <Text style={styles.description}>
-                دسته‌بندی‌ها و کالاهای منتشرشده فقط از API حنا نمایش داده می‌شوند.
-              </Text>
-            </View>
-
-            <View style={styles.searchRow}>
-              <TextInput accessibilityLabel="جست‌وجو در نام کالاها"
-                style={styles.searchInput}
-                placeholder="جست‌وجو در نام کالاها..."
-                placeholderTextColor={colors.muted}
-                textAlign="right" returnKeyType="search"
-                maxLength={80} value={draftSearch}
-                onChangeText={(value) => {
-                  setDraftSearch(value);
-                  setSearchError("");
-                }}
-                onSubmitEditing={search} />
-              <Pressable accessibilityRole="button"
-                accessibilityLabel="جست‌وجو"
-                onPress={search}
-                style={({ pressed }) =>
-                  [styles.searchButton, pressed && styles.pressed]}>
-                <Text style={styles.searchButtonText}>جست‌وجو</Text>
+          {advancedFiltersOpen && categories.status === "ok" ? (
+            <View style={styles.expandedCategories}>
+              <Pressable onPress={() => controller.chooseCategory(null)} style={styles.expandedCategory}>
+                <Text style={styles.expandedCategoryText}>همه دسته‌ها</Text>
               </Pressable>
+              {categories.data.map((category) => (
+                <Pressable key={category.id} onPress={() => controller.chooseCategory(category.id)} style={styles.expandedCategory}>
+                  <Text style={styles.expandedCategoryText}>{category.name}</Text>
+                </Pressable>
+              ))}
             </View>
-            {searchError ? (
-              <Text accessibilityRole="alert" style={styles.errorText}>
-                {searchError}
-              </Text>
-            ) : null}
+          ) : null}
 
-            <Pressable accessibilityRole="button"
-              accessibilityLabel="مشاهده نمونه صفحه برنج طارم ایرانی درجه یک"
-              onPress={() => setDetailId("cheese")}
-              style={({ pressed }) => [styles.previewCard, pressed && styles.pressed]}>
-              <Image source={ricePreviewImage} style={styles.previewImage}
-                resizeMode="cover" accessibilityLabel="برنج طارم ایرانی درجه یک" />
-              <View style={styles.previewCopy}>
-                <Text style={styles.previewEyebrow}>نمونه طراحی فیگما</Text>
-                <Text style={styles.productTitle}>برنج طارم ایرانی درجه یک</Text>
-                <Text style={styles.productKind}>کیسه ۱۰ کیلویی · مشاهده صفحه محصول</Text>
-              </View>
+          {advancedFiltersOpen && categories.status === "unavailable" ? (
+            <Pressable accessibilityRole="button" onPress={() => void controller.refreshCategories()} style={styles.inlineNotice}>
+              <Text style={styles.inlineNoticeText}>دریافت دسته‌بندی‌ها ممکن نشد · تلاش دوباره</Text>
             </Pressable>
+          ) : null}
+          {advancedFiltersOpen && products.status === "unavailable" ? (
+            <Pressable accessibilityRole="button" onPress={() => void controller.refreshProducts()} style={styles.inlineNotice}>
+              <Text style={styles.inlineNoticeText}>دریافت کالاها ممکن نشد · تلاش دوباره</Text>
+            </Pressable>
+          ) : null}
 
-            <Text style={styles.sectionHeading} accessibilityRole="header">
-              دسته‌بندی‌ها
-            </Text>
-            <View style={styles.sectionPanel}>
-              {categories.status === "loading" ? (
-                <Text style={styles.muted} accessibilityLiveRegion="polite">
-                  در حال دریافت دسته‌بندی‌ها…
-                </Text>
-              ) : categories.status === "unavailable" ? (
-                <>
-                  <Text style={styles.errorText} accessibilityRole="alert">
-                    دریافت دسته‌بندی‌ها از سرور تأیید نشد.
-                  </Text>
-                  <Pressable accessibilityRole="button"
-                    accessibilityLabel="تلاش دوباره برای دسته‌بندی‌ها"
-                    onPress={() => void controller.refreshCategories()}
-                    style={styles.retryButton}>
-                    <Text style={styles.retryText}>تلاش دوباره</Text>
-                  </Pressable>
-                </>
-              ) : categories.data.length === 0 ? (
-                <Text style={styles.muted}>
-                  هنوز دسته‌بندی قابل نمایش نداریم.
-                </Text>
-              ) : (
-                <View style={styles.categoryGrid}>
-                  <Pressable accessibilityRole="button"
-                    accessibilityLabel="همه دسته‌ها"
-                    accessibilityState={{ selected: browse.categoryId === null }}
-                    onPress={() => controller.chooseCategory(null)}
-                    style={[styles.categoryChip,
-                      browse.categoryId === null && styles.categorySelected]}>
-                    <Text style={styles.categoryText}>همه دسته‌ها</Text>
-                  </Pressable>
-                  {categories.data.map((category) => (
-                    <Pressable key={category.id} accessibilityRole="button"
-                      accessibilityLabel={category.name}
-                      accessibilityState={{
-                        selected: browse.categoryId === category.id,
-                      }}
-                      onPress={() => controller.chooseCategory(category.id)}
-                      style={[styles.categoryChip,
-                        browse.categoryId === category.id && styles.categorySelected]}>
-                      <Text style={styles.categoryText}>{category.name}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-            {browse.categoryRecovery && categories.status === "ok" ? (
-              <Text accessibilityRole="alert" style={styles.categoryRecovery}>
-                دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.
-              </Text>
-            ) : null}
-
-            <Text style={styles.sectionHeading} accessibilityRole="header">
-              کالاها
-            </Text>
-            {products.status === "loading" ? (
-              <View style={styles.productStatus}>
-                <Text style={styles.muted} accessibilityLiveRegion="polite">
-                  در حال دریافت کالاها…
-                </Text>
-              </View>
-            ) : products.status === "unavailable" ? (
-              <View style={styles.productStatus}>
-                <Text style={styles.productTitle} accessibilityRole="header">
-                  دریافت کالاها تأیید نشد
-                </Text>
-                <Text accessibilityRole="alert" style={styles.muted}>
-                  ارتباط با کاتالوگ برقرار نشد یا پاسخ قابل اعتماد نبود.
-                </Text>
-                <Pressable accessibilityRole="button"
-                  accessibilityLabel="تلاش دوباره برای کالاها"
-                  onPress={() => void controller.refreshProducts()}
-                  style={styles.retryButton}>
-                  <Text style={styles.retryText}>تلاش دوباره</Text>
+          <View style={styles.productsGrid}>
+            {cards.map((item) => (
+              <View key={item.id} style={styles.productCard}>
+                <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات " + item.title}
+                  onPress={() => { setOpenCartFromTab(false); setDetailId("cheese"); }} style={styles.productImagePressable}>
+                  <Image source={item.image} style={styles.productImage} resizeMode="cover"
+                    accessibilityLabel={item.title} />
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={() => { setOpenCartFromTab(false); setDetailId("cheese"); }}
+                  style={styles.productTextBlock}>
+                  <Text numberOfLines={1} style={styles.productName}>{item.title}</Text>
+                  <Text style={styles.productKind}>{item.category}</Text>
+                  <Text style={styles.productPrice}>{item.price}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={"افزودن " + item.title + " به سبد"}
+                  onPress={() => setCartCount((count) => Math.min(99, count + 1))}
+                  style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
+                  <Text style={styles.addButtonText}>＋ افزودن</Text>
                 </Pressable>
               </View>
-            ) : products.data.items.length === 0 ? (
-              <View style={styles.productStatus}>
-                <Text style={styles.productTitle} accessibilityRole="header">
-                  فعلاً کالایی برای نمایش نداریم
-                </Text>
-                <Text style={styles.muted}>
-                  {browse.search || browse.categoryId
-                    ? "در این جست‌وجو یا دسته‌بندی کالای منتشرشده‌ای پیدا نشد."
-                    : "پس از انتشار کالاهای واقعی، فهرست اینجا نمایش داده می‌شود."}
-                  {" "}خرید هنوز فعال نیست.
-                </Text>
+            ))}
+            {cards.length === 0 ? (
+              <View style={styles.noResults}>
+                <Text style={styles.noResultsText}>کالایی با این نام پیدا نشد.</Text>
               </View>
-            ) : (
-              <>
-                <View style={styles.productsPanel}>
-                  {products.data.items.map((product) => (
-                    <Pressable key={product.id} style={styles.productCard}
-                      accessibilityRole="button"
-                      accessibilityLabel={`جزئیات ${product.name}`}
-                      onPress={() => setDetailId(product.id)}>
-                      <Text style={styles.productTitle} accessibilityRole="header">
-                        {product.name}
-                      </Text>
-                      <Text style={styles.productKind}>
-                        {product.kind === "SERVICE" ? "خدمت" : "کالا"}
-                      </Text>
-                      {product.description ? (
-                        <Text style={styles.productDescription}>
-                          {product.description}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.productDetailLink}>مشاهدهٔ جزئیات</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <View style={styles.paging}>
-                  <Text style={styles.pagingLabel}>
-                    صفحهٔ {products.data.page} از {Math.max(1,
-                      Math.ceil(products.data.total / BROWSE_PAGE_SIZE))}
-                  </Text>
-                  <View style={styles.pageActions}>
-                    <Pressable accessibilityRole="button"
-                      accessibilityLabel="صفحهٔ قبل"
-                      accessibilityState={{ disabled: browse.page <= 1 }}
-                      disabled={browse.page <= 1}
-                      onPress={() => {
-                        if (controller.previousPage())
-                          scroll.current?.scrollTo({ y: 280, animated: true });
-                      }}
-                      style={[styles.pageButton,
-                        browse.page <= 1 && styles.disabled]}>
-                      <Text style={styles.retryText}>صفحهٔ قبل</Text>
-                    </Pressable>
-                    <Pressable accessibilityRole="button"
-                      accessibilityLabel="صفحهٔ بعد"
-                      accessibilityState={{
-                        disabled: browse.page >= 10000 ||
-                          browse.page * BROWSE_PAGE_SIZE >= products.data.total,
-                      }}
-                      disabled={browse.page >= 10000 ||
-                        browse.page * BROWSE_PAGE_SIZE >= products.data.total}
-                      onPress={() => {
-                        if (controller.nextPage())
-                          scroll.current?.scrollTo({ y: 280, animated: true });
-                      }}
-                      style={[styles.pageButton, (browse.page >= 10000 ||
-                        browse.page * BROWSE_PAGE_SIZE >= products.data.total) &&
-                        styles.disabled]}>
-                      <Text style={styles.retryText}>صفحهٔ بعد</Text>
-                    </Pressable>
-                  </View>
-                </View>
-                <Text style={styles.nonCommerce}>
-                  این فهرست برای مرور است؛ قیمت، موجودی و امکان خرید هنوز فعال نیست.
-                </Text>
-              </>
-            )}
+            ) : null}
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+
+        <View style={styles.bottomNav}>
+          <Pressable style={styles.navItem}>
+            <Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" />
+            <Text style={[styles.navLabel, styles.navLabelActive]}>خانه</Text>
+          </Pressable>
+          <Pressable style={styles.navItem} onPress={() => { setOpenCartFromTab(true); setDetailId("cheese"); }}>
+            <Image source={navCart} style={styles.navIcon} accessibilityLabel="سبد خرید" />
+            <Text style={styles.navLabel}>سبد{cartCount > 0 ? " · " + cartCount : ""}</Text>
+          </Pressable>
+          <Pressable style={styles.navItem} onPress={onLogin}>
+            <Image source={navReceipt} style={styles.navIcon} accessibilityLabel="سفارش‌ها" />
+            <Text style={styles.navLabel}>سفارش‌ها</Text>
+          </Pressable>
+          <Pressable style={styles.navItem} onPress={onLogin}>
+            <Image source={navUser} style={styles.navIcon} accessibilityLabel="حساب" />
+            <Text style={styles.navLabel}>حساب</Text>
+          </Pressable>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -311,113 +236,51 @@ export function BuyerBrowseScreen({ onLogin, link }: {
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  safeArea: { flex: 1, backgroundColor: colors.surface },
-  scrollBody: { flexGrow: 1, backgroundColor: colors.surface },
-  header: {
-    height: 80, paddingHorizontal: 20, paddingVertical: 14,
-    flexDirection: "row-reverse", alignItems: "center",
-    justifyContent: "space-between", backgroundColor: colors.surface,
-  },
-  logo: { width: 145, height: 48 },
-  headerLink: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
-  headerLinkText: { color: colors.teal, fontSize: 14, fontWeight: "700", ...rtl },
-  pressed: { opacity: .75 },
-  previewCard: {
-    marginTop: 14, padding: 10, borderWidth: 1, borderColor: colors.beige,
-    borderRadius: 14, backgroundColor: colors.cream,
-    flexDirection: "row-reverse", alignItems: "center", gap: 12,
-  },
-  previewImage: { width: 76, height: 76, borderRadius: 10 },
-  previewCopy: { flex: 1, gap: 4 },
-  previewEyebrow: { color: colors.terracotta, fontSize: 11, fontWeight: "700", ...rtl },
-  content: {
-    width: "100%", maxWidth: 560, alignSelf: "center",
-    paddingHorizontal: 20, paddingTop: 25, paddingBottom: 48,
-  },
-  intro: { gap: 7, marginBottom: 18 },
-  eyebrow: { color: colors.terracotta, fontSize: 12, ...rtl },
-  title: {
-    color: colors.charcoal, fontSize: 24, fontWeight: "700",
-    lineHeight: 36, ...rtl,
-  },
-  description: { color: colors.muted, fontSize: 14, lineHeight: 24, ...rtl },
-  searchRow: {
-    flexDirection: "row-reverse", borderWidth: 1, borderColor: colors.beige,
-    borderRadius: 12, backgroundColor: colors.surface,
-    minHeight: 56, alignItems: "stretch", overflow: "hidden",
-  },
-  searchInput: {
-    flex: 1, minWidth: 0, fontSize: 14, color: colors.charcoal,
-    paddingHorizontal: 14, ...rtl,
-  },
-  searchButton: {
-    backgroundColor: colors.teal, paddingHorizontal: 12,
-    alignItems: "center", justifyContent: "center",
-  },
-  searchButtonText: { color: colors.surface, fontSize: 13, fontWeight: "700" },
-  sectionHeading: {
-    color: colors.teal, fontSize: 18, fontWeight: "700",
-    lineHeight: 34, marginTop: 18, marginBottom: 12, ...rtl,
-  },
-  sectionPanel: {
-    minHeight: 98, padding: 15, borderWidth: 1,
-    borderColor: colors.beige, borderRadius: 14,
-    backgroundColor: colors.surface, justifyContent: "center",
-  },
-  muted: { color: colors.muted, fontSize: 14, lineHeight: 26, ...rtl },
-  categoryRecovery: {
-    backgroundColor: colors.paleTeal, color: colors.teal,
-    fontSize: 13, lineHeight: 23, ...rtl,
-    marginTop: 12, padding: 12, borderRadius: 10,
-  },
-  errorText: { color: colors.error, fontSize: 14, lineHeight: 25, ...rtl },
-  retryButton: {
-    borderWidth: 1, borderColor: colors.teal, borderRadius: 10,
-    minHeight: 44, paddingHorizontal: 14, paddingVertical: 8,
-    alignItems: "center", alignSelf: "flex-end",
-    justifyContent: "center", marginTop: 12,
-  },
-  retryText: { color: colors.teal, fontSize: 14, fontWeight: "700", ...rtl },
-  categoryGrid: {
-    flexDirection: "row-reverse", flexWrap: "wrap", gap: 8,
-  },
-  categoryChip: {
-    backgroundColor: colors.paleTeal, width: "48%", minHeight: 68,
-    borderRadius: 11, borderWidth: 2, borderColor: "transparent",
-    paddingHorizontal: 7, paddingVertical: 12, justifyContent: "center",
-  },
-  categorySelected: { borderColor: colors.teal },
-  categoryText: {
-    color: colors.teal, fontSize: 13, fontWeight: "700",
-    lineHeight: 24, ...rtl,
-  },
-  productStatus: {
-    minHeight: 197, borderWidth: 1, borderColor: colors.beige,
-    borderRadius: 16, paddingHorizontal: 16, paddingVertical: 17,
-    backgroundColor: colors.surface, gap: 7,
-  },
-  productTitle: {
-    color: colors.teal, fontSize: 19, fontWeight: "700",
-    lineHeight: 30, ...rtl,
-  },
-  productsPanel: {
-    borderRadius: 16, borderWidth: 1, borderColor: colors.beige,
-    padding: 15, gap: 12, backgroundColor: colors.surface,
-  },
-  productCard: {
-    padding: 16, borderWidth: 1, borderColor: colors.beige,
-    backgroundColor: colors.cream, borderRadius: 12, gap: 7,
-  },
-  productKind: { color: colors.muted, fontSize: 14, ...rtl },
-  productDetailLink: { color: colors.teal, fontSize: 14, fontWeight: "700", ...rtl },
-  productDescription: { color: colors.muted, fontSize: 13, lineHeight: 23, ...rtl },
-  paging: { gap: 10, marginTop: 20 },
-  pagingLabel: { color: colors.muted, fontSize: 14, ...rtl },
-  pageActions: { flexDirection: "row-reverse", gap: 12 },
-  pageButton: {
-    borderWidth: 1, borderRadius: 10, borderColor: colors.teal,
-    minHeight: 44, paddingHorizontal: 14, justifyContent: "center",
-  },
-  disabled: { opacity: .45 },
-  nonCommerce: { color: colors.muted, fontSize: 13, lineHeight: 24, ...rtl },
+  safeArea: { flex: 1, backgroundColor: "#f7f3ed" },
+  scrollBody: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 100, gap: 8, backgroundColor: "#f7f3ed" },
+  header: { height: 56, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f7f3ed" },
+  headerBack: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, borderWidth: 1, borderColor: "#f0e7dd", backgroundColor: "#fff" },
+  backIcon: { color: "#0f5b5a", fontSize: 28, lineHeight: 31 },
+  headerTitle: { position: "absolute", left: 70, right: 70, textAlign: "center", color: "#2d2d2d", fontSize: 16, fontWeight: "700", ...rtl },
+  logo: { width: 80, height: 36 },
+  pressed: { opacity: .72 },
+  searchRow: { height: 46, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 12, backgroundColor: "#fff" },
+  iconButton: { width: 28, height: 32, alignItems: "center", justifyContent: "center" },
+  filterIcon: { color: "#8e8e93", fontSize: 20 },
+  searchInput: { flex: 1, minWidth: 0, paddingHorizontal: 8, color: "#2d2d2d", fontSize: 13, ...rtl },
+  searchIconButton: { width: 24, height: 32, alignItems: "center", justifyContent: "center" },
+  searchIcon: { color: "#0f5b5a", fontSize: 26, lineHeight: 29 },
+  categoriesRow: { minHeight: 42, flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+  categoryChip: { height: 36, paddingHorizontal: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 20, backgroundColor: "#fff" },
+  categoryChipActive: { borderColor: "#f0e7dd", backgroundColor: "#fff" },
+  categoryText: { color: "#2d2d2d", fontSize: 12, fontWeight: "600", ...rtl },
+  categoryTextActive: { color: "#2d2d2d" },
+  controlsRow: { height: 32, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sortLabel: { color: "#b7b5b3", fontSize: 12, ...rtl },
+  filterButton: { flexDirection: "row", alignItems: "center", gap: 6 },
+  filterButtonText: { color: "#0f5b5a", fontSize: 13, fontWeight: "700", ...rtl },
+  filterIconSmall: { color: "#b5523b", fontSize: 16 },
+  expandedCategories: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8, padding: 10, borderRadius: 12, backgroundColor: "#fff" },
+  expandedCategory: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: "#f7f3ed" },
+  expandedCategoryText: { color: "#1c3f3a", fontSize: 12, ...rtl },
+  inlineNotice: { padding: 8, borderRadius: 8, backgroundColor: "#fff" },
+  inlineNoticeText: { color: "#706963", fontSize: 11, ...rtl },
+  productsGrid: { flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "space-between", rowGap: 16 },
+  productCard: { width: "47.72%", height: 220, padding: 12, gap: 10, alignItems: "flex-end", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 16, backgroundColor: "#fff" },
+  productImagePressable: { width: "100%", height: 100, borderRadius: 12, overflow: "hidden" },
+  productImage: { width: "100%", height: "100%" },
+  productTextBlock: { width: "100%", flex: 1, alignItems: "flex-end", gap: 2 },
+  productName: { color: "#2d2d2d", fontSize: 13, fontWeight: "700", lineHeight: 20, ...rtl },
+  productKind: { color: "#8e8e93", fontSize: 11, ...rtl },
+  productPrice: { marginTop: 2, color: "#0f5b5a", fontSize: 14, fontWeight: "800", ...rtl },
+  addButton: { width: "100%", height: 32, flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#b5523b", borderRadius: 8, backgroundColor: "#fdf1ee" },
+  addButtonText: { color: "#b5523b", fontSize: 12, fontWeight: "700", ...rtl },
+  noResults: { width: "100%", minHeight: 100, alignItems: "center", justifyContent: "center" },
+  noResultsText: { color: "#706963", fontSize: 13, ...rtl },
+  bottomNav: { height: 84, position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 20, flexDirection: "row-reverse", alignItems: "flex-start", justifyContent: "space-around", borderTopWidth: 1, borderTopColor: "#f0e7dd", backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: .1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 8 },
+  navItem: { flex: 1, alignItems: "center", gap: 2 },
+  navIcon: { width: 22, height: 22 },
+  navLabel: { color: "#8e8e93", fontSize: 10, ...rtl },
+  navLabelActive: { color: "#0f5b5a", fontWeight: "700" },
+  errorText: { color: "#b5523b", fontSize: 12, ...rtl },
 });
