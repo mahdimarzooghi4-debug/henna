@@ -53,6 +53,10 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutAddress, setCheckoutAddress] = useState("");
+  const [checkoutRecipient, setCheckoutRecipient] = useState("");
+  const [checkoutPhone, setCheckoutPhone] = useState("");
   const [cartNotice, setCartNotice] = useState("");
   const cartCount = Object.values(cart).reduce((total, quantity) => total + quantity, 0);
 
@@ -160,9 +164,14 @@ export function BuyerBrowseScreen({ onLogin, link }: {
               </View>
               <Text style={styles.cartTotalNotice}>هزینه ارسال پس از انتخاب فروشگاه مشخص می‌شود.</Text>
             </View>
-            <Pressable accessibilityRole="button" onPress={() => setCartOpen(false)} style={styles.cartContinueButton}>
-              <Text style={styles.cartContinueText}>ادامه خرید</Text>
-            </Pressable>
+            <View style={styles.cartActions}>
+              <Pressable accessibilityRole="button" onPress={() => setCartOpen(false)} style={styles.cartContinueButton}>
+                <Text style={styles.cartContinueText}>ادامه خرید</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => { setCartOpen(false); setCheckoutOpen(true); }} style={styles.checkoutStartButton}>
+                <Text style={styles.cartContinueText}>ادامه به تکمیل سفارش</Text>
+              </Pressable>
+            </View>
           </>
         )}
       </ScrollView>
@@ -172,6 +181,76 @@ export function BuyerBrowseScreen({ onLogin, link }: {
         <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={navCart} style={styles.navIcon} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد · {fa(cartCount)}</Text></Pressable>
         <Pressable style={styles.navItem} onPress={() => setCartOpen(false)}><Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" /><Text style={styles.navLabel}>خانه</Text></Pressable>
       </View>
+    </SafeAreaView>
+  );
+  if (checkoutOpen) return (
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f7f3ed" />
+      <View style={styles.header}>
+        <Pressable accessibilityRole="button" accessibilityLabel="بازگشت به سبد خرید"
+          onPress={() => { setCheckoutOpen(false); setCartOpen(true); }} style={styles.headerBack}>
+          <Text style={styles.backIcon}>‹</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>تکمیل سفارش</Text>
+        <Image source={logo} resizeMode="contain" style={styles.logo} accessibilityLabel="حنا" />
+      </View>
+      <ScrollView style={styles.fill} contentContainerStyle={styles.checkoutScroll}
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Text style={styles.cartPageTitle}>تکمیل و ثبت سفارش</Text>
+        <View style={styles.checkoutNotice}>
+          <Text style={styles.checkoutNoticeTitle}>پیش‌نمایش سفارش</Text>
+          <Text style={styles.checkoutNoticeCopy}>این انتخاب فقط در همین صفحه نگه داشته می‌شود. سفارش ثبت یا برای فروشگاه ارسال نمی‌شود.</Text>
+        </View>
+        <View style={styles.cartTotalCard}>
+          <Text style={styles.checkoutSectionTitle}>خلاصه سفارش · {fa(cartCount)} قلم</Text>
+          {cartItems.map((item) => (
+            <View key={item.id} style={styles.checkoutSummaryRow}>
+              <Text style={styles.checkoutSummaryName}>{item.title} × {fa(cart[item.id] ?? 0)}</Text>
+              <Text style={styles.checkoutSummaryPrice}>{fa(item.amount * (cart[item.id] ?? 0))} تومان</Text>
+            </View>
+          ))}
+          <View style={styles.checkoutSummaryRow}>
+            <Text style={styles.cartTotalLabel}>هزینه ارسال</Text>
+            <Text style={styles.checkoutSummaryPrice}>پس از اعلام فروشگاه</Text>
+          </View>
+          <View style={styles.cartTotalRow}>
+            <Text style={styles.cartTotalLabel}>مبلغ قابل پرداخت</Text>
+            <Text style={styles.cartTotalAmount}>{fa(cartTotal)} تومان · قیمت دیده‌شده</Text>
+          </View>
+        </View>
+        <View style={styles.checkoutFormCard}>
+          <Text style={styles.checkoutSectionTitle}>آدرس و مشخصات تحویل</Text>
+          <Text style={styles.checkoutFieldLabel}>نشانی دقیق پستی</Text>
+          <TextInput accessibilityLabel="نشانی دقیق پستی" value={checkoutAddress} onChangeText={setCheckoutAddress}
+            placeholder="نشانی دقیق پستی" multiline textAlign="right" style={[styles.checkoutInput, styles.checkoutAddressInput]} />
+          <Text style={styles.checkoutFieldLabel}>نام گیرنده</Text>
+          <TextInput accessibilityLabel="نام گیرنده" value={checkoutRecipient} onChangeText={setCheckoutRecipient}
+            placeholder="نام و نام خانوادگی گیرنده" textAlign="right" style={styles.checkoutInput} />
+          <Text style={styles.checkoutFieldLabel}>شماره تماس گیرنده</Text>
+          <TextInput accessibilityLabel="شماره تماس گیرنده" value={checkoutPhone} onChangeText={setCheckoutPhone}
+            placeholder="۰۹۱۲۳۴۵۶۷۸۹" keyboardType="phone-pad" textAlign="right" style={styles.checkoutInput} />
+          <Text style={styles.checkoutHint}>نشانی فقط در این صفحه می‌ماند و ذخیره یا برای فروشگاه ارسال نمی‌شود.</Text>
+        </View>
+        <View style={styles.checkoutFormCard}>
+          <Text style={styles.checkoutSectionTitle}>روش تحویل</Text>
+          <Text style={styles.checkoutHint}>زمان تحویل و هزینه ارسال پس از تأیید فروشگاه مشخص می‌شود.</Text>
+        </View>
+        <View style={styles.checkoutFormCard}>
+          <Text style={styles.checkoutSectionTitle}>روش پرداخت</Text>
+          <View style={styles.checkoutPayment}>
+            <Text style={styles.checkoutPaymentTitle}>پرداخت آنلاین با کارت بانکی</Text>
+            <Text style={styles.checkoutHint}>تا اتصال درگاه پرداخت غیرفعال است.</Text>
+          </View>
+          <Text style={styles.checkoutHint}>پرداخت در محل در حنا پشتیبانی نمی‌شود.</Text>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: true }} disabled style={styles.checkoutBlockedButton}>
+          <Text style={styles.cartContinueText}>ثبت سفارش</Text>
+        </Pressable>
+        <Text style={styles.checkoutBlockedCopy}>ثبت سفارش تا آماده‌شدن API سفارش و درگاه پرداخت فعال نیست.</Text>
+        <Pressable accessibilityRole="button" onPress={() => { setCheckoutOpen(false); setCartOpen(true); }} style={styles.checkoutBackButton}>
+          <Text style={styles.checkoutBackText}>بازگشت به سبد خرید</Text>
+        </Pressable>
+      </ScrollView>
     </SafeAreaView>
   );
   if (detailId === "rice") return <FigmaProductDetailScreen
@@ -410,4 +489,25 @@ const styles = StyleSheet.create({
   cartContinueButton: { minHeight: 50, alignItems: "center", justifyContent: "center", borderRadius: 11, backgroundColor: "#b5523b" },
   cartContinueText: { color: "#fff", fontSize: 14, fontWeight: "700", ...rtl },
   cartNotice: { color: "#0f5b5a", paddingHorizontal: 10, fontSize: 12, fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
+  cartActions: { gap: 8 },
+  checkoutStartButton: { minHeight: 50, alignItems: "center", justifyContent: "center", borderRadius: 11, backgroundColor: "#0f5b5a" },
+  checkoutScroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28, gap: 14, backgroundColor: "#f7f3ed" },
+  checkoutNotice: { padding: 14, gap: 6, borderWidth: 1, borderColor: "#e4c9a8", borderRadius: 12, backgroundColor: "#fff8ec" },
+  checkoutNoticeTitle: { color: "#8b4a2c", fontSize: 14, fontWeight: "800", ...rtl },
+  checkoutNoticeCopy: { color: "#706963", fontSize: 12, lineHeight: 20, ...rtl },
+  checkoutSectionTitle: { marginBottom: 6, color: "#2d2d2d", fontSize: 15, fontWeight: "800", ...rtl },
+  checkoutSummaryRow: { minHeight: 34, flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", gap: 10, borderBottomWidth: 1, borderBottomColor: "#f0e7dd" },
+  checkoutSummaryName: { flex: 1, color: "#706963", fontSize: 11, ...rtl },
+  checkoutSummaryPrice: { color: "#2d2d2d", fontSize: 11, fontWeight: "700", ...rtl },
+  checkoutFormCard: { padding: 14, gap: 8, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 14, backgroundColor: "#fff" },
+  checkoutFieldLabel: { marginTop: 4, color: "#706963", fontSize: 12, fontWeight: "700", ...rtl },
+  checkoutInput: { minHeight: 44, paddingHorizontal: 12, color: "#2d2d2d", fontSize: 13, borderWidth: 1, borderColor: "#e8dfd7", borderRadius: 9, backgroundColor: "#fff", ...rtl },
+  checkoutAddressInput: { minHeight: 80, paddingTop: 12, textAlignVertical: "top" },
+  checkoutHint: { color: "#8e8e93", fontSize: 11, lineHeight: 18, ...rtl },
+  checkoutPayment: { padding: 12, gap: 4, borderWidth: 1, borderColor: "#e8dfd7", borderRadius: 9, backgroundColor: "#f7f3ed" },
+  checkoutPaymentTitle: { color: "#8e8e93", fontSize: 13, fontWeight: "700", ...rtl },
+  checkoutBlockedButton: { minHeight: 50, alignItems: "center", justifyContent: "center", borderRadius: 11, backgroundColor: "#b9b4ae" },
+  checkoutBlockedCopy: { color: "#8e8e93", fontSize: 11, textAlign: "center", writingDirection: "rtl" },
+  checkoutBackButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },
+  checkoutBackText: { color: "#0f5b5a", fontSize: 13, fontWeight: "700", ...rtl },
 });
