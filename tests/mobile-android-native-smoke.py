@@ -163,7 +163,16 @@ def main():
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(BROWSE, package)
     wait_screen("کالاها و خدمات", TERM)
+
+    # Capture the Figma catalog with its seeded, reviewable sample products.
+    open_uri("hana://browse", package)
+    wait_screen("کالاها و خدمات")
     save_preview("henna-android-products-preview.png")
+    tap_accessible("جزئیات برنج طارم ایرانی درجه یک")
+    wait_screen("جزئیات محصول", "برنج طارم ایرانی درجه یک")
+    save_preview("henna-android-detail-preview.png")
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("کالاها و خدمات")
 
     # Verify the real launcher opens the Figma home screen first.
     execute("adb", "shell", "am", "force-stop", package)
