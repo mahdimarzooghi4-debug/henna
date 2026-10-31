@@ -217,7 +217,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
           </Pressable>
           <Pressable style={styles.navItem} onPress={() => { setOpenCartFromTab(true); setDetailId("cheese"); }}>
             <Image source={navCart} style={styles.navIcon} accessibilityLabel="سبد خرید" />
-            <Text style={styles.navLabel}>سبد{cartCount > 0 ? " · " + cartCount : ""}</Text>
+            <Text style={styles.navLabel}>سبد{cartCount > 0 ? " · " + fa(cartCount) : ""}</Text>
           </Pressable>
           <Pressable style={styles.navItem} onPress={onLogin}>
             <Image source={navReceipt} style={styles.navIcon} accessibilityLabel="سفارش‌ها" />
@@ -234,6 +234,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
 }
 
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
+const fa = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: "#f7f3ed" },
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
   expandedCategoryText: { color: "#1c3f3a", fontSize: 12, ...rtl },
   inlineNotice: { padding: 8, borderRadius: 8, backgroundColor: "#fff" },
   inlineNoticeText: { color: "#706963", fontSize: 11, ...rtl },
-  productsGrid: { flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "space-between", rowGap: 16 },
+  productsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 16 },
   productCard: { width: "47.72%", height: 220, padding: 12, gap: 10, alignItems: "flex-end", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 16, backgroundColor: "#fff" },
   productImagePressable: { width: "100%", height: 100, borderRadius: 12, overflow: "hidden" },
   productImage: { width: "100%", height: "100%" },
