@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   stepDown: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#F0E7DD" },
   stepMinus: { color: "#8E8E93", fontSize: 16, fontWeight: "700" },
   quantity: { color: colors.charcoal, fontSize: 16, fontWeight: "700" },
-  success: { color: colors.teal, fontSize: 12, textAlign: "right", ...rtl },
+  success: { color: colors.teal, fontSize: 12, ...rtl },
   accordion: { padding: 16, borderRadius: 12, borderWidth: 1, borderColor: "#F0E7DD", backgroundColor: colors.surface, gap: 10 },
   accordionHead: { minHeight: 20, flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
   accordionTitle: { color: colors.charcoal, fontSize: 14, fontWeight: "700", ...rtl },

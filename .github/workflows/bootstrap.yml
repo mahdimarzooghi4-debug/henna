@@ -559,6 +559,13 @@ jobs:
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
         run: ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-consumer/android
+      - name: Upload installable test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: henna-android-test-apk-${{ github.sha }}
+          path: apps/mobile-consumer/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Enable KVM for hardware-accelerated emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

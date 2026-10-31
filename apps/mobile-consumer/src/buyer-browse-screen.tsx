@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   header: { height: 56, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f7f3ed" },
   headerBack: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, borderWidth: 1, borderColor: "#f0e7dd", backgroundColor: "#fff" },
   backIcon: { color: "#0f5b5a", fontSize: 28, lineHeight: 31 },
-  headerTitle: { position: "absolute", left: 70, right: 70, textAlign: "center", color: "#2d2d2d", fontSize: 16, fontWeight: "700", ...rtl },
+  headerTitle: { position: "absolute", left: 70, right: 70, color: "#2d2d2d", fontSize: 16, fontWeight: "700", ...rtl, textAlign: "center" },
   logo: { width: 80, height: 36 },
   pressed: { opacity: .72 },
   searchRow: { height: 46, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 12, backgroundColor: "#fff" },
