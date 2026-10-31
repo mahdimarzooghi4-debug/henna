@@ -183,3 +183,20 @@ def main():
     wait_screen("سبد خرید", "تومان")
     save_preview("henna-android-cart-preview.png")
     print("PASS: native URI dispatch, catalog add and cart")
+
+try:
+    main()
+except Exception as exc:
+    print(f"ANDROID NATIVE SMOKE FAILED: {exc}", file=sys.stderr)
+    try:
+        save_preview()
+    except Exception:
+        pass
+    try:
+        logs = execute("adb", "logcat", "-d", "-s",
+                       "ReactNativeJS:E", "AndroidRuntime:E",
+                       timeout=30, check=False)
+        print(logs[-11000:], file=sys.stderr)
+    except Exception:
+        pass
+    raise
