@@ -64,6 +64,33 @@ def wait_screen(*phrases, timeout=110):
     )
 
 
+def tap_accessible(label):
+    # Tap a real installed-app control by its visible/accessibility label.
+    execute("adb", "shell", "uiautomator", "dump", "/sdcard/hana-window.xml",
+            timeout=45)
+    raw = execute("adb", "exec-out", "cat", "/sdcard/hana-window.xml",
+                  timeout=20)
+    root = ET.fromstring(raw)
+    candidates = []
+    for node in root.iter():
+        value = (node.attrib.get("content-desc", "") + " " +
+                 node.attrib.get("text", "")).strip()
+        if label not in value:
+            continue
+        match = re.search(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+        if not match:
+            continue
+        left, top, right, bottom = map(int, match.groups())
+        clickable = node.attrib.get("clickable") == "true"
+        candidates.append((clickable, (right-left)*(bottom-top),
+                           (left+right)//2, (top+bottom)//2))
+    if not candidates:
+        raise AssertionError(f"Android UI control not found: {label!r}")
+    _, _, x, y = max(candidates)
+    execute("adb", "shell", "input", "tap", str(x), str(y))
+    time.sleep(1)
+
+
 def open_uri(uri, package):
     # DO NOT force an explicit -n component/-p package: that bypasses
     # Android's real URI intent resolution and could falsely pass.
@@ -82,15 +109,15 @@ def open_uri(uri, package):
 
 
 
-def save_preview():
+def save_preview(name="henna-android-preview.png"):
     result = subprocess.run(
         ["adb", "exec-out", "screencap", "-p"],
         capture_output=True, timeout=30,
     )
     if result.returncode != 0 or result.stdout[:4] != bytes([137, 80, 78, 71]):
         return False
-    (ROOT / "henna-android-preview.png").write_bytes(result.stdout)
-    print("Captured actual installed Android app preview", flush=True)
+    (ROOT / name).write_bytes(result.stdout)
+    print("Captured actual installed Android app preview: " + name, flush=True)
     return True
 
 
@@ -136,8 +163,17 @@ def main():
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(BROWSE, package)
     wait_screen("کالاها و خدمات", TERM)
+
+    # Show real catalog cards, add an item, and capture the in-app basket.
+    open_uri("hana://browse", package)
+    wait_screen("کالاها و خدمات", "برنج طارم ایرانی درجه یک")
+    tap_accessible("افزودن برنج طارم ایرانی درجه یک به سبد")
+    wait_screen("برنج طارم ایرانی درجه یک به سبد اضافه شد")
+    tap_accessible("سبد خرید")
+    wait_screen("سبد خرید", "برنج طارم ایرانی درجه یک")
+    save_preview("henna-android-cart-preview.png")
     print("PASS: installed Android native OS URI dispatch, cold/warm detail,"
-          " Back to saved browse, invalid URI isolation and cold browse")
+          " Back to saved browse, invalid URI isolation, catalog add and cart")
 
 
 try:
