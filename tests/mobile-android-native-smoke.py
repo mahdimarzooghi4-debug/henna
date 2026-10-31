@@ -164,16 +164,20 @@ def main():
     open_uri(BROWSE, package)
     wait_screen("کالاها و خدمات", TERM)
 
-    # Show real catalog cards, add an item, and capture the in-app basket.
-    open_uri("hana://browse", package)
-    wait_screen("کالاها و خدمات", "برنج طارم ایرانی درجه یک")
-    tap_accessible("افزودن برنج طارم ایرانی درجه یک به سبد")
-    wait_screen("برنج طارم ایرانی درجه یک به سبد اضافه شد")
+    # Verify the real launcher opens the Figma home screen first.
+    execute("adb", "shell", "am", "force-stop", package)
+    execute("adb", "shell", "monkey", "-p", package, "1", timeout=60)
+    wait_screen("سلام، روزت بخیر", "به حنا خوش آمدید",
+                "خرید روزمره، با اثری فراتر از خرید", "پیشنهادهای امروز")
+    save_preview("henna-android-home-preview.png")
+
+    # Add a real home-card item and capture the resulting in-app basket.
+    tap_accessible("افزودن پنیر سفید صبحانه به سبد")
+    wait_screen("پنیر سفید صبحانه به سبد اضافه شد")
     tap_accessible("سبد خرید")
-    wait_screen("سبد خرید", "برنج طارم ایرانی درجه یک")
+    wait_screen("سبد خرید", "پنیر سفید صبحانه")
     save_preview("henna-android-cart-preview.png")
-    print("PASS: installed Android native OS URI dispatch, cold/warm detail,"
-          " Back to saved browse, invalid URI isolation, catalog add and cart")
+    print("PASS: native URI dispatch, Figma home launch, home add and cart")
 
 
 try:
