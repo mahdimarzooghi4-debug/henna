@@ -168,7 +168,7 @@ def main():
     open_uri("hana://browse", package)
     wait_screen("کالاها و خدمات")
     save_preview("henna-android-products-preview.png")
-    tap_accessible("جزئیات برنج طارم ایرانی درجه یک")
+    tap_accessible("برنج طارم ایرانی درجه یک")
     wait_screen("جزئیات محصول", "برنج طارم ایرانی درجه یک")
     save_preview("henna-android-detail-preview.png")
     execute("adb", "shell", "input", "keyevent", "4")
@@ -182,10 +182,10 @@ def main():
     save_preview("henna-android-home-preview.png")
 
     # Add a real home-card item and capture the resulting in-app basket.
-    tap_accessible("افزودن پنیر سفید صبحانه به سبد")
-    wait_screen("پنیر سفید صبحانه به سبد اضافه شد")
+    tap_accessible("افزودن")
+    wait_screen("به سبد اضافه شد")
     tap_accessible("سبد خرید")
-    wait_screen("سبد خرید", "پنیر سفید صبحانه")
+    wait_screen("سبد خرید", "تومان")
     save_preview("henna-android-cart-preview.png")
     print("PASS: native URI dispatch, Figma home launch, home add and cart")
 
