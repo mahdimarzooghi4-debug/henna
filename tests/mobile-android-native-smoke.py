@@ -163,6 +163,7 @@ def main():
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(BROWSE, package)
     wait_screen("کالاها و خدمات", TERM)
+    save_preview("henna-android-products-preview.png")
 
     # Verify the real launcher opens the Figma home screen first.
     execute("adb", "shell", "am", "force-stop", package)
