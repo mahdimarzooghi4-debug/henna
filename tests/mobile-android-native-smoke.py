@@ -103,12 +103,12 @@ def main():
     # Both native and app back behaviors return to public browse with the
     # genuine URI search, even when offline and no products are published.
     execute("adb", "shell", "input", "keyevent", "4")
-    wait_screen("کالاها را در حنا مرور کنید", TERM)
+    wait_screen("کالاها و خدمات", TERM)
 
     # A WARM app-link event must replace browse UI with the new detail
     # screen; no app restart, package state or Expo Go test double.
     open_uri("hana://browse?search=" + BROWSE.split("search=", 1)[1], package)
-    wait_screen("کالاها را در حنا مرور کنید", TERM)
+    wait_screen("کالاها و خدمات", TERM)
     open_uri("hana://products/" + BUYER_ID, package)
     wait_screen("جزئیات کالا یا خدمت", "دریافت جزئیات تأیید نشد")
 
@@ -121,7 +121,7 @@ def main():
     # parsed-but-unused string in Node-only tests.
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(BROWSE, package)
-    wait_screen("کالاها را در حنا مرور کنید", TERM)
+    wait_screen("کالاها و خدمات", TERM)
     print("PASS: installed Android native OS URI dispatch, cold/warm detail,"
           " Back to saved browse, invalid URI isolation and cold browse")
 
