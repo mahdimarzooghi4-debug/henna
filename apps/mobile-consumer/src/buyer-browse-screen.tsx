@@ -22,11 +22,20 @@ const browseBackIcon = require("../assets/home-icon-arrow-left.png");
 const browseSlidersIcon = require("../assets/home-icon-sliders.png");
 const browseSearchIcon = require("../assets/home-icon-search.png");
 const browsePlusIcon = require("../assets/home-icon-plus.png");
+const cartRiceImage = require("../assets/buyer-detail-gallery.jpg");
+const cartTrashIcon = require("../assets/buyer-cart-trash.png");
+const cartCheckIcon = require("../assets/buyer-cart-check.png");
 const catalogCards = [buyerHomeProducts[2], buyerHomeProducts[3], buyerHomeProducts[0], buyerHomeProducts[1]];
 const catalogTitles: Record<string, string> = {
   rice: "برنج طارم ایرانی درجه یک",
   oil: "روغن مایع آفتابگردان",
   cheese: "پنیر سفید صبحانه",
+  yogurt: "ماست کم‌چرب پاستوریزه",
+};
+const cartTitles: Record<string, string> = {
+  rice: "برنج طارم ایرانی درجه یک (۱۰ کیلویی)",
+  cheese: "پنیر سفید صبحانه نسبتاً چرب حنا",
+  oil: "روغن مایع آفتابگردان",
   yogurt: "ماست کم‌چرب پاستوریزه",
 };
 const navUser = require("../assets/figma-nav-user.png");
@@ -66,6 +75,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
   const [checkoutRecipient, setCheckoutRecipient] = useState("");
   const [checkoutPhone, setCheckoutPhone] = useState("");
   const [cartNotice, setCartNotice] = useState("");
+  const [comparisonNotice, setComparisonNotice] = useState("");
   const cartCount = Object.values(cart).reduce((total, quantity) => total + quantity, 0);
 
   useEffect(() => {
@@ -129,28 +139,24 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
   );
   // Keep the mounted browse coordinator and its real search/filter/page state.
   if (cartOpen) return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f7f3ed" />
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.safeArea, styles.cartSafeArea]} edges={["top", "bottom"]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#faf8f5" />
+      <View style={styles.cartHeader}>
         <Pressable accessibilityRole="button" accessibilityLabel="بازگشت به فروشگاه"
           onPress={() => setCartOpen(false)} style={styles.headerBack}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Image source={browseBackIcon} style={styles.cartBackIcon} accessibilityLabel="بازگشت" />
         </Pressable>
-        <Text style={styles.headerTitle}>سبد خرید</Text>
+        <Text style={styles.cartHeaderTitle}>سبد خرید</Text>
         <Image source={logo} resizeMode="contain" style={styles.logo} accessibilityLabel="حنا" />
       </View>
       <ScrollView style={styles.fill} contentContainerStyle={styles.cartScroll}
         showsVerticalScrollIndicator={false}>
-        <View style={styles.cartHeadingRow}>
-          <Text style={styles.cartPageTitle}>سبد خرید</Text>
-          <Text style={styles.cartPageCount}>{fa(cartCount)} قلم</Text>
-        </View>
         {cartItems.length === 0 ? (
           <View style={styles.cartEmptyCard}>
             <Image source={navCart} style={styles.cartEmptyIcon} accessibilityLabel="سبد خالی" />
             <Text style={styles.cartEmptyTitle}>سبد خرید شما خالی است</Text>
             <Text style={styles.cartEmptyCopy}>برای شروع خرید، کالاهای موردنیازتان را به سبد اضافه کنید.</Text>
-            <Pressable accessibilityRole="button" onPress={() => setCartOpen(false)} style={styles.cartContinueButton}>
+            <Pressable accessibilityRole="button" onPress={() => { setCartOpen(false); enterCatalog(""); }} style={styles.cartContinueButton}>
               <Text style={styles.cartContinueText}>مشاهده کالاها</Text>
             </Pressable>
           </View>
@@ -159,25 +165,30 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
             <View style={styles.cartLines}>
               {cartItems.map((item) => {
                 const quantity = cart[item.id] ?? 0;
+                const title = cartTitles[item.id] ?? item.title;
+                const imageSource = item.id === "rice" ? cartRiceImage : item.image;
                 return (
                   <View key={item.id} style={styles.cartLine}>
-                    <Image source={item.image} style={styles.cartLineImage} resizeMode="cover" accessibilityLabel={item.title} />
+                    <Image source={imageSource} style={styles.cartLineImage} resizeMode="cover" accessibilityLabel={title} />
                     <View style={styles.cartLineCopy}>
-                      <Text style={styles.cartLineTitle}>{item.title}</Text>
-                      <Text style={styles.cartLineCategory}>{item.category}</Text>
-                      <Text style={styles.cartLinePrice}>{fa(item.amount)} تومان</Text>
+                      <Text numberOfLines={1} style={styles.cartLineTitle}>{title}</Text>
+                      <View style={styles.cartLinePriceRow}>
+                        <Text style={styles.cartBasePriceLabel}>قیمت مبنا:</Text>
+                        <Text style={styles.cartBasePrice}>{fa(item.amount)} تومان</Text>
+                      </View>
                       <View style={styles.cartLineControls}>
-                        <Pressable accessibilityRole="button" accessibilityLabel={"حذف " + item.title + " از سبد"}
-                          onPress={() => setCartItemQuantity(item.id, 0)}>
+                        <Pressable accessibilityRole="button" accessibilityLabel={"حذف " + title + " از سبد"}
+                          onPress={() => setCartItemQuantity(item.id, 0)} style={styles.cartLineRemoveButton}>
+                          <Image source={cartTrashIcon} style={styles.cartTrashIcon} accessibilityLabel="حذف" />
                           <Text style={styles.cartLineRemove}>حذف</Text>
                         </Pressable>
                         <View style={styles.cartStepper}>
-                          <Pressable accessibilityRole="button" accessibilityLabel={"افزایش تعداد " + item.title}
+                          <Pressable accessibilityRole="button" accessibilityLabel={"افزایش تعداد " + title}
                             onPress={() => setCartItemQuantity(item.id, quantity + 1)} style={styles.cartStepButton}>
-                            <Text style={styles.cartStepPlus}>＋</Text>
+                            <Text style={styles.cartStepPlus}>+</Text>
                           </Pressable>
-                          <Text accessibilityLabel={"تعداد " + item.title} style={styles.cartStepValue}>{fa(quantity)}</Text>
-                          <Pressable accessibilityRole="button" accessibilityLabel={"کاهش تعداد " + item.title}
+                          <Text accessibilityLabel={"تعداد " + title} style={styles.cartStepValue}>{fa(quantity)}</Text>
+                          <Pressable accessibilityRole="button" accessibilityLabel={"کاهش تعداد " + title}
                             onPress={() => setCartItemQuantity(item.id, quantity - 1)} style={styles.cartStepButton}>
                             <Text style={styles.cartStepMinus}>−</Text>
                           </Pressable>
@@ -190,26 +201,41 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
             </View>
             <View style={styles.cartTotalCard}>
               <View style={styles.cartTotalRow}>
-                <Text style={styles.cartTotalLabel}>مجموع کالاها</Text>
+                <Text style={styles.cartTotalLabel}>مجموع اقلام مبنا:</Text>
                 <Text style={styles.cartTotalAmount}>{fa(cartTotal)} تومان</Text>
               </View>
-              <Text style={styles.cartTotalNotice}>هزینه ارسال پس از انتخاب فروشگاه مشخص می‌شود.</Text>
+              <View style={styles.cartTotalRow}>
+                <Text style={styles.cartTotalLabel}>تخفیف‌های قابل اعمال:</Text>
+                <Text style={styles.cartDiscountAmount}>۰ تومان</Text>
+              </View>
+              <View style={styles.cartSummaryDivider} />
+              <View style={styles.cartTotalRow}>
+                <Text style={styles.cartEstimatedLabel}>قیمت حدودی سبد:</Text>
+                <Text style={styles.cartEstimatedAmount}>{fa(cartTotal)} تومان</Text>
+              </View>
             </View>
-            <View style={styles.cartActions}>
-              <Pressable accessibilityRole="button" onPress={() => setCartOpen(false)} style={styles.cartContinueButton}>
-                <Text style={styles.cartContinueText}>ادامه خرید</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" onPress={() => { setCartOpen(false); setCheckoutOpen(true); }} style={styles.checkoutStartButton}>
-                <Text style={styles.cartContinueText}>ادامه به تکمیل سفارش</Text>
-              </Pressable>
+            <View style={styles.cartComparisonHint}>
+              <View style={styles.cartComparisonHeader}>
+                <Text style={styles.cartComparisonTitle}>مقایسه فروشگاه‌های نزدیک</Text>
+                <Image source={cartCheckIcon} style={styles.cartCheckIcon} accessibilityLabel="مقایسه" />
+              </View>
+              <Text style={styles.cartComparisonCopy}>
+                حنا این سبد را بر اساس کامل‌بودن اقلام، قیمت کل، فاصله و اطلاعات شناخته‌شدهٔ ارسال مقایسه می‌کند تا بتوانید فروشگاه مناسب را انتخاب کنید.
+              </Text>
             </View>
+            <Pressable accessibilityRole="button" onPress={() => setComparisonNotice("صفحهٔ مقایسهٔ فروشگاه‌ها در گام بعدی آماده می‌شود.")}
+              style={styles.cartCompareButton}>
+              <Text style={styles.cartCompareButtonText}>مقایسه فروشگاه‌ها</Text>
+              <Image source={browseBackIcon} style={styles.cartCompareArrow} accessibilityLabel="ادامه" />
+            </Pressable>
+            {comparisonNotice ? <Text accessibilityLiveRegion="polite" style={styles.cartCompareNotice}>{comparisonNotice}</Text> : null}
           </>
         )}
       </ScrollView>
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, styles.cartBottomNav]}>
         <Pressable style={styles.navItem} onPress={onLogin}><Image source={navUser} style={styles.navIcon} accessibilityLabel="حساب" /><Text style={styles.navLabel}>حساب</Text></Pressable>
         <Pressable style={styles.navItem} onPress={onLogin}><Image source={navReceipt} style={styles.navIcon} accessibilityLabel="سفارش‌ها" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
-        <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={navCart} style={styles.navIcon} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد · {fa(cartCount)}</Text></Pressable>
+        <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={navCart} style={[styles.navIcon, styles.cartActiveIcon]} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد · {fa(cartCount)}</Text></Pressable>
         <Pressable style={styles.navItem} onPress={() => { setCartOpen(false); onHome?.(); }}><Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" /><Text style={styles.navLabel}>خانه</Text></Pressable>
       </View>
     </SafeAreaView>
@@ -453,6 +479,10 @@ const fa = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: "#f7f3ed" },
+  cartSafeArea: { backgroundColor: "#faf8f5" },
+  cartHeader: { height: 56, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#faf8f5" },
+  cartHeaderTitle: { color: "#2d2d2d", fontSize: 18, fontWeight: "700", ...rtl, textAlign: "center" },
+  cartBackIcon: { width: 18, height: 18, transform: [{ rotate: "180deg" }] },
   scrollBody: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 100, gap: 8, backgroundColor: "#f7f3ed" },
   header: { height: 56, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f7f3ed" },
   headerBack: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, borderWidth: 1, borderColor: "#f0e7dd", backgroundColor: "#fff" },
@@ -514,20 +544,38 @@ const styles = StyleSheet.create({
   cartEmptyTitle: { color: "#2d2d2d", fontSize: 18, fontWeight: "800", ...rtl },
   cartEmptyCopy: { color: "#8e8e93", fontSize: 13, lineHeight: 22, textAlign: "center", writingDirection: "rtl" },
   cartLines: { gap: 10 },
-  cartLine: { minHeight: 122, padding: 12, flexDirection: "row-reverse", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 14, backgroundColor: "#fff" },
-  cartLineImage: { width: 76, height: 76, borderRadius: 10, backgroundColor: "#f7f3ed" },
-  cartLineCopy: { flex: 1, alignItems: "flex-end", gap: 4 },
-  cartLineTitle: { color: "#2d2d2d", fontSize: 13, fontWeight: "700", ...rtl },
-  cartLineCategory: { color: "#8e8e93", fontSize: 11, ...rtl },
-  cartLinePrice: { color: "#0f5b5a", fontSize: 14, fontWeight: "800", ...rtl },
-  cartLineControls: { width: "100%", marginTop: 4, flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
-  cartLineRemove: { color: "#b5523b", fontSize: 12, fontWeight: "700", ...rtl },
-  cartStepper: { flexDirection: "row-reverse", alignItems: "center", gap: 8, padding: 4, borderRadius: 10, backgroundColor: "#f7f3ed" },
-  cartStepButton: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#fff" },
-  cartStepPlus: { color: "#b5523b", fontSize: 16, fontWeight: "700" },
-  cartStepMinus: { color: "#706963", fontSize: 16, fontWeight: "700" },
-  cartStepValue: { minWidth: 22, color: "#2d2d2d", textAlign: "center", fontSize: 14, fontWeight: "700" },
-  cartTotalCard: { padding: 14, gap: 8, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 14, backgroundColor: "#fff" },
+  cartLine: { minHeight: 112, padding: 12, flexDirection: "row-reverse", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 16, backgroundColor: "#fff" },
+  cartLineImage: { width: 70, height: 70, borderRadius: 12, backgroundColor: "#faf8f5" },
+  cartLineCopy: { flex: 1, alignItems: "flex-end", gap: 8 },
+  cartLineTitle: { width: "100%", color: "#2d2d2d", fontSize: 14, fontWeight: "700", ...rtl },
+  cartLinePriceRow: { width: "100%", flexDirection: "row", alignItems: "center", gap: 8 },
+  cartBasePriceLabel: { color: "#8e8e93", fontSize: 12, ...rtl },
+  cartBasePrice: { color: "#0f5b5a", fontSize: 14, fontWeight: "800", ...rtl },
+  cartLineControls: { width: "100%", marginTop: 2, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  cartLineRemoveButton: { flexDirection: "row", alignItems: "center", gap: 6 },
+  cartTrashIcon: { width: 16, height: 16 },
+  cartLineRemove: { color: "#b5523b", fontSize: 11, fontWeight: "600", ...rtl },
+  cartStepper: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 6, borderRadius: 8, backgroundColor: "#faf8f5" },
+  cartStepButton: { width: 16, height: 24, alignItems: "center", justifyContent: "center" },
+  cartStepPlus: { color: "#b5523b", fontSize: 14, fontWeight: "700" },
+  cartStepMinus: { color: "#8e8e93", fontSize: 14, fontWeight: "700" },
+  cartStepValue: { minWidth: 18, color: "#2d2d2d", textAlign: "center", fontSize: 14, fontWeight: "700" },
+  cartTotalCard: { padding: 16, gap: 12, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 16, backgroundColor: "#fff" },
+  cartDiscountAmount: { color: "#b5523b", fontSize: 14, fontWeight: "700", ...rtl },
+  cartSummaryDivider: { height: 1, backgroundColor: "#f0e7dd" },
+  cartEstimatedLabel: { color: "#2d2d2d", fontSize: 14, fontWeight: "700", ...rtl },
+  cartEstimatedAmount: { color: "#0f5b5a", fontSize: 16, fontWeight: "800", ...rtl },
+  cartComparisonHint: { padding: 16, gap: 12, borderWidth: 1, borderColor: "#0f5b5a", borderRadius: 16, backgroundColor: "#e8f2f2" },
+  cartComparisonHeader: { width: "100%", flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 8 },
+  cartComparisonTitle: { color: "#0f5b5a", fontSize: 14, fontWeight: "800", ...rtl },
+  cartCheckIcon: { width: 18, height: 18 },
+  cartComparisonCopy: { color: "#2d2d2d", fontSize: 12, lineHeight: 18, textAlign: "right", writingDirection: "rtl" },
+  cartCompareButton: { width: "100%", minHeight: 54, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, backgroundColor: "#b5523b" },
+  cartCompareButtonText: { color: "#fff", fontSize: 15, fontWeight: "800", ...rtl },
+  cartCompareArrow: { width: 16, height: 16, transform: [{ rotate: "180deg" }] },
+  cartCompareNotice: { color: "#b5523b", fontSize: 12, textAlign: "right", writingDirection: "rtl" },
+  cartBottomNav: { flexDirection: "row" },
+  cartActiveIcon: { tintColor: "#0f5b5a" },
   cartTotalRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
   cartTotalLabel: { color: "#706963", fontSize: 13, ...rtl },
   cartTotalAmount: { color: "#b5523b", fontSize: 18, fontWeight: "800", ...rtl },
