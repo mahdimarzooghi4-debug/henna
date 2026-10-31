@@ -6,8 +6,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "./theme";
 
-const logo = require("../assets/hana-app-logo.png");
-const product = require("../assets/rice-product-detail.png");
+const logo = require("../assets/home-logo-badge.png");
+const product = require("../assets/buyer-detail-gallery.jpg");
+const detailBackIcon = require("../assets/home-icon-arrow-left.png");
+const detailHeartIcon = require("../assets/buyer-detail-heart.png");
+const detailChevronDownIcon = require("../assets/buyer-detail-chevron-down.png");
+const detailInfoIcon = require("../assets/home-icon-info.png");
+const navUserIcon = require("../assets/figma-nav-user.png");
+const navReceiptIcon = require("../assets/figma-nav-receipt.png");
+const navCartIcon = require("../assets/figma-nav-cart.png");
+const navHomeIcon = require("../assets/figma-nav-home.png");
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 const fa = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 
@@ -42,7 +50,7 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
         <Pressable accessibilityRole="button" accessibilityLabel="بازگشت"
           onPress={() => subpage ? setSubpage(null) : showTracking ? setShowTracking(false) : showSuccess ? setShowSuccess(false) : showCheckout ? setShowCheckout(false) : showReview ? setShowReview(false) : showComparison ? setShowComparison(false) : showCart ? setShowCart(false) : showOrders || showAccount ? (setShowOrders(false), setShowAccount(false)) : onBack()}
           style={styles.headerBack}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Image source={detailBackIcon} style={styles.headerBackIcon} accessibilityLabel="بازگشت" />
         </Pressable>
         <Text style={styles.headerTitle}>{subpage ? ({profile:"تکمیل اطلاعات حساب",addresses:"آدرس‌های من",credits:"اعتبارها و طرح‌ها",social:"مشارکت اجتماعی",support:"پشتیبانی حنا",notifications:"اعلان‌ها",empty:"حالت‌های خالی و خطا"} as const)[subpage] : showTracking ? "پیگیری سفارش" : showSuccess ? "ثبت سفارش" : showCheckout ? "ثبت سفارش" : showReview ? "بررسی سبد" : showComparison ? "مقایسه فروشگاه‌ها" : showCart ? "سبد خرید" : showOrders ? "سفارش‌ها" : showAccount ? "حساب کاربری" : "جزئیات محصول"}</Text>
         <Image source={logo} style={styles.logo} resizeMode="contain" accessibilityLabel="حنا" />
@@ -248,12 +256,12 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
             <Pressable accessibilityRole="button"
               accessibilityLabel={favorite ? "حذف از علاقه‌مندی‌ها" : "افزودن به علاقه‌مندی‌ها"}
               onPress={() => setFavorite((value) => !value)} style={styles.heartButton}>
-              <Text style={[styles.heart, favorite && styles.heartActive]}>{favorite ? "♥" : "♡"}</Text>
+              {favorite ? <Text style={[styles.heart, styles.heartActive]}>♥</Text> : <Image source={detailHeartIcon} style={styles.heartIcon} accessibilityLabel="افزودن به علاقه‌مندی‌ها" />}
             </Pressable>
           </View>
 
           <View style={styles.guidance}>
-            <View style={styles.infoMark}><Text style={styles.infoText}>i</Text></View>
+            <View style={styles.infoMark}><Image source={detailInfoIcon} style={styles.infoIcon} accessibilityLabel="راهنما" /></View>
             <Text style={styles.guidanceText}>
               این کالا در بازارگاه ثبت شده است. بعد از افزودن به سبد، می‌توانید فروشنده‌ها را مقایسه کنید.
             </Text>
@@ -296,7 +304,7 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
           <View style={styles.accordion}>
             <Pressable onPress={() => setSpecificationsOpen((value) => !value)}
               accessibilityRole="button" accessibilityState={{ expanded: specificationsOpen }} style={styles.accordionHead}>
-              <Text style={styles.chevron}>{specificationsOpen ? "⌄" : "›"}</Text>
+              <Image source={detailChevronDownIcon} style={[styles.chevronIcon, !specificationsOpen && styles.chevronClosed]} accessibilityLabel={specificationsOpen ? "بستن" : "باز کردن"} />
               <Text style={styles.accordionTitle}>مشخصات و ویژگی‌ها</Text>
             </Pressable>
             {specificationsOpen && <View style={styles.accordionBody}>
@@ -308,7 +316,7 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
           <View style={styles.accordion}>
             <Pressable onPress={() => setDescriptionOpen((value) => !value)}
               accessibilityRole="button" accessibilityState={{ expanded: descriptionOpen }} style={styles.accordionHead}>
-              <Text style={styles.chevron}>{descriptionOpen ? "⌄" : "›"}</Text>
+              <Image source={detailChevronDownIcon} style={[styles.chevronIcon, !descriptionOpen && styles.chevronClosed]} accessibilityLabel={descriptionOpen ? "بستن" : "باز کردن"} />
               <Text style={styles.accordionTitle}>توضیحات محصول</Text>
             </Pressable>
             {descriptionOpen && <Text style={styles.description}>
@@ -320,10 +328,10 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
       )}
 
       <View style={styles.bottomNav}>
-        <Pressable onPress={() => { setShowAccount(true); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Text style={[styles.navIcon, showAccount && styles.navSelected]}>♙</Text><Text style={[styles.navLabel, showAccount && styles.navSelected]}>حساب</Text></Pressable>
-        <Pressable onPress={() => { setShowOrders(true); setShowAccount(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Text style={[styles.navIcon, showOrders && styles.navSelected]}>▤</Text><Text style={[styles.navLabel, showOrders && styles.navSelected]}>سفارش‌ها</Text></Pressable>
-        <Pressable onPress={() => { setShowCart(true); setShowAccount(false); setShowOrders(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Text style={[styles.navIcon, showCart && styles.navSelected]}>▱</Text><Text style={[styles.navLabel, showCart && styles.navSelected]}>سبد{cartQuantity ? ` · ${fa(cartQuantity)}` : ""}</Text></Pressable>
-        <Pressable onPress={() => { setShowAccount(false); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); onBack(); }} style={styles.navItem}><Text style={styles.navIcon}>⌂</Text><Text style={styles.navLabel}>خانه</Text></Pressable>
+        <Pressable onPress={() => { setShowAccount(true); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navUserIcon} style={styles.navIconImage} accessibilityLabel="حساب" /><Text style={[styles.navLabel, showAccount && styles.navSelected]}>حساب</Text></Pressable>
+        <Pressable onPress={() => { setShowOrders(true); setShowAccount(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navReceiptIcon} style={styles.navIconImage} accessibilityLabel="سفارش‌ها" /><Text style={[styles.navLabel, showOrders && styles.navSelected]}>سفارش‌ها</Text></Pressable>
+        <Pressable onPress={() => { setShowCart(true); setShowAccount(false); setShowOrders(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navCartIcon} style={styles.navIconImage} accessibilityLabel="سبد" /><Text style={[styles.navLabel, showCart && styles.navSelected]}>سبد{cartQuantity ? ` · ${fa(cartQuantity)}` : ""}</Text></Pressable>
+        <Pressable onPress={() => { setShowAccount(false); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); onBack(); }} style={styles.navItem}><Image source={navHomeIcon} style={styles.navIconImage} accessibilityLabel="خانه" /><Text style={[styles.navLabel, !showAccount && !showOrders && !showCart && styles.navSelected]}>خانه</Text></Pressable>
       </View>
     </SafeAreaView>
   );
@@ -331,9 +339,9 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.cream },
-  header: { height: 56, paddingHorizontal: 20, flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+  header: { height: 56, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   headerBack: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, borderWidth: 1, borderColor: "#F0E7DD", backgroundColor: colors.surface },
-  backIcon: { color: colors.teal, fontSize: 28, lineHeight: 30 },
+  headerBackIcon: { width: 18, height: 18 },
   headerTitle: { color: colors.charcoal, fontSize: 18, fontWeight: "700", ...rtl },
   logo: { width: 80, height: 36 },
   scroll: { paddingHorizontal: 20, paddingBottom: 112, gap: 20 },
@@ -341,23 +349,24 @@ const styles = StyleSheet.create({
   hero: { width: "100%", height: "100%" },
   heartButton: { position: "absolute", top: 12, right: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   heart: { color: colors.terracotta, fontSize: 22 },
+  heartIcon: { width: 18, height: 18 },
   heartActive: { color: colors.terracotta },
   guidance: { minHeight: 58, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.teal, backgroundColor: "#E8F2F2", flexDirection: "row-reverse", alignItems: "center", gap: 12 },
   infoMark: { width: 24, height: 24, borderRadius: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
-  infoText: { color: colors.teal, fontSize: 14, fontWeight: "800" },
+  infoIcon: { width: 14, height: 14 },
   guidanceText: { flex: 1, color: colors.teal, fontSize: 12, lineHeight: 18, fontWeight: "600", ...rtl },
   productInfo: { alignItems: "flex-end", gap: 12 },
-  badges: { flexDirection: "row-reverse", gap: 8 },
+  badges: { flexDirection: "row", gap: 8 },
   marketBadge: { backgroundColor: "#E8F2F2", color: colors.teal, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, fontSize: 11, fontWeight: "600", ...rtl },
   sampleBadge: { backgroundColor: "#FDF1EE", color: colors.terracotta, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, fontSize: 11, fontWeight: "600", ...rtl },
   title: { width: "100%", color: colors.charcoal, fontSize: 20, lineHeight: 31, fontWeight: "800", ...rtl },
-  priceLine: { flexDirection: "row-reverse", alignItems: "baseline", gap: 8 },
+  priceLine: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   priceLabel: { color: "#8E8E93", fontSize: 13, ...rtl },
   price: { color: colors.teal, fontSize: 22, fontWeight: "800", ...rtl },
-  buyBar: { minHeight: 70, padding: 10, gap: 8, flexDirection: "row-reverse", alignItems: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: "#F0E7DD", borderRadius: 16 },
+  buyBar: { minHeight: 70, padding: 10, gap: 8, flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: "#F0E7DD", borderRadius: 16 },
   addButton: { flex: 1, minHeight: 48, borderRadius: 10, backgroundColor: colors.terracotta, alignItems: "center", justifyContent: "center" },
   addText: { color: colors.surface, fontSize: 14, fontWeight: "700", ...rtl },
-  stepper: { flexDirection: "row-reverse", alignItems: "center", gap: 12, paddingHorizontal: 4 },
+  stepper: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 4 },
   stepUp: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#FDF1EE" },
   stepPlus: { color: colors.terracotta, fontSize: 16, fontWeight: "700" },
   stepDown: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#F0E7DD" },
@@ -365,16 +374,18 @@ const styles = StyleSheet.create({
   quantity: { color: colors.charcoal, fontSize: 16, fontWeight: "700" },
   success: { color: colors.teal, fontSize: 12, ...rtl },
   accordion: { padding: 16, borderRadius: 12, borderWidth: 1, borderColor: "#F0E7DD", backgroundColor: colors.surface, gap: 10 },
-  accordionHead: { minHeight: 20, flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+  accordionHead: { minHeight: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  chevronIcon: { width: 16, height: 16 },
+  chevronClosed: { transform: [{ rotate: "180deg" }] },
   accordionTitle: { color: colors.charcoal, fontSize: 14, fontWeight: "700", ...rtl },
   chevron: { color: colors.muted, fontSize: 17 },
   accordionBody: { borderTopWidth: 1, borderTopColor: "#F0E7DD", paddingTop: 10, gap: 6 },
   detailText: { color: colors.charcoal, fontSize: 12, ...rtl },
   description: { color: "#8E8E93", fontSize: 12, lineHeight: 18, ...rtl },
   disclosure: { color: colors.muted, fontSize: 10, ...rtl },
-  bottomNav: { height: 84, position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 6, paddingTop: 9, paddingBottom: 18, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: "#F0E7DD", flexDirection: "row-reverse", alignItems: "flex-start", justifyContent: "space-around", shadowColor: "#000", shadowOpacity: .1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 8 },
+  bottomNav: { height: 84, position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 6, paddingTop: 9, paddingBottom: 18, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: "#F0E7DD", flexDirection: "row", alignItems: "flex-start", justifyContent: "space-around", shadowColor: "#000", shadowOpacity: .1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 8 },
   navItem: { flex: 1, alignItems: "center", gap: 3 },
-  navIcon: { color: "#8E8E93", fontSize: 21, height: 22 },
+  navIconImage: { width: 22, height: 22 },
   navLabel: { color: "#8E8E93", fontSize: 10, ...rtl },
   navSelected: { color: colors.teal, fontWeight: "700" },
   cartView: { flex: 1, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 110, gap: 14 },
