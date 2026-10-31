@@ -587,6 +587,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: henna-android-app-preview-${{ github.sha }}
-          path: henna-android-preview.png
+          path: henna-android-*-preview.png
           if-no-files-found: warn
           retention-days: 7
