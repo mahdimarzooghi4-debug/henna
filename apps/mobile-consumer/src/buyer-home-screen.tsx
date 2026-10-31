@@ -126,8 +126,8 @@ export function BuyerHomeScreen({
               </Pressable>
               <Text style={styles.sectionTitle}>پیشنهادهای امروز</Text>
             </View>
-            <ScrollView horizontal inverted showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.productCarousel}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[styles.productCarousel, styles.productCarouselRtl]}>
               {buyerHomeProducts.map((item) => (
                 <View key={item.id} style={styles.productCard}>
                   <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات " + item.title}
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 100, gap: 20 },
   heroCard: { width: "100%", minHeight: 158, padding: 18, alignItems: "flex-end", gap: 8, overflow: "hidden", borderRadius: 20, justifyContent: "flex-start" },
   heroImage: { borderRadius: 20 },
-  heroTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(15,91,90,0.85)", borderRadius: 20 },
+  heroTint: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(15,91,90,0.85)", borderRadius: 20 },
   heroTitle: { width: "100%", color: "#fff", fontSize: 20, lineHeight: 29, fontWeight: "800", ...rtl },
   heroCopy: { width: "100%", color: "#f0e7dd", fontSize: 13, lineHeight: 20, ...rtl },
   heroActions: { width: "100%", paddingTop: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
   sectionAction: { color: "#b5523b", fontSize: 12, fontWeight: "700", ...rtl },
   sectionTitle: { color: "#2d2d2d", fontSize: 15, fontWeight: "800", ...rtl },
   productCarousel: { gap: 10 },
+  productCarouselRtl: { flexDirection: "row-reverse" },
   productCard: { width: 140, height: 240, padding: 12, gap: 8, alignItems: "flex-end", justifyContent: "flex-end", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 16, backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.07, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   productImageWrap: { width: "100%", height: 100, borderRadius: 12, overflow: "hidden" },
   productImage: { width: "100%", height: "100%" },
