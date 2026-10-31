@@ -305,6 +305,11 @@ export function BuyerBrowseScreen({ onLogin, link }: {
             </Pressable>
           </View>
           {searchError ? <Text accessibilityRole="alert" style={styles.errorText}>{searchError}</Text> : null}
+          {browse.categoryRecovery && categories.status === "ok" ? (
+            <View accessibilityRole="alert" style={styles.categoryRecovery}>
+              <Text style={styles.categoryRecoveryText}>دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ کالاهای همه دسته‌ها نمایش داده می‌شوند.</Text>
+            </View>
+          ) : null}
 
           <View style={styles.categoriesRow}>
             {["پیشنهادها", "دسته‌بندی‌ها", "نمونه کالا"].map((label) => (
@@ -511,4 +516,6 @@ const styles = StyleSheet.create({
   checkoutBlockedCopy: { color: "#8e8e93", fontSize: 11, textAlign: "center", writingDirection: "rtl" },
   checkoutBackButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },
   checkoutBackText: { color: "#0f5b5a", fontSize: 13, fontWeight: "700", ...rtl },
+  categoryRecovery: { paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: "#e4c9a8", borderRadius: 10, backgroundColor: "#fff8ec" },
+  categoryRecoveryText: { color: "#8b4a2c", fontSize: 12, lineHeight: 19, ...rtl },
 });
