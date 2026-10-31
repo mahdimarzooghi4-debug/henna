@@ -342,3 +342,10 @@
 @media (max-width: 900px) {
   .chrome .nav { gap: 8px; font-size: 12px; }
 }
+
+.referenceChrome .announcement{height:40px;font-size:13px}
+.referenceChrome .headerTop{height:90px}
+.referenceChrome .nav{height:65px;justify-content:flex-start;gap:24px;padding:12px 80px;box-sizing:border-box}
+.referenceChrome .nav a{padding:8px 12px;border-radius:6px;font-size:14px;white-space:nowrap}
+@media(max-width:900px){.referenceChrome .nav{padding:12px 24px;gap:14px}}
+@media(max-width:640px){.referenceChrome .announcement{height:40px;font-size:10px}.referenceChrome .headerTop{height:auto}.referenceChrome .nav{height:48px;padding:8px 14px;gap:10px}.referenceChrome .nav a{font-size:11px;padding:6px 8px}}

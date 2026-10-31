@@ -5,20 +5,20 @@ import { LandingCartCount } from "./landing-demo-cart";
 
 const categoryHref = (label: string) => `/products?categoryName=${encodeURIComponent(label)}#buyer-categories-title`;
 
-export function LandingHeader() {
+export function LandingHeader({ referencePage = false }: { referencePage?: boolean }) {
   return (
-    <div className={styles.chrome}>
+    <div className={referencePage ? `${styles.chrome} ${styles.referenceChrome}` : styles.chrome}>
       <div className={styles.announcement}>🎉 طرح جدید کالابرگ حنا فعال شد؛ خریدی هوشمندانه با بیشترین حمایت اجتماعی</div>
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.actions}>
             <Link className={styles.cart} href="/buyer/cart?mode=preview"><span className={styles.cartCount}><LandingCartCount /></span> سبد خرید <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 4h2l2.2 11h10.7L20 8H6"/><circle cx="9" cy="19" r="1"/><circle cx="17" cy="19" r="1"/></svg></Link>
-            <Link className={styles.login} href="/account/profile">حساب کاربری <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 21c.5-4 2.8-6 7-6s6.5 2 7 6"/></svg></Link>
+            <Link className={styles.login} href="/account/profile">{referencePage ? "ورود یا حساب کاربری" : "حساب کاربری"} <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 21c.5-4 2.8-6 7-6s6.5 2 7 6"/></svg></Link>
             <span className={styles.divider} />
-            <Link className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها و ارائه‌دهندگان</Link>
+            <Link className={styles.sellerLink} href="/seller/register">{referencePage ? "ثبت‌نام فروشگاه‌ها" : "ثبت‌نام فروشگاه‌ها و ارائه‌دهندگان"}</Link>
           </div>
           <form className={styles.search} action="/products">
-            <input name="search" placeholder="جست‌وجوی کالاها، خدمات و نیازهای روزمره..." aria-label="جست‌وجو در کالاها" />
+            <input name="search" placeholder={referencePage ? "جست‌وجوی کالاها، خدمات و نیازهای روزمره محله..." : "جست‌وجوی کالاها، خدمات و نیازهای روزمره..."} aria-label="جست‌وجو در کالاها" />
             <button aria-label="جست‌وجو"><svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg></button>
           </form>
           <Link href="/" className={styles.brand} aria-label="حنا، صفحه اصلی">
@@ -26,7 +26,7 @@ export function LandingHeader() {
           </Link>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی">
-          <Link href="/#offers">تخفیف‌های طلایی</Link><Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link><Link href="/benefits#special-plans">طرح‌های ویژه حنا</Link><Link href="/products">کالاها و خدمات</Link><Link href={categoryHref("فروشندگان و ارائه‌دهندگان")}>فروشندگان و ارائه‌دهندگان</Link><Link href={categoryHref("نیازمندی‌های محلی")}>نیازمندی‌های محلی</Link><Link href="/products#buyer-categories-title">همه دسته‌ها</Link>
+          {referencePage ? <><Link href="/discounts">پیشنهادهای طلایی</Link><Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link><Link href="/benefits#special-plans">طرح‌های ویژه حنا</Link><Link href="/products?categoryName=%D9%84%D8%A8%D9%86%DB%8C%D8%A7%D8%AA%20%D9%88%20%D8%AE%D9%88%D8%A7%D8%B1%D8%A8%D8%A7%D8%B1">لبنیات و خواربار</Link><Link href="/products?categoryName=%D9%86%D8%A7%D9%86%20%D9%88%20%D9%86%DB%8C%D8%A7%D8%B2%D9%85%D9%86%D8%AF%DB%8C%E2%80%8C%D9%87%D8%A7">نان و نیازمندی‌ها</Link><Link href="/products#buyer-categories-title">همه دسته‌ها</Link></> : <Link href="/#offers">تخفیف‌های طلایی</Link><Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link><Link href="/benefits#special-plans">طرح‌های ویژه حنا</Link><Link href="/products">کالاها و خدمات</Link><Link href={categoryHref("فروشندگان و ارائه‌دهندگان")}>فروشندگان و ارائه‌دهندگان</Link><Link href={categoryHref("نیازمندی‌های محلی")}>نیازمندی‌های محلی</Link><Link href="/products#buyer-categories-title">همه دسته‌ها</Link>}
         </nav>
       </header>
     </div>
