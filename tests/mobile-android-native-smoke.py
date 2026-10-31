@@ -176,7 +176,7 @@ def main():
 
     # Verify the real launcher opens the Figma home screen first.
     execute("adb", "shell", "am", "force-stop", package)
-    execute("adb", "shell", "monkey", "-p", package, "1", timeout=60)
+    execute("adb", "shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", package, timeout=60)
     wait_screen("سلام، روزت بخیر", "به حنا خوش آمدید",
                 "خرید روزمره، با اثری فراتر از خرید", "پیشنهادهای امروز")
     save_preview("henna-android-home-preview.png")
