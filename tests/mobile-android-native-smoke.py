@@ -81,6 +81,19 @@ def open_uri(uri, package):
     )
 
 
+
+def save_preview():
+    result = subprocess.run(
+        ["adb", "exec-out", "screencap", "-p"],
+        capture_output=True, timeout=30,
+    )
+    if result.returncode != 0 or not result.stdout.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+        return False
+    (ROOT / "henna-android-preview.png").write_bytes(result.stdout)
+    print("Captured actual installed Android app preview", flush=True)
+    return True
+
+
 def main():
     assert APK.is_file(), f"Native release APK not built: {APK}"
     sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
@@ -104,6 +117,7 @@ def main():
     # genuine URI search, even when offline and no products are published.
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها و خدمات", TERM)
+    save_preview()
 
     # A WARM app-link event must replace browse UI with the new detail
     # screen; no app restart, package state or Expo Go test double.
@@ -130,6 +144,10 @@ try:
     main()
 except Exception as exc:
     print(f"ANDROID NATIVE SMOKE FAILED: {exc}", file=sys.stderr)
+    try:
+        save_preview()
+    except Exception:
+        pass
     try:
         logs = execute("adb", "logcat", "-d", "-s",
                        "ReactNativeJS:E", "AndroidRuntime:E",
