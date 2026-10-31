@@ -17,8 +17,18 @@ import {
 } from "./buyer-browse-controller.ts";
 import { colors } from "./theme";
 
-const logo = require("../assets/hana-app-logo.png");
-const catalogCards = buyerHomeProducts;
+const logo = require("../assets/home-logo-badge.png");
+const browseBackIcon = require("../assets/home-icon-arrow-left.png");
+const browseSlidersIcon = require("../assets/home-icon-sliders.png");
+const browseSearchIcon = require("../assets/home-icon-search.png");
+const browsePlusIcon = require("../assets/home-icon-plus.png");
+const catalogCards = [buyerHomeProducts[2], buyerHomeProducts[3], buyerHomeProducts[0], buyerHomeProducts[1]];
+const catalogTitles: Record<string, string> = {
+  rice: "برنج طارم ایرانی درجه یک",
+  oil: "روغن مایع آفتابگردان",
+  cheese: "پنیر سفید صبحانه",
+  yogurt: "ماست کم‌چرب پاستوریزه",
+};
 const navUser = require("../assets/figma-nav-user.png");
 const navReceipt = require("../assets/figma-nav-receipt.png");
 const navCart = require("../assets/figma-nav-cart.png");
@@ -287,7 +297,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
       }} />
   );
   const query = browse.search.trim();
-  const cards = catalogCards.filter((item) => !query || item.title.includes(query));
+  const cards = catalogCards.filter((item) => !query || (catalogTitles[item.id] ?? item.title).includes(query));
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
@@ -295,8 +305,8 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
       <View style={styles.fill}>
         <View style={styles.header}>
           <Pressable accessibilityRole="button" accessibilityLabel="بازگشت"
-            onPress={onLogin} style={({ pressed }) => [styles.headerBack, pressed && styles.pressed]}>
-            <Text style={styles.backIcon}>‹</Text>
+            onPress={onHome} style={({ pressed }) => [styles.headerBack, pressed && styles.pressed]}>
+            <Image source={browseBackIcon} style={styles.catalogBackIcon} accessibilityLabel="بازگشت" />
           </Pressable>
           <Text style={styles.headerTitle}>کالاها و خدمات</Text>
           <Image source={logo} resizeMode="contain" style={styles.logo}
@@ -311,7 +321,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
             <Pressable accessibilityRole="button" accessibilityLabel="فیلترها"
               onPress={() => setAdvancedFiltersOpen((value) => !value)}
               style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-              <Text style={styles.filterIcon}>☷</Text>
+              <Image source={browseSlidersIcon} style={styles.catalogFilterIcon} accessibilityLabel="فیلترها" />
             </Pressable>
             <TextInput accessibilityLabel="جست‌وجو در کالاها و خدمات"
               style={styles.searchInput} placeholder="جست‌وجوی کالاها و خدمات..."
@@ -321,7 +331,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
               onSubmitEditing={search} />
             <Pressable accessibilityRole="button" accessibilityLabel="جست‌وجو"
               onPress={search} style={({ pressed }) => [styles.searchIconButton, pressed && styles.pressed]}>
-              <Text style={styles.searchIcon}>⌕</Text>
+              <Image source={browseSearchIcon} style={styles.catalogSearchIcon} accessibilityLabel="جست‌وجو" />
             </Pressable>
           </View>
           {searchError ? <Text accessibilityRole="alert" style={styles.errorText}>{searchError}</Text> : null}
@@ -388,18 +398,22 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
                 <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات " + item.title}
                   onPress={() => setDetailId(item.id)} style={styles.productImagePressable}>
                   <Image source={item.image} style={styles.productImage} resizeMode="cover"
-                    accessibilityLabel={item.title} />
+                    accessibilityLabel={catalogTitles[item.id] ?? item.title} />
+                  <View pointerEvents="none" style={styles.productBadge}>
+                    <Text style={styles.productBadgeText}>نمونه کالا</Text>
+                  </View>
                 </Pressable>
                 <Pressable accessibilityRole="button" onPress={() => setDetailId(item.id)}
                   style={styles.productTextBlock}>
-                  <Text numberOfLines={1} style={styles.productName}>{item.title}</Text>
+                  <Text numberOfLines={1} style={styles.productName}>{catalogTitles[item.id] ?? item.title}</Text>
                   <Text style={styles.productKind}>{item.category}</Text>
-                  <Text style={styles.productPrice}>{item.price}</Text>
+                  <Text style={styles.productPrice}>{fa(item.amount)} تومان</Text>
                 </Pressable>
                 <Pressable accessibilityRole="button" accessibilityLabel={"افزودن " + item.title + " به سبد"}
                   onPress={() => { setCartItemQuantity(item.id, (cart[item.id] ?? 0) + 1); setCartNotice(item.title + " به سبد اضافه شد."); }}
                   style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
-                  <Text style={styles.addButtonText}>＋ افزودن</Text>
+                  <Text style={styles.addButtonText}>افزودن</Text>
+                  <Image source={browsePlusIcon} style={styles.catalogPlusIcon} accessibilityLabel="افزودن" />
                 </Pressable>
               </View>
             ))}
@@ -469,14 +483,20 @@ const styles = StyleSheet.create({
   inlineNoticeText: { color: "#706963", fontSize: 11, ...rtl },
   productsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 16 },
   productCard: { width: "47.72%", height: 220, padding: 12, gap: 10, alignItems: "flex-end", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 16, backgroundColor: "#fff" },
-  productImagePressable: { width: "100%", height: 100, borderRadius: 12, overflow: "hidden" },
+  productImagePressable: { width: "100%", height: 100, position: "relative", borderRadius: 12, overflow: "hidden" },
+  productBadge: { position: "absolute", top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: "#b5523b" },
+  productBadgeText: { color: "#fff", fontSize: 10, fontWeight: "600", ...rtl },
+  catalogBackIcon: { width: 18, height: 18, transform: [{ rotate: "180deg" }] },
+  catalogFilterIcon: { width: 18, height: 18 },
+  catalogSearchIcon: { width: 18, height: 18 },
+  catalogPlusIcon: { width: 12, height: 12 },
   productImage: { width: "100%", height: "100%" },
   productTextBlock: { width: "100%", flex: 1, alignItems: "flex-end", gap: 2 },
   productName: { color: "#2d2d2d", fontSize: 13, fontWeight: "700", lineHeight: 20, ...rtl },
   productKind: { color: "#8e8e93", fontSize: 11, ...rtl },
   productPrice: { marginTop: 2, color: "#0f5b5a", fontSize: 14, fontWeight: "800", ...rtl },
-  addButton: { width: "100%", height: 32, flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#b5523b", borderRadius: 8, backgroundColor: "#fdf1ee" },
-  addButtonText: { color: "#b5523b", fontSize: 12, fontWeight: "700", ...rtl },
+  addButton: { width: "100%", height: 32, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderWidth: 1, borderColor: "#b5523b", borderRadius: 8, backgroundColor: "#fdf1ee" },
+  addButtonText: { color: "#b5523b", fontSize: 11, fontWeight: "600", ...rtl },
   noResults: { width: "100%", minHeight: 100, alignItems: "center", justifyContent: "center" },
   noResultsText: { color: "#706963", fontSize: 13, ...rtl },
   bottomNav: { height: 84, position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 20, flexDirection: "row-reverse", alignItems: "flex-start", justifyContent: "space-around", borderTopWidth: 1, borderTopColor: "#f0e7dd", backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: .1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 8 },
