@@ -49,6 +49,10 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   const [draftSearch, setDraftSearch] = useState(link.route.browse.search);
   const [searchError, setSearchError] = useState("");
   const scroll = useRef<ScrollView>(null);
+  const [selectedChip, setSelectedChip] = useState("پیشنهادها");
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const [openCartFromTab, setOpenCartFromTab] = useState(false);
 
   useEffect(() => {
     controller.start();
@@ -88,10 +92,6 @@ export function BuyerBrowseScreen({ onLogin, link }: {
         void controller.refreshCategories();
       }} />
   );
-  const [selectedChip, setSelectedChip] = useState("پیشنهادها");
-  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
-  const [openCartFromTab, setOpenCartFromTab] = useState(false);
   const query = browse.search.trim();
   const cards = catalogCards.filter((item) => !query || item.title.includes(query));
 
