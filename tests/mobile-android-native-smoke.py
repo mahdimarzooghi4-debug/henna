@@ -87,7 +87,7 @@ def save_preview():
         ["adb", "exec-out", "screencap", "-p"],
         capture_output=True, timeout=30,
     )
-    if result.returncode != 0 or not result.stdout.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+    if result.returncode != 0 or result.stdout[:4] != bytes([137, 80, 78, 71]):
         return False
     (ROOT / "henna-android-preview.png").write_bytes(result.stdout)
     print("Captured actual installed Android app preview", flush=True)
