@@ -17,10 +17,10 @@ import { colors } from "./theme";
 
 const logo = require("../assets/hana-app-logo.png");
 const catalogCards = [
-  { id: "rice", title: "برنج طارم ایرانی درجه یک", category: "خواربار", price: "۱۸۵,۰۰۰ تومان", image: require("../assets/figma-catalog-1.png") },
-  { id: "oil", title: "روغن مایع آفتابگردان", category: "خواربار", price: "۶۸,۰۰۰ تومان", image: require("../assets/figma-catalog-2.png") },
-  { id: "cheese", title: "پنیر سفید صبحانه", category: "لبنیات", price: "۴۵,۰۰۰ تومان", image: require("../assets/figma-catalog-3.png") },
-  { id: "yogurt", title: "ماست کم‌چرب پاستوریزه", category: "لبنیات", price: "۱۲,۰۰۰ تومان", image: require("../assets/figma-catalog-4.png") },
+  { id: "rice", title: "برنج طارم ایرانی درجه یک", category: "خواربار", amount: 185000, price: "۱۸۵,۰۰۰ تومان", image: require("../assets/figma-catalog-1.png") },
+  { id: "oil", title: "روغن مایع آفتابگردان", category: "خواربار", amount: 68000, price: "۶۸,۰۰۰ تومان", image: require("../assets/figma-catalog-2.png") },
+  { id: "cheese", title: "پنیر سفید صبحانه", category: "لبنیات", amount: 45000, price: "۴۵,۰۰۰ تومان", image: require("../assets/figma-catalog-3.png") },
+  { id: "yogurt", title: "ماست کم‌چرب پاستوریزه", category: "لبنیات", amount: 12000, price: "۱۲,۰۰۰ تومان", image: require("../assets/figma-catalog-4.png") },
 ] as const;
 const navUser = require("../assets/figma-nav-user.png");
 const navReceipt = require("../assets/figma-nav-receipt.png");
@@ -51,8 +51,10 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   const scroll = useRef<ScrollView>(null);
   const [selectedChip, setSelectedChip] = useState("پیشنهادها");
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
-  const [openCartFromTab, setOpenCartFromTab] = useState(false);
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartNotice, setCartNotice] = useState("");
+  const cartCount = Object.values(cart).reduce((total, quantity) => total + quantity, 0);
 
   useEffect(() => {
     controller.start();
@@ -66,6 +68,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
     controller.restoreLocation(link.route.browse);
     setDraftSearch(link.route.browse.search);
     setSearchError("");
+    setCartOpen(false);
     setDetailId(link.route.kind === "detail" ? link.route.id : null);
   }, [controller, link]);
 
@@ -79,11 +82,102 @@ export function BuyerBrowseScreen({ onLogin, link }: {
 
   const products = browse.products;
   const categories = browse.categories;
+  const cartItems = catalogCards.filter((item) => (cart[item.id] ?? 0) > 0);
+  const cartTotal = cartItems.reduce((total, item) => total + item.amount * (cart[item.id] ?? 0), 0);
+  function setCartItemQuantity(id: string, quantity: number) {
+    setCart((items) => {
+      const next = { ...items };
+      if (quantity <= 0) delete next[id];
+      else next[id] = Math.min(99, quantity);
+      return next;
+    });
+  }
   // Keep the mounted browse coordinator and its real search/filter/page state.
+  if (cartOpen) return (
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f7f3ed" />
+      <View style={styles.header}>
+        <Pressable accessibilityRole="button" accessibilityLabel="بازگشت به فروشگاه"
+          onPress={() => setCartOpen(false)} style={styles.headerBack}>
+          <Text style={styles.backIcon}>‹</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>سبد خرید</Text>
+        <Image source={logo} resizeMode="contain" style={styles.logo} accessibilityLabel="حنا" />
+      </View>
+      <ScrollView style={styles.fill} contentContainerStyle={styles.cartScroll}
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.cartHeadingRow}>
+          <Text style={styles.cartPageTitle}>سبد خرید</Text>
+          <Text style={styles.cartPageCount}>{fa(cartCount)} قلم</Text>
+        </View>
+        {cartItems.length === 0 ? (
+          <View style={styles.cartEmptyCard}>
+            <Image source={navCart} style={styles.cartEmptyIcon} accessibilityLabel="سبد خالی" />
+            <Text style={styles.cartEmptyTitle}>سبد خرید شما خالی است</Text>
+            <Text style={styles.cartEmptyCopy}>برای شروع خرید، کالاهای موردنیازتان را به سبد اضافه کنید.</Text>
+            <Pressable accessibilityRole="button" onPress={() => setCartOpen(false)} style={styles.cartContinueButton}>
+              <Text style={styles.cartContinueText}>مشاهده کالاها</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <View style={styles.cartLines}>
+              {cartItems.map((item) => {
+                const quantity = cart[item.id] ?? 0;
+                return (
+                  <View key={item.id} style={styles.cartLine}>
+                    <Image source={item.image} style={styles.cartLineImage} resizeMode="cover" accessibilityLabel={item.title} />
+                    <View style={styles.cartLineCopy}>
+                      <Text style={styles.cartLineTitle}>{item.title}</Text>
+                      <Text style={styles.cartLineCategory}>{item.category}</Text>
+                      <Text style={styles.cartLinePrice}>{fa(item.amount)} تومان</Text>
+                      <View style={styles.cartLineControls}>
+                        <Pressable accessibilityRole="button" accessibilityLabel={"حذف " + item.title + " از سبد"}
+                          onPress={() => setCartItemQuantity(item.id, 0)}>
+                          <Text style={styles.cartLineRemove}>حذف</Text>
+                        </Pressable>
+                        <View style={styles.cartStepper}>
+                          <Pressable accessibilityRole="button" accessibilityLabel={"افزایش تعداد " + item.title}
+                            onPress={() => setCartItemQuantity(item.id, quantity + 1)} style={styles.cartStepButton}>
+                            <Text style={styles.cartStepPlus}>＋</Text>
+                          </Pressable>
+                          <Text accessibilityLabel={"تعداد " + item.title} style={styles.cartStepValue}>{fa(quantity)}</Text>
+                          <Pressable accessibilityRole="button" accessibilityLabel={"کاهش تعداد " + item.title}
+                            onPress={() => setCartItemQuantity(item.id, quantity - 1)} style={styles.cartStepButton}>
+                            <Text style={styles.cartStepMinus}>−</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.cartTotalCard}>
+              <View style={styles.cartTotalRow}>
+                <Text style={styles.cartTotalLabel}>مجموع کالاها</Text>
+                <Text style={styles.cartTotalAmount}>{fa(cartTotal)} تومان</Text>
+              </View>
+              <Text style={styles.cartTotalNotice}>هزینه ارسال پس از انتخاب فروشگاه مشخص می‌شود.</Text>
+            </View>
+            <Pressable accessibilityRole="button" onPress={() => setCartOpen(false)} style={styles.cartContinueButton}>
+              <Text style={styles.cartContinueText}>ادامه خرید</Text>
+            </Pressable>
+          </>
+        )}
+      </ScrollView>
+      <View style={styles.bottomNav}>
+        <Pressable style={styles.navItem} onPress={onLogin}><Image source={navUser} style={styles.navIcon} accessibilityLabel="حساب" /><Text style={styles.navLabel}>حساب</Text></Pressable>
+        <Pressable style={styles.navItem} onPress={onLogin}><Image source={navReceipt} style={styles.navIcon} accessibilityLabel="سفارش‌ها" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
+        <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={navCart} style={styles.navIcon} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد · {fa(cartCount)}</Text></Pressable>
+        <Pressable style={styles.navItem} onPress={() => setCartOpen(false)}><Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" /><Text style={styles.navLabel}>خانه</Text></Pressable>
+      </View>
+    </SafeAreaView>
+  );
   if (detailId === "cheese") return <FigmaProductDetailScreen
-    initialCartQuantity={cartCount} startAtCart={openCartFromTab}
-    onCartQuantityChange={setCartCount}
-    onBack={() => { setDetailId(null); setOpenCartFromTab(false); }} />;
+    initialCartQuantity={cart.rice ?? 0}
+    onCartQuantityChange={(quantity) => setCartItemQuantity("rice", quantity)}
+    onBack={() => setDetailId(null)} />;
   if (detailId !== null) return (
     <BuyerProductDetailScreen key={detailId} id={detailId} catalog={catalog}
       onBack={() => {
@@ -181,6 +275,8 @@ export function BuyerBrowseScreen({ onLogin, link }: {
             </Pressable>
           ) : null}
 
+          {cartNotice ? <Text accessibilityLiveRegion="polite" style={styles.cartNotice}>{cartNotice}</Text> : null}
+
           <View style={styles.productsGrid}>
             {cards.map((item) => (
               <View key={item.id} style={styles.productCard}>
@@ -196,7 +292,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
                   <Text style={styles.productPrice}>{item.price}</Text>
                 </Pressable>
                 <Pressable accessibilityRole="button" accessibilityLabel={"افزودن " + item.title + " به سبد"}
-                  onPress={() => setCartCount((count) => Math.min(99, count + 1))}
+                  onPress={() => { setCartItemQuantity(item.id, (cart[item.id] ?? 0) + 1); setCartNotice(item.title + " به سبد اضافه شد."); }}
                   style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
                   <Text style={styles.addButtonText}>＋ افزودن</Text>
                 </Pressable>
@@ -215,7 +311,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
             <Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" />
             <Text style={[styles.navLabel, styles.navLabelActive]}>خانه</Text>
           </Pressable>
-          <Pressable style={styles.navItem} onPress={() => { setOpenCartFromTab(true); setDetailId("cheese"); }}>
+          <Pressable style={styles.navItem} accessibilityRole="button" accessibilityLabel={"سبد خرید" + (cartCount > 0 ? "، " + fa(cartCount) + " قلم" : "")} onPress={() => setCartOpen(true)}>
             <Image source={navCart} style={styles.navIcon} accessibilityLabel="سبد خرید" />
             <Text style={styles.navLabel}>سبد{cartCount > 0 ? " · " + fa(cartCount) : ""}</Text>
           </Pressable>
@@ -284,4 +380,34 @@ const styles = StyleSheet.create({
   navLabel: { color: "#8e8e93", fontSize: 10, ...rtl },
   navLabelActive: { color: "#0f5b5a", fontWeight: "700" },
   errorText: { color: "#b5523b", fontSize: 12, ...rtl },
+  cartScroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, gap: 14, backgroundColor: "#f7f3ed" },
+  cartHeadingRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+  cartPageTitle: { color: "#2d2d2d", fontSize: 22, fontWeight: "800", ...rtl },
+  cartPageCount: { color: "#8e8e93", fontSize: 13, ...rtl },
+  cartEmptyCard: { minHeight: 260, padding: 24, alignItems: "center", justifyContent: "center", gap: 12, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 16, backgroundColor: "#fff" },
+  cartEmptyIcon: { width: 42, height: 42, tintColor: "#0f5b5a" },
+  cartEmptyTitle: { color: "#2d2d2d", fontSize: 18, fontWeight: "800", ...rtl },
+  cartEmptyCopy: { color: "#8e8e93", fontSize: 13, lineHeight: 22, textAlign: "center", writingDirection: "rtl" },
+  cartLines: { gap: 10 },
+  cartLine: { minHeight: 122, padding: 12, flexDirection: "row-reverse", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 14, backgroundColor: "#fff" },
+  cartLineImage: { width: 76, height: 76, borderRadius: 10, backgroundColor: "#f7f3ed" },
+  cartLineCopy: { flex: 1, alignItems: "flex-end", gap: 4 },
+  cartLineTitle: { color: "#2d2d2d", fontSize: 13, fontWeight: "700", ...rtl },
+  cartLineCategory: { color: "#8e8e93", fontSize: 11, ...rtl },
+  cartLinePrice: { color: "#0f5b5a", fontSize: 14, fontWeight: "800", ...rtl },
+  cartLineControls: { width: "100%", marginTop: 4, flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+  cartLineRemove: { color: "#b5523b", fontSize: 12, fontWeight: "700", ...rtl },
+  cartStepper: { flexDirection: "row-reverse", alignItems: "center", gap: 8, padding: 4, borderRadius: 10, backgroundColor: "#f7f3ed" },
+  cartStepButton: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#fff" },
+  cartStepPlus: { color: "#b5523b", fontSize: 16, fontWeight: "700" },
+  cartStepMinus: { color: "#706963", fontSize: 16, fontWeight: "700" },
+  cartStepValue: { minWidth: 22, color: "#2d2d2d", textAlign: "center", fontSize: 14, fontWeight: "700" },
+  cartTotalCard: { padding: 14, gap: 8, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 14, backgroundColor: "#fff" },
+  cartTotalRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+  cartTotalLabel: { color: "#706963", fontSize: 13, ...rtl },
+  cartTotalAmount: { color: "#b5523b", fontSize: 18, fontWeight: "800", ...rtl },
+  cartTotalNotice: { color: "#8e8e93", fontSize: 11, textAlign: "right", writingDirection: "rtl" },
+  cartContinueButton: { minHeight: 50, alignItems: "center", justifyContent: "center", borderRadius: 11, backgroundColor: "#b5523b" },
+  cartContinueText: { color: "#fff", fontSize: 14, fontWeight: "700", ...rtl },
+  cartNotice: { color: "#0f5b5a", paddingHorizontal: 10, fontSize: 12, fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
 });
