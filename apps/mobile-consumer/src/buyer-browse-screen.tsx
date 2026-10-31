@@ -73,6 +73,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
     setDraftSearch(link.route.browse.search);
     setSearchError("");
     setCartOpen(false);
+    setCheckoutOpen(false);
     setDetailId(link.route.kind === "detail" ? link.route.id : null);
   }, [controller, link]);
 
