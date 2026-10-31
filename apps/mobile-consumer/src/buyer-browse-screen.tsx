@@ -395,7 +395,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
           <View style={styles.productsGrid}>
             {cards.map((item) => (
               <View key={item.id} style={styles.productCard}>
-                <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات " + item.title}
+                <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات " + (catalogTitles[item.id] ?? item.title)}
                   onPress={() => setDetailId(item.id)} style={styles.productImagePressable}>
                   <Image source={item.image} style={styles.productImage} resizeMode="cover"
                     accessibilityLabel={catalogTitles[item.id] ?? item.title} />
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
   productImagePressable: { width: "100%", height: 100, position: "relative", borderRadius: 12, overflow: "hidden" },
   productBadge: { position: "absolute", top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: "#b5523b" },
   productBadgeText: { color: "#fff", fontSize: 10, fontWeight: "600", ...rtl },
-  catalogBackIcon: { width: 18, height: 18, transform: [{ rotate: "180deg" }] },
+  catalogBackIcon: { width: 18, height: 18 },
   catalogFilterIcon: { width: 18, height: 18 },
   catalogSearchIcon: { width: 18, height: 18 },
   catalogPlusIcon: { width: 12, height: 12 },
