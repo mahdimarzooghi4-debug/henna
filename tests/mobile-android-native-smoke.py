@@ -171,7 +171,7 @@ def main():
     tap_accessible("برنج طارم ایرانی درجه یک")
     wait_screen("جزئیات محصول", "برنج طارم ایرانی درجه یک")
     save_preview("henna-android-detail-preview.png")
-    execute("adb", "shell", "input", "keyevent", "4")
+    tap_accessible("بازگشت")
     wait_screen("کالاها و خدمات")
 
     # Add a real catalog-card item and capture the resulting in-app basket.
