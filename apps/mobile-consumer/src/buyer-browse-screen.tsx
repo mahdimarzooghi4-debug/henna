@@ -6,6 +6,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MobileCatalogClient } from "./mobile-catalog.ts";
+import { BuyerHomeScreen } from "./buyer-home-screen";
+import { buyerHomeProducts } from "./buyer-home-data";
 import { type BuyerLinkEvent } from "./buyer-link.ts";
 import { BuyerProductDetailScreen } from "./buyer-product-detail-screen";
 import { FigmaProductDetailScreen } from "./figma-product-detail-screen";
@@ -16,12 +18,7 @@ import {
 import { colors } from "./theme";
 
 const logo = require("../assets/hana-app-logo.png");
-const catalogCards = [
-  { id: "rice", title: "برنج طارم ایرانی درجه یک", category: "خواربار", amount: 185000, price: "۱۸۵,۰۰۰ تومان", image: require("../assets/figma-catalog-1.png") },
-  { id: "oil", title: "روغن مایع آفتابگردان", category: "خواربار", amount: 68000, price: "۶۸,۰۰۰ تومان", image: require("../assets/figma-catalog-2.png") },
-  { id: "cheese", title: "پنیر سفید صبحانه", category: "لبنیات", amount: 45000, price: "۴۵,۰۰۰ تومان", image: require("../assets/figma-catalog-3.png") },
-  { id: "yogurt", title: "ماست کم‌چرب پاستوریزه", category: "لبنیات", amount: 12000, price: "۱۲,۰۰۰ تومان", image: require("../assets/figma-catalog-4.png") },
-] as const;
+const catalogCards = buyerHomeProducts;
 const navUser = require("../assets/figma-nav-user.png");
 const navReceipt = require("../assets/figma-nav-receipt.png");
 const navCart = require("../assets/figma-nav-cart.png");
@@ -34,8 +31,9 @@ const catalog = new MobileCatalogClient(
 );
 
 /** Approved Figma buyer mobile frames 476:4 (empty), 478:22 (API-backed). */
-export function BuyerBrowseScreen({ onLogin, link }: {
-  onLogin: () => void; link: BuyerLinkEvent;
+export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCatalog, onHome }: {
+  onLogin: () => void; link: BuyerLinkEvent; homeMode?: boolean;
+  onEnterCatalog?: () => void; onHome?: () => void;
 }) {
   const [detailId, setDetailId] = useState<string | null>(
     link.route.kind === "detail" ? link.route.id : null,
@@ -97,6 +95,28 @@ export function BuyerBrowseScreen({ onLogin, link }: {
       return next;
     });
   }
+
+  function enterCatalog(searchTerm = "") {
+    setDraftSearch(searchTerm);
+    controller.submitSearch(searchTerm);
+    setSearchError("");
+    onEnterCatalog?.();
+  }
+
+  if (homeMode && !cartOpen && !checkoutOpen && detailId === null) return (
+    <BuyerHomeScreen cartCount={cartCount} notice={cartNotice}
+      onBrowse={enterCatalog}
+      onAdd={(id, title) => {
+        setCartItemQuantity(id, (cart[id] ?? 0) + 1);
+        setCartNotice(title + " به سبد اضافه شد.");
+      }}
+      onProduct={(id) => {
+        setDetailId(id);
+        onEnterCatalog?.();
+      }}
+      onCart={() => setCartOpen(true)} onLogin={onLogin}
+      onHome={() => onHome?.()} />
+  );
   // Keep the mounted browse coordinator and its real search/filter/page state.
   if (cartOpen) return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
@@ -180,7 +200,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
         <Pressable style={styles.navItem} onPress={onLogin}><Image source={navUser} style={styles.navIcon} accessibilityLabel="حساب" /><Text style={styles.navLabel}>حساب</Text></Pressable>
         <Pressable style={styles.navItem} onPress={onLogin}><Image source={navReceipt} style={styles.navIcon} accessibilityLabel="سفارش‌ها" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
         <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={navCart} style={styles.navIcon} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد · {fa(cartCount)}</Text></Pressable>
-        <Pressable style={styles.navItem} onPress={() => setCartOpen(false)}><Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" /><Text style={styles.navLabel}>خانه</Text></Pressable>
+        <Pressable style={styles.navItem} onPress={() => { setCartOpen(false); onHome?.(); }}><Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" /><Text style={styles.navLabel}>خانه</Text></Pressable>
       </View>
     </SafeAreaView>
   );
@@ -392,7 +412,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
         </ScrollView>
 
         <View style={styles.bottomNav}>
-          <Pressable style={styles.navItem}>
+          <Pressable style={styles.navItem} onPress={onHome}>
             <Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" />
             <Text style={[styles.navLabel, styles.navLabelActive]}>خانه</Text>
           </Pressable>

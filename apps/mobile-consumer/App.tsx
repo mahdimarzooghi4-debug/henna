@@ -506,7 +506,7 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<"browse" | "auth">("browse");
+  const [screen, setScreen] = useState<"home" | "browse" | "auth">("home");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
   // link must not first fetch page 1 and briefly paint unrelated content.
   const [link, setLink] = useState<BuyerLinkEvent | null>(null);
@@ -519,7 +519,7 @@ export default function App() {
       const route = parseBuyerLink(url);
       if (incoming && route === null) return; // Never navigate on untrusted URL.
       setLink({ token: ++sequence.current, route: route ?? blankBrowseLink });
-      if (incoming) setScreen("browse");
+      if (incoming || route !== null) setScreen("browse");
     };
     const listener = Linking.addEventListener("url", ({ url }) => {
       if (!active || parseBuyerLink(url) === null) return;
@@ -539,8 +539,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       {link === null ? <View style={styles.flex} /> :
-        screen === "browse"
-          ? <BuyerBrowseScreen link={link}
+        screen === "home" || screen === "browse"
+          ? <BuyerBrowseScreen link={link} homeMode={screen === "home"}
+              onEnterCatalog={() => setScreen("browse")}
+              onHome={() => setScreen("home")}
               onLogin={() => setScreen("auth")} />
           : <ConsumerAuthScreen onBrowse={() => setScreen("browse")} />}
     </SafeAreaProvider>
