@@ -26,7 +26,7 @@ function BuyerHeader() {
     <div className={styles.announcement}>بازارگاه حنا؛ خرید روزمره با پشتیبانی از توسعهٔ اجتماعی</div>
     <header className={styles.header} dir="rtl">
       <Link href="/" className={styles.logo} aria-label="صفحه اصلی حنا">
-        <Image src="/hana-logo.png" alt="حنا" width={150} height={58} priority />
+        <Image src="/hana-logo.png" alt="حنا" width={150} height={84} unoptimized priority />
       </Link>
       <form action="/products" className={styles.search}>
         <input name="search" placeholder="جست‌وجوی کالاها و خدمات روزمره…" aria-label="جست‌وجو" />
@@ -51,7 +51,7 @@ function BuyerFooter() {
       <div><h2>دسترسی سریع</h2><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/about">درباره حنا</Link><Link href="/support">تماس با پشتیبانی</Link></div>
       <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/seller-guide">شرایط همکاری</Link></div>
       <div><h2>طرح‌های حمایتی</h2><Link href="/programs">اعتبارات سازمانی</Link><Link href="/programs">طرح‌های فعال</Link></div>
-      <div className={styles.footerBrand}><Link href="/"><Image src="/hana-logo.png" alt="حنا" width={140} height={56} /></Link><p>بازارگاه حنا برای خریدهای روزمره با رویکرد توسعهٔ عادلانه و حمایت اجتماعی.</p></div>
+      <div className={styles.footerBrand}><Link href="/"><Image src="/hana-logo.png" alt="حنا" width={140} height={79} unoptimized /></Link><p>بازارگاه حنا برای خریدهای روزمره با رویکرد توسعهٔ عادلانه و حمایت اجتماعی.</p></div>
     </div>
     <p className={styles.copyright}>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است. کلیه حقوق برای حنا محفوظ است.</p>
   </footer>;
@@ -114,16 +114,33 @@ export function BuyerAddresses() {
     <main className={styles.layout}>
       <section className={styles.content} aria-labelledby="addresses-title">
         <div className={styles.titleRow}>
-          <div><h1 id="addresses-title">مدیریت آدرس‌های من</h1><p>نشانی‌های تحویل را ثبت کنید تا هنگام خرید سریع‌تر انتخاب شوند.</p></div>
-          <button type="button" className={styles.addButton} onClick={() => { setShowForm((open) => !open); setFormNotice(""); }}>
-            {showForm ? "بستن فرم" : "+ افزودن آدرس جدید"}
+          <div><h1 id="addresses-title">مدیریت آدرس‌های من</h1><p>آدرس‌های تحویل خود را ثبت و ویرایش کنید تا برای مقایسه فروشگاه‌های اطراف و محاسبه زمان تحویل استفاده شوند.</p></div>
+          <button type="button" className={styles.addButton} onClick={() => { setShowForm(true); setFormNotice(""); document.getElementById("new-address-form")?.scrollIntoView({ behavior: "smooth" }); }}>
+            افزودن آدرس جدید
           </button>
         </div>
         <section className={styles.savedAddresses} aria-labelledby="saved-title">
-          <h2 id="saved-title">آدرس‌های ذخیره‌شده</h2>
-          <p className={styles.emptyState}>هنوز نشانی‌ای به حساب شما اضافه نشده است.</p>
+          <h2 id="saved-title">آدرس‌های ثبت‌شده</h2>
+          <div className={styles.addressList}>
+            <article className={styles.addressCard + " " + styles.defaultAddress}>
+              <div className={styles.addressCardHeader}>
+                <div className={styles.addressActions}><button type="button" aria-label="حذف آدرس نمونه اول">حذف</button><span aria-hidden="true">│</span><button type="button" onClick={() => document.getElementById("new-address-form")?.scrollIntoView({ behavior: "smooth" })}>ویرایش</button></div>
+                <div className={styles.addressTitle}><span className={styles.defaultBadge}>آدرس پیش‌فرض</span><h3>آدرس نمونه اول (خانه)</h3></div>
+              </div>
+              <p className={styles.addressText}>تهران، محله امیرآباد، خیابان کارگر شمالی، کوچه دهم، پلاک ۱۲، واحد ۳</p>
+              <div className={styles.addressMeta}><span><b>کد پستی:</b> ۱۴۳۹۶-۱۲۳۴۵</span><span><b>گیرنده:</b> کاربر نمونه</span><span><b>شماره تماس:</b> ۰۹۱۲۳۴۵۶۷۸۹</span></div>
+            </article>
+            <article className={styles.addressCard}>
+              <div className={styles.addressCardHeader}>
+                <div className={styles.addressActions}><button type="button" aria-label="حذف آدرس نمونه دوم">حذف</button><span aria-hidden="true">│</span><button type="button" onClick={() => document.getElementById("new-address-form")?.scrollIntoView({ behavior: "smooth" })}>ویرایش</button></div>
+                <div className={styles.addressTitle}><h3>آدرس نمونه دوم (محل کار)</h3></div>
+              </div>
+              <p className={styles.addressText}>تهران، بلوار کشاورز، تقاطع فلسطین، ساختمان آفتاب، طبقه ۴، واحد ۸</p>
+              <div className={styles.addressMeta}><span><b>کد پستی:</b> ۱۴۱۵۶-۹۸۷۶۵</span><span><b>گیرنده:</b> شرکت توسعه فناوری محلی (امور اداری)</span><span><b>شماره تماس:</b> ۰۲۱-۸۸۹۹۰۰۱۱</span></div>
+            </article>
+          </div>
         </section>
-        {showForm && <form className={styles.formCard} onSubmit={validateForm} noValidate>
+        {showForm && <form id="new-address-form" className={styles.formCard} onSubmit={validateForm} noValidate>
           <h2>ثبت آدرس جدید</h2>
           <p className={styles.formIntro}>محل تحویل را روی نقشه مشخص کنید و اطلاعات گیرنده را وارد کنید.</p>
           <AddressMapPicker value={point} onChange={setPoint} />
@@ -137,7 +154,7 @@ export function BuyerAddresses() {
             {field("postalCode", "کد پستی (اختیاری)", "۱۰ رقم", false, "numeric")}
           </div>
           <div className={styles.formActions}>
-            <button type="submit" className={styles.primaryButton}>بررسی اطلاعات آدرس</button>
+            <button type="submit" className={styles.primaryButton}>ثبت آدرس و تایید موقعیت</button>
             <button type="button" className={styles.secondaryButton} onClick={() => { setFields(initialFields); setPoint(null); setErrors({}); setFormNotice(""); }}>پاک‌کردن فرم</button>
             {formNotice && <p className={styles.formNotice} role="status">{formNotice}</p>}
           </div>

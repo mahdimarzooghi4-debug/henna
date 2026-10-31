@@ -58,6 +58,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [resendNotice, setResendNotice] = useState("");
   const [codeError, setCodeError] = useState("");
+  const [resendSeconds, setResendSeconds] = useState(105);
   const phoneInput = useRef<TextInput>(null);
   const codeInput = useRef<TextInput>(null);
   const pending = useRef(false);
@@ -114,6 +115,13 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
     });
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    if (view !== "code") return;
+    setResendSeconds(105);
+    const timer = setInterval(() => setResendSeconds((value) => Math.max(0, value - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [view, challengeId]);
 
   useEffect(() => {
     // Focus the actual step only once it is mounted. An acknowledged resend
@@ -240,11 +248,11 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
           </View>
 
           <View style={styles.intro}>
-            <Text style={styles.title}>ورود به حنا</Text>
+            <Text style={styles.title}>ورود یا ثبت‌نام</Text>
             <Text style={styles.subtitle}>
               {view === "session"
                 ? "نشست شما در سرور حنا بررسی شده است."
-                : "با شماره موبایل وارد شوید یا ثبت‌نام کنید."}
+                : "به بازار اجتماعی حنا خوش آمدید. برای خرید و مشارکت اجتماعی، وارد حساب کاربری خود شوید."}
             </Text>
           </View>
 
@@ -330,31 +338,35 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
 
             {view === "code" && (
               <>
-                {/* Technical OTP step only: its final visual frame needs approved Figma. */}
-                <Text style={styles.fieldLabel}>کد تأیید برای {phone}</Text>
-                <TextInput
-                  ref={codeInput}
-                  accessibilityLabel="کد شش رقمی تأیید"
-                  accessibilityHint={status === "invalid"
-                    ? codeError || "کد یا اطلاعات تأیید معتبر نیست."
-                    : undefined}
-                  accessibilityState={{ disabled: status === "loading" }}
-                  editable={status !== "loading"}
-                  style={[styles.input, status === "invalid" && styles.invalidInput]}
-                  placeholder="xxxxxx"
-                  placeholderTextColor={colors.muted}
-                  textAlign="right"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  value={code}
-                  onChangeText={(value) => {
-                    if (pending.current) return;
-                    setCode(normalizeDigits(value));
-                    setCodeError("");
-                    setStatus("idle");
-                    setResendNotice("");
-                  }}
-                />
+                <Text style={styles.fieldLabel}>تأیید شماره موبایل</Text>
+                <Text style={styles.otpHint}>کد تأیید به شماره {phone} پیامک شد.</Text>
+                <View style={styles.otpInputFrame}>
+                  <View style={styles.otpBoxes} pointerEvents="none">
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <View key={index} style={[styles.otpBox, status === "invalid" && styles.otpBoxInvalid]}>
+                        <Text style={styles.otpDigit}>{code[index] || ""}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <TextInput
+                    ref={codeInput}
+                    accessibilityLabel="کد شش رقمی تأیید"
+                    accessibilityHint={status === "invalid" ? codeError || "کد یا اطلاعات تأیید معتبر نیست." : undefined}
+                    accessibilityState={{ disabled: status === "loading" }}
+                    editable={status !== "loading"}
+                    style={styles.otpOverlay}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    value={code}
+                    onChangeText={(value) => {
+                      if (pending.current) return;
+                      setCode(normalizeDigits(value));
+                      setCodeError("");
+                      setStatus("idle");
+                      setResendNotice("");
+                    }}
+                  />
+                </View>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="تأیید کد"
@@ -367,7 +379,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                   disabled={status === "loading"}
                 >
                   <Text style={styles.primaryButtonText}>
-                    {status === "loading" ? "در حال تأیید…" : "تأیید کد"}
+                    {status === "loading" ? "در حال تأیید…" : "تأیید و ورود به حنا"}
                   </Text>
                 </Pressable>
                 {status !== "idle" && status !== "loading" && (
@@ -386,14 +398,15 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                     {resendNotice}
                   </Text>
                 )}
+                <Text style={styles.otpTimer}>{resendSeconds > 0 ? "ارسال مجدد کد تا " + String(Math.floor(resendSeconds / 60)).padStart(2, "0") + ":" + String(resendSeconds % 60).padStart(2, "0") : "امکان ارسال مجدد کد فراهم است"}</Text>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="درخواست کد تأیید جدید"
-                  onPress={() => void requestCode(true)}
-                  disabled={status === "loading"}
+                  onPress={() => { setResendSeconds(105); void requestCode(true); }}
+                  disabled={status === "loading" || resendSeconds > 0}
                 >
                   <Text style={[styles.sellerLink, styles.secondaryLink]}>
-                    درخواست کد جدید
+                    ارسال مجدد پیامک
                   </Text>
                 </Pressable>
                 <Pressable
@@ -493,7 +506,7 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<"browse" | "auth">("browse");
+  const [screen, setScreen] = useState<"home" | "browse" | "auth">("home");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
   // link must not first fetch page 1 and briefly paint unrelated content.
   const [link, setLink] = useState<BuyerLinkEvent | null>(null);
@@ -506,7 +519,7 @@ export default function App() {
       const route = parseBuyerLink(url);
       if (incoming && route === null) return; // Never navigate on untrusted URL.
       setLink({ token: ++sequence.current, route: route ?? blankBrowseLink });
-      if (incoming) setScreen("browse");
+      if (incoming || route !== null) setScreen("browse");
     };
     const listener = Linking.addEventListener("url", ({ url }) => {
       if (!active || parseBuyerLink(url) === null) return;
@@ -526,8 +539,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       {link === null ? <View style={styles.flex} /> :
-        screen === "browse"
-          ? <BuyerBrowseScreen link={link}
+        screen === "home" || screen === "browse"
+          ? <BuyerBrowseScreen link={link} homeMode={screen === "home"}
+              onEnterCatalog={() => setScreen("browse")}
+              onHome={() => setScreen("home")}
               onLogin={() => setScreen("auth")} />
           : <ConsumerAuthScreen onBrowse={() => setScreen("browse")} />}
     </SafeAreaProvider>
@@ -627,6 +642,14 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: 12,
   },
+  otpHint: { marginTop: 6, color: colors.muted, fontSize: 12, textAlign: "right", writingDirection: "rtl", lineHeight: 22 },
+  otpInputFrame: { height: 58, marginTop: 18, position: "relative" },
+  otpBoxes: { flex: 1, flexDirection: "row", justifyContent: "space-between", gap: 7 },
+  otpBox: { flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.beige, borderRadius: 10, backgroundColor: colors.surface },
+  otpBoxInvalid: { borderColor: colors.terracotta },
+  otpDigit: { color: colors.charcoal, fontSize: 20, fontWeight: "700" },
+  otpOverlay: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, opacity: 0.01, color: "transparent", backgroundColor: "transparent", fontSize: 20, textAlign: "center" },
+  otpTimer: { marginTop: 10, color: colors.muted, fontSize: 12, textAlign: "center", writingDirection: "rtl" },
   formStatusError: {
     backgroundColor: colors.errorSurface,
     color: colors.error,

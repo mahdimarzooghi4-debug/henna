@@ -1121,8 +1121,29 @@ export function RegistrationForm() {
       fields, readyConflict.fields, readyConflict.choices,
     )
     : 0;
+  const activeRegistrationStep = submittedAtUtc ? 8
+    : completedStep === 1 ? (revision > 0 ? (applicantType ? 3 : 2) : 1)
+    : completedStep === 2 ? 3
+    : completedStep === 3 ? 4
+    : completedStep === 4 ? 5
+    : completedStep === 5 ? 6
+    : 7;
+  const registrationStepLabels = [
+    "شروع ثبت‌نام", "نوع متقاضی", "احراز هویت", "اطلاعات کسب‌وکار",
+    "محدوده فعالیت", "اطلاعات تکمیلی", "بازبینی و ثبت", "وضعیت درخواست",
+  ];
+  const registrationStepNumbers = ["۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸"];
 
   return (
+    <>
+    <nav className="registration-steps" aria-label="مراحل ثبت‌نام فروشگاه">
+      {registrationStepLabels.map((label, index) => <span
+        key={label}
+        className={activeRegistrationStep === index + 1 ? "registration-steps__active" : ""}
+        aria-current={activeRegistrationStep === index + 1 ? "step" : undefined}>
+        <b>{registrationStepNumbers[index]}</b><span>{label}</span>
+      </span>)}
+    </nav>
     <section className="surface-card seller-card" aria-labelledby="seller-form-heading">
       <h2 id="seller-form-heading">اطلاعات اولیه فروشگاه</h2>
       {hasUnsavedChanges && (
@@ -1154,7 +1175,7 @@ export function RegistrationForm() {
           <FormField id="owner-name" label="نام و نام خانوادگی مسئول" placeholder="نام مسئول فروشگاه"
             maxLength={120} autoComplete="name" value={fields.ownerName} error={Boolean(fieldErrors.ownerName)} errorMessage={fieldErrors.ownerName} required
             disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("ownerName", e.target.value)} />
-          <FormField id="seller-phone" label="شماره موبایل" placeholder="09xxxxxxxxx"
+          <FormField id="seller-phone" label="شماره موبایل" placeholder="۰۹xxxxxxxxx"
             type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={11}
             className="field__input--phone" value={fields.phone} error={Boolean(fieldErrors.phone)} errorMessage={fieldErrors.phone} required
             disabled={busy || access !== "signedIn" || conflict !== null || submittedAtUtc !== null || completedStep >= 2} onChange={(e) => update("phone", e.target.value)} />
@@ -1306,7 +1327,7 @@ export function RegistrationForm() {
                   }} />
                 <FormField id="seller-representative-phone"
                   label="شماره موبایل نماینده"
-                  placeholder="09xxxxxxxxx"
+                  placeholder="۰۹xxxxxxxxx"
                   inputMode="numeric" type="tel" maxLength={11}
                   className="field__input--phone"
                   value={legalRepresentativePhone} required
@@ -1787,7 +1808,7 @@ export function RegistrationForm() {
 
                 <FormField id="seller-backup-phone"
                   label="تلفن همراه دوم / پشتیبان (اختیاری)"
-                  placeholder="09xxxxxxxxx"
+                  placeholder="۰۹xxxxxxxxx"
                   type="tel"
                   inputMode="numeric"
                   maxLength={11}
@@ -2168,5 +2189,6 @@ export function RegistrationForm() {
         )}
       </form>
     </section>
+    </>
   );
 }

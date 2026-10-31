@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { OrganizationPortalShell } from "./organization-portal";
 
 type Role = "ORG_LEAD" | "ORG_REPRESENTATIVE" | "ORG_TECHNICAL_OPERATOR";
 type Profile = { organizationId: string; organizationName: string; memberRole: Role; membershipId: string };
@@ -58,29 +59,21 @@ export function OrganizationProgramForm() {
     finally { setBusy(false); }
   }
 
-  return <main className="organization-page organization-shell" dir="rtl">
-    <aside className="organization-sidebar">
-      <Link href="/organization" className="organization-brand"><img src="/hana-logo.png" alt="حنا" /><strong>پنل سازمان‌ها</strong></Link>
-      <nav aria-label="منوی سازمان"><Link href="/organization">داشبورد</Link><Link className="is-active" href="/organization/programs">طرح‌ها و اعتبارها</Link><span>افراد و مشمولان</span><span>تخصیص</span><span>وضعیت استفاده</span><span>منابع داده و API</span><span>گزارش‌ها</span><span>اعلانات</span><span>اطلاعات سازمان</span><span>پشتیبانی</span><span>تنظیمات</span></nav>
-    </aside>
-    <div className="organization-main">
-      <header className="organization-topbar"><span>سازمان همکار</span><h1>ثبت طرح سازمانی</h1></header>
+  return <OrganizationPortalShell active="programs" title="ثبت طرح سازمانی">
       <section className="organization-program-form-area">
-        <div className="organization-form-card"><Link className="organization-back-link" href="/organization/programs">بازگشت به طرح‌ها و اعتبارها</Link><h2>فرم راه‌اندازی و پیکربندی طرح اعتباری</h2><p className="organization-form-intro">این انتخاب برای منابعی است که سازمان در اختیار حنا می‌گذارد. منبع صندوق نیکوکاری حنا فقط با مدل حنا تخصیص می‌یابد و روش آن را سازمان تعیین نمی‌کند.</p>
+        <div className="organization-form-card"><h2>فرم ثبت پیش‌نویس طرح</h2><p className="organization-form-intro">فقط نام، روش ثبت‌شده و توضیحات در این مرحله ذخیره می‌شوند.</p>
           {loading ? <p role="status">در حال بررسی عضویت سازمانی…</p> : loadError ? <div className="organization-notice">{loadError}</div> : profiles.length === 0 ? <div className="organization-notice">برای این حساب عضویت فعال سازمانی ثبت نشده است.</div> : !canCreate ? <div className="organization-notice">نقش فعلی فقط امکان مشاهده دارد؛ برای ساخت پیش‌نویس با مدیر یا نمایندهٔ سازمان تماس بگیرید.</div> : <form onSubmit={submit}>
             {profiles.length > 1 && <label className="organization-field">سازمان<select value={organizationId} onChange={(event) => setOrganizationId(event.target.value)}>{profiles.map((profile) => <option key={profile.membershipId} value={profile.organizationId}>{profile.organizationName}</option>)}</select></label>}
-            <label className="organization-field">نام طرح<input value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required placeholder="نام طرح را وارد کنید" /></label>
-            <fieldset className="organization-mode-fieldset"><legend>روش همکاری در تخصیص</legend>
-              <label className="organization-mode-option"><input type="radio" name="allocationMode" value="HENNA_NEEDS_BASED" checked={mode === "HENNA_NEEDS_BASED"} onChange={() => setMode("HENNA_NEEDS_BASED")} /><span><strong>محاسبه بر اساس مدل حنا</strong><small>حنا سهم هر خانوار را با فرمول و ضرایب نسخه‌دار محاسبه می‌کند.</small></span></label>
-              <label className="organization-mode-option"><input type="radio" name="allocationMode" value="ORGANIZATION_DEFINED" checked={mode === "ORGANIZATION_DEFINED"} onChange={() => setMode("ORGANIZATION_DEFINED")} /><span><strong>تخصیص توسط سازمان</strong><small>سازمان مبلغ هر مشمول را تعیین می‌کند؛ محاسبه نیازمحور حنا روی آن اعمال نمی‌شود.</small></span></label>
-            </fieldset>
+            <div className="organization-form-grid">
+              <label className="organization-field">نام طرح<input aria-label="نام طرح" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required placeholder="مثال: طرح تغذیه خانوار" /></label>
+              <label className="organization-field">روش ثبت‌شده<select aria-label="روش ثبت‌شده" value={mode} onChange={(event) => setMode(event.target.value as AllocationMode)}><option value="HENNA_NEEDS_BASED">نیازمحور حنا</option><option value="ORGANIZATION_DEFINED">تعریف‌شده توسط سازمان</option></select></label>
+            </div>
             <label className="organization-field">توضیحات و اهداف طرح<textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1200} rows={5} placeholder="توضیحات طرح را وارد کنید" /></label>
-            <div className="organization-finance-boundary"><strong>انتخاب روش هنوز تخصیص اعتبار نیست</strong><p>مالک منبع و روش انتخابی باید در دستور تأمین مالی طرح تأیید شوند. این پیش‌نویس منبع مالی، مبلغ، کیف پول یا اعتبار مشمولان را ایجاد نمی‌کند.</p></div>
+            <div className="organization-finance-boundary"><strong>این مرحله فقط پیش‌نویس می‌سازد</strong><p>انتخاب روش به‌تنهایی اجازهٔ تخصیص نیست. پیش‌نویس منبع مالی، مبلغ، کیف پول یا اعتبار ایجاد نمی‌کند. صندوق نیکوکاری حنا فقط با روش نیازمحور حنا کار می‌کند؛ منبع و اختیار آن باید جداگانه بررسی شود.</p></div>
             {message && <p className="organization-form-message" role="alert">{message}</p>}
-            <div className="organization-form-actions"><Link className="organization-outline-button" href="/organization/programs">انصراف</Link><button className="organization-primary-button" type="submit" disabled={busy}>{busy ? "در حال ثبت…" : "ثبت پیش‌نویس طرح"}</button></div>
+            <div className="organization-form-actions"><Link className="organization-outline-button" href="/organization/programs">انصراف</Link><button className="organization-primary-button" type="submit" disabled={busy}>{busy ? "در حال ثبت…" : "ثبت اولیه طرح سازمانی"}</button></div>
           </form>}
         </div>
       </section>
-    </div>
-  </main>;
+  </OrganizationPortalShell>;
 }
