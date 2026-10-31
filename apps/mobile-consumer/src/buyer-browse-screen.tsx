@@ -174,7 +174,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
       </View>
     </SafeAreaView>
   );
-  if (detailId === "cheese") return <FigmaProductDetailScreen
+  if (detailId === "rice") return <FigmaProductDetailScreen
     initialCartQuantity={cart.rice ?? 0}
     onCartQuantityChange={(quantity) => setCartItemQuantity("rice", quantity)}
     onBack={() => setDetailId(null)} />;
@@ -281,11 +281,11 @@ export function BuyerBrowseScreen({ onLogin, link }: {
             {cards.map((item) => (
               <View key={item.id} style={styles.productCard}>
                 <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات " + item.title}
-                  onPress={() => { setOpenCartFromTab(false); setDetailId("cheese"); }} style={styles.productImagePressable}>
+                  onPress={() => setDetailId(item.id)} style={styles.productImagePressable}>
                   <Image source={item.image} style={styles.productImage} resizeMode="cover"
                     accessibilityLabel={item.title} />
                 </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => { setOpenCartFromTab(false); setDetailId("cheese"); }}
+                <Pressable accessibilityRole="button" onPress={() => setDetailId(item.id)}
                   style={styles.productTextBlock}>
                   <Text numberOfLines={1} style={styles.productName}>{item.title}</Text>
                   <Text style={styles.productKind}>{item.category}</Text>
