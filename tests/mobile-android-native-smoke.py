@@ -197,7 +197,12 @@ def main():
     tap_accessible("ادامه ثبت سفارش")
     wait_screen("ثبت سفارش", "روش پرداخت")
     save_preview("henna-android-checkout-preview.png")
-    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review and checkout")
+    tap_accessible("ثبت نهایی و پرداخت سفارش")
+    wait_screen("سفارش واقعی ثبت یا پرداخت نمی‌شود", "نمایش پیش‌نمایش")
+    tap_accessible("نمایش پیش‌نمایش")
+    wait_screen("سفارش نمونه با موفقیت ثبت شد.", "خلاصه سفارش")
+    save_preview("henna-android-order-success-preview.png")
+    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout and order-success preview")
 
 try:
     main()
