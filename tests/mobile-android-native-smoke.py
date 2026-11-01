@@ -84,15 +84,15 @@ def tap_accessible(label):
         clickable = node.attrib.get("clickable") == "true"
         exact = label in (node.attrib.get("content-desc", ""),
                           node.attrib.get("text", ""))
-        candidates.append((clickable, exact, (right-left)*(bottom-top),
+        candidates.append((exact, clickable, (right-left)*(bottom-top),
                            (left+right)//2, (top+bottom)//2))
     if not candidates:
         raise AssertionError(f"Android UI control not found: {label!r}")
-    # Prefer the actual clickable control with an exact label. A parent
-    # ScrollView can inherit descendant text in some Android accessibility
-    # trees; choosing its larger bounds taps the middle of the screen instead
-    # of the visible button.
-    _, _, _, x, y = max(candidates)
+    # Prefer an exact accessibility node, even when its visible Text child is
+    # not marked clickable. Its center is inside the parent Pressable, while
+    # an inexact clickable ancestor can span most of the ScrollView.
+    exact, clickable, _, x, y = max(candidates)
+    print(f"Tap target {label!r}: exact={exact}, clickable={clickable}, point=({x},{y})", flush=True)
     execute("adb", "shell", "input", "tap", str(x), str(y))
     time.sleep(1)
 
