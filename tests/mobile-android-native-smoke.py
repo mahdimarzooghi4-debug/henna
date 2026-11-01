@@ -197,6 +197,8 @@ def main():
     tap_accessible("ادامه ثبت سفارش")
     wait_screen("ثبت سفارش", "روش پرداخت")
     save_preview("henna-android-checkout-preview.png")
+    execute("adb", "shell", "input", "swipe", "540", "1850", "540", "450", "500")
+    time.sleep(1)
     tap_accessible("ثبت نهایی و پرداخت سفارش")
     wait_screen("سفارش واقعی ثبت یا پرداخت نمی‌شود", "نمایش پیش‌نمایش")
     tap_accessible("نمایش پیش‌نمایش")
