@@ -182,6 +182,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
         return next;
       })}
       onContinue={() => {
+        setCartOpen(false);
         setBasketReviewOpen(false);
         setCheckoutOpen(true);
       }}
