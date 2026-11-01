@@ -188,7 +188,10 @@ def main():
     tap_accessible("انتخاب فروشگاه نمونه ۱")
     wait_screen("بررسی سبد", "فروشگاه نمونه ۱", "ادامه ثبت سفارش")
     save_preview("henna-android-basket-review-preview.png")
-    print("PASS: native URI dispatch, catalog add, cart, seller comparison and basket review")
+    tap_accessible("ادامه ثبت سفارش")
+    wait_screen("ثبت سفارش", "روش پرداخت")
+    save_preview("henna-android-checkout-preview.png")
+    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review and checkout")
 
 try:
     main()
