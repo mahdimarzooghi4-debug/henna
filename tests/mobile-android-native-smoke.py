@@ -182,7 +182,10 @@ def main():
     tap_accessible("سبد خرید")
     wait_screen("سبد خرید", "تومان")
     save_preview("henna-android-cart-preview.png")
-    print("PASS: native URI dispatch, catalog add and cart")
+    tap_accessible("مقایسه فروشگاه‌ها")
+    wait_screen("مقایسه فروشگاه‌ها", "فروشگاه نمونه ۳", "۲۶۰")
+    save_preview("henna-android-seller-comparison-preview.png")
+    print("PASS: native URI dispatch, catalog add, cart and seller comparison")
 
 try:
     main()
