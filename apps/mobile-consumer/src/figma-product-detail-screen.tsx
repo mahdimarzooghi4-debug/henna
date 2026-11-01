@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   checkoutView: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 110, gap: 14 },
   checkoutCard: { padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: "#F0E7DD", gap: 12 },
   checkoutHeading: { color: colors.charcoal, fontSize: 15, fontWeight: "800", textAlign: "right", writingDirection: "rtl" },
-  checkoutAddress: { minHeight: 42, borderBottomWidth: 1, borderBottomColor: "#F0E7DD", color: colors.charcoal, fontFamily: "Estedad", fontSize: 14, writingDirection: "rtl" },
+  checkoutAddress: { minHeight: 42, borderBottomWidth: 1, borderBottomColor: "#F0E7DD", color: colors.charcoal, fontFamily: "Estedad400", fontSize: 14, writingDirection: "rtl" },
   checkoutMeta: { flexDirection: "row-reverse", justifyContent: "space-between", gap: 8 },
   checkoutMuted: { color: colors.muted, fontSize: 12, lineHeight: 19, textAlign: "right", writingDirection: "rtl" },
   deliveryPill: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, backgroundColor: "#E8F2F2" },

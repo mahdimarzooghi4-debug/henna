@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   searchBar: { height: 46, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 12, backgroundColor: "#fff" },
   smallIconButton: { width: 24, height: 28, alignItems: "center", justifyContent: "center" },
   smallIcon: { width: 18, height: 18 },
-  searchInput: { flex: 1, minWidth: 0, paddingHorizontal: 10, color: "#2d2d2d", fontFamily: "Estedad", fontSize: 13, ...rtl },
+  searchInput: { flex: 1, minWidth: 0, paddingHorizontal: 10, color: "#2d2d2d", fontFamily: "Estedad400", fontSize: 13, ...rtl },
   searchButton: { width: 24, height: 28, alignItems: "center", justifyContent: "center" },
   chipsRow: { minHeight: 42, marginHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "flex-start", gap: 8 },
   chip: { height: 34, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 20, backgroundColor: "#fff" },

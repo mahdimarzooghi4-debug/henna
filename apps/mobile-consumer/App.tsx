@@ -508,7 +508,15 @@ const blankBrowseLink: BuyerLinkRoute = {
 
 export default function App() {
   const [fontLoaded] = useFonts({
-    Estedad: require("./assets/fonts/estedad-variable.ttf"),
+    Estedad100: require("./assets/fonts/estedad-100.ttf"),
+    Estedad200: require("./assets/fonts/estedad-200.ttf"),
+    Estedad300: require("./assets/fonts/estedad-300.ttf"),
+    Estedad400: require("./assets/fonts/estedad-400.ttf"),
+    Estedad500: require("./assets/fonts/estedad-500.ttf"),
+    Estedad600: require("./assets/fonts/estedad-600.ttf"),
+    Estedad700: require("./assets/fonts/estedad-700.ttf"),
+    Estedad800: require("./assets/fonts/estedad-800.ttf"),
+    Estedad900: require("./assets/fonts/estedad-900.ttf"),
   });
   const [screen, setScreen] = useState<"home" | "browse" | "auth">("home");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
@@ -624,7 +632,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: 14,
     fontSize: 15,
-    fontFamily: "Estedad",
+    fontFamily: "Estedad400",
     color: colors.charcoal,
   },
   invalidInput: { borderColor: colors.terracotta },
