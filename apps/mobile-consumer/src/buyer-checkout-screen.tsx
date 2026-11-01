@@ -14,7 +14,7 @@ const userIcon = require("../assets/figma-nav-user.png");
 const ordersIcon = require("../assets/figma-nav-receipt.png");
 const cartIcon = require("../assets/figma-nav-cart.png");
 const homeIcon = require("../assets/figma-nav-home.png");
-const successCheckIcon = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAxklEQVRYhe2VQQrCMBBFsxbbSQuC4Dl6CTd1k0X+SD2Dl3XReyjqRhmFCo3VVUaEeQeY/9LmT5wzDEOBeQgLAvYlc+O0qbtuRYyeGLcS8UhA9ZNwEgHGSU2gHoUT4+KBViV8tgtLAg5DOOKVtnFj4f/x2UvmJor3VW/cARUj64+h/QyWC18EJCuvoZ9lMhSNQ+0MuibRNaeFzGuCThPSaj0vJiQUF0y/s3vUF+vPpXQ3+0+ldALT+6E5sMyRk6tfnLDMFxm7mc9za+xWwOVAAAAAElFTkSuQmCC" };
+const successCheckIcon = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAxklEQVRYhe2VQQrCMBBFsxbbSQuC4Dl6CTd1k0X+SD2Dl3XReyjqRhmFCo3VVUaEeQeY/9LmT5wzDEOBeQgLAvYlc+O0qbtuRYyeGLcS8UhA9ZNwEgHGSU2gHoUT4+KBViV8tgtLAg5DOOKVtnFj4f/x2UvmRjor3VW/cARUj64+h/QyWC18EJCuvoZ9lMhSNQ+0MuibRNaeFzGuCThPSaj0vJiQUF0y/s3vUF+vPpXQ3+0+ldALT+6E5sMyRk6tfnLDMFxm7mc9za+xWwOVAAAAAElFTkSuQmCC" };
 const successBackIcon = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAV0lEQVQ4jWNgGAU0A7yRkV58UZGf+CIjM6ljYFSUD3901D8Q5ouOzKKKofxRUakIQyNyR5ihfNGRWVQNUz5qGsiP7OWYyJxhahgvtRM2L7Wz3ihgIBYAAFeKQhxmPBywAAAAAElFTkSuQmCC" };
 
 export type CheckoutItem = {
