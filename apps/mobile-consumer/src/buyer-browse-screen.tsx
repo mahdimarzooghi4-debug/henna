@@ -25,6 +25,7 @@ const browsePlusIcon = require("../assets/home-icon-plus.png");
 const cartRiceImage = require("../assets/buyer-detail-gallery.jpg");
 const cartTrashIcon = require("../assets/buyer-cart-trash.png");
 const cartCheckIcon = require("../assets/buyer-cart-check.png");
+const cartNavActiveIcon = require("../assets/home-icon-cart.png");
 const catalogCards = [buyerHomeProducts[2], buyerHomeProducts[3], buyerHomeProducts[0], buyerHomeProducts[1]];
 const catalogTitles: Record<string, string> = {
   rice: "برنج طارم ایرانی درجه یک",
@@ -226,7 +227,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
             <Pressable accessibilityRole="button" onPress={() => setComparisonNotice("صفحهٔ مقایسهٔ فروشگاه‌ها در گام بعدی آماده می‌شود.")}
               style={styles.cartCompareButton}>
               <Text style={styles.cartCompareButtonText}>مقایسه فروشگاه‌ها</Text>
-              <Image source={browseBackIcon} style={styles.cartCompareArrow} accessibilityLabel="ادامه" />
+              
             </Pressable>
             {comparisonNotice ? <Text accessibilityLiveRegion="polite" style={styles.cartCompareNotice}>{comparisonNotice}</Text> : null}
           </>
@@ -235,7 +236,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
       <View style={[styles.bottomNav, styles.cartBottomNav]}>
         <Pressable style={styles.navItem} onPress={onLogin}><Image source={navUser} style={styles.navIcon} accessibilityLabel="حساب" /><Text style={styles.navLabel}>حساب</Text></Pressable>
         <Pressable style={styles.navItem} onPress={onLogin}><Image source={navReceipt} style={styles.navIcon} accessibilityLabel="سفارش‌ها" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
-        <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={navCart} style={[styles.navIcon, styles.cartActiveIcon]} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد · {fa(cartCount)}</Text></Pressable>
+        <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={cartNavActiveIcon} style={[styles.navIcon, styles.cartActiveIcon]} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد</Text></Pressable>
         <Pressable style={styles.navItem} onPress={() => { setCartOpen(false); onHome?.(); }}><Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" /><Text style={styles.navLabel}>خانه</Text></Pressable>
       </View>
     </SafeAreaView>
@@ -482,7 +483,7 @@ const styles = StyleSheet.create({
   cartSafeArea: { backgroundColor: "#faf8f5" },
   cartHeader: { height: 56, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#faf8f5" },
   cartHeaderTitle: { color: "#2d2d2d", fontSize: 18, fontWeight: "700", ...rtl, textAlign: "center" },
-  cartBackIcon: { width: 18, height: 18, transform: [{ rotate: "180deg" }] },
+  cartBackIcon: { width: 18, height: 18 },
   scrollBody: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 100, gap: 8, backgroundColor: "#f7f3ed" },
   header: { height: 56, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f7f3ed" },
   headerBack: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, borderWidth: 1, borderColor: "#f0e7dd", backgroundColor: "#fff" },
