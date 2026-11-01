@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MobileCatalogClient } from "./mobile-catalog.ts";
 import { BuyerHomeScreen } from "./buyer-home-screen";
 import { BuyerSellerComparisonScreen } from "./buyer-seller-comparison-screen";
+import { BuyerBasketReviewScreen } from "./buyer-basket-review-screen";
 import { buyerHomeProducts } from "./buyer-home-data";
 import { type BuyerLinkEvent } from "./buyer-link.ts";
 import { BuyerProductDetailScreen } from "./buyer-product-detail-screen";
@@ -78,6 +79,8 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
   const [checkoutPhone, setCheckoutPhone] = useState("");
   const [cartNotice, setCartNotice] = useState("");
   const [sellerComparisonOpen, setSellerComparisonOpen] = useState(false);
+  const [basketReviewOpen, setBasketReviewOpen] = useState(false);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const cartCount = Object.values(cart).reduce((total, quantity) => total + quantity, 0);
 
   useEffect(() => {
@@ -95,6 +98,8 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
     setCartOpen(false);
     setCheckoutOpen(false);
     setSellerComparisonOpen(false);
+    setBasketReviewOpen(false);
+    setSelectedSellerId(null);
     setDetailId(link.route.kind === "detail" ? link.route.id : null);
   }, [controller, link]);
 
@@ -126,7 +131,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
     onEnterCatalog?.();
   }
 
-  if (homeMode && !cartOpen && !checkoutOpen && !sellerComparisonOpen && detailId === null) return (
+  if (homeMode && !cartOpen && !checkoutOpen && !sellerComparisonOpen && !basketReviewOpen && detailId === null) return (
     <BuyerHomeScreen cartCount={cartCount} notice={cartNotice}
       onBrowse={enterCatalog}
       onAdd={(id, title) => {
@@ -147,6 +152,51 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
       onLogin={onLogin}
       onCart={() => { setSellerComparisonOpen(false); setCartOpen(true); }}
       onHome={() => { setSellerComparisonOpen(false); setCartOpen(false); onHome?.(); }}
+      onSelectSeller={(sellerId) => {
+        setSelectedSellerId(sellerId);
+        setSellerComparisonOpen(false);
+        setBasketReviewOpen(true);
+      }}
+    />
+  );
+  if (basketReviewOpen) return (
+    <BuyerBasketReviewScreen
+      sellerId={selectedSellerId ?? "1"}
+      items={cartItems.map((item) => ({
+        id: item.id,
+        title: cartTitles[item.id] ?? item.title,
+        quantity: cart[item.id] ?? 0,
+        unitPrice: item.amount,
+        unit: item.id === "rice" ? "کیسه" : "عدد",
+        imageSource: item.id === "rice" ? cartRiceImage : item.image,
+      }))}
+      onBack={() => {
+        setBasketReviewOpen(false);
+        setSellerComparisonOpen(true);
+      }}
+      onReturnToComparison={() => {
+        setBasketReviewOpen(false);
+        setSellerComparisonOpen(true);
+      }}
+      onRemoveMissing={(ids) => setCart((current) => {
+        const next = { ...current };
+        ids.forEach((id) => { delete next[id]; });
+        return next;
+      })}
+      onContinue={() => {
+        setBasketReviewOpen(false);
+        setCheckoutOpen(true);
+      }}
+      onLogin={onLogin}
+      onCart={() => {
+        setBasketReviewOpen(false);
+        setCartOpen(true);
+      }}
+      onHome={() => {
+        setBasketReviewOpen(false);
+        setCartOpen(false);
+        onHome?.();
+      }}
     />
   );
   if (cartOpen) return (

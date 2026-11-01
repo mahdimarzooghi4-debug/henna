@@ -63,13 +63,13 @@ type Props = {
   onLogin: () => void;
   onCart: () => void;
   onHome: () => void;
+  onSelectSeller: (sellerId: string) => void;
 };
 
 export function BuyerSellerComparisonScreen({
-  onBack, onLogin, onCart, onHome,
+  onBack, onLogin, onCart, onHome, onSelectSeller,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("price");
-  const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
 
   const sellers = useMemo(() => {
     const sorted = [...sellerExamples];
@@ -149,12 +149,6 @@ export function BuyerSellerComparisonScreen({
             })}
           </View>
 
-          {selectedSeller ? (
-            <Text accessibilityLiveRegion="polite" style={styles.selectionNotice}>
-              {"فروشگاه نمونه " + fa(Number(selectedSeller)) + " برای ادامه انتخاب شد."}
-            </Text>
-          ) : null}
-
           <View style={styles.sellerList}>
             {sellers.map((seller) => (
               <View key={seller.id} style={styles.sellerCard}>
@@ -204,15 +198,11 @@ export function BuyerSellerComparisonScreen({
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={"انتخاب " + seller.title}
-                    accessibilityState={{ selected: selectedSeller === seller.id }}
-                    onPress={() => setSelectedSeller(seller.id)}
-                    style={[
-                      styles.selectButton,
-                      selectedSeller === seller.id && styles.selectButtonSelected,
-                    ]}
+                    onPress={() => onSelectSeller(seller.id)}
+                    style={styles.selectButton}
                   >
                     <Text style={styles.selectButtonText}>
-                      {selectedSeller === seller.id ? "انتخاب شد" : "انتخاب این فروشگاه"}
+                      انتخاب این فروشگاه
                     </Text>
                   </Pressable>
                   <View style={styles.priceRow}>
@@ -288,7 +278,6 @@ const styles = StyleSheet.create({
   filterText: { color: "#8e8e93", fontSize: 11, fontWeight: "600", ...rtl },
   filterTextActive: { color: "#b5523b" },
   filterTextDisabled: { color: "#8e8e93" },
-  selectionNotice: { color: "#0f5b5a", fontSize: 12, fontWeight: "600", ...rtl },
   sellerList: { gap: 16 },
   sellerCard: {
     padding: 16, gap: 12, alignItems: "flex-end", borderWidth: 1,
@@ -321,7 +310,6 @@ const styles = StyleSheet.create({
   selectButton: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: "#0f5b5a",
   },
-  selectButtonSelected: { backgroundColor: "#0b4d4c" },
   selectButtonText: { color: "#fff", fontSize: 12, fontWeight: "700", ...rtl },
   priceRow: { flexDirection: "row-reverse", alignItems: "center", gap: 4 },
   priceLabel: { color: "#8e8e93", fontSize: 11, ...rtl },
