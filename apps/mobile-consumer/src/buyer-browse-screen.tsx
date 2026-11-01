@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MobileCatalogClient } from "./mobile-catalog.ts";
 import { BuyerHomeScreen } from "./buyer-home-screen";
+import { BuyerSellerComparisonScreen } from "./buyer-seller-comparison-screen";
 import { buyerHomeProducts } from "./buyer-home-data";
 import { type BuyerLinkEvent } from "./buyer-link.ts";
 import { BuyerProductDetailScreen } from "./buyer-product-detail-screen";
@@ -76,7 +77,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
   const [checkoutRecipient, setCheckoutRecipient] = useState("");
   const [checkoutPhone, setCheckoutPhone] = useState("");
   const [cartNotice, setCartNotice] = useState("");
-  const [comparisonNotice, setComparisonNotice] = useState("");
+  const [sellerComparisonOpen, setSellerComparisonOpen] = useState(false);
   const cartCount = Object.values(cart).reduce((total, quantity) => total + quantity, 0);
 
   useEffect(() => {
@@ -93,6 +94,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
     setSearchError("");
     setCartOpen(false);
     setCheckoutOpen(false);
+    setSellerComparisonOpen(false);
     setDetailId(link.route.kind === "detail" ? link.route.id : null);
   }, [controller, link]);
 
@@ -124,7 +126,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
     onEnterCatalog?.();
   }
 
-  if (homeMode && !cartOpen && !checkoutOpen && detailId === null) return (
+  if (homeMode && !cartOpen && !checkoutOpen && !sellerComparisonOpen && detailId === null) return (
     <BuyerHomeScreen cartCount={cartCount} notice={cartNotice}
       onBrowse={enterCatalog}
       onAdd={(id, title) => {
@@ -139,6 +141,14 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
       onHome={() => onHome?.()} />
   );
   // Keep the mounted browse coordinator and its real search/filter/page state.
+  if (sellerComparisonOpen) return (
+    <BuyerSellerComparisonScreen
+      onBack={() => setSellerComparisonOpen(false)}
+      onLogin={onLogin}
+      onCart={() => { setSellerComparisonOpen(false); setCartOpen(true); }}
+      onHome={() => { setSellerComparisonOpen(false); setCartOpen(false); onHome?.(); }}
+    />
+  );
   if (cartOpen) return (
     <SafeAreaView style={[styles.safeArea, styles.cartSafeArea]} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#faf8f5" />
@@ -224,12 +234,11 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
                 حنا این سبد را بر اساس کامل‌بودن اقلام، قیمت کل، فاصله و اطلاعات شناخته‌شدهٔ ارسال مقایسه می‌کند تا بتوانید فروشگاه مناسب را انتخاب کنید.
               </Text>
             </View>
-            <Pressable accessibilityRole="button" onPress={() => setComparisonNotice("صفحهٔ مقایسهٔ فروشگاه‌ها در گام بعدی آماده می‌شود.")}
+            <Pressable accessibilityRole="button" onPress={() => setSellerComparisonOpen(true)}
               style={styles.cartCompareButton}>
               <Text style={styles.cartCompareButtonText}>مقایسه فروشگاه‌ها</Text>
               
             </Pressable>
-            {comparisonNotice ? <Text accessibilityLiveRegion="polite" style={styles.cartCompareNotice}>{comparisonNotice}</Text> : null}
           </>
         )}
       </ScrollView>
