@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
-  Image, ImageBackground, Pressable, ScrollView, StatusBar,
-  StyleSheet, Text, TextInput, View,
+  Image, ImageBackground, Pressable, ScrollView, StatusBar, TextInput,
+  StyleSheet, View
 } from "react-native";
+import { Text } from "./typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { buyerHomeCategories, buyerHomeProducts } from "./buyer-home-data";
 
@@ -14,10 +15,10 @@ const searchIcon = require("../assets/home-icon-search.png");
 const arrowIcon = require("../assets/home-icon-arrow-left.png");
 const infoIcon = require("../assets/home-icon-info.png");
 const plusIcon = require("../assets/home-icon-plus.png");
-const userIcon = require("../assets/home-icon-user.png");
-const receiptIcon = require("../assets/home-icon-receipt.png");
-const cartIcon = require("../assets/home-icon-cart.png");
-const homeIcon = require("../assets/home-icon-home.png");
+const userIcon = require("../assets/figma-nav-user.png");
+const receiptIcon = require("../assets/figma-nav-receipt.png");
+const cartIcon = require("../assets/figma-nav-cart.png");
+const homeIcon = require("../assets/figma-nav-home.png");
 
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 const fa = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
@@ -197,7 +198,7 @@ export function BuyerHomeScreen({
           </Pressable>
           <Pressable style={styles.navItem} accessibilityRole="button"
             accessibilityState={{ selected: true }} onPress={onHome}>
-            <Image source={homeIcon} style={styles.navIcon} accessibilityLabel="خانه" />
+            <Image source={homeIcon} style={[styles.navIcon, styles.navIconActive]} accessibilityLabel="خانه" />
             <Text style={[styles.navLabel, styles.navLabelActive]}>خانه</Text>
           </Pressable>
         </View>
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
   searchBar: { height: 46, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 12, backgroundColor: "#fff" },
   smallIconButton: { width: 24, height: 28, alignItems: "center", justifyContent: "center" },
   smallIcon: { width: 18, height: 18 },
-  searchInput: { flex: 1, minWidth: 0, paddingHorizontal: 10, color: "#2d2d2d", fontSize: 13, ...rtl },
+  searchInput: { flex: 1, minWidth: 0, paddingHorizontal: 10, color: "#2d2d2d", fontFamily: "Estedad", fontSize: 13, ...rtl },
   searchButton: { width: 24, height: 28, alignItems: "center", justifyContent: "center" },
   chipsRow: { minHeight: 42, marginHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "flex-start", gap: 8 },
   chip: { height: 34, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 20, backgroundColor: "#fff" },
@@ -275,9 +276,10 @@ const styles = StyleSheet.create({
   categoryImage: { width: 64, height: 64, borderWidth: 1, borderColor: "#eae6e1", borderRadius: 32 },
   categoryLabel: { color: "#1c3f3a", fontSize: 14, lineHeight: 21, fontWeight: "600", textAlign: "center", writingDirection: "rtl" },
   bottomNav: { height: 84, position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 20, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-around", borderTopWidth: 1, borderTopColor: "#f0e7dd", backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 8 },
-  navItem: { flex: 1, alignItems: "center", gap: 4 },
+  navItem: { flex: 1, minHeight: 44, alignItems: "center", gap: 4 },
   navIcon: { width: 22, height: 22 },
-  navLabel: { color: "#8e8e93", fontSize: 10, lineHeight: 15, ...rtl },
+  navIconActive: { tintColor: "#0f5b5a" },
+  navLabel: { color: "#8e8e93", fontSize: 10, lineHeight: 15, includeFontPadding: false, ...rtl },
   navLabelActive: { color: "#0f5b5a", fontWeight: "700" },
   cartBadge: { position: "absolute", top: -6, right: -7, minWidth: 16, height: 16, paddingHorizontal: 3, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: "#b5523b" },
   cartBadgeText: { color: "#fff", fontSize: 9, fontWeight: "700", textAlign: "center" },

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as SecureStore from "expo-secure-store";
+import { useFonts } from "expo-font";
 import {
   Alert,
   AppState,
@@ -10,13 +11,13 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
+  TextInput as NativeTextInput,
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, space } from "./src/theme";
+import { Text } from "./src/typography";
 import { BuyerBrowseScreen } from "./src/buyer-browse-screen";
 import {
   parseBuyerLink, type BuyerLinkEvent, type BuyerLinkRoute,
@@ -59,8 +60,8 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
   const [resendNotice, setResendNotice] = useState("");
   const [codeError, setCodeError] = useState("");
   const [resendSeconds, setResendSeconds] = useState(105);
-  const phoneInput = useRef<TextInput>(null);
-  const codeInput = useRef<TextInput>(null);
+  const phoneInput = useRef<NativeTextInput>(null);
+  const codeInput = useRef<NativeTextInput>(null);
   const pending = useRef(false);
   const mounted = useRef(true);
   const viewRef = useRef<ViewState>("checking");
@@ -262,7 +263,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                 <Text nativeID="mobile-phone-label" style={styles.fieldLabel}>
                   شماره موبایل
                 </Text>
-                <TextInput
+                <NativeTextInput
                   ref={phoneInput}
                   accessibilityLabel="شماره موبایل"
                   accessibilityHint={status === "invalid"
@@ -348,7 +349,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                       </View>
                     ))}
                   </View>
-                  <TextInput
+                  <NativeTextInput
                     ref={codeInput}
                     accessibilityLabel="کد شش رقمی تأیید"
                     accessibilityHint={status === "invalid" ? codeError || "کد یا اطلاعات تأیید معتبر نیست." : undefined}
@@ -506,6 +507,9 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
+  const [fontLoaded] = useFonts({
+    Estedad: require("./assets/fonts/estedad-variable.ttf"),
+  });
   const [screen, setScreen] = useState<"home" | "browse" | "auth">("home");
   // Defer starting public HTTP until getInitialURL settles. A cold detail
   // link must not first fetch page 1 and briefly paint unrelated content.
@@ -535,6 +539,8 @@ export default function App() {
       });
     return () => { active = false; listener.remove(); };
   }, []);
+
+  if (!fontLoaded) return <View style={styles.flex} />;
 
   return (
     <SafeAreaProvider>
@@ -618,6 +624,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: 14,
     fontSize: 15,
+    fontFamily: "Estedad",
     color: colors.charcoal,
   },
   invalidInput: { borderColor: colors.terracotta },

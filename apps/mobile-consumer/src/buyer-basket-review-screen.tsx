@@ -1,6 +1,7 @@
 import {
-  Image, Pressable, ScrollView, StatusBar, StyleSheet, Text, View,
+  Image, Pressable, ScrollView, StatusBar, StyleSheet, View
 } from "react-native";
+import { Text } from "./typography";
 import type { ImageSourcePropType } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -8,7 +9,7 @@ const logo = require("../assets/home-logo-badge.png");
 const backIcon = require("../assets/home-icon-arrow-left.png");
 const userIcon = require("../assets/figma-nav-user.png");
 const ordersIcon = require("../assets/figma-nav-receipt.png");
-const cartIcon = require("../assets/home-icon-cart.png");
+const cartIcon = require("../assets/figma-nav-cart.png");
 const homeIcon = require("../assets/figma-nav-home.png");
 
 type BasketReviewLine = {
@@ -179,7 +180,7 @@ export function BuyerBasketReviewScreen({
             <Text style={styles.navLabel}>سفارش‌ها</Text>
           </Pressable>
           <Pressable style={styles.navItem} accessibilityState={{ selected: true }} onPress={onCart}>
-            <Image source={cartIcon} style={[styles.navIcon, styles.cartActiveIcon]} accessibilityLabel="سبد خرید" />
+            <Image source={cartIcon} style={[styles.navIcon, styles.navIconActive]} accessibilityLabel="سبد خرید" />
             <Text style={[styles.navLabel, styles.navLabelActive]}>سبد</Text>
           </Pressable>
           <Pressable style={styles.navItem} onPress={onHome}>
@@ -276,9 +277,9 @@ const styles = StyleSheet.create({
     borderTopColor: "#f0e7dd", backgroundColor: "#fff", shadowColor: "#000",
     shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 8,
   },
-  navItem: { flex: 1, alignItems: "center", gap: 2 },
+  navItem: { flex: 1, minHeight: 44, alignItems: "center", gap: 4 },
   navIcon: { width: 22, height: 22 },
-  cartActiveIcon: { tintColor: "#0f5b5a" },
-  navLabel: { color: "#8e8e93", fontSize: 10, ...rtl },
+  navIconActive: { tintColor: "#0f5b5a" },
+  navLabel: { color: "#8e8e93", fontSize: 10, lineHeight: 15, includeFontPadding: false, ...rtl },
   navLabelActive: { color: "#0f5b5a", fontWeight: "700" },
 });

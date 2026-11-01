@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Image, Pressable, ScrollView,
-  StatusBar, StyleSheet, Text, TextInput, View,
+  Image, Pressable, ScrollView, TextInput,
+  StatusBar, StyleSheet, View
 } from "react-native";
+import { Text } from "./typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MobileCatalogClient } from "./mobile-catalog.ts";
@@ -27,7 +28,6 @@ const browsePlusIcon = require("../assets/home-icon-plus.png");
 const cartRiceImage = require("../assets/buyer-detail-gallery.jpg");
 const cartTrashIcon = require("../assets/buyer-cart-trash.png");
 const cartCheckIcon = require("../assets/buyer-cart-check.png");
-const cartNavActiveIcon = require("../assets/home-icon-cart.png");
 const catalogCards = [buyerHomeProducts[2], buyerHomeProducts[3], buyerHomeProducts[0], buyerHomeProducts[1]];
 const catalogTitles: Record<string, string> = {
   rice: "برنج طارم ایرانی درجه یک",
@@ -295,7 +295,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
       <View style={[styles.bottomNav, styles.cartBottomNav]}>
         <Pressable style={styles.navItem} onPress={onLogin}><Image source={navUser} style={styles.navIcon} accessibilityLabel="حساب" /><Text style={styles.navLabel}>حساب</Text></Pressable>
         <Pressable style={styles.navItem} onPress={onLogin}><Image source={navReceipt} style={styles.navIcon} accessibilityLabel="سفارش‌ها" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
-        <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={cartNavActiveIcon} style={[styles.navIcon, styles.cartActiveIcon]} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد</Text></Pressable>
+        <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={navCart} style={[styles.navIcon, styles.navIconActive]} accessibilityLabel="سبد خرید" /><Text style={[styles.navLabel, styles.navLabelActive]}>سبد</Text></Pressable>
         <Pressable style={styles.navItem} onPress={() => { setCartOpen(false); onHome?.(); }}><Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" /><Text style={styles.navLabel}>خانه</Text></Pressable>
       </View>
     </SafeAreaView>
@@ -513,7 +513,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
 
         <View style={styles.bottomNav}>
           <Pressable style={styles.navItem} onPress={onHome}>
-            <Image source={navHome} style={styles.navIcon} accessibilityLabel="خانه" />
+            <Image source={navHome} style={[styles.navIcon, styles.navIconActive]} accessibilityLabel="خانه" />
             <Text style={[styles.navLabel, styles.navLabelActive]}>خانه</Text>
           </Pressable>
           <Pressable style={styles.navItem} accessibilityRole="button" accessibilityLabel={"سبد خرید" + (cartCount > 0 ? "، " + fa(cartCount) + " قلم" : "")} onPress={() => setCartOpen(true)}>
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
   searchRow: { height: 46, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 12, backgroundColor: "#fff" },
   iconButton: { width: 28, height: 32, alignItems: "center", justifyContent: "center" },
   filterIcon: { color: "#8e8e93", fontSize: 20 },
-  searchInput: { flex: 1, minWidth: 0, paddingHorizontal: 8, color: "#2d2d2d", fontSize: 13, ...rtl },
+  searchInput: { flex: 1, minWidth: 0, paddingHorizontal: 8, color: "#2d2d2d", fontFamily: "Estedad", fontSize: 13, ...rtl },
   searchIconButton: { width: 24, height: 32, alignItems: "center", justifyContent: "center" },
   searchIcon: { color: "#0f5b5a", fontSize: 26, lineHeight: 29 },
   categoriesRow: { minHeight: 42, flexDirection: "row-reverse", alignItems: "center", gap: 8 },
@@ -590,9 +590,9 @@ const styles = StyleSheet.create({
   noResults: { width: "100%", minHeight: 100, alignItems: "center", justifyContent: "center" },
   noResultsText: { color: "#706963", fontSize: 13, ...rtl },
   bottomNav: { height: 84, position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 20, flexDirection: "row-reverse", alignItems: "flex-start", justifyContent: "space-around", borderTopWidth: 1, borderTopColor: "#f0e7dd", backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: .1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 8 },
-  navItem: { flex: 1, alignItems: "center", gap: 2 },
+  navItem: { flex: 1, minHeight: 44, alignItems: "center", gap: 4 },
   navIcon: { width: 22, height: 22 },
-  navLabel: { color: "#8e8e93", fontSize: 10, ...rtl },
+  navLabel: { color: "#8e8e93", fontSize: 10, lineHeight: 15, includeFontPadding: false, ...rtl },
   navLabelActive: { color: "#0f5b5a", fontWeight: "700" },
   errorText: { color: "#b5523b", fontSize: 12, ...rtl },
   cartScroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, gap: 14, backgroundColor: "#f7f3ed" },
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
   cartCompareArrow: { width: 16, height: 16, transform: [{ rotate: "180deg" }] },
   cartCompareNotice: { color: "#b5523b", fontSize: 12, textAlign: "right", writingDirection: "rtl" },
   cartBottomNav: { flexDirection: "row" },
-  cartActiveIcon: { tintColor: "#0f5b5a" },
+  navIconActive: { tintColor: "#0f5b5a" },
   cartTotalRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
   cartTotalLabel: { color: "#706963", fontSize: 13, ...rtl },
   cartTotalAmount: { color: "#b5523b", fontSize: 18, fontWeight: "800", ...rtl },
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
   checkoutSummaryPrice: { color: "#2d2d2d", fontSize: 11, fontWeight: "700", ...rtl },
   checkoutFormCard: { padding: 14, gap: 8, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 14, backgroundColor: "#fff" },
   checkoutFieldLabel: { marginTop: 4, color: "#706963", fontSize: 12, fontWeight: "700", ...rtl },
-  checkoutInput: { minHeight: 44, paddingHorizontal: 12, color: "#2d2d2d", fontSize: 13, borderWidth: 1, borderColor: "#e8dfd7", borderRadius: 9, backgroundColor: "#fff", ...rtl },
+  checkoutInput: { minHeight: 44, paddingHorizontal: 12, color: "#2d2d2d", fontFamily: "Estedad", fontSize: 13, borderWidth: 1, borderColor: "#e8dfd7", borderRadius: 9, backgroundColor: "#fff", ...rtl },
   checkoutAddressInput: { minHeight: 80, paddingTop: 12, textAlignVertical: "top" },
   checkoutHint: { color: "#8e8e93", fontSize: 11, lineHeight: 18, ...rtl },
   checkoutPayment: { padding: 12, gap: 4, borderWidth: 1, borderColor: "#e8dfd7", borderRadius: 9, backgroundColor: "#f7f3ed" },

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import {
-  Image, Pressable, ScrollView, StatusBar, StyleSheet, Text, View,
-  TextInput,
-} from "react-native";
+  Image, Pressable, ScrollView, StatusBar, StyleSheet, TextInput, View,
+  } from "react-native";
+import { Text } from "./typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "./theme";
 
@@ -328,10 +328,10 @@ export function FigmaProductDetailScreen({ onBack, initialCartQuantity = 0, star
       )}
 
       <View style={styles.bottomNav}>
-        <Pressable onPress={() => { setShowAccount(true); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navUserIcon} style={styles.navIconImage} accessibilityLabel="حساب" /><Text style={[styles.navLabel, showAccount && styles.navSelected]}>حساب</Text></Pressable>
-        <Pressable onPress={() => { setShowOrders(true); setShowAccount(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navReceiptIcon} style={styles.navIconImage} accessibilityLabel="سفارش‌ها" /><Text style={[styles.navLabel, showOrders && styles.navSelected]}>سفارش‌ها</Text></Pressable>
-        <Pressable onPress={() => { setShowCart(true); setShowAccount(false); setShowOrders(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navCartIcon} style={styles.navIconImage} accessibilityLabel="سبد" /><Text style={[styles.navLabel, showCart && styles.navSelected]}>سبد{cartQuantity ? ` · ${fa(cartQuantity)}` : ""}</Text></Pressable>
-        <Pressable onPress={() => { setShowAccount(false); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); onBack(); }} style={styles.navItem}><Image source={navHomeIcon} style={styles.navIconImage} accessibilityLabel="خانه" /><Text style={[styles.navLabel, !showAccount && !showOrders && !showCart && styles.navSelected]}>خانه</Text></Pressable>
+        <Pressable onPress={() => { setShowAccount(true); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navUserIcon} style={[styles.navIconImage, showAccount && styles.navIconActive]} accessibilityLabel="حساب" /><Text style={[styles.navLabel, showAccount && styles.navSelected]}>حساب</Text></Pressable>
+        <Pressable onPress={() => { setShowOrders(true); setShowAccount(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navReceiptIcon} style={[styles.navIconImage, showOrders && styles.navIconActive]} accessibilityLabel="سفارش‌ها" /><Text style={[styles.navLabel, showOrders && styles.navSelected]}>سفارش‌ها</Text></Pressable>
+        <Pressable onPress={() => { setShowCart(true); setShowAccount(false); setShowOrders(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); }} style={styles.navItem}><Image source={navCartIcon} style={[styles.navIconImage, showCart && styles.navIconActive]} accessibilityLabel="سبد" /><Text style={[styles.navLabel, showCart && styles.navSelected]}>سبد{cartQuantity ? ` · ${fa(cartQuantity)}` : ""}</Text></Pressable>
+        <Pressable onPress={() => { setShowAccount(false); setShowOrders(false); setShowCart(false); setShowComparison(false); setShowReview(false); setShowCheckout(false); setShowSuccess(false); setShowTracking(false); setSubpage(null); onBack(); }} style={styles.navItem}><Image source={navHomeIcon} style={[styles.navIconImage, !showAccount && !showOrders && !showCart && styles.navIconActive]} accessibilityLabel="خانه" /><Text style={[styles.navLabel, !showAccount && !showOrders && !showCart && styles.navSelected]}>خانه</Text></Pressable>
       </View>
     </SafeAreaView>
   );
@@ -384,15 +384,16 @@ const styles = StyleSheet.create({
   description: { color: "#8E8E93", fontSize: 12, lineHeight: 18, ...rtl },
   disclosure: { color: colors.muted, fontSize: 10, ...rtl },
   bottomNav: { height: 84, position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 6, paddingTop: 9, paddingBottom: 18, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: "#F0E7DD", flexDirection: "row", alignItems: "flex-start", justifyContent: "space-around", shadowColor: "#000", shadowOpacity: .1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 8 },
-  navItem: { flex: 1, alignItems: "center", gap: 3 },
+  navItem: { flex: 1, minHeight: 44, alignItems: "center", gap: 4 },
   navIconImage: { width: 22, height: 22 },
-  navLabel: { color: "#8E8E93", fontSize: 10, ...rtl },
+  navIconActive: { tintColor: colors.teal },
+  navLabel: { color: "#8E8E93", fontSize: 10, lineHeight: 15, includeFontPadding: false, ...rtl },
   navSelected: { color: colors.teal, fontWeight: "700" },
   cartView: { flex: 1, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 110, gap: 14 },
   checkoutView: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 110, gap: 14 },
   checkoutCard: { padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: "#F0E7DD", gap: 12 },
   checkoutHeading: { color: colors.charcoal, fontSize: 15, fontWeight: "800", textAlign: "right", writingDirection: "rtl" },
-  checkoutAddress: { minHeight: 42, borderBottomWidth: 1, borderBottomColor: "#F0E7DD", color: colors.charcoal, fontSize: 14, writingDirection: "rtl" },
+  checkoutAddress: { minHeight: 42, borderBottomWidth: 1, borderBottomColor: "#F0E7DD", color: colors.charcoal, fontFamily: "Estedad", fontSize: 14, writingDirection: "rtl" },
   checkoutMeta: { flexDirection: "row-reverse", justifyContent: "space-between", gap: 8 },
   checkoutMuted: { color: colors.muted, fontSize: 12, lineHeight: 19, textAlign: "right", writingDirection: "rtl" },
   deliveryPill: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, backgroundColor: "#E8F2F2" },
