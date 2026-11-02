@@ -10,7 +10,7 @@ const ordersNav = require("../assets/figma-nav-receipt.png");
 const cartNav = require("../assets/figma-nav-cart.png");
 const homeNav = require("../assets/figma-nav-home.png");
 
-type Props = { onBack: () => void; onOrders: () => void; onCart: () => void; onHome: () => void };
+type Props = { onBack: () => void; onOrders: () => void; onCart: () => void; onHome: () => void; onLogout: () => void };
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 const menu = [
   ["اطلاعات حساب", "user"], ["آدرس‌های من", "map-pin"], ["سفارش‌های من", "receipt"],
@@ -18,7 +18,7 @@ const menu = [
   ["مشارکت‌های اجتماعی", "phone"], ["پشتیبانی", "settings"], ["تنظیمات", "settings"],
 ] as const;
 
-export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome }: Props) {
+export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome, onLogout }: Props) {
   const openMenu = (title: string) => title === "سفارش‌های من"
     ? onOrders()
     : Alert.alert(title, "این بخش در پیش‌نمایش هنوز به اطلاعات حساب متصل نیست.");
@@ -71,7 +71,7 @@ export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome }: Props) 
           ))}
         </View>
 
-        <Pressable accessibilityRole="button" onPress={() => Alert.alert("خروج از حساب کاربری", "خروج در پیش‌نمایش انجام نمی‌شود.")} style={styles.logout}>
+        <Pressable accessibilityRole="button" accessibilityLabel="خروج از حساب کاربری" onPress={onLogout} style={styles.logout}>
           <Text style={styles.logoutText}>خروج از حساب کاربری</Text>
         </Pressable>
 
