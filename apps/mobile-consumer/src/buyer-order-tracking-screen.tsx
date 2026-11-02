@@ -18,6 +18,7 @@ type Props = {
   onLogin: () => void;
   onCart: () => void;
   onHome: () => void;
+  onOrders: () => void;
 };
 
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
@@ -29,7 +30,7 @@ const stages = [
   ["ثبت سفارش", "سفارش ثبت شد"],
 ] as const;
 
-export function BuyerOrderTrackingScreen({ onBack, onLogin, onCart, onHome }: Props) {
+export function BuyerOrderTrackingScreen({ onBack, onLogin, onCart, onHome, onOrders }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f7f3ed" />
@@ -93,7 +94,7 @@ export function BuyerOrderTrackingScreen({ onBack, onLogin, onCart, onHome }: Pr
           <Image source={userIcon} style={styles.navIcon} accessibilityLabel="حساب" />
           <Text style={styles.navLabel}>حساب</Text>
         </Pressable>
-        <Pressable style={styles.navItem} accessibilityState={{ selected: true }}>
+        <Pressable style={styles.navItem} accessibilityRole="button" accessibilityLabel="سفارش‌ها" onPress={onOrders} accessibilityState={{ selected: true }}>
           <Image source={ordersIcon} style={[styles.navIcon, styles.navIconActive]} accessibilityLabel="سفارش‌ها" />
           <Text style={[styles.navLabel, styles.navLabelActive]}>سفارش‌ها</Text>
         </Pressable>
