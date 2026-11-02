@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StatusBar, StyleSheet, TextInput, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, BackHandler, Image, Pressable, ScrollView, StatusBar, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Text } from "./typography";
@@ -17,6 +17,14 @@ export function BuyerCompleteProfileScreen({ onBack }: Props) {
   const [name, setName] = useState("کاربر نمونه");
   const [nationalId, setNationalId] = useState("");
   const [birthDate, setBirthDate] = useState("");
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      onBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [onBack]);
 
   const saveProfile = () => {
     const id = normalizeDigits(nationalId);
@@ -113,16 +121,16 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: { height: 56, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backButton: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#f0e7dd", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  backIcon: { width: 18, height: 18, transform: [{ rotate: "180deg" }] },
-  headerTitle: { position: "absolute", left: 66, right: 102, color: "#2d2d2d", fontSize: 18, lineHeight: 25, fontWeight: "700", ...rtl, textAlign: "center" },
+  backIcon: { width: 20, height: 20, transform: [{ rotate: "180deg" }] },
+  headerTitle: { flex: 1, marginHorizontal: 16, color: "#2d2d2d", fontSize: 18, lineHeight: 25, fontWeight: "700", ...rtl, textAlign: "center" },
   headerLogo: { width: 80, height: 36 },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48, gap: 20 },
   card: { width: "100%", padding: 18, borderRadius: 16, borderWidth: 1, borderColor: "#f0e7dd", backgroundColor: "#fff", gap: 16 },
-  cardHeading: { width: "100%", color: "#0f5b5a", fontSize: 15, lineHeight: 21, fontWeight: "700", ...rtl },
+  cardHeading: { width: "100%", color: "#0f5b5a", fontSize: 15, lineHeight: 26, fontWeight: "700", ...rtl },
   fieldGroup: { width: "100%", alignItems: "flex-end", gap: 6 },
-  label: { color: "#2d2d2d", fontSize: 13, lineHeight: 18, fontWeight: "600", ...rtl },
+  label: { color: "#2d2d2d", fontSize: 13, lineHeight: 23, fontWeight: "600", ...rtl },
   input: { width: "100%", height: 48, paddingHorizontal: 16, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 12, backgroundColor: "#fff", color: "#2d2d2d", fontFamily: "Estedad400", fontSize: 14, writingDirection: "rtl" },
-  helper: { width: "100%", color: "#8e8e93", fontSize: 11, lineHeight: 16, ...rtl },
+  helper: { width: "100%", color: "#8e8e93", fontSize: 11, lineHeight: 19, ...rtl },
   saveButton: { width: "100%", height: 54, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, borderRadius: 12, backgroundColor: "#b5523b" },
   saveButtonText: { color: "#fff", fontSize: 15, lineHeight: 21, fontWeight: "800", ...rtl },
 });
