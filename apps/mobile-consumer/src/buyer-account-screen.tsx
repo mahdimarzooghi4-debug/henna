@@ -10,7 +10,7 @@ const ordersNav = require("../assets/figma-nav-receipt.png");
 const cartNav = require("../assets/figma-nav-cart.png");
 const homeNav = require("../assets/figma-nav-home.png");
 
-type Props = { onBack: () => void; onOrders: () => void; onCart: () => void; onHome: () => void; onLogout: () => void };
+type Props = { onBack: () => void; onOrders: () => void; onCart: () => void; onHome: () => void; onLogout: () => void; onProfile: () => void };
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 const menu = [
   ["اطلاعات حساب", "user"], ["آدرس‌های من", "map-pin"], ["سفارش‌های من", "receipt"],
@@ -18,10 +18,12 @@ const menu = [
   ["مشارکت‌های اجتماعی", "phone"], ["پشتیبانی", "settings"], ["تنظیمات", "settings"],
 ] as const;
 
-export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome, onLogout }: Props) {
-  const openMenu = (title: string) => title === "سفارش‌های من"
-    ? onOrders()
-    : Alert.alert(title, "این بخش در پیش‌نمایش هنوز به اطلاعات حساب متصل نیست.");
+export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome, onLogout, onProfile }: Props) {
+  const openMenu = (title: string) => {
+    if (title === "سفارش‌های من") return onOrders();
+    if (title === "اطلاعات حساب") return onProfile();
+    return Alert.alert(title, "این بخش در پیش‌نمایش هنوز به اطلاعات حساب متصل نیست.");
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>

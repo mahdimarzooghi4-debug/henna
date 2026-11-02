@@ -222,7 +222,12 @@ def main():
     execute("adb", "shell", "input", "swipe", "540", "1850", "540", "650", "500")
     wait_screen("تأیید شماره موبایل", "تأیید و ورود به حنا")
     save_preview("henna-android-auth-code-preview.png")
-    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders, account and auth previews")
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("حساب کاربری", "اطلاعات حساب")
+    tap_accessible("اطلاعات حساب")
+    wait_screen("تکمیل اطلاعات حساب", "مشخصات شخص حقیقی", "ثبت و ذخیره اطلاعات")
+    save_preview("henna-android-complete-profile-preview.png")
+    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders, account, auth and complete-profile previews")
 
 try:
     main()
