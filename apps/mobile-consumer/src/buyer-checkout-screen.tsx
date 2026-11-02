@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Text } from "./typography";
 import { BuyerOrderTrackingScreen } from "./buyer-order-tracking-screen";
+import { BuyerOrdersScreen } from "./buyer-orders-screen";
 
 const logo = require("../assets/home-logo-badge.png");
 const backIcon = require("../assets/home-icon-arrow-left.png");
@@ -51,6 +52,7 @@ export function BuyerCheckoutScreen({
 }: Props) {
   const [showSuccessPreview, setShowSuccessPreview] = useState(false);
   const [showTrackingPreview, setShowTrackingPreview] = useState(false);
+  const [showOrdersPreview, setShowOrdersPreview] = useState(false);
   const [paymentSources, setPaymentSources] = useState({ online: true, support: false, personal: true });
   const [legalInvoice, setLegalInvoice] = useState(false);
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -58,12 +60,23 @@ export function BuyerCheckoutScreen({
     setPaymentSources((current) => ({ ...current, [key]: !current[key] }));
   };
 
+  if (showOrdersPreview) return (
+    <BuyerOrdersScreen
+      onBack={() => setShowOrdersPreview(false)}
+      onTracking={() => { setShowOrdersPreview(false); setShowTrackingPreview(true); }}
+      onLogin={onLogin}
+      onCart={onCart}
+      onHome={onHome}
+    />
+  );
+
   if (showTrackingPreview) return (
     <BuyerOrderTrackingScreen
       onBack={() => setShowTrackingPreview(false)}
       onLogin={onLogin}
       onCart={onCart}
       onHome={onHome}
+      onOrders={() => setShowOrdersPreview(true)}
     />
   );
 
