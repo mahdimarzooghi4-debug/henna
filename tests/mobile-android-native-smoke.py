@@ -204,7 +204,10 @@ def main():
     tap_accessible("نمایش پیش‌نمایش")
     wait_screen("سفارش نمونه با موفقیت ثبت شد.", "خلاصه سفارش")
     save_preview("henna-android-order-success-preview.png")
-    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout and order-success preview")
+    tap_accessible("پیگیری سفارش")
+    wait_screen("پیگیری سفارش", "سفارش فعال محله", "خلاصه اقلام")
+    save_preview("henna-android-order-tracking-preview.png")
+    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success and order-tracking previews")
 
 try:
     main()
