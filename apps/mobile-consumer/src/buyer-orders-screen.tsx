@@ -15,7 +15,7 @@ type Status = "جاری" | "تحویل‌شده" | "لغوشده";
 type Props = {
   onBack: () => void;
   onTracking: () => void;
-  onLogin: () => void;
+  onAccount: () => void;
   onCart: () => void;
   onHome: () => void;
 };
@@ -26,7 +26,7 @@ const orders = [
   { status: "تحویل‌شده" as const, label: "تحویل نهایی شده", type: "خرید حقوقی", legal: false, products: "ماست کم‌چرب پاستوریزه، تخم‌مرغ محلی ممتاز", date: "۲ اسفند ۱۴۰۲", price: "۱۴۲,۰۰۰ تومان" },
 ];
 
-export function BuyerOrdersScreen({ onBack, onTracking, onLogin, onCart, onHome }: Props) {
+export function BuyerOrdersScreen({ onBack, onTracking, onAccount, onCart, onHome }: Props) {
   const [status, setStatus] = useState<Status>("جاری");
   const visibleOrders = status === "جاری"
     ? orders
@@ -84,7 +84,7 @@ export function BuyerOrdersScreen({ onBack, onTracking, onLogin, onCart, onHome 
       </ScrollView>
 
       <View style={styles.bottomNav}>
-        <Pressable style={styles.navItem} onPress={onLogin}><Image source={userIcon} style={styles.navIcon} accessibilityLabel="حساب" /><Text style={styles.navLabel}>حساب</Text></Pressable>
+        <Pressable style={styles.navItem} accessibilityRole="button" accessibilityLabel="حساب" onPress={onAccount}><Image source={userIcon} style={styles.navIcon} accessibilityLabel="حساب" /><Text style={styles.navLabel}>حساب</Text></Pressable>
         <Pressable style={styles.navItem} accessibilityState={{ selected: true }}><Image source={ordersIcon} style={[styles.navIcon, styles.navIconActive]} accessibilityLabel="سفارش‌ها" /><Text style={[styles.navLabel, styles.navLabelActive]}>سفارش‌ها</Text></Pressable>
         <Pressable style={styles.navItem} onPress={onCart}><Image source={cartIcon} style={styles.navIcon} accessibilityLabel="سبد" /><Text style={styles.navLabel}>سبد</Text></Pressable>
         <Pressable style={styles.navItem} onPress={onHome}><Image source={homeIcon} style={styles.navIcon} accessibilityLabel="خانه" /><Text style={styles.navLabel}>خانه</Text></Pressable>
