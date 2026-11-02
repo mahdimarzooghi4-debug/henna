@@ -211,8 +211,11 @@ def main():
     wait_screen("سفارش‌های من", "در حال ارسال با پیک", "مشاهده جزئیات")
     save_preview("henna-android-orders-preview.png")
     tap_accessible("حساب")
-    wait_screen("حساب کاربری", "کاربر نمونه", "اطلاعات شرکت ثبت شده است")
+    wait_screen("حساب کاربری", "کاربر نمونه", "اطلاعات حساب")
     save_preview("henna-android-account-preview.png")
+    execute("adb", "shell", "input", "swipe", "540", "1850", "540", "650", "500")
+    wait_screen("اطلاعات شرکت ثبت شده است", "ویرایش اطلاعات")
+    save_preview("henna-android-account-legal-preview.png")
     print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders and account previews")
 
 try:
