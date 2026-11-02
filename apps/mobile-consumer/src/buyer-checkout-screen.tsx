@@ -8,6 +8,7 @@ import { Text } from "./typography";
 import { BuyerOrderTrackingScreen } from "./buyer-order-tracking-screen";
 import { BuyerOrdersScreen } from "./buyer-orders-screen";
 import { BuyerAccountScreen } from "./buyer-account-screen";
+import { BuyerAuthScreen } from "./buyer-auth-screen";
 
 const logo = require("../assets/home-logo-badge.png");
 const backIcon = require("../assets/home-icon-arrow-left.png");
@@ -55,6 +56,7 @@ export function BuyerCheckoutScreen({
   const [showTrackingPreview, setShowTrackingPreview] = useState(false);
   const [showOrdersPreview, setShowOrdersPreview] = useState(false);
   const [showAccountPreview, setShowAccountPreview] = useState(false);
+  const [showAuthPreview, setShowAuthPreview] = useState(false);
   const [paymentSources, setPaymentSources] = useState({ online: true, support: false, personal: true });
   const [legalInvoice, setLegalInvoice] = useState(false);
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -62,12 +64,17 @@ export function BuyerCheckoutScreen({
     setPaymentSources((current) => ({ ...current, [key]: !current[key] }));
   };
 
+  if (showAuthPreview) return (
+    <BuyerAuthScreen onBack={() => setShowAuthPreview(false)} />
+  );
+
   if (showAccountPreview) return (
     <BuyerAccountScreen
       onBack={() => setShowAccountPreview(false)}
       onOrders={() => { setShowAccountPreview(false); setShowOrdersPreview(true); }}
       onCart={onCart}
       onHome={onHome}
+      onLogout={() => setShowAuthPreview(true)}
     />
   );
 
