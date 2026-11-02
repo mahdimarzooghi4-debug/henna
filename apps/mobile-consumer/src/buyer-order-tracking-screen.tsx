@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "./typography";
 
 const logo = require("../assets/home-logo-badge.png");
-const backIcon = require("../assets/home-icon-arrow-left.png");
+const backIcon = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAV0lEQVQ4jWNgGAU0A7yRkV58UZGf+CIjM6ljYFSUD3901D8Q5ouOzKKKofxRUakIQyNyR5ihfNGRWVQNUz5qGsiP7OWYyJxhahgvtRM2L7Wz3ihgIBYAAFeKQhxmPBywAAAAAElFTkSuQmCC" };
 const timelineDot = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA2UlEQVQ4ja1TbQrCMAzNr/mvpedw3mMXKKyvvZIy1OFl1EuoB/Hjp6Kkk1ndOpkzECikSd5LXog+TAETARTCYi9gLt79G4VyLqWoZdlIWrOSMDdpcW91jgElaZ00koU12+pTJDmICWDzVkRy51hS1M2y5iy7YMeRXFWej4mH07/7k4o1M5Iwh58LwOxIWJwHFDgNLXD8AwUMHKJyLuWVdAqo3as1EgsJKHsjABYvKWudsDwDkXzjvm7eg9YJy9PT6YAtgXkzOTznPB/zcHjCvGLetX8D05pzYA8RHXFP8+Y0MwAAAABJRU5ErkJggg==" };
 const timelineLine = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAACCAYAAAAjIj5HAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAFUlEQVQYlWP48Pzu/6GEGQbaAaRiABuVRZimXicOAAAAAElFTkSuQmCC" };
 const phoneIcon = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAABUUlEQVQ4jY2SvUpDQRCFt9IiuTuFhDyHguAjXDCNyMLOmVQpBLG1VBD0CfxpjSAYSKGNvX/gg/gIaqFEUWbv3BATlT1wi7vs+fbMj3POuQLoeOE+CYYkGBCw7cpy3uWoADok+Jr+PPgsC+CB02QCTggInlkM8JoFIDWqgXlzfGYp8hII71YG3k8HIcwZ4CMvQZfXLfKNJbowwGMWYKHXKwh4I8GoEWObwJ8JKLKcBVARcG1l7HnwvTX10OWqEFmxMp59N5YkeK/+sZUN8cBVFZ3vCNgY7wRwpOVoT7Sx9YjTnkwuWyPGthc8mencICnJn59u7KRIZEnpdRItxwsezDDQEeu9etnSmZsSxbhYJ/GCF21sM4TWjztAMMBwBqBK5YAvJ+KOvOCWgANtLAkfW8r+r4BaaTo64mpPZnpQSFz9F1CrFUKTRNY8sKOv68u1+RvUz78pb/Qa4wAAAABJRU5ErkJggg==" };
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f7f3ed" },
   header: { height: 56, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f7f3ed" },
   headerBack: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, borderWidth: 1, borderColor: "#f0e7dd", backgroundColor: "#fff" },
-  backIcon: { width: 20, height: 20 },
+  backIcon: { width: 20, height: 20, transform: [{ rotate: "180deg" }] },
   headerTitle: { position: "absolute", left: 70, right: 70, color: "#2d2d2d", fontSize: 18, lineHeight: 25, fontWeight: "700", ...rtl, textAlign: "center" },
   logo: { width: 80, height: 36 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 100, gap: 16 },
