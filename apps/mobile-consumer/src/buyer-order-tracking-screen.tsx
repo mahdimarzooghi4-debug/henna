@@ -15,10 +15,10 @@ const homeIcon = require("../assets/figma-nav-home.png");
 
 type Props = {
   onBack: () => void;
-  onLogin: () => void;
   onCart: () => void;
   onHome: () => void;
   onOrders: () => void;
+  onAccount: () => void;
 };
 
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
@@ -30,7 +30,7 @@ const stages = [
   ["ثبت سفارش", "سفارش ثبت شد"],
 ] as const;
 
-export function BuyerOrderTrackingScreen({ onBack, onLogin, onCart, onHome, onOrders }: Props) {
+export function BuyerOrderTrackingScreen({ onBack, onCart, onHome, onOrders, onAccount }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f7f3ed" />
@@ -90,7 +90,7 @@ export function BuyerOrderTrackingScreen({ onBack, onLogin, onCart, onHome, onOr
       </ScrollView>
 
       <View style={styles.bottomNav}>
-        <Pressable style={styles.navItem} onPress={onLogin}>
+        <Pressable style={styles.navItem} accessibilityRole="button" accessibilityLabel="حساب" onPress={onAccount}>
           <Image source={userIcon} style={styles.navIcon} accessibilityLabel="حساب" />
           <Text style={styles.navLabel}>حساب</Text>
         </Pressable>
