@@ -28,7 +28,9 @@ const orders = [
 
 export function BuyerOrdersScreen({ onBack, onTracking, onLogin, onCart, onHome }: Props) {
   const [status, setStatus] = useState<Status>("جاری");
-  const visibleOrders = orders.filter((order) => order.status === status);
+  const visibleOrders = status === "جاری"
+    ? orders
+    : orders.filter((order) => order.status === status);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
