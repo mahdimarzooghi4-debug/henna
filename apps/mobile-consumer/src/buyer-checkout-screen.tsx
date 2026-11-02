@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Text } from "./typography";
+import { BuyerOrderTrackingScreen } from "./buyer-order-tracking-screen";
 
 const logo = require("../assets/home-logo-badge.png");
 const backIcon = require("../assets/home-icon-arrow-left.png");
@@ -49,6 +50,7 @@ export function BuyerCheckoutScreen({
   items, sellerName, shippingLabel, onBack, onLogin, onCart, onHome,
 }: Props) {
   const [showSuccessPreview, setShowSuccessPreview] = useState(false);
+  const [showTrackingPreview, setShowTrackingPreview] = useState(false);
   const [paymentSources, setPaymentSources] = useState({ online: true, support: false, personal: true });
   const [legalInvoice, setLegalInvoice] = useState(false);
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -56,10 +58,20 @@ export function BuyerCheckoutScreen({
     setPaymentSources((current) => ({ ...current, [key]: !current[key] }));
   };
 
+  if (showTrackingPreview) return (
+    <BuyerOrderTrackingScreen
+      onBack={() => setShowTrackingPreview(false)}
+      onLogin={onLogin}
+      onCart={onCart}
+      onHome={onHome}
+    />
+  );
+
   if (showSuccessPreview) return (
     <BuyerOrderSuccessPreview
       sellerName={sellerName}
       onBack={() => setShowSuccessPreview(false)}
+      onTrack={() => setShowTrackingPreview(true)}
       onLogin={onLogin}
       onCart={onCart}
       onHome={onHome}
@@ -234,9 +246,9 @@ export function BuyerCheckoutScreen({
 }
 
 function BuyerOrderSuccessPreview({
-  sellerName, onBack, onLogin, onCart, onHome,
+  sellerName, onBack, onTrack, onLogin, onCart, onHome,
 }: {
-  sellerName: string; onBack: () => void; onLogin: () => void; onCart: () => void; onHome: () => void;
+  sellerName: string; onBack: () => void; onTrack: () => void; onLogin: () => void; onCart: () => void; onHome: () => void;
 }) {
   return (
     <SafeAreaView style={successStyles.safeArea} edges={["top", "bottom"]}>
@@ -270,7 +282,7 @@ function BuyerOrderSuccessPreview({
           <Text style={successStyles.noticeCopy}>خلاصه سفارش و مراحل بعدی در این صفحه نمایش داده می‌شود.</Text>
         </View>
         <View style={successStyles.actions}>
-          <Pressable accessibilityRole="button" accessibilityLabel="پیگیری سفارش" onPress={() => Alert.alert("پیگیری سفارش", "پیگیری سفارش تا اتصال سرویس سفارش در دسترس نیست.")} style={successStyles.trackButton}>
+          <Pressable accessibilityRole="button" accessibilityLabel="پیگیری سفارش" onPress={onTrack} style={successStyles.trackButton}>
             <Text style={successStyles.trackButtonText}>پیگیری سفارش</Text>
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="بازگشت به بازارگاه" onPress={onHome} style={successStyles.marketplaceButton}>
