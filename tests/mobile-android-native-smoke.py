@@ -235,7 +235,15 @@ def main():
     execute("adb", "shell", "input", "swipe", "540", "1850", "540", "450", "500")
     wait_screen("موقعیت روی نقشه", "ثبت آدرس و مشخصات")
     save_preview("henna-android-addresses-form-preview.png")
-    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders, account, auth, complete-profile and addresses previews")
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("حساب کاربری", "اعتبارهای من")
+    tap_accessible("اعتبارهای من")
+    wait_screen("اعتبارها و طرح‌ها", "کالابرگ عمومی حنا", "اعتبار حمایتی اجتماعی", "تسهیلات رفاهی کارکنان")
+    save_preview("henna-android-credits-plans-preview.png")
+    execute("adb", "shell", "input", "swipe", "540", "1850", "540", "650", "500")
+    wait_screen("سایر طرح‌ها", "درخواست طرح یا ثبت معرفی‌نامه")
+    save_preview("henna-android-credits-empty-preview.png")
+    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders, account, auth, complete-profile, addresses and credits/plans previews")
 
 try:
     main()
