@@ -28,15 +28,19 @@ async function main() {
     headers: { "Cache-Control": "no-store" },
     body: JSON.stringify({ profiles: [{ organizationId: orgId, organizationName: "سازمان پایدار", memberRole: "ORG_REPRESENTATIVE", membershipId }] }),
   }));
+  await context.route("**/api/organization/programs", route => route.fulfill({
+    status: 200, contentType: "application/json; charset=utf-8", headers: { "Cache-Control": "no-store" },
+    body: JSON.stringify({ programs: [] }),
+  }));
   const page = await context.newPage();
   page.setDefaultTimeout(10000);
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
-  await page.goto(base + "/organization");
-  await page.getByRole("heading", { name: "اطلاعات و پروفایل سازمان" }).waitFor();
+  await page.goto(base + "/organization/profile");
+  await page.getByRole("heading", { name: "اطلاعات سازمان" }).waitFor();
   await page.getByRole("heading", { name: "سازمان پایدار" }).waitFor();
-  await page.locator(".organization-card-title span").getByText("نماینده سازمان", { exact: true }).waitFor();
-  await page.getByText("در این برش هنوز ثبت نشده است.", { exact: true }).waitFor();
+  await page.getByText("نماینده سازمان", { exact: true }).waitFor();
+  await page.getByText("در سرویس فعلی ثبت نشده است", { exact: true }).waitFor();
   assert.equal(await page.getByText("info@org-domain.ir").count(), 0);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true,

@@ -11,7 +11,7 @@ export function SiteHeader({ backHref, backLabel }: SiteHeaderProps) {
     <header className="site-header">
       <div className="site-header__inner">
         <Link href="/" aria-label="حنا، صفحه اصلی" className="site-header__brand">
-          <Image src="/hana-logo.png" alt="حنا" width={220} height={72} priority />
+          <Image src="/hana-logo.png" alt="حنا" width={220} height={124} unoptimized priority />
         </Link>
         <Link href={backHref} className="site-header__back">
           {backLabel}
