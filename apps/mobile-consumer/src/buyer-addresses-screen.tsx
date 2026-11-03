@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   input: { width: "100%", height: 48, paddingHorizontal: 16, borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 12, backgroundColor: "#fff", color: "#2d2d2d", fontFamily: "Estedad400", fontSize: 14, writingDirection: "rtl" },
   mapField: { width: "100%", alignItems: "flex-end", gap: 6 },
   mapContainer: { width: "100%", height: 120, overflow: "hidden", borderWidth: 1, borderColor: "#f0e7dd", borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  mapImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  mapImage: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%" },
   mapButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#0f5b5a" },
   mapButtonText: { color: "#fff", fontSize: 12, lineHeight: 18, fontWeight: "700", ...rtl },
   saveButton: { width: "100%", minHeight: 54, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, backgroundColor: "#b5523b" },
