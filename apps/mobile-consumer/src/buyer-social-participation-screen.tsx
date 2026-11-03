@@ -5,11 +5,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "./typography";
 
 const logo = require("../assets/home-logo-badge.png");
-const back = require("../assets/social-chevron-right@3x.png");
-const actionsIcon = require("../assets/social-action@3x.png");
-const heartIcon = require("../assets/social-heart@3x.png");
-const starIcon = require("../assets/social-star@3x.png");
-const participationIcon = require("../assets/social-participation@3x.png");
+const back = require("../assets/social-chevron-right.png");
+const actionsIcon = require("../assets/social-action.png");
+const heartIcon = require("../assets/social-heart.png");
+const starIcon = require("../assets/social-star.png");
+const participationIcon = require("../assets/social-participation.png");
 const projectImage = require("../assets/social-projects-hero.jpg");
 const userNav = require("../assets/figma-nav-user.png");
 const ordersNav = require("../assets/figma-nav-receipt.png");
