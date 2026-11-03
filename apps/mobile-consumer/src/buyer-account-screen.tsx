@@ -9,16 +9,17 @@ const userNav = require("../assets/figma-nav-user.png");
 const ordersNav = require("../assets/figma-nav-receipt.png");
 const cartNav = require("../assets/figma-nav-cart.png");
 const homeNav = require("../assets/figma-nav-home.png");
+const notificationsIcon = require("../assets/home-icon-bell.png");
 
-type Props = { onBack: () => void; onOrders: () => void; onCart: () => void; onHome: () => void; onLogout: () => void; onProfile: () => void; onAddresses: () => void; onCredits: () => void; onSocial: () => void; onSupport: () => void };
+type Props = { onBack: () => void; onOrders: () => void; onCart: () => void; onHome: () => void; onLogout: () => void; onProfile: () => void; onAddresses: () => void; onCredits: () => void; onSocial: () => void; onSupport: () => void; onNotifications: () => void };
 const rtl = { textAlign: "right", writingDirection: "rtl" } as const;
 const menu = [
   ["اطلاعات حساب", "user"], ["آدرس‌های من", "map-pin"], ["سفارش‌های من", "receipt"],
   ["روش‌های پرداخت", "credit-card"], ["اعتبارهای من", "star"], ["طرح‌های فعال", "heart"],
-  ["مشارکت‌های اجتماعی", "phone"], ["پشتیبانی", "settings"], ["تنظیمات", "settings"],
+  ["مشارکت‌های اجتماعی", "phone"], ["پشتیبانی", "settings"], ["اعلان‌ها", "bell"], ["تنظیمات", "settings"],
 ] as const;
 
-export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome, onLogout, onProfile, onAddresses, onCredits, onSocial, onSupport }: Props) {
+export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome, onLogout, onProfile, onAddresses, onCredits, onSocial, onSupport, onNotifications }: Props) {
   const openMenu = (title: string) => {
     if (title === "سفارش‌های من") return onOrders();
     if (title === "اطلاعات حساب") return onProfile();
@@ -26,6 +27,7 @@ export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome, onLogout,
     if (title === "اعتبارهای من" || title === "طرح‌های فعال") return onCredits();
     if (title === "مشارکت‌های اجتماعی") return onSocial();
     if (title === "پشتیبانی") return onSupport();
+    if (title === "اعلان‌ها") return onNotifications();
     return Alert.alert(title, "این بخش در پیش‌نمایش هنوز به اطلاعات حساب متصل نیست.");
   };
 
@@ -69,7 +71,7 @@ export function BuyerAccountScreen({ onBack, onOrders, onCart, onHome, onLogout,
                 <Image source={buyerAccountIcons["chevron-left"]} style={styles.chevron} />
                 <View style={styles.menuRight}>
                   <Text style={styles.menuText}>{title}</Text>
-                  <Image source={buyerAccountIcons[icon]} style={styles.menuIcon} />
+                  <Image source={icon === "bell" ? notificationsIcon : buyerAccountIcons[icon]} style={styles.menuIcon} />
                 </View>
               </Pressable>
               {i < menu.length - 1 ? <View style={styles.menuLine} /> : null}

@@ -30,12 +30,13 @@ type Props = {
   onAdd: (id: string, title: string) => void;
   onProduct: (id: string) => void;
   onCart: () => void;
+  onNotifications: () => void;
   onLogin: () => void;
   onHome: () => void;
 };
 
 export function BuyerHomeScreen({
-  cartCount, notice, onBrowse, onAdd, onProduct, onCart, onLogin, onHome,
+  cartCount, notice, onBrowse, onAdd, onProduct, onCart, onNotifications, onLogin, onHome,
 }: Props) {
   const [search, setSearch] = useState("");
   const [selectedChip, setSelectedChip] = useState("کالابرگ");
@@ -50,7 +51,7 @@ export function BuyerHomeScreen({
       <StatusBar barStyle="dark-content" backgroundColor="#f7f3ed" />
       <View style={styles.fill}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="اعلان‌ها" style={styles.notification}>
+          <Pressable accessibilityRole="button" accessibilityLabel="اعلان‌ها" onPress={onNotifications} style={styles.notification}>
             <Image source={bellIcon} style={styles.bellIcon} accessibilityLabel="اعلان‌ها" />
           </Pressable>
           <View style={styles.brandGroup}>

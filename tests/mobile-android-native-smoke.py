@@ -261,7 +261,16 @@ def main():
     execute("adb", "shell", "input", "swipe", "540", "1850", "540", "550", "500")
     wait_screen("تماس با پشتیبانی تلفنی")
     save_preview("henna-android-support-actions-preview.png")
-    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders, account, auth, complete-profile, addresses, credits/plans, social participation and support previews")
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("حساب کاربری", "اعلان‌ها")
+    execute("adb", "shell", "input", "swipe", "540", "1850", "540", "800", "500")
+    tap_accessible("اعلان‌ها")
+    wait_screen("اعلان‌ها", "خوانده شده کردن همه", "سفارش شما تحویل سفیر شد", "بروزرسانی جدید بازار اجتماعی حنا")
+    save_preview("henna-android-notifications-preview.png")
+    tap_accessible("خوانده شده کردن همه")
+    wait_screen("سفارش: سفارش شما تحویل سفیر شد، ۱۰ دقیقه پیش، خوانده شده")
+    save_preview("henna-android-notifications-read-preview.png")
+    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders, account, auth, complete-profile, addresses, credits/plans, social participation, support and notifications previews")
 
 try:
     main()

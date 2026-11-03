@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MobileCatalogClient } from "./mobile-catalog.ts";
 import { BuyerHomeScreen } from "./buyer-home-screen";
+import { BuyerNotificationsScreen } from "./buyer-notifications-screen";
 import { BuyerSellerComparisonScreen } from "./buyer-seller-comparison-screen";
 import { BuyerBasketReviewScreen } from "./buyer-basket-review-screen";
 import { BuyerCheckoutScreen } from "./buyer-checkout-screen";
@@ -78,6 +79,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
   const [cartNotice, setCartNotice] = useState("");
   const [sellerComparisonOpen, setSellerComparisonOpen] = useState(false);
   const [basketReviewOpen, setBasketReviewOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const cartCount = Object.values(cart).reduce((total, quantity) => total + quantity, 0);
 
@@ -122,6 +124,16 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
     });
   }
 
+  if (notificationsOpen) return (
+    <BuyerNotificationsScreen
+      onBack={() => setNotificationsOpen(false)}
+      onAccount={() => { setNotificationsOpen(false); onLogin(); }}
+      onOrders={() => { setNotificationsOpen(false); onLogin(); }}
+      onCart={() => { setNotificationsOpen(false); setCartOpen(true); }}
+      onHome={() => { setNotificationsOpen(false); onHome?.(); }}
+    />
+  );
+
   function enterCatalog(searchTerm = "") {
     setDraftSearch(searchTerm);
     controller.submitSearch(searchTerm);
@@ -140,7 +152,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
         setDetailId(id);
         onEnterCatalog?.();
       }}
-      onCart={() => setCartOpen(true)} onLogin={onLogin}
+      onCart={() => setCartOpen(true)} onNotifications={() => setNotificationsOpen(true)} onLogin={onLogin}
       onHome={() => onHome?.()} />
   );
   // Keep the mounted browse coordinator and its real search/filter/page state.
