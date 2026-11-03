@@ -10,6 +10,7 @@ import { BuyerOrdersScreen } from "./buyer-orders-screen";
 import { BuyerAccountScreen } from "./buyer-account-screen";
 import { BuyerAddressesScreen } from "./buyer-addresses-screen";
 import { BuyerCreditsPlansScreen } from "./buyer-credits-plans-screen";
+import { BuyerSocialParticipationScreen } from "./buyer-social-participation-screen";
 import { BuyerAuthScreen } from "./buyer-auth-screen";
 import { BuyerCompleteProfileScreen } from "./buyer-complete-profile-screen";
 
@@ -63,6 +64,7 @@ export function BuyerCheckoutScreen({
   const [showCompleteProfilePreview, setShowCompleteProfilePreview] = useState(false);
   const [showAddressesPreview, setShowAddressesPreview] = useState(false);
   const [showCreditsPreview, setShowCreditsPreview] = useState(false);
+  const [showSocialPreview, setShowSocialPreview] = useState(false);
   const [paymentSources, setPaymentSources] = useState({ online: true, support: false, personal: true });
   const [legalInvoice, setLegalInvoice] = useState(false);
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -87,6 +89,15 @@ export function BuyerCheckoutScreen({
     />
   );
 
+  if (showSocialPreview) return (
+    <BuyerSocialParticipationScreen
+      onBack={() => setShowSocialPreview(false)}
+      onOrders={() => { setShowSocialPreview(false); setShowAccountPreview(false); setShowOrdersPreview(true); }}
+      onCart={onCart}
+      onHome={onHome}
+    />
+  );
+
   if (showAddressesPreview) return (
     <BuyerAddressesScreen
       onBack={() => setShowAddressesPreview(false)}
@@ -106,6 +117,7 @@ export function BuyerCheckoutScreen({
       onProfile={() => setShowCompleteProfilePreview(true)}
       onAddresses={() => setShowAddressesPreview(true)}
       onCredits={() => setShowCreditsPreview(true)}
+      onSocial={() => setShowSocialPreview(true)}
     />
   );
 

@@ -243,7 +243,13 @@ def main():
     execute("adb", "shell", "input", "swipe", "540", "1850", "540", "650", "500")
     wait_screen("سایر طرح‌ها", "درخواست طرح یا ثبت معرفی‌نامه")
     save_preview("henna-android-credits-empty-preview.png")
-    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders, account, auth, complete-profile, addresses and credits/plans previews")
+    execute("adb", "shell", "input", "keyevent", "4")
+    wait_screen("حساب کاربری", "مشارکت‌های اجتماعی")
+    execute("adb", "shell", "input", "swipe", "540", "1850", "540", "900", "500")
+    tap_accessible("مشارکت‌های اجتماعی")
+    wait_screen("مشارکت اجتماعی", "مشاهده طرح‌های اجتماعی فعال", "پیگیری مشارکت‌های من", "ورود به تالار همیاری حنا")
+    save_preview("henna-android-social-participation-preview.png")
+    print("PASS: native URI dispatch, catalog add, cart, seller comparison, basket review, checkout, order-success, order-tracking, orders, account, auth, complete-profile, addresses, credits/plans and social participation previews")
 
 try:
     main()
