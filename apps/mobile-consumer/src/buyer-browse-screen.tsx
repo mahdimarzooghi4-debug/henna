@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   logo: { width: 145, height: 48 },
   headerLink: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
   headerLinkText: { color: colors.teal, fontSize: 14, fontWeight: "700", ...rtl },
-  previewNotice: { color: colors.teal, backgroundColor: colors.paleTeal, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, fontSize: 12, fontWeight: "700", textAlign: "right", ...rtl },
+  previewNotice: { color: colors.teal, backgroundColor: colors.paleTeal, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, fontSize: 12, fontWeight: "700", ...rtl },
   pressed: { opacity: .75 },
   content: {
     width: "100%", maxWidth: 560, alignSelf: "center",
