@@ -67,8 +67,8 @@ async function run() {
         NEXT_TELEMETRY_DISABLED: "1",
         HANA_API_BASE_URL: "https://127.0.0.1:3473",
         NODE_EXTRA_CA_CERTS: cert,
-        HANA_BUYER_ANDROID_APPROVED_URL: buyerUrl,
-        HANA_SELLER_ANDROID_APPROVED_URL: sellerUrl,
+        HANA_BUYER_ANDROID_PREVIEW_URL: buyerUrl,
+        HANA_SELLER_ANDROID_PREVIEW_URL: sellerUrl,
       },
     });
   web.stdout.on("data", chunk => logs += chunk);
@@ -90,6 +90,8 @@ async function run() {
   const buyer = await (await fetch(webOrigin + "/download")).text();
   assert.match(buyer, /دانلود اپلیکیشن خریدار حنا/);
   assert.ok(buyer.includes(buyerUrl));
+  assert.match(buyer, /نسخه آزمایشی/);
+  assert.match(buyer, /دانلود نسخه آزمایشی خریدار/);
   assert.equal(upstreamCalls, 0, "public download must not call seller API");
 
   const noAuth = await fetch(webOrigin + "/api/seller/mobile-download");
@@ -106,7 +108,7 @@ async function run() {
   activated = true;
   res = await fetch(webOrigin + "/api/seller/mobile-download", { headers: cookie });
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), { available: true, url: sellerUrl });
+  assert.deepEqual(await res.json(), { available: true, url: sellerUrl, channel: "PREVIEW" });
   assert.match(res.headers.get("cache-control") ?? "", /no-store/);
   suspended = true;
   res = await fetch(webOrigin + "/api/seller/mobile-download", { headers: cookie });
