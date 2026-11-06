@@ -199,7 +199,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
               </ScrollView>
             )}
 
-          {browse.categoryRecovery && categories.status === "ok" ? <Text style={styles.recoveryNotice}>دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.</Text> : null}
+          {browse.categoryRecovery && categories.status === "ok" ? <Text accessibilityRole="alert" style={styles.categoryRecovery}>دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.</Text> : null}
           {browse.search ? <Pressable onPress={() => { setDraftSearch(""); controller.submitSearch(""); }} style={styles.clearSearch}><Text style={styles.sectionLink}>پاک کردن جست‌وجو</Text></Pressable> : null}
         </ScrollView>
         <View style={styles.bottomNav}>
@@ -246,6 +246,6 @@ const styles = StyleSheet.create({
   productImagePlaceholder: { height: 104, borderRadius: 10, backgroundColor: "#F3EADF", alignItems: "center", justifyContent: "center" }, productPlaceholderGlyph: { color: colors.terracotta, fontSize: 30 }, productName: { minHeight: 36, marginTop: 7, color: colors.charcoal, fontSize: 12, fontWeight: "700", ...rtl }, productKind: { color: colors.teal, fontSize: 10, marginTop: 2, ...rtl },
   addButton: { height: 31, borderWidth: 1, borderColor: colors.terracotta, borderRadius: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 7 }, addButtonText: { color: colors.terracotta, fontSize: 11, fontWeight: "700" },
   categoryRail: { gap: 18, paddingHorizontal: 25, paddingTop: 12, paddingBottom: 16, flexDirection: "row-reverse" }, categoryItem: { width: 70, alignItems: "center", gap: 6 }, categoryImage: { width: 60, height: 60, borderRadius: 30 }, categoryName: { color: colors.teal, fontSize: 11, fontWeight: "700", maxWidth: 70, ...rtl },
-  categoryNotice: { color: "#8E8E93", fontSize: 11, paddingHorizontal: 20, paddingTop: 12, ...rtl }, categoryUnavailable: { minHeight: 90, justifyContent: "center", gap: 8 }, recoveryNotice: { marginHorizontal: 20, marginTop: 8, color: colors.teal, fontSize: 11, ...rtl }, clearSearch: { padding: 20, alignItems: "flex-end" },
+  categoryNotice: { color: "#8E8E93", fontSize: 11, paddingHorizontal: 20, paddingTop: 12, ...rtl }, categoryUnavailable: { minHeight: 90, justifyContent: "center", gap: 8 }, categoryRecovery: { marginHorizontal: 20, marginTop: 8, color: colors.teal, fontSize: 11, ...rtl }, clearSearch: { padding: 20, alignItems: "flex-end" },
   bottomNav: { height: 68, paddingHorizontal: 12, paddingTop: 5, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: "#EFEAE3", flexDirection: "row", justifyContent: "space-around" }, navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 1 }, navInactive: { opacity: 0.55 }, navLabel: { color: colors.teal, fontSize: 10, ...rtl },
 });
