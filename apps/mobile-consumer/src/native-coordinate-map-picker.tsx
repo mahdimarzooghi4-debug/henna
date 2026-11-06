@@ -132,14 +132,14 @@ const styles=StyleSheet.create({
     minHeight:48,borderRadius:10,borderWidth:1,borderColor:colors.teal,
     alignItems:"center",justifyContent:"center",paddingHorizontal:14,
   },
-  buttonText:{fontFamily:"Vazirmatn_700Bold",color:colors.teal,fontSize:14},
+  buttonText:{fontFamily:"Estedad_700Bold",color:colors.teal,fontSize:14},
   toolButton:{
     minWidth:48,minHeight:42,borderRadius:9,borderWidth:1,
     borderColor:colors.beige,backgroundColor:colors.surface,
     alignItems:"center",justifyContent:"center",paddingHorizontal:10,
   },
-  toolText:{fontFamily:"Vazirmatn_700Bold",color:colors.charcoal,fontSize:22},
-  closeText:{fontFamily:"Vazirmatn_700Bold",color:colors.charcoal,fontSize:13},
+  toolText:{fontFamily:"Estedad_700Bold",color:colors.charcoal,fontSize:22},
+  closeText:{fontFamily:"Estedad_700Bold",color:colors.charcoal,fontSize:13},
   disabled:{opacity:.45},
   viewport:{
     position:"relative",overflow:"hidden",borderRadius:12,borderWidth:1,
@@ -152,15 +152,15 @@ const styles=StyleSheet.create({
   },
   pinText:{fontSize:28,color:colors.terracotta},
   help:{
-    fontFamily:"Vazirmatn_400Regular",fontSize:12,lineHeight:22,
+    fontFamily:"Estedad_400Regular",fontSize:12,lineHeight:22,
     textAlign:"right",writingDirection:"rtl",color:colors.charcoal,
   },
   coordinates:{
-    fontFamily:"Vazirmatn_400Regular",fontSize:12,lineHeight:22,
+    fontFamily:"Estedad_400Regular",fontSize:12,lineHeight:22,
     textAlign:"right",writingDirection:"rtl",color:colors.charcoal,
   },
   attribution:{
-    fontFamily:"Vazirmatn_400Regular",fontSize:10,textAlign:"left",
+    fontFamily:"Estedad_400Regular",fontSize:10,textAlign:"left",
     writingDirection:"ltr",color:colors.charcoal,
   },
 });

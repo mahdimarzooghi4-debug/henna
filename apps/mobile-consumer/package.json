@@ -10,18 +10,20 @@
     "export:android": "expo export --platform android --output-dir ../../.expo-export"
   },
   "dependencies": {
+    "@expo-google-fonts/estedad": "^0.4.0",
     "@expo-google-fonts/vazirmatn": "0.4.1",
     "expo": "~57.0.27",
     "expo-crypto": "~57.0.4",
-    "expo-font": "57.0.4",
     "expo-file-system": "57.0.7",
+    "expo-font": "57.0.4",
     "expo-image-manipulator": "~57.0.21",
     "expo-image-picker": "~57.0.21",
     "expo-location": "~57.0.23",
     "expo-secure-store": "~57.0.0",
     "react": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "~5.7.0"
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
