@@ -120,9 +120,14 @@ def main():
     )
 
     execute("adb", "install", "-r", str(SELLER_APK), timeout=150)
-    assert f"package:{seller_package}" in execute(
-        "adb", "shell", "pm", "path", seller_package
-    ), "Seller APK is not installed in Android package manager"
+    installed_path = execute("adb", "shell", "pm", "path", seller_package)
+    assert any(line.startswith("package:/") for line in installed_path.splitlines()), (
+        f"Seller APK is not installed in Android package manager: {installed_path}"
+    )
+    registered_packages = execute("adb", "shell", "pm", "list", "packages")
+    assert f"package:{seller_package}" in registered_packages.splitlines(), (
+        "Installed seller APK is missing from package registry"
+    )
     execute("adb", "shell", "monkey", "-p", seller_package, "1", timeout=60)
 
     ui = wait_screen(
