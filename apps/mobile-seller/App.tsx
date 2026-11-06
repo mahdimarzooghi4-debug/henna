@@ -146,6 +146,8 @@ export default function App() {
 
   async function signOut() {
     if (pending.current) return;
+    // Invalidate any in-flight foreground/session check before revoking the token.
+    ++epoch.current;
     pending.current = true;
     setBusy(true);
     setGate({ kind: "checking" });
