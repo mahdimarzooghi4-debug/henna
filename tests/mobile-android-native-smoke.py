@@ -238,6 +238,7 @@ def main():
     print("HANA_NATIVE_ORDERS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
+    tap_until_screen("حساب", "حساب کاربری")
     tap_until_screen("گزارش‌ها و مرجوعی‌های من", "گزارش‌ها و مرجوعی‌های من", "پاسخ سرور تأیید نشد")
     print("HANA_NATIVE_INCIDENTS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
     execute("adb", "shell", "input", "keyevent", "4")

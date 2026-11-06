@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import {
   Alert,
@@ -11,14 +11,15 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
+  Text as NativeText,
+  type TextProps,
   TextInput,
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { useFonts } from "expo-font";
-import { Vazirmatn_400Regular, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
+import { Estedad_400Regular, Estedad_600SemiBold, Estedad_700Bold, Estedad_800ExtraBold } from "@expo-google-fonts/estedad";
 import { MobileCommerceClient } from "./src/mobile-commerce";
 import { BuyerIncidentsScreen } from "./src/buyer-incidents-screen";
 import { BuyerSupportScreen } from "./src/buyer-support-screen";
@@ -45,11 +46,21 @@ type FormStatus = "idle" | "invalid" | "loading" | "unavailable" | "limited";
 type ViewState = MobileAuthView;
 
 const logo = require("./assets/hana-app-logo.png");
-const backIcon = require("./assets/back.png");
 const tokenKey = "hana.consumer.session.v1";
+const previewSessionKey = "hana.consumer.preview-session.v1";
+const previewLoginEnabled = __DEV__ || process.env.EXPO_PUBLIC_HANA_DEMO_LOGIN === "true";
 const secureOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
+
+function Text(props: TextProps) {
+  const fontWeight = StyleSheet.flatten(props.style)?.fontWeight;
+  const family = fontWeight === "800" || fontWeight === "900" ? "Estedad_800ExtraBold"
+    : fontWeight === "600" ? "Estedad_600SemiBold"
+      : fontWeight === "700" || fontWeight === "bold" ? "Estedad_700Bold"
+      : "Estedad_400Regular";
+  return <NativeText {...props} style={[{ fontFamily: family }, props.style]} />;
+}
 
 const nativeBuyerLinkInbox = new BuyerLinkInbox();
 // Subscribe before React mounts so an early valid native link is not lost
@@ -74,7 +85,10 @@ const auth = new MobileAuthClient(
   __DEV__,
 );
 
-function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
+function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
+  onAuthenticated: () => Promise<void>;
+  onDemoLogin: () => Promise<void>;
+}) {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -109,6 +123,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
       setView(result.status === "authenticated" ? "session"
         : result.status === "guest" ? "phone" : "offline");
       setStatus(result.status === "unavailable" ? "unavailable" : "idle");
+      if (result.status === "authenticated") await onAuthenticated();
     } finally {
       pending.current = false;
     }
@@ -118,7 +133,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
     mounted.current = true;
     void refreshSession();
     return () => { mounted.current = false; };
-  }, []);
+  }, [onAuthenticated]);
 
   useEffect(() => {
     viewRef.current = view;
@@ -204,6 +219,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
         setStatus("idle");
         setResendNotice("");
         setCodeError("");
+        await onAuthenticated();
       } else {
         setStatus(result.status);
       }
@@ -250,37 +266,22 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.topBar}>
-            <Image
-              source={logo}
-              style={styles.logo}
-              resizeMode="contain"
-              accessibilityLabel="حنا"
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="بازگشت به فروشگاه"
-              style={styles.backTouch}
-              onPress={onBrowse}
-            >
-              <Image source={backIcon} style={styles.backIcon} resizeMode="contain" />
-            </Pressable>
+            <View style={styles.topBarSpacer} />
+            <Text style={styles.topBarTitle}>ورود یا ثبت‌نام</Text>
+            <View style={styles.logoBadge}><Image source={logo} style={styles.logo} resizeMode="contain" accessibilityLabel="حنا" /></View>
           </View>
 
           <View style={styles.intro}>
-            <Text style={styles.title}>ورود به حنا</Text>
-            <Text style={styles.subtitle}>
-              {view === "session"
-                ? "نشست شما در سرور حنا بررسی شده است."
-                : "با شماره موبایل وارد شوید یا ثبت‌نام کنید."}
-            </Text>
+            <View style={styles.welcomeLogo}><Image source={logo} style={styles.welcomeLogoImage} resizeMode="contain" /></View>
+            <Text style={styles.title}>به بازار اجتماعی حنا خوش آمدید</Text>
+            <Text style={styles.subtitle}>برای خرید و مشارکت اجتماعی، وارد حساب کاربری خود شوید.</Text>
           </View>
 
           <View style={styles.card}>
             {view === "phone" && (
               <>
-                <Text nativeID="mobile-phone-label" style={styles.fieldLabel}>
-                  شماره موبایل
-                </Text>
+                <Text style={styles.cardHeading}>ورود با شماره موبایل</Text>
+                <Text nativeID="mobile-phone-label" style={styles.fieldLabel}>شماره موبایل</Text>
                 <TextInput
                   ref={phoneInput}
                   accessibilityLabel="شماره موبایل"
@@ -290,7 +291,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                   accessibilityState={{ disabled: status === "loading" }}
                   editable={status !== "loading"}
                   style={[styles.input, status === "invalid" && styles.invalidInput]}
-                  placeholder="09xxxxxxxxx"
+                  placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                   placeholderTextColor={colors.muted}
                   textAlign="right"
                   keyboardType="phone-pad"
@@ -304,6 +305,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                     setResendNotice("");
                   }}
                 />
+                <Text style={styles.inputHint}>کد تأیید به این شماره پیامک خواهد شد.</Text>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="دریافت کد تأیید"
@@ -319,6 +321,18 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                     {status === "loading" ? "در حال بررسی…" : "دریافت کد تأیید"}
                   </Text>
                 </Pressable>
+                {previewLoginEnabled && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="ورود آزمایشی بدون پیامک"
+                    disabled={status === "loading"}
+                    style={({ pressed }) => [styles.demoButton, pressed && styles.primaryButtonPressed]}
+                    onPress={() => void onDemoLogin().catch(() =>
+                      Alert.alert("ورود آزمایشی انجام نشد", "فضای امن دستگاه برای نگهداری نشست در دسترس نیست."))}
+                  >
+                    <Text style={styles.demoButtonText}>ورود آزمایشی بدون پیامک</Text>
+                  </Pressable>
+                )}
                 {status !== "idle" && status !== "loading" && (
                   <Text accessibilityRole="alert" style={[
                     styles.formStatus, status === "invalid" && styles.formStatusError,
@@ -331,27 +345,6 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
                   </Text>
                 )}
 
-                <View style={styles.note}>
-                  <Text style={styles.noteTitle}>یک حساب؛ چند امکان</Text>
-                  <Text style={styles.noteBody}>
-                    پس از ورود، حساب حقیقی یا حقوقی تکمیل می‌شود.
-                  </Text>
-                </View>
-                <View style={styles.footer}>
-                  <Text style={styles.footerLabel}>فروشگاه دارید؟</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="ثبت‌نام فروشگاه"
-                    onPress={() =>
-                      Alert.alert(
-                        "ثبت‌نام فروشگاه",
-                        "ثبت‌نام، بررسی، فعال‌سازی و پنل فروشنده در نسخه وب حنا ارائه می‌شوند. ورود عمومی همچنان به اتصال سرویس پیامک واقعی وابسته است."
-                      )
-                    }
-                  >
-                    <Text style={styles.sellerLink}>ثبت‌نام فروشگاه</Text>
-                  </Pressable>
-                </View>
               </>
             )}
 
@@ -520,8 +513,10 @@ const blankBrowseLink: BuyerLinkRoute = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<"browse" | "auth" | "cart" | "checkout" | "orders" | "incidents" | "support" | "wallet">("browse");
-  const [fontsLoaded,fontError] = useFonts({Vazirmatn_400Regular,Vazirmatn_700Bold});
+  const [screen, setScreen] = useState<"browse" | "auth" | "cart" | "checkout" | "orders" | "incidents" | "support" | "wallet">("auth");
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [isPreviewSession, setIsPreviewSession] = useState(false);
+  const [fontsLoaded,fontError] = useFonts({Estedad_400Regular,Estedad_600SemiBold,Estedad_700Bold,Estedad_800ExtraBold});
   const [selectedProduct,setSelectedProduct] = useState<string|null>(null);
   const [selectedOrder,setSelectedOrder]=useState<string|null>(null);
   const [incidentOrder,setIncidentOrder]=useState<string|null>(null);
@@ -574,8 +569,11 @@ export default function App() {
     void Promise.all([
       Linking.getInitialURL().catch(() => null),
       pendingCommerceStore.route(),
-    ]).then(([initialUrl, pending]) => {
+      auth.session(),
+      SecureStore.getItemAsync(previewSessionKey, secureOptions).catch(() => null),
+    ]).then(([initialUrl, pending, session, previewFlag]) => {
       if (!active) return;
+      setIsSignedIn(session.status === "authenticated");
       if (pending) {
         nativeBuyerLinkInbox.clear();
         applyPending(pending);
@@ -583,7 +581,18 @@ export default function App() {
         // Prefer a valid OS URL buffered during JS bootstrap; otherwise use
         // React Native's initial URL. Shared mobile routing remains bounded
         // to the public buyer-link allowlist.
-        apply(nativeBuyerLinkInbox.take() ?? initialUrl, false);
+        const startupUrl = nativeBuyerLinkInbox.take() ?? initialUrl;
+        const startupRoute = parseBuyerLink(startupUrl);
+        setLink({ token: ++sequence.current, route: startupRoute ?? blankBrowseLink });
+        if (startupRoute || session.status === "authenticated") {
+          setScreen("browse");
+        } else if (previewLoginEnabled && previewFlag === "v1") {
+          setIsPreviewSession(true);
+          setIsSignedIn(true);
+          setScreen("browse");
+        } else {
+          setScreen("auth");
+        }
       }
       stopIncomingLinks = nativeBuyerLinkInbox.subscribe(handleIncoming);
       void pendingCommerceStore.cleanupPhotos().catch(() => {});
@@ -592,7 +601,8 @@ export default function App() {
       // Public browsing remains usable, while commerce controllers fail
       // closed if SecureStore cannot prove whether a retry is pending.
       nativeBuyerLinkInbox.clear();
-      apply(null, false);
+      setLink({ token: ++sequence.current, route: blankBrowseLink });
+      setScreen("auth");
       stopIncomingLinks = nativeBuyerLinkInbox.subscribe(handleIncoming);
     });
 
@@ -603,17 +613,70 @@ export default function App() {
     };
   }, []);
 
+  const handleAuthenticated = useCallback(async () => {
+    await SecureStore.deleteItemAsync(previewSessionKey, secureOptions).catch(() => {});
+    setIsPreviewSession(false);
+    setIsSignedIn(true);
+    setScreen(authReturn.current);
+  }, []);
+
+  const handleDemoLogin = useCallback(async () => {
+    if (!previewLoginEnabled) return;
+    await SecureStore.setItemAsync(previewSessionKey, "v1", secureOptions);
+    setIsPreviewSession(true);
+    setIsSignedIn(true);
+    setScreen("browse");
+  }, []);
+
+  const logoutBuyer = useCallback(async () => {
+    if (isPreviewSession) {
+      try {
+        await SecureStore.deleteItemAsync(previewSessionKey, secureOptions);
+        setIsPreviewSession(false);
+        setIsSignedIn(false);
+        authReturn.current = "browse";
+        setScreen("auth");
+      } catch {
+        Alert.alert("خروج انجام نشد", "پاک‌سازی نشست آزمایشی از دستگاه تأیید نشد.");
+      }
+      return;
+    }
+    try {
+      await SecureStore.deleteItemAsync(previewSessionKey, secureOptions);
+    } catch {
+      Alert.alert("خروج انجام نشد", "پاک‌سازی وضعیت آزمایشی دستگاه تأیید نشد.");
+      return;
+    }
+    const result = await auth.logout();
+    if (result.status === "signedOut") {
+      setIsSignedIn(false);
+      authReturn.current = "browse";
+      setScreen("auth");
+    } else {
+      Alert.alert("خروج انجام نشد", "ارتباط با سرور برای تأیید خروج برقرار نشد.");
+    }
+  }, [isPreviewSession]);
+
   return (
     <SafeAreaProvider>
       {!fontsLoaded && !fontError ? <View style={styles.flex}><Text>در حال آماده‌سازی فونت…</Text></View> : fontError ? <View style={styles.flex}><Text>بارگذاری فونت انجام نشد؛ اپ را دوباره باز کنید.</Text></View> : link === null ? <View style={styles.flex} /> :
         <>
           <View style={{flex:1,display:screen === "browse" ? "flex" : "none"}}><BuyerBrowseScreen link={link} active={screen === "browse"}
+            isSignedIn={isSignedIn}
+            previewSession={isPreviewSession}
+            onLogout={() => void logoutBuyer()}
             onLogin={() => {authReturn.current="browse";setScreen("auth");}}
             onIssues={()=>{setIncidentOrder(null);incidentReturn.current="browse";setScreen("incidents");}}
             onOrders={()=>{setSelectedOrder(null);setScreen("orders");}}
             onSupport={()=>setScreen("support")}
             onWallet={()=>setScreen("wallet")}
-            onCart={(id) => {setSelectedProduct(id??null);setScreen("cart");}} /></View>
+            onCart={(id) => {
+              if (isPreviewSession) {
+                Alert.alert("نسخهٔ آزمایشی", "ورود بدون پیامک فقط برای مرور کاتالوگ است. ثبت سبد و سفارش به نشست واقعی خریدار نیاز دارد.");
+                return;
+              }
+              setSelectedProduct(id??null);setScreen("cart");
+            }} /></View>
           {screen === "cart" && <BuyerCartScreen api={commerce} onCheckout={()=>setScreen("checkout")} selectedProduct={selectedProduct} onBack={() => setScreen("browse")} onLogin={() => {authReturn.current="cart";setScreen("auth");}} />}
           {screen === "checkout" && <BuyerCheckoutScreen onOrder={(id)=>{setSelectedOrder(id);setScreen("orders");}} api={commerce} onBack={()=>setScreen("cart")} onLogin={()=>{authReturn.current="checkout";setScreen("auth");}} />}
           {screen === "orders" && <BuyerOrdersScreen onIssues={(id)=>{setIncidentOrder(id);incidentReturn.current="orders";setScreen("incidents");}} api={commerce} selectedId={selectedOrder} onBack={()=>setScreen("browse")} onLogin={()=>{authReturn.current="orders";setScreen("auth");}} />}
@@ -624,7 +687,10 @@ export default function App() {
           {screen === "wallet" && <BuyerWalletScreen api={commerce}
             onBack={()=>setScreen("browse")}
             onLogin={()=>{authReturn.current="wallet";setScreen("auth");}} />}
-          {screen === "auth" && <ConsumerAuthScreen onBrowse={() => setScreen(authReturn.current)} />}
+          {screen === "auth" && <ConsumerAuthScreen
+            onAuthenticated={handleAuthenticated}
+            onDemoLogin={handleDemoLogin}
+          />}
         </>}
 
     </SafeAreaProvider>
@@ -634,139 +700,30 @@ export default function App() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.cream },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: space.normal,
-    paddingTop: space.lg,
-    paddingBottom: space.xl,
-    width: "100%",
-    maxWidth: 560,
-    alignSelf: "center",
-  },
-  topBar: {
-    height: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  logo: { width: 82, height: 38 },
-  backTouch: {
-    width: 44,
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backIcon: { width: 32, height: 32 },
-  intro: { marginTop: 28, paddingHorizontal: space.sm },
-  title: {
-    color: colors.charcoal,
-    fontWeight: "700",
-    fontSize: 30,
-    textAlign: "right",
-    writingDirection: "rtl",
-  },
-  subtitle: {
-    marginTop: 0,
-    color: colors.muted,
-    fontSize: 14,
-    textAlign: "right",
-    writingDirection: "rtl",
-    lineHeight: 28,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.beige,
-    borderRadius: 18,
-    marginTop: 26,
-    paddingHorizontal: 17,
-    paddingVertical: 20,
-    minHeight: 398,
-  },
-  fieldLabel: {
-    color: colors.charcoal,
-    fontSize: 14,
-    fontWeight: "700",
-    textAlign: "right",
-    writingDirection: "rtl",
-    lineHeight: 28,
-  },
-  input: {
-    marginTop: 4,
-    height: 54,
-    borderWidth: 1,
-    borderColor: colors.beige,
-    borderRadius: 11,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: colors.charcoal,
-  },
+  content: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 0, paddingBottom: 32, width: "100%", maxWidth: 560, alignSelf: "center" },
+  topBar: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  topBarSpacer: { width: 40, height: 40 },
+  topBarTitle: { color: colors.charcoal, fontSize: 18, fontWeight: "700", textAlign: "center" },
+  logoBadge: { width: 80, height: 36, borderRadius: 12, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  logo: { width: 64, height: 30 },
+  intro: { alignItems: "center", gap: 8, paddingTop: 24, paddingBottom: 18 },
+  welcomeLogo: { width: 80, height: 80, borderRadius: 24, backgroundColor: colors.surface, borderWidth: 1, borderColor: "#F0E7DD", alignItems: "center", justifyContent: "center", marginBottom: 2 },
+  welcomeLogoImage: { width: 60, height: 46 },
+  title: { color: colors.teal, fontWeight: "800", fontSize: 20, textAlign: "center", writingDirection: "rtl", lineHeight: 30 },
+  subtitle: { color: "#8E8E93", fontSize: 13, textAlign: "center", writingDirection: "rtl", lineHeight: 20 },
+  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: "#F0E7DD", borderRadius: 16, paddingHorizontal: 20, paddingVertical: 20, gap: 10 },
+  cardHeading: { color: colors.charcoal, fontSize: 15, fontWeight: "700", textAlign: "right", writingDirection: "rtl", marginBottom: 3 },
+  fieldLabel: { color: colors.charcoal, fontSize: 13, fontWeight: "600", textAlign: "right", writingDirection: "rtl", lineHeight: 20 },
+  input: { height: 48, borderWidth: 1, borderColor: "#F0E7DD", borderRadius: 12, backgroundColor: colors.surface, paddingHorizontal: 16, fontFamily: "Estedad_400Regular", fontSize: 14, color: colors.charcoal, textAlign: "right", writingDirection: "rtl" },
+  inputHint: { color: "#8E8E93", fontSize: 11, textAlign: "right", writingDirection: "rtl", marginTop: -5 },
   invalidInput: { borderColor: colors.terracotta },
-  primaryButton: {
-    height: 54,
-    backgroundColor: colors.terracotta,
-    marginTop: 26,
-    borderRadius: 11,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  primaryButtonPressed: { opacity: 0.84 },
-  primaryButtonLoading: { opacity: 0.6 },
-  primaryButtonText: { color: colors.surface, fontSize: 16, fontWeight: "700" },
-  formStatus: {
-    backgroundColor: colors.paleTeal,
-    color: colors.teal,
-    fontSize: 13,
-    textAlign: "right",
-    padding: 10,
-    borderRadius: 10,
-    lineHeight: 22,
-    marginTop: 12,
-  },
-  formStatusError: {
-    backgroundColor: colors.errorSurface,
-    color: colors.error,
-  },
-  note: {
-    minHeight: 96,
-    marginTop: 28,
-    borderRadius: 12,
-    backgroundColor: colors.paleTeal,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    justifyContent: "center",
-  },
-  noteTitle: {
-    color: colors.teal,
-    fontWeight: "700",
-    fontSize: 15,
-    textAlign: "right",
-    writingDirection: "rtl",
-    lineHeight: 28,
-  },
-  noteBody: {
-    color: colors.charcoal,
-    fontSize: 13,
-    textAlign: "right",
-    writingDirection: "rtl",
-    lineHeight: 28,
-  },
-  footer: { marginTop: 16 },
-  footerLabel: {
-    color: colors.muted,
-    fontSize: 13,
-    textAlign: "right",
-    writingDirection: "rtl",
-    lineHeight: 27,
-  },
-  sellerLink: {
-    color: colors.terracotta,
-    fontWeight: "700",
-    fontSize: 15,
-    textAlign: "right",
-    writingDirection: "rtl",
-    lineHeight: 28,
-  },
-  secondaryLink: { marginTop: 22, textAlign: "center" },
+  primaryButton: { height: 48, backgroundColor: colors.terracotta, marginTop: 2, borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  primaryButtonPressed: { opacity: 0.84 }, primaryButtonLoading: { opacity: 0.6 },
+  primaryButtonText: { color: colors.surface, fontSize: 15, fontWeight: "800" },
+  demoButton: { minHeight: 44, marginTop: 2, borderWidth: 1, borderColor: colors.teal, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  demoButtonText: { color: colors.teal, fontSize: 13, fontWeight: "700" },
+  formStatus: { backgroundColor: colors.paleTeal, color: colors.teal, fontSize: 12, textAlign: "right", padding: 10, borderRadius: 10, lineHeight: 20, marginTop: 4, writingDirection: "rtl" },
+  formStatusError: { backgroundColor: colors.errorSurface, color: colors.error },
+  sellerLink: { color: colors.terracotta, fontWeight: "700", fontSize: 14, textAlign: "right", writingDirection: "rtl", lineHeight: 24 },
+  secondaryLink: { marginTop: 12, textAlign: "center" },
 });
