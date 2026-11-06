@@ -36,11 +36,16 @@ export async function GET(request: NextRequest) {
     const body: unknown = await upstream.json();
     if (!sellerMayReceiveMobileLink(body))
       return response("لینک اپ فقط پس از تأیید و فعال‌سازی حساب فروشنده ارائه می‌شود.", 403);
-    const url = approvedAndroidReleaseUrl(
+    const officialUrl = approvedAndroidReleaseUrl(
       process.env.HANA_SELLER_ANDROID_APPROVED_URL,
     );
+    const previewUrl = approvedAndroidReleaseUrl(
+      process.env.HANA_SELLER_ANDROID_PREVIEW_URL,
+    );
+    const url = officialUrl ?? previewUrl;
+    const channel = officialUrl ? "OFFICIAL" : previewUrl ? "PREVIEW" : null;
     return NextResponse.json(
-      url ? { available: true, url } : { available: false },
+      url ? { available: true, url, channel } : { available: false },
       { headers: noStore },
     );
   } catch {
