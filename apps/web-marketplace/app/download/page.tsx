@@ -14,6 +14,9 @@ export default function BuyerAppDownloadPage() {
   const approvedUrl = approvedAndroidReleaseUrl(
     process.env.HANA_BUYER_ANDROID_APPROVED_URL,
   );
+  const previewUrl = approvedAndroidReleaseUrl(
+    process.env.HANA_BUYER_ANDROID_PREVIEW_URL,
+  );
   return (
     <>
       <SiteHeader backHref="/" backLabel="بازگشت به فروشگاه" />
@@ -23,13 +26,21 @@ export default function BuyerAppDownloadPage() {
           <h1 id="buyer-download-title">حنا همیشه همراه شما</h1>
           <p>برای مرور کالاها و خدمات، مدیریت خریدها و پیگیری سفارش‌های خود، اپلیکیشن خریدار حنا را نصب کنید.</p>
           {approvedUrl ? (
-            <a className={styles.primary} href={approvedUrl} rel="noopener noreferrer">
-              دریافت نسخه تأییدشده اندروید
+            <a className={styles.primary} href={approvedUrl} rel="noopener noreferrer" download>
+              دریافت نسخه رسمی اندروید
             </a>
+          ) : previewUrl ? (
+            <>
+              <div className={styles.pending} role="status">
+                نسخه آزمایشی برای بررسی نصب و تجربه اپ آماده است؛ این نسخه انتشار رسمی یا امضای فروشگاهی ندارد.
+              </div>
+              <a className={styles.primary} href={previewUrl} rel="noopener noreferrer" download>
+                دانلود نسخه آزمایشی خریدار (APK)
+              </a>
+            </>
           ) : (
             <div className={styles.pending} role="status">
-              نسخه قابل دانلود هنوز برای انتشار عمومی تأیید و ثبت نشده است.
-              پس از انتشار رسمی، لینک دریافت در همین صفحه قرار می‌گیرد.
+              هنوز فایل قابل دانلودی ثبت نشده است. پس از آماده‌شدن نسخه آزمایشی یا انتشار رسمی، لینک دریافت در همین صفحه قرار می‌گیرد.
             </div>
           )}
           <p className={styles.note}>
