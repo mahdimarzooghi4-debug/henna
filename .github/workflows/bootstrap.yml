@@ -697,3 +697,17 @@ jobs:
           ram-size: 3072M
           disable-animations: true
           script: python3 tests/mobile-android-native-smoke.py && python3 tests/mobile-seller-android-smoke.py
+      - name: Retain tested buyer APK (CI debug build - not a public release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hana-buyer-android-ci-debug-apk
+          path: apps/mobile-consumer/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Retain tested seller APK (CI debug build - not a public release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hana-seller-android-ci-debug-apk
+          path: apps/mobile-seller/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
