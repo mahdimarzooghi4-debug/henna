@@ -528,6 +528,10 @@ jobs:
         run: node --experimental-strip-types --test tests/web-seller-location-reference-smoke.mjs
       - name: Verify public geography Next gateway over isolated CI HTTPS
         run: node tests/web-geography-gateway-smoke.mjs
+      - name: Verify Android release URL policy and seller activation gate
+        run: node --experimental-strip-types --test tests/web-mobile-release-links.mjs
+      - name: Verify buyer download page and authenticated seller link endpoint
+        run: node tests/web-mobile-download-gateway.mjs
       - name: Test buyer browse public catalog parsing and query policy
         run: node --experimental-strip-types --test tests/web-buyer-browse-smoke.mjs
       - name: Test web public product detail DTO and ID policy

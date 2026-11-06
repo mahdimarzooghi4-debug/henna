@@ -17,6 +17,7 @@ export function SiteHeader({ backHref, backLabel, commerce = false }: SiteHeader
         <nav className="site-header__links" aria-label="مسیرهای خرید">
           <Link href={backHref} className="site-header__back">{backLabel}</Link>
           {backHref !== "/cart" && <Link href="/cart" className="site-header__back">سبد خرید</Link>}
+          <Link href="/download" className="site-header__back">دانلود اپ خریدار</Link>
           <Link href="/wallet" className="site-header__back">
             کیف پول
           </Link>
