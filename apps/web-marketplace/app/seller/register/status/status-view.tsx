@@ -229,6 +229,18 @@ export function SellerApplicationStatusView() {
         )}
       </div>
 
+      {value.overallStatus === "APPROVED" &&
+        value.sellerAccessEnabled && value.sellerPanelEnabled &&
+        value.activatedAtUtc && (
+          <div className="seller-status-card__action-required">
+            <strong>اپلیکیشن اندروید فروشنده</strong>
+            <p>پس از فعال‌سازی حساب، لینک نصب از مسیر تأییدشده فروشندگان دریافت می‌شود.</p>
+            <Link href="/seller/app" className="primary-button">
+              دریافت اپلیکیشن فروشنده
+            </Link>
+          </div>
+        )}
+
       <p className="seller-status-card__note">
         تأیید هویت مستقل از بررسی نهایی درخواست فروشندگی است.
       </p>
