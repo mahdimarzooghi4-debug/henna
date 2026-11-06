@@ -711,3 +711,54 @@ jobs:
           path: apps/mobile-seller/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 7
+
+  publish-mobile-preview:
+    # Only the owner-controlled seller mobile PR can publish explicitly labeled
+    # debug-signed preview APKs; this is not a production release.
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 194 && github.event.pull_request.head.ref == 'feat/seller-mobile-001-access-orders' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [android-native-links]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Download buyer APK built and emulator-tested in this run
+        uses: actions/download-artifact@v4
+        with:
+          name: hana-buyer-android-ci-debug-apk
+          path: artifacts/buyer
+      - name: Download seller APK built and emulator-tested in this run
+        uses: actions/download-artifact@v4
+        with:
+          name: hana-seller-android-ci-debug-apk
+          path: artifacts/seller
+      - name: Prepare stable preview asset names
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/buyer/app-release.apk
+          test -s artifacts/seller/app-release.apk
+          mv artifacts/buyer/app-release.apk artifacts/hana-buyer-preview.apk
+          mv artifacts/seller/app-release.apk artifacts/hana-seller-preview.apk
+          sha256sum artifacts/*.apk | tee artifacts/SHA256SUMS.txt
+      - name: Publish debug APKs as a GitHub prerelease for website downloads
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="hana-mobile-preview-${RUN_NUMBER}-${RUN_ATTEMPT}"
+          gh release create "$tag" \
+            artifacts/hana-buyer-preview.apk \
+            artifacts/hana-seller-preview.apk \
+            artifacts/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$HEAD_SHA" \
+            --title "Henna Android Preview ${RUN_NUMBER} (Debug)" \
+            --notes "Experimental Android preview APKs built and emulator-tested by CI. Both APKs are CI-only debug-signed and are NOT production/store releases. SHA-256 checksums are attached. Do not use for real commerce or production operations." \
+            --prerelease
