@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Result = { kind: "loading" | "sign-in" | "not-active" | "unavailable" | "pending" }
-  | { kind: "ready"; url: string };
+  | { kind: "ready"; url: string; channel: "OFFICIAL" | "PREVIEW" };
 
 export function SellerAppDownloadView() {
   const [result, setResult] = useState<Result>({ kind: "loading" });
@@ -34,10 +34,12 @@ export function SellerAppDownloadView() {
         setResult({ kind: "pending" }); return;
       }
       if (!("url" in payload) || typeof payload.url !== "string" ||
-          !payload.url.startsWith("https://")) {
+          !payload.url.startsWith("https://") ||
+          !("channel" in payload) ||
+          (payload.channel !== "OFFICIAL" && payload.channel !== "PREVIEW")) {
         setResult({ kind: "unavailable" }); return;
       }
-      setResult({ kind: "ready", url: payload.url });
+      setResult({ kind: "ready", url: payload.url, channel: payload.channel });
     }).catch(() => {
       if (!controller.signal.aborted) setResult({ kind: "unavailable" });
     });
@@ -46,7 +48,7 @@ export function SellerAppDownloadView() {
 
   return (
     <section className="surface-card" style={{ padding: 28, margin: "26px 0 70px" }}
-      aria-label="دریافت اپ فروشنده">
+      aria-label="{result.channel === "OFFICIAL" ? "دریافت اپ فروشنده" : "دانلود نسخه آزمایشی فروشنده (APK)"}">
       {result.kind === "loading" && <p role="status">در حال بررسی دسترسی شما…</p>}
       {result.kind === "sign-in" && <>
         <p>برای دریافت لینک اختصاصی فروشندگان، ابتدا وارد حساب خود شوید.</p>
@@ -63,7 +65,7 @@ export function SellerAppDownloadView() {
         وضعیت دسترسی یا انتشار اپ در حال حاضر قابل تأیید نیست. بعداً دوباره بررسی کنید.
       </p>}
       {result.kind === "ready" && <>
-        <p>حساب فروشندگی شما فعال است. نسخه رسمی اندروید از لینک زیر قابل دریافت است.</p>
+        <p>{result.channel === "OFFICIAL" ? "حساب فروشندگی شما فعال است. نسخه رسمی اندروید آماده دریافت است." : "حساب فروشندگی شما فعال است. نسخه آزمایشی اندروید با امضای Debug برای تست نصب آماده است؛ این نسخه انتشار رسمی نیست."}</p>
         <a href={result.url} rel="noopener noreferrer" className="primary-button"
           style={{ display: "inline-block", width: "auto", textDecoration: "none" }}>
           دریافت اپ فروشنده
