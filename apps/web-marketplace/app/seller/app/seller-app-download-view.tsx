@@ -48,7 +48,7 @@ export function SellerAppDownloadView() {
 
   return (
     <section className="surface-card" style={{ padding: 28, margin: "26px 0 70px" }}
-      aria-label="{result.channel === "OFFICIAL" ? "دریافت اپ فروشنده" : "دانلود نسخه آزمایشی فروشنده (APK)"}">
+      aria-label="دریافت اپ فروشنده">
       {result.kind === "loading" && <p role="status">در حال بررسی دسترسی شما…</p>}
       {result.kind === "sign-in" && <>
         <p>برای دریافت لینک اختصاصی فروشندگان، ابتدا وارد حساب خود شوید.</p>
@@ -59,7 +59,7 @@ export function SellerAppDownloadView() {
         <Link href="/seller/register/status" className="site-header__back">پیگیری وضعیت فروشندگی</Link>
       </>}
       {result.kind === "pending" && <p role="status">
-        حساب شما فعال است، اما نسخه قابل دانلود اپ فروشنده هنوز برای انتشار تأیید نشده است.
+        حساب شما فعال است، اما هنوز نسخه آزمایشی یا رسمی قابل دانلود ثبت نشده است.
       </p>}
       {result.kind === "unavailable" && <p role="alert">
         وضعیت دسترسی یا انتشار اپ در حال حاضر قابل تأیید نیست. بعداً دوباره بررسی کنید.
@@ -68,7 +68,7 @@ export function SellerAppDownloadView() {
         <p>{result.channel === "OFFICIAL" ? "حساب فروشندگی شما فعال است. نسخه رسمی اندروید آماده دریافت است." : "حساب فروشندگی شما فعال است. نسخه آزمایشی اندروید با امضای Debug برای تست نصب آماده است؛ این نسخه انتشار رسمی نیست."}</p>
         <a href={result.url} rel="noopener noreferrer" className="primary-button"
           style={{ display: "inline-block", width: "auto", textDecoration: "none" }}>
-          دریافت اپ فروشنده
+          {result.channel === "OFFICIAL" ? "دریافت اپ فروشنده" : "دانلود نسخه آزمایشی فروشنده (APK)"}
         </a>
       </>}
     </section>
