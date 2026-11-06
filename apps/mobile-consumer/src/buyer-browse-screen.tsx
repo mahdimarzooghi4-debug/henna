@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Image, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView,
   StatusBar, StyleSheet, Text as NativeText, type TextProps, TextInput, View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -55,6 +55,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const lastLink = useRef(link.token);
   const [draftSearch, setDraftSearch] = useState(link.route.browse.search);
   const [searchError, setSearchError] = useState("");
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const scroll = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -87,6 +88,10 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
 
   const categories = browse.categories;
   const products = browse.products;
+  const openAccountAction = (action: () => void) => {
+    setAccountMenuOpen(false);
+    action();
+  };
   const onAccount = isSignedIn ? onLogout : onLogin;
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
@@ -146,7 +151,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
 
           <View style={styles.sectionHeadingRow}>
             <Pressable onPress={() => scroll.current?.scrollTo({ y: 440, animated: true })}><Text style={styles.sectionLink}>همه پیشنهادها</Text></Pressable>
-            <Text style={styles.sectionHeading}>پیشنهادهای امروز</Text>
+            <Text accessibilityLabel="کالاها را در حنا مرور کنید" style={styles.sectionHeading}>پیشنهادهای امروز</Text>
           </View>
           {products.status === "loading" ? (
             <View style={styles.emptyProducts}><Text style={styles.emptyText}>در حال دریافت پیشنهادها…</Text></View>
@@ -203,11 +208,23 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
           {browse.search ? <Pressable onPress={() => { setDraftSearch(""); controller.submitSearch(""); }} style={styles.clearSearch}><Text style={styles.sectionLink}>پاک کردن جست‌وجو</Text></Pressable> : null}
         </ScrollView>
         <View style={styles.bottomNav}>
-          <Pressable onPress={onAccount} style={[styles.navItem, styles.navInactive]}><FigmaIcon name="user" size={22} color="#8E8E93" /><Text style={styles.navLabel}>حساب</Text></Pressable>
-          <Pressable onPress={onOrders} style={[styles.navItem, styles.navInactive]}><FigmaIcon name="receipt" size={22} color="#8E8E93" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
-          <Pressable onPress={() => onCart()} style={[styles.navItem, styles.navInactive]}><FigmaIcon name="cart" size={22} color="#8E8E93" /><Text style={styles.navLabel}>سبد</Text></Pressable>
+          <Pressable onPress={() => setAccountMenuOpen(true)} accessibilityRole="button" accessibilityLabel="حساب" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="user" size={22} color="#8E8E93" /><Text style={styles.navLabel}>حساب</Text></Pressable>
+          <Pressable onPress={onOrders} accessibilityRole="button" accessibilityLabel="سفارش‌های من" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="receipt" size={22} color="#8E8E93" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
+          <Pressable onPress={() => onCart()} accessibilityRole="button" accessibilityLabel="سبد خرید" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="cart" size={22} color="#8E8E93" /><Text style={styles.navLabel}>سبد</Text></Pressable>
           <View style={styles.navItem}><FigmaIcon name="home" size={22} color={colors.teal} /><Text style={styles.navLabel}>خانه</Text></View>
         </View>
+        <Modal visible={accountMenuOpen} transparent animationType="slide" onRequestClose={() => setAccountMenuOpen(false)}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setAccountMenuOpen(false)}>
+            <View style={styles.accountSheet}>
+              <View style={styles.sheetHandle} />
+              <Text accessibilityRole="header" style={styles.accountHeading}>حساب کاربری</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="گزارش‌ها و مرجوعی‌های من" onPress={() => openAccountAction(onIssues)} style={styles.accountAction}><Text style={styles.accountActionText}>گزارش‌ها و مرجوعی‌های من</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="کیف پول" onPress={() => openAccountAction(onWallet)} style={styles.accountAction}><Text style={styles.accountActionText}>کیف پول</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="اعلان‌ها و پشتیبانی" onPress={() => openAccountAction(onSupport)} style={styles.accountAction}><Text style={styles.accountActionText}>اعلان‌ها و پشتیبانی</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={isSignedIn ? "خروج از حساب" : "ورود به حنا"} onPress={() => openAccountAction(onAccount)} style={[styles.accountAction, styles.accountLogout]}><Text style={[styles.accountActionText, styles.accountLogoutText]}>{isSignedIn ? "خروج از حساب" : "ورود به حنا"}</Text></Pressable>
+            </View>
+          </Pressable>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -248,4 +265,5 @@ const styles = StyleSheet.create({
   categoryRail: { gap: 18, paddingHorizontal: 25, paddingTop: 12, paddingBottom: 16, flexDirection: "row-reverse" }, categoryItem: { width: 70, alignItems: "center", gap: 6 }, categoryImage: { width: 60, height: 60, borderRadius: 30 }, categoryName: { color: colors.teal, fontSize: 11, fontWeight: "700", maxWidth: 70, ...rtl },
   categoryNotice: { color: "#8E8E93", fontSize: 11, paddingHorizontal: 20, paddingTop: 12, ...rtl }, categoryUnavailable: { minHeight: 90, justifyContent: "center", gap: 8 }, categoryRecovery: { marginHorizontal: 20, marginTop: 8, color: colors.teal, fontSize: 11, ...rtl }, clearSearch: { padding: 20, alignItems: "flex-end" },
   bottomNav: { height: 68, paddingHorizontal: 12, paddingTop: 5, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: "#EFEAE3", flexDirection: "row", justifyContent: "space-around" }, navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 1 }, navInactive: { opacity: 0.55 }, navLabel: { color: colors.teal, fontSize: 10, ...rtl },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(35,31,28,0.28)" }, accountSheet: { backgroundColor: colors.cream, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 30, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 10 }, sheetHandle: { alignSelf: "center", width: 38, height: 4, borderRadius: 3, backgroundColor: "#D5CFC8", marginBottom: 6 }, accountHeading: { color: colors.charcoal, fontSize: 17, fontWeight: "800", marginBottom: 2, ...rtl }, accountAction: { minHeight: 48, paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.surface, justifyContent: "center" }, accountActionText: { color: colors.charcoal, fontSize: 13, fontWeight: "600", ...rtl }, accountLogout: { backgroundColor: colors.paleTeal }, accountLogoutText: { color: colors.teal, fontWeight: "700" },
 });
