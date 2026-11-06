@@ -6,6 +6,7 @@ import {
 
 test("only human-configured plausible HTTPS release links can be published", () => {
   assert.equal(approvedAndroidReleaseUrl(undefined), null);
+  assert.equal(approvedAndroidReleaseUrl("https://github.com/mahdimarzooghi4-debug/henna/releases/download/preview-1/hana-buyer-preview.apk"), "https://github.com/mahdimarzooghi4-debug/henna/releases/download/preview-1/hana-buyer-preview.apk");
   assert.equal(approvedAndroidReleaseUrl(""), null);
   assert.equal(approvedAndroidReleaseUrl("http://downloads.example.com/app.apk"), null);
   assert.equal(approvedAndroidReleaseUrl("https://username:secret@downloads.example.com/app.apk"), null);
