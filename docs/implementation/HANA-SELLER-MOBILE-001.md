@@ -19,6 +19,10 @@ The four order/inventory/incident metrics and inventory warning examples in Figm
 - Orders are read-only. No order transition, settlement, bank, provider dispatch or fabricated financial operation; future mobile mutations need persisted idempotency, ACK-loss recovery, and explicit test coverage.
 
 ## Verification and remaining gates
-The mobile job typechecks the new app, exercises transport/guard/DTO tests, and exports the Android JS bundle. This does NOT prove an installed APK, native device interaction, external SMS provider, bank or logistics integration, real buyer/seller data, full Figma fidelity, Stage or Production readiness.
+- The mobile job typechecks the new app, exercises transport/guard/DTO tests, and exports the Android JS bundle.
+- The Android native job builds separate buyer and seller APKs from their committed Expo configurations. Both are CI-only debug-signed artifacts, not store-ready releases.
+- The seller APK is built with `EXPO_PUBLIC_HANA_API_BASE_URL` explicitly unset, installed into the Android Emulator, and checked for a distinct package ID, real native launch, guest-only access gate, local phone validation, and fail-closed OTP behavior when no API/SMS origin exists.
+- The buyer APK continues through its independent installed-APK Android intent and native UI smoke test.
+- These checks do NOT prove real SMS delivery, an authenticated production seller session, seller activation or suspension against a live environment, real seller/PostgreSQL order data, bank or logistics integration, complete Figma fidelity, Stage or Production readiness.
 
-Future slices: native seller product list and prices, orders details and governed mutations, incident handling, external provider gates, Android installed tests. Keep PR Draft/Open and do not merge/deploy without explicit approval.
+Future slices: authenticated seller APK smoke against an isolated PostgreSQL-backed API with an explicitly controlled test identity and no external SMS; native seller product/listing read models and prices; order details and separately governed mutations; incident handling; external provider gates. Keep PR Draft/Open and do not merge/deploy without explicit approval.
