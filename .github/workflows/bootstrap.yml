@@ -675,6 +675,12 @@ jobs:
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
         run: ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-consumer/android
+      - name: Generate native Android project from seller Expo configuration
+        run: npx expo prebuild --platform android --no-install
+        working-directory: apps/mobile-seller
+      - name: Compile separate seller Android APK without API origin or credentials
+        run: env -u EXPO_PUBLIC_HANA_API_BASE_URL ./gradlew :app:assembleRelease --no-daemon
+        working-directory: apps/mobile-seller/android
       - name: Enable KVM for hardware-accelerated emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -690,4 +696,4 @@ jobs:
           cores: 2
           ram-size: 3072M
           disable-animations: true
-          script: python3 tests/mobile-android-native-smoke.py
+          script: python3 tests/mobile-android-native-smoke.py && python3 tests/mobile-seller-android-smoke.py
