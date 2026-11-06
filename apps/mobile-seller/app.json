@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "حنا فروشنده",
+    "slug": "hana-seller",
+    "scheme": "hana-seller",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "version": "0.1.0",
+    "icon": "./assets/hana-seller-app-icon.jpg",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "android": {
+      "edgeToEdgeEnabled": true
+    },
+    "extra": {
+      "implementationPhase": "Seller mobile first slice: OTP sign-in, seller access gate, dashboard and order workflow."
+    }
+  }
+}
