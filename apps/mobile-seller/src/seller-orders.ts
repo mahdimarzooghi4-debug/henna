@@ -12,13 +12,17 @@ export type SellerOrdersResult =
 /** Read-only seller-scoped orders; the API, not mobile state, enforces ownership. */
 export class SellerOrdersClient {
   private readonly base: string | null;
+  private readonly store: TokenStore;
+  private readonly fetchFn: typeof fetch;
   constructor(
     apiBase: string | undefined,
-    private readonly store: TokenStore,
-    private readonly fetchFn: typeof fetch = fetch,
+    store: TokenStore,
+    fetchFn: typeof fetch = fetch,
     allowLocalHttp = false,
   ) {
     this.base = safeApiBaseUrl(apiBase, allowLocalHttp);
+    this.store = store;
+    this.fetchFn = fetchFn;
   }
   async load(page: number): Promise<SellerOrdersResult> {
     if (!this.base || !Number.isSafeInteger(page) || page < 1 || page > 10000)

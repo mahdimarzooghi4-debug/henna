@@ -69,13 +69,17 @@ export function parseSellerIdentity(value: unknown): SellerIdentity | null {
 
 export class SellerAccessClient {
   private readonly base: string | null;
+  private readonly store: TokenStore;
+  private readonly fetchFn: typeof fetch;
   constructor(
     apiBase: string | undefined,
-    private readonly store: TokenStore,
-    private readonly fetchFn: typeof fetch = fetch,
+    store: TokenStore,
+    fetchFn: typeof fetch = fetch,
     allowLocalHttp = false,
   ) {
     this.base = safeApiBaseUrl(apiBase, allowLocalHttp);
+    this.store = store;
+    this.fetchFn = fetchFn;
   }
 
   async load(): Promise<SellerAccessResult> {
