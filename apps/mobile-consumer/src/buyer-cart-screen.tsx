@@ -16,7 +16,6 @@ export function BuyerCartScreen({api,onBack,onLogin,onCheckout,selectedProduct}:
  useEffect(()=>{controller.start();const app=AppState.addEventListener("change",s=>{if(s==="active")void controller.refresh();});return()=>{app.remove();controller.stop();};},[controller]);
  useEffect(()=>{const back=BackHandler.addEventListener("hardwareBackPress",()=>{if(!state.busy&&!state.intent)onBack();return true;});return()=>back.remove();},[onBack,state.busy,state.intent]);
  const disabled=state.busy||!!state.intent;
- const hasItems=!!state.cart?.items.length;
  const action=(label:string,run:()=>void,off=false,small=false,primary=false,visible=label)=><Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled:off}} disabled={off} onPress={run} style={[styles.button,small&&styles.stepButton,primary&&styles.primary,off&&styles.disabled]}><Text style={[styles.buttonText,primary&&styles.primaryText,small&&styles.stepText]}>{visible}</Text></Pressable>;
  return <SafeAreaView style={styles.safe} edges={["top","bottom"]}>
    <View style={styles.header}>
@@ -50,7 +49,7 @@ export function BuyerCartScreen({api,onBack,onLogin,onCheckout,selectedProduct}:
      {state.intent&&action("بررسی نتیجه درخواست قبلی",()=>void controller.retry(),state.busy)}
    </ScrollView>
    <View style={styles.footer}>
-     {action("مقایسه فروشگاه‌ها و ادامه خرید",onCheckout,disabled||!hasItems,false,true,"مقایسه فروشگاه‌ها و انتخاب")}
+     {action("مقایسه فروشگاه‌ها و ادامه خرید",onCheckout,disabled,false,true,"مقایسه فروشگاه‌ها و انتخاب")}
    </View>
  </SafeAreaView>;
 }
