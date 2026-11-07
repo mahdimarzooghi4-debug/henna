@@ -21,7 +21,7 @@ export function BuyerCartScreen({api,onBack,onLogin,onCheckout,selectedProduct}:
  return <SafeAreaView style={styles.safe} edges={["top","bottom"]}>
    <View style={styles.header}>
      {action("بازگشت",onBack,disabled,true,false,"›")}
-     <Text style={styles.headerTitle} accessibilityRole="header">سبد خرید شما</Text>
+     <Text style={styles.headerTitle} accessibilityRole="header" accessibilityLabel="سبد مرجع خرید">سبد خرید شما</Text>
      <View style={styles.headerSpacer}/>
    </View>
    <ScrollView style={styles.scroller} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
