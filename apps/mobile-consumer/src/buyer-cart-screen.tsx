@@ -50,7 +50,7 @@ export function BuyerCartScreen({api,onBack,onLogin,onCheckout,selectedProduct}:
      {state.intent&&action("بررسی نتیجه درخواست قبلی",()=>void controller.retry(),state.busy)}
    </ScrollView>
    <View style={styles.footer}>
-     {action("مقایسه فروشگاه‌ها و انتخاب",onCheckout,disabled||!hasItems,false,true)}
+     {action("مقایسه فروشگاه‌ها و ادامه خرید",onCheckout,disabled||!hasItems,false,true,"مقایسه فروشگاه‌ها و انتخاب")}
    </View>
  </SafeAreaView>;
 }
