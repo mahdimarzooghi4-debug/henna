@@ -670,47 +670,26 @@ jobs:
           done
           echo "Pinned Android NDK unavailable or corrupt; refusing to build"
           exit 1
-      - name: Extend generated Gradle wrapper network timeout in CI
+      - name: Use checksum-verified official Gradle distribution CDN in Android CI
         shell: bash
         working-directory: apps/mobile-consumer/android
         run: |
           set -euo pipefail
           properties=gradle/wrapper/gradle-wrapper.properties
           test -f "$properties" || { echo "Missing generated Gradle wrapper properties"; exit 1; }
-          # Expo currently generates Gradle 9.3.1. Reject an unreviewed
-          # version change rather than fetching a different release implicitly.
-          if ! grep -Eq '^distributionUrl=.*gradle-9[.]3[.]1-bin[.]zip
-      - name: Compile Android APK with embedded production JS (CI-only debug signing)
-        run: ./gradlew :app:assembleRelease --no-daemon
-        working-directory: apps/mobile-consumer/android
-      - name: Enable KVM for hardware-accelerated emulator
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Test actual Android intent delivery to installed buyer UI
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          cores: 2
-          ram-size: 3072M
-          disable-animations: true
-          script: python3 tests/mobile-android-native-smoke.py
- "$properties"; then
+          # Expo generates Gradle 9.3.1. Require a review for a version change.
+          if ! grep -Eq '^distributionUrl=.*gradle-9[.]3[.]1-bin[.]zip$' "$properties"; then
             echo "Unexpected generated Gradle distribution; review before changing CI"
             exit 1
           fi
-          # services.gradle.org repeatedly returned 504 on CI; use Gradle's
-          # official download CDN directly. Verify exact official ZIP SHA-256.
+          # services.gradle.org returned repeated 504 responses in CI.
+          # Download directly from Gradle's official CDN, with its published SHA-256.
           sed -i 's#services.gradle.org/distributions/#downloads.gradle.org/distributions/#' "$properties"
           grep -Fq 'downloads.gradle.org/distributions/gradle-9.3.1-bin.zip' "$properties"
           checksum=b266d5ff6b90eada6dc3b20cb090e3731302e553a27c5d3e4df1f0d76beaff06
           if grep -q '^distributionSha256Sum=' "$properties"; then
             grep -qx "distributionSha256Sum=$checksum" "$properties" || {
-              echo "Generated Gradle distribution checksum conflicts with official value"
+              echo "Generated Gradle checksum conflicts with official checksum"
               exit 1
             }
           else
