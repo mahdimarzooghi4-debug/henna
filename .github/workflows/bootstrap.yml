@@ -679,6 +679,11 @@ jobs:
           set -euo pipefail
           wrapper="apps/mobile-consumer/android/gradle/wrapper/gradle-wrapper.properties"
           test -f "$wrapper"
+          # Avoid GitHub-hosted runner 504 from the services.gradle.org redirect.
+          # downloads.gradle.org is the official direct Gradle distribution host.
+          grep -Fq 'gradle-9.3.1-bin.zip' "$wrapper"
+          sed -i 's#services.gradle.org/distributions/#downloads.gradle.org/distributions/#' "$wrapper"
+          grep -Fq 'downloads.gradle.org/distributions/gradle-9.3.1-bin.zip' "$wrapper"
           if grep -q '^networkTimeout=' "$wrapper"; then
             sed -i 's/^networkTimeout=.*/networkTimeout=120000/' "$wrapper"
           else
@@ -704,6 +709,11 @@ jobs:
           set -euo pipefail
           wrapper="apps/mobile-seller/android/gradle/wrapper/gradle-wrapper.properties"
           test -f "$wrapper"
+          # Avoid GitHub-hosted runner 504 from the services.gradle.org redirect.
+          # downloads.gradle.org is the official direct Gradle distribution host.
+          grep -Fq 'gradle-9.3.1-bin.zip' "$wrapper"
+          sed -i 's#services.gradle.org/distributions/#downloads.gradle.org/distributions/#' "$wrapper"
+          grep -Fq 'downloads.gradle.org/distributions/gradle-9.3.1-bin.zip' "$wrapper"
           if grep -q '^networkTimeout=' "$wrapper"; then
             sed -i 's/^networkTimeout=.*/networkTimeout=120000/' "$wrapper"
           else
