@@ -670,6 +670,21 @@ jobs:
           done
           echo "Pinned Android NDK unavailable or corrupt; refusing to build"
           exit 1
+      - name: Extend generated Gradle wrapper network timeout in CI
+        shell: bash
+        working-directory: apps/mobile-consumer/android
+        run: |
+          set -euo pipefail
+          properties=gradle/wrapper/gradle-wrapper.properties
+          test -f "$properties" || { echo "Missing generated Gradle wrapper properties"; exit 1; }
+          # The generated wrapper defaults to a 10s HTTP read timeout, which
+          # repeatedly failed while fetching the pinned Gradle distribution.
+          if grep -q '^networkTimeout=' "$properties"; then
+            sed -i -E 's/^networkTimeout=.*/networkTimeout=120000/' "$properties"
+          else
+            printf '\nnetworkTimeout=120000\n' >> "$properties"
+          fi
+          grep -qx 'networkTimeout=120000' "$properties"
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
         run: ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-consumer/android
