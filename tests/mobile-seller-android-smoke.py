@@ -2,8 +2,8 @@
 """Install and exercise the separate Henna seller APK on a real Android Emulator.
 
 The APK is CI-only debug-signed and built without an API origin or credentials.
-This verifies native packaging, app separation, guest access gate, OTP form
-validation and fail-closed behavior when SMS/API infrastructure is absent. It
+This verifies native packaging, app separation, guest access gate, optional
+local preview without OTP and no access to private seller data. It
 does not claim real OTP delivery, seller activation or authenticated data.
 """
 import glob
@@ -130,35 +130,27 @@ def main():
     )
     execute("adb", "shell", "monkey", "-p", seller_package, "1", timeout=60)
 
+    # Preview has a separate local session, NOT seller authorization.
     ui = wait_screen(
         "پیشخوان فروشنده حنا",
-        "ورود به حساب فروشنده",
-        "دریافت کد تأیید",
+        "ورود آزمایشی فروشنده بدون پیامک",
     )
-    for forbidden in ("پیشخوان کسب‌وکار", "فروشنده فعال", "آمار عملیاتی",
-                      "فروشگاه واقعی"):
-        assert forbidden not in ui, (
-            f"Guest seller session unexpectedly exposed private data: {forbidden}"
-        )
-
-    # Blank input is rejected locally before any network request.
-    tap_text("دریافت کد تأیید")
-    ui = wait_screen("شماره تلفن معتبر نیست.")
-    assert "فروشگاه واقعی" not in ui
-
-    # A syntactically valid number cannot produce an OTP when no API/SMS
-    # origin is configured in this CI APK; the app must report unavailable.
-    tap_phone_input()
-    execute("adb", "shell", "input", "text", "09123456789")
-    execute("adb", "shell", "input", "keyevent", "4")
-    tap_text("دریافت کد تأیید")
-    ui = wait_screen("سرویس پیامک یا ورود در دسترس نیست.")
-    assert "ورود موفق" not in ui
     assert "پیشخوان کسب‌وکار" not in ui
+    tap_text("ورود آزمایشی فروشنده بدون پیامک")
+    ui = wait_screen("پیش‌نمایش اپ فروشنده", "محیط نمایشی حنا")
+    assert "فروشنده فعال" not in ui
+    assert "آمار عملیاتی" not in ui
+    assert "فروشگاه واقعی" not in ui
+    # Preview survives an app restart without OTP and still has no seller data.
+    execute("adb", "shell", "am", "force-stop", seller_package)
+    execute("adb", "shell", "monkey", "-p", seller_package, "1", timeout=60)
+    wait_screen("پیش‌نمایش اپ فروشنده", "محیط نمایشی حنا")
+    tap_text("خروج از پیش‌نمایش")
+    wait_screen("ورود آزمایشی فروشنده بدون پیامک")
 
     print(
-        "PASS: separate seller APK installed and launched; guest gate, "
-        "local OTP validation and no-API fail-closed UI verified",
+        "PASS: separate seller APK installed, preview entry without OTP, "
+        "local persistence and explicit logout; no private data exposed",
         flush=True,
     )
 

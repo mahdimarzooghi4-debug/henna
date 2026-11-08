@@ -4,9 +4,10 @@
   "private": true,
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
+    "start": "node ../../tools/mobile/generate-seller-icons.mjs && expo start",
     "typecheck": "tsc --noEmit",
-    "export:android": "expo export --platform android --output-dir ../../.expo-export-seller"
+    "export:android": "node ../../tools/mobile/generate-seller-icons.mjs && expo export --platform android --output-dir ../../.expo-export-seller",
+    "prepare:android-icon": "node ../../tools/mobile/generate-seller-icons.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/vazirmatn": "0.4.1",

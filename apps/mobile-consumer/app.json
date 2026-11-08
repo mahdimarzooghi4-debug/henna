@@ -33,6 +33,10 @@
     },
     "extra": {
       "implementationPhase": "Buyer commerce cold-start recovery, evidence cleanup and foreground address location; SMS/PSP/logistics external integrations pending"
+    },
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#F7F3ED"
     }
   }
 }

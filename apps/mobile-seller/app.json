@@ -6,16 +6,24 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "version": "0.1.0",
-    "icon": "./assets/hana-seller-app-icon.png",
+    "icon": "./assets/hana-seller-icon-clean.png",
     "newArchEnabled": true,
     "plugins": [
       "expo-secure-store"
     ],
     "android": {
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/hana-seller-adaptive-foreground.png",
+        "backgroundColor": "#055247"
+      }
     },
     "extra": {
       "implementationPhase": "Seller mobile first slice: OTP sign-in, seller access gate, dashboard and order workflow."
+    },
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#FAF8F5"
     }
   }
 }

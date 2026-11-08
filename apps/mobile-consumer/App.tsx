@@ -278,7 +278,28 @@ function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
           </View>
 
           <View style={styles.card}>
-            {view === "phone" && (
+            {previewLoginEnabled && (view === "phone" || view === "offline") && (
+              <>
+                <Text style={styles.cardHeading}>بازدید آزمایشی از حنا</Text>
+                <Text style={styles.inputHint}>
+                  برای مشاهده کاتالوگ و بررسی صفحات، نیازی به شماره تلفن یا پیامک نیست.
+                  این ورود آزمایشی به کیف پول، سفارش‌های واقعی یا خرید دسترسی نمی‌دهد.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="ورود آزمایشی بدون پیامک"
+                  disabled={status === "loading"}
+                  style={({ pressed }) => [
+                    styles.primaryButton, pressed && styles.primaryButtonPressed,
+                  ]}
+                  onPress={() => void onDemoLogin().catch(() =>
+                    Alert.alert("ورود آزمایشی انجام نشد", "ذخیره نشست روی دستگاه ممکن نیست."))}
+                >
+                  <Text style={styles.primaryButtonText}>ورود آزمایشی بدون پیامک</Text>
+                </Pressable>
+              </>
+            )}
+            {view === "phone" && !previewLoginEnabled && (
               <>
                 <Text style={styles.cardHeading}>ورود با شماره موبایل</Text>
                 <Text nativeID="mobile-phone-label" style={styles.fieldLabel}>شماره موبایل</Text>
@@ -321,18 +342,6 @@ function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
                     {status === "loading" ? "در حال بررسی…" : "دریافت کد تأیید"}
                   </Text>
                 </Pressable>
-                {previewLoginEnabled && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="ورود آزمایشی بدون پیامک"
-                    disabled={status === "loading"}
-                    style={({ pressed }) => [styles.demoButton, pressed && styles.primaryButtonPressed]}
-                    onPress={() => void onDemoLogin().catch(() =>
-                      Alert.alert("ورود آزمایشی انجام نشد", "فضای امن دستگاه برای نگهداری نشست در دسترس نیست."))}
-                  >
-                    <Text style={styles.demoButtonText}>ورود آزمایشی بدون پیامک</Text>
-                  </Pressable>
-                )}
                 {status !== "idle" && status !== "loading" && (
                   <Text accessibilityRole="alert" style={[
                     styles.formStatus, status === "invalid" && styles.formStatusError,
@@ -348,7 +357,7 @@ function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
               </>
             )}
 
-            {view === "code" && (
+            {view === "code" && !previewLoginEnabled && (
               <>
                 {/* Technical OTP step only: its final visual frame needs approved Figma. */}
                 <Text style={styles.fieldLabel}>کد تأیید برای {phone}</Text>
@@ -659,6 +668,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.cream} translucent={false} />
       {!fontsLoaded && !fontError ? <View style={styles.flex}><Text>در حال آماده‌سازی فونت…</Text></View> : fontError ? <View style={styles.flex}><Text>بارگذاری فونت انجام نشد؛ اپ را دوباره باز کنید.</Text></View> : link === null ? <View style={styles.flex} /> :
         <>
           <View style={{flex:1,display:screen === "browse" ? "flex" : "none"}}><BuyerBrowseScreen link={link} active={screen === "browse"}

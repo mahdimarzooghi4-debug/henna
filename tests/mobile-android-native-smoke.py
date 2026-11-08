@@ -198,6 +198,17 @@ def main():
     print(f"Installed APK package={package}, sha=CI native build", flush=True)
     execute("adb", "install", "-r", str(APK), timeout=150)
 
+    # A normal icon launch of the CI preview must expose a no-SMS primary
+    # action; it is a local preview session, not an authenticated buyer.
+    execute("adb", "shell", "monkey", "-p", package, "1", timeout=60)
+    wait_screen("ورود آزمایشی بدون پیامک")
+    tap_label("ورود آزمایشی بدون پیامک")
+    wait_screen("کالاها را در حنا مرور کنید")
+    # Native preview remains on the catalog without re-entering a code.
+    execute("adb", "shell", "am", "force-stop", package)
+    execute("adb", "shell", "monkey", "-p", package, "1", timeout=60)
+    wait_screen("کالاها را در حنا مرور کنید")
+
     # Actual Android app launch from a COLD-start external detail URI.
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(DETAIL, package)

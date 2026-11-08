@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView,
-  StyleSheet, Text, TextInput, View,
+  StyleSheet, StatusBar, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
@@ -14,6 +14,8 @@ import { SellerAccessClient, type SellerIdentity } from "./src/seller-access.ts"
 import { SellerOrdersClient, type SellerOrdersResult } from "./src/seller-orders.ts";
 
 const tokenKey = "hana.seller.session.v1";
+const previewKey = "hana.seller.preview.v1";
+const sellerPreviewAllowed = __DEV__ || process.env.EXPO_PUBLIC_HANA_DEMO_LOGIN === "true";
 const secureOptions = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
 const store = {
   read: () => SecureStore.getItemAsync(tokenKey, secureOptions),
@@ -27,7 +29,7 @@ const sellerOrders = new SellerOrdersClient(apiBase, store, fetch, __DEV__);
 const logo = require("../mobile-consumer/assets/hana-app-logo.png");
 
 type Gate =
-  | { kind: "checking" | "guest" | "denied" | "unavailable" }
+  | { kind: "checking" | "guest" | "denied" | "unavailable" | "preview" }
   | { kind: "ready"; seller: SellerIdentity };
 type Orders = SellerOrdersResult | { kind: "idle" | "loading" };
 const stateLabel: Record<string, string> = {
@@ -62,6 +64,14 @@ export default function App() {
     const current = ++epoch.current;
     setGate({ kind: "checking" }); // Never show stale private data during revalidation.
     setOrders({ kind: "idle" });
+    if (sellerPreviewAllowed) {
+      const flag = await SecureStore.getItemAsync(previewKey, secureOptions).catch(() => null);
+      if (current !== epoch.current) return;
+      if (flag === "v1") {
+        setGate({ kind: "preview" }); // Deliberately no identity, role or orders request.
+        return;
+      }
+    }
     const session = await auth.session();
     if (current !== epoch.current) return;
     if (session.status === "guest") { setGate({ kind: "guest" }); return; }
@@ -144,6 +154,23 @@ export default function App() {
     } finally { pending.current = false; setBusy(false); }
   }
 
+  async function enterPreview() {
+    if (!sellerPreviewAllowed || pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    try {
+      await SecureStore.setItemAsync(previewKey, "v1", secureOptions);
+      ++epoch.current;
+      setGate({ kind: "preview" });
+      setNotice("");
+    } catch {
+      setNotice("ثبت نشست آزمایشی روی دستگاه ممکن نیست.");
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }
+
   async function signOut() {
     if (pending.current) return;
     // Invalidate any in-flight foreground/session check before revoking the token.
@@ -153,6 +180,13 @@ export default function App() {
     setGate({ kind: "checking" });
     setOrders({ kind: "idle" });
     try {
+      if (gate.kind === "preview") {
+        await SecureStore.deleteItemAsync(previewKey, secureOptions);
+        setGate({ kind: "guest" });
+        setTab("dashboard");
+        setPage(1);
+        return;
+      }
       const result = await auth.logout();
       setGate(result.status === "signedOut"
         ? { kind: "guest" } : { kind: "unavailable" });
@@ -242,6 +276,7 @@ export default function App() {
   }
 
   return <SafeAreaProvider>
+    <StatusBar barStyle="dark-content" backgroundColor="#FAF8F5" translucent={false} />
     <SafeAreaView style={styles.root}>
       {!fontsLoaded && !fontError ? <Text style={styles.muted}>در حال آماده‌سازی…</Text> : <>
         <View style={styles.header}>
@@ -268,6 +303,28 @@ export default function App() {
               <Text style={styles.navLabel}>خروج</Text>
             </Pressable>
           </View>
+        </> : gate.kind === "preview" ? <>
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+            <View style={styles.body}>
+              <Text style={styles.heading}>پیش‌نمایش اپ فروشنده</Text>
+              <View style={styles.panel}>
+                <Text style={styles.kicker}>ورود آزمایشی · بدون پیامک</Text>
+                <Text style={styles.cardTitle}>محیط نمایشی حنا</Text>
+                <Text style={styles.muted}>هیچ فروشنده‌ای احراز هویت نشده است. سفارش، قیمت، تسویه و اطلاعات واقعی در این حالت قابل مشاهده یا تغییر نیست.</Text>
+              </View>
+              <View style={styles.metrics}>
+                {["سفارش‌ها", "کالاها", "تسویه‌ها", "اعلان‌ها"].map(label =>
+                  <View key={label} style={styles.metric}>
+                    <Text style={styles.kicker}>{label}</Text>
+                    <Text style={styles.metricUnavailable}>—</Text>
+                  </View>)}
+              </View>
+              <Text style={styles.hint}>برای عملیات واقعی، تأیید فروشندگی و ورود امن از طریق سرور الزامی است.</Text>
+              <Pressable style={styles.action} onPress={() => void signOut()}>
+                <Text style={styles.actionText}>خروج از پیش‌نمایش</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
         </> : <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -289,7 +346,16 @@ export default function App() {
                 </>
               : <>
                   <Text style={styles.heading}>ورود به حساب فروشنده</Text>
-                  {otpStep === "phone" ? <>
+                  {sellerPreviewAllowed && <>
+                    <Text style={styles.muted}>برای بررسی ظاهری اپ، بدون شماره تلفن وارد پیش‌نمایش شوید؛ به داده‌های واقعی دسترسی ندارید.</Text>
+                    <Pressable accessibilityRole="button"
+                      accessibilityLabel="ورود آزمایشی فروشنده بدون پیامک"
+                      style={styles.action} disabled={busy}
+                      onPress={() => void enterPreview()}>
+                      <Text style={styles.actionText}>ورود آزمایشی فروشنده بدون پیامک</Text>
+                    </Pressable>
+                  </>}
+                  {!sellerPreviewAllowed && (otpStep === "phone" ? <>
                     <TextInput
                       style={styles.input}
                       placeholder="شماره موبایل ۰۹..."
@@ -322,6 +388,7 @@ export default function App() {
                       <Text style={styles.muted}>تغییر شماره / دریافت کد جدید</Text>
                     </Pressable>
                   </>}
+                  )}
                   {notice ? <Text style={styles.error} accessibilityRole="alert">{notice}</Text> : null}
                 </>}
           </ScrollView>

@@ -26,3 +26,11 @@ The four order/inventory/incident metrics and inventory warning examples in Figm
 - These checks do NOT prove real SMS delivery, an authenticated production seller session, seller activation or suspension against a live environment, real seller/PostgreSQL order data, bank or logistics integration, complete Figma fidelity, Stage or Production readiness.
 
 Future slices: authenticated seller APK smoke against an isolated PostgreSQL-backed API with an explicitly controlled test identity and no external SMS; native seller product/listing read models and prices; order details and separately governed mutations; incident handling; external provider gates. Keep PR Draft/Open and do not merge/deploy without explicit approval.
+
+## Android preview UX remediation (2026-11-08)
+- Preview builds show a clear no-SMS entry for buyers, using a local SecureStore flag that persists until explicit logout. Backend identity is **not** fabricated and cart/order/wallet operations remain protected.
+- Seller preview is an isolated local shell with **no store identity, order fetch, payout access or fabricated metrics**. It is not seller activation or authorized sign-in; live seller operations still require verified credentials and an active server-side seller role.
+- Buyer and seller explicitly request dark status bar text/icons against their light headers.
+- Seller launcher assets are regenerated deterministically from the already approved emblem: edge-connected cream canvas is removed, the square is filled teal, and Android adaptive foreground is transparent on a teal background.
+- Generated launcher files are prepared before native prebuild; the original approved source icon is retained unchanged for auditability.
+- All changes stay in development PR until exact-head CI, Android Emulator checks, and the owner release gate pass. Old downloaded APKs are not updated in-place.
