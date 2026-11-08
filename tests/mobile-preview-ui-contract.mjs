@@ -31,5 +31,6 @@ test("status bar icons use dark content against light surfaces",()=>{
  assert.equal(scfg.expo.androidStatusBar.barStyle,"dark-content");
  assert.equal(scfg.expo.android.adaptiveIcon.backgroundColor,"#055247");
  assert.equal(bcfg.expo.android.adaptiveIcon.backgroundColor,"#FFF2E3");
- assert.match(bcfg.expo.icon,/hana-buyer-icon-with-word\.png$/);
+ assert.match(bcfg.expo.icon,/hana-buyer-icon-only\.png$/);
+ assert.match(scfg.expo.icon,/hana-seller-icon-only\.png$/);
 });
