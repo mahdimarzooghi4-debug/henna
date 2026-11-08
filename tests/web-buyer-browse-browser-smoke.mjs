@@ -100,7 +100,11 @@ async function main() {
 
   await page.goto(base);
   await page.getByText("هنوز دسته‌بندی قابل نمایش در حنا ثبت نشده است.").waitFor();
-  await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
+  // At the unfiltered empty catalog the current Figma-aligned layout renders
+  // a visual preview, not a fabricated API-backed published product result.
+  await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
+  assert.equal(await page.locator(".buyer-product").count(), 0);
+  assert.equal(await page.getByText("عنوان واقعی API در تست 1").count(), 0);
   assert.equal(await page.getByRole("banner").getByRole("link", { name: "ورود یا ثبت‌نام" }).count(), 1);
   assert.equal(await page.getByText("عنوان واقعی API در تست 1").count(), 0);
 
