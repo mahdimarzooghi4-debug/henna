@@ -47,8 +47,18 @@ async function snapshot(page) {
       const { left, width, right } = element.getBoundingClientRect();
       boxes[name] = { left, width, right };
     }
+    const navigation = document.querySelector('nav[aria-label="دسته‌بندی اصلی"]');
+    if (!navigation) throw new Error("Buyer category navigation missing");
+    const navigationScroll = {
+      clientHeight: navigation.clientHeight,
+      scrollHeight: navigation.scrollHeight,
+      clientWidth: navigation.clientWidth,
+      scrollWidth: navigation.scrollWidth,
+      overflowY: getComputedStyle(navigation).overflowY,
+    };
     return {
       boxes,
+      navigationScroll,
       viewport: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,
       documentClientWidth: document.documentElement.clientWidth,
@@ -83,6 +93,18 @@ async function main() {
     assert.ok(result.documentWidth<=result.documentClientWidth+1,
       "Unexpected page-wide horizontal overflow at "+width+
       ": document="+result.documentWidth+", viewport="+result.documentClientWidth);
+    // Reproduces the owner's Chrome screenshot: the category bar must never
+    // show a vertical scrollbar beside "همه دسته‌ها".
+    assert.equal(result.navigationScroll.overflowY,"hidden",
+      "Vertical nav scrolling must be disabled at "+width);
+    assert.ok(result.navigationScroll.scrollHeight<=result.navigationScroll.clientHeight+1,
+      "Category labels must fit nav height at "+width+
+      ": content="+result.navigationScroll.scrollHeight+
+      ", viewport="+result.navigationScroll.clientHeight);
+    if(width===390){
+      assert.ok(result.navigationScroll.scrollWidth>result.navigationScroll.clientWidth+10,
+        "Mobile category links must remain horizontally scrollable");
+    }
   }
   assert.deepEqual(errors, []);
   await context.close();

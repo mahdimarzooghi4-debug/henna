@@ -378,8 +378,12 @@
 }
 .chrome .nav{
   padding-inline:0;
+  /* Keep link text inside the 65px bar: 12px block padding made a
+     vertical overflow scrollbar appear beside "همه دسته‌ها" in Chrome. */
+  padding-block:8px;
   min-width:0;
   overflow-x:auto;
+  overflow-y:hidden;
   overscroll-behavior-x:contain;
 }
 .chrome .nav a{flex:0 0 auto}
