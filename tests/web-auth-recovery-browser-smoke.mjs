@@ -144,7 +144,7 @@ async function main() {
     document.activeElement?.id === "auth-code");
   assert.equal(otpRequests, 1);
   await page.locator("#auth-code").fill("۱۲۳۴۵۶");
-  await page.getByRole("button", { name: "درخواست کد جدید" }).click();
+  await page.getByRole("button", { name: "دریافت مجدد کد" }).click();
   await page.getByText("درخواست مجدد زود است", {
     exact: false,
   }).waitFor();
@@ -153,7 +153,7 @@ async function main() {
   assert.equal(await page.locator("#auth-code").count(), 1);
   assert.equal(otpRequests, 2);
 
-  await page.getByRole("button", { name: "درخواست کد جدید" }).click();
+  await page.getByRole("button", { name: "دریافت مجدد کد" }).click();
   await page.getByText("کد قبلی دیگر معتبر نیست", {
     exact: false,
   }).waitFor();
@@ -163,7 +163,7 @@ async function main() {
   assert.equal(otpRequests, 3);
 
   await page.locator("#auth-code").fill("۹۹۹۹۹۹");
-  await page.getByRole("button", { name: "درخواست کد جدید" }).click();
+  await page.getByRole("button", { name: "دریافت مجدد کد" }).click();
   await page.getByText("کد قبلی ممکن است باطل شده باشد", {
     exact: false,
   }).waitFor();
@@ -179,7 +179,7 @@ async function main() {
   await page.locator("#auth-code").waitFor();
   assert.equal(otpRequests, 5);
   await page.locator("#auth-code").fill("۱۲۳۴۵۶");
-  await page.getByRole("button", { name: "درخواست کد جدید" }).click();
+  await page.getByRole("button", { name: "دریافت مجدد کد" }).click();
   await page.getByText("کد قبلی ممکن است باطل شده باشد", {
     exact: false,
   }).waitFor();
@@ -191,7 +191,7 @@ async function main() {
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await page.locator("#auth-code").waitFor();
   await page.locator("#auth-code").fill("123");
-  await page.getByRole("button", { name: "تأیید کد و ورود" }).click();
+  await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.getByText("کد تأیید باید شش رقم باشد.").waitFor();
   assert.equal(verifyCalls, 0);
   assert.equal(await page.locator("#auth-code").getAttribute(
@@ -202,11 +202,11 @@ async function main() {
     "role"), "alert");
 
   await page.locator("#auth-code").fill("999999");
-  await page.getByRole("button", { name: "تأیید کد و ورود" }).click();
+  await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.getByText("کد یا اطلاعات تأیید معتبر نیست.").waitFor();
   assert.equal(verifyCalls, 1);
   await page.locator("#auth-code").fill("888888");
-  await page.getByRole("button", { name: "تأیید کد و ورود" }).click();
+  await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.getByText("تعداد تلاش‌ها زیاد است", {
     exact: false,
   }).waitFor();
@@ -214,7 +214,7 @@ async function main() {
   assert.equal(await page.locator("#auth-code").inputValue(),
     "888888");
   await page.locator("#auth-code").fill("۱۲۳۴۵۶");
-  await page.getByRole("button", { name: "تأیید کد و ورود" }).click();
+  await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.getByText("ورود انجام شده است", {
     exact: false,
   }).waitFor();
