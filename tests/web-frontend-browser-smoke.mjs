@@ -508,7 +508,7 @@ async function main() {
     await dialog.dismiss();
   });
   await page.getByRole("link", {
-    name: "ورود / ثبت‌نام", exact: true,
+    name: "حساب کاربری", exact: true,
   }).click();
   assert.equal(confirmCount, 1);
   assert.equal(new URL(page.url()).pathname, "/seller/register");
