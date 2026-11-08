@@ -46,7 +46,7 @@ export default function BuyerAppDownloadPage() {
                   دریافت نسخهٔ خریدار
                 </a>
               ) : buyerPreviewUrl ? (
-                <a className={styles.primary} href="/api/mobile-apk/buyer" rel="noopener noreferrer" download>
+                <a className={styles.primary} href={buyerPreviewUrl} rel="noopener noreferrer" download>
                   دانلود APK خریدار
                 </a>
               ) : (
@@ -63,7 +63,7 @@ export default function BuyerAppDownloadPage() {
                 ورود فروشنده، مشاهدهٔ پنل و مدیریت سفارش‌های فروشگاه.
               </p>
               {sellerPreviewUrl ? (
-                <a className={styles.secondary} href="/api/mobile-apk/seller" rel="noopener noreferrer" download>
+                <a className={styles.secondary} href={sellerPreviewUrl} rel="noopener noreferrer" download>
                   دانلود APK فروشنده
                 </a>
               ) : (
