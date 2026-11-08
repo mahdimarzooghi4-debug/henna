@@ -678,7 +678,7 @@ export default function App() {
               setSelectedProduct(id??null);setScreen("cart");
             }} /></View>
           {screen === "cart" && <BuyerCartScreen api={commerce} onCheckout={()=>setScreen("checkout")} selectedProduct={selectedProduct} onBack={() => setScreen("browse")} onLogin={() => {authReturn.current="cart";setScreen("auth");}} />}
-          {screen === "checkout" && <BuyerCheckoutScreen onOrder={(id)=>{setSelectedOrder(id);setScreen("orders");}} api={commerce} onBack={()=>setScreen("cart")} onLogin={()=>{authReturn.current="checkout";setScreen("auth");}} />}
+          {screen === "checkout" && <BuyerCheckoutScreen onOrder={(id)=>{setSelectedOrder(id);setScreen("orders");}} onHome={()=>setScreen("browse")} onOrders={()=>{setSelectedOrder(null);setScreen("orders");}} onCart={()=>setScreen("cart")} onAccount={()=>setScreen("browse")} api={commerce} onBack={()=>setScreen("cart")} onLogin={()=>{authReturn.current="checkout";setScreen("auth");}} />}
           {screen === "orders" && <BuyerOrdersScreen onIssues={(id)=>{setIncidentOrder(id);incidentReturn.current="orders";setScreen("incidents");}} api={commerce} selectedId={selectedOrder} onBack={()=>setScreen("browse")} onLogin={()=>{authReturn.current="orders";setScreen("auth");}} />}
           {screen === "incidents" && <BuyerIncidentsScreen api={commerce} orderId={incidentOrder} onBack={()=>{if(incidentReturn.current==="orders")setSelectedOrder(incidentOrder);setScreen(incidentReturn.current);}} onLogin={()=>{authReturn.current="incidents";setScreen("auth");}} />}
           {screen === "support" && <BuyerSupportScreen api={commerce}
