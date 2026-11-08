@@ -586,7 +586,7 @@ jobs:
         run: npm run mobile:typecheck
       - name: Typecheck seller mobile application
         run: npm run seller-mobile:typecheck
-      - name: Verify no-lettering seller icon generation and Android adaptive layers
+      - name: Verify buyer and seller «حنا» launcher icon generation and adaptive layers
         run: node tools/mobile/generate-seller-icons.mjs && node --test tests/mobile-seller-icon-generation.mjs
       - name: Validate buyer/seller preview entry isolation and status bar configuration
         run: node --test tests/mobile-preview-ui-contract.mjs
@@ -651,6 +651,8 @@ jobs:
           java-version: '17'
       - name: Install monorepo dependencies
         run: npm install --no-audit --no-fund
+      - name: Generate both owner-approved «حنا» icons before native prebuild
+        run: node tools/mobile/generate-seller-icons.mjs && node --test tests/mobile-seller-icon-generation.mjs
       - name: Generate native Android project from committed Expo configuration
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile-consumer
@@ -725,8 +727,6 @@ jobs:
             sleep 20
           done
         working-directory: apps/mobile-consumer/android
-      - name: Rebuild clean seller launcher icon and adaptive foreground
-        run: node tools/mobile/generate-seller-icons.mjs && node --test tests/mobile-seller-icon-generation.mjs
       - name: Generate native Android project from seller Expo configuration
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile-seller

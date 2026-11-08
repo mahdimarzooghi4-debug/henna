@@ -35,7 +35,10 @@ Future slices: authenticated seller APK smoke against an isolated PostgreSQL-bac
 - Generated launcher files are prepared before native prebuild; the original approved source icon is retained unchanged for auditability.
 - All changes stay in development PR until exact-head CI, Android Emulator checks, and the owner release gate pass. Old downloaded APKs are not updated in-place.
 
-### User-approved launcher asset constraint (2026-11-08)
-Both buyer and seller launcher icons must show only the **original pictorial Henna emblem**, with **no Persian or Latin brand lettering**, shop glyph, slogan, or caption. Buyer uses the approved cream background; seller uses a uniform deep-teal background without cream corners. Android adaptive foreground must contain only the emblem with transparent surrounding pixels. This applies to app launcher images only; normal accessibility labels and in-app branding may still say «حنا».
+### Final owner-updated launcher contract (2026-11-08)
 
-The seller generator extracts the original emblem from the historical logo-only icon; it never generates typographic pixels or overlays. Keep the existing buyer emblem-only PNG. Visual review on an installed APK remains necessary because Android launchers may apply masks.
+This replaces the previous **no-lettering** proposal. The owner explicitly requires the visible Persian brand word **«حنا» INSIDE both launcher icons**. Both icons must use the same approved pictorial emblem and the same brand word, with no added slogan, store glyph, outer black stroke or black/cream border. The buyer icon has a full-bleed cream (`#FFF2E3`) background. The seller icon has a full-bleed deep teal (`#055247`) background, with no cream corners.
+
+The deterministic icon generator uses the historical, already committed emblem and crops the existing repository brand wordmark from `hana-cart-logo.png` **above the subtitle**. It regenerates **both** normal 512px square icons and their transparent Android adaptive foregrounds **before Expo prebuild**, ensuring Android launcher masks do not create a black halo. The source assets are not overwritten. Tests assert edge pixels, shared artwork, transparent adaptive corners, and nonempty emblem and Persian word regions.
+
+This does not authorize a public APK or an untested release. CI, installed Android APK visual check, a newly signed build and explicit owner release approval remain mandatory.
