@@ -33,7 +33,7 @@ export async function GET(
     return errorResponse("فایل آزمایشی این اپ هنوز تنظیم نشده است.", 404);
 
   let upstream: Response | null = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       upstream = await fetch(url, {
         cache: "no-store",
@@ -41,13 +41,14 @@ export async function GET(
         headers: { Accept: "application/vnd.android.package-archive" },
       });
       if (upstream.ok) break;
-      if (upstream.status < 500 || attempt === 1)
+      console.warn("Mobile APK upstream returned an error", { app, status: upstream.status, attempt: attempt + 1 });
+      if (upstream.status < 500 || attempt === 3)
         return errorResponse("دریافت فایل اپ ممکن نشد؛ چند لحظه بعد دوباره تلاش کنید.", 502);
     } catch {
       if (attempt === 1)
         return errorResponse("ارتباط با مخزن اپ برقرار نشد؛ چند لحظه بعد دوباره تلاش کنید.", 502);
     }
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, 900));
   }
 
   if (!upstream?.ok || !upstream.body)
