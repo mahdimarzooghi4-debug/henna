@@ -5,8 +5,8 @@ import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "دانلود اپلیکیشن‌های حنا",
-  description: "دریافت نسخه‌های آزمایشی اندروید اپلیکیشن خریدار و فروشنده حنا",
+  title: "دانلود اپلیکیشن خریدار حنا",
+  description: "دریافت نسخه اندروید خریدار و بررسی دسترسی نصب اپ فروشنده حنا",
 };
 
 export default function BuyerAppDownloadPage() {
@@ -16,9 +16,6 @@ export default function BuyerAppDownloadPage() {
   const buyerPreviewUrl = approvedAndroidReleaseUrl(
     process.env.HANA_BUYER_ANDROID_PREVIEW_URL,
   );
-  const sellerPreviewUrl = approvedAndroidReleaseUrl(
-    process.env.HANA_SELLER_ANDROID_PREVIEW_URL,
-  );
 
   return (
     <>
@@ -26,13 +23,13 @@ export default function BuyerAppDownloadPage() {
       <main className={styles.main}>
         <section className={styles.card} aria-labelledby="download-title">
           <span className={styles.kicker}>اپلیکیشن‌های حنا · Android</span>
-          <h1 id="download-title">نسخه‌ها را نصب و بررسی کنید</h1>
+          <h1 id="download-title">دانلود اپلیکیشن خریدار حنا</h1>
           <p>
-            نسخه‌های آزمایشی خریدار و فروشنده را دریافت کنید و ایرادهای هر صفحه
-            را برای اصلاح مرحله‌به‌مرحله بفرستید.
+            اپ خریدار را برای مرور کالاها و پیگیری سفارش‌ها دریافت کنید.
+            نسخه آزمایشی فقط برای بررسی است؛ فروشندگان باید دسترسی خود را جداگانه تأیید کنند.
           </p>
           <div className={styles.version} role="status">
-            نسخهٔ بازبینی ۱۶۳۰-۲ · آزمایشی و مناسب بررسی
+            {buyerApprovedUrl ? "نسخه تأییدشده خریدار" : "نسخه آزمایشی خریدار، فقط برای بازبینی"}
           </div>
           <div className={styles.appGrid}>
             <article className={styles.appCard}>
@@ -62,20 +59,14 @@ export default function BuyerAppDownloadPage() {
               <p>
                 ورود فروشنده، مشاهدهٔ پنل و مدیریت سفارش‌های فروشگاه.
               </p>
-              {sellerPreviewUrl ? (
-                <a className={styles.secondary} href="/api/mobile-apk/seller" rel="noopener noreferrer" download>
-                  دانلود APK فروشنده
-                </a>
-              ) : (
-                <div className={styles.pending} role="status">
-                  فایل فروشنده هنوز در دسترس نیست.
-                </div>
-              )}
+              <a className={styles.secondary} href="/seller/app">
+                بررسی دسترسی دریافت اپ فروشنده
+              </a>
             </article>
           </div>
           <p className={styles.note}>
-            این نسخه‌ها برای بازبینی هستند و انتشار رسمی فروشگاهی محسوب نمی‌شوند.
-            پس از نصب، لطفاً ایرادها را به تفکیک صفحه بفرستید.
+            لینک نسخه آزمایشی خریدار، در صورت پیکربندی، برای بازبینی است و انتشار رسمی محسوب نمی‌شود.
+            دانلود نسخه فروشنده تنها پس از ورود و تأیید وضعیت فعال حساب ارائه می‌شود.
           </p>
         </section>
       </main>

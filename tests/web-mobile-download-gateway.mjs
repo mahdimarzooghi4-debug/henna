@@ -67,6 +67,8 @@ async function run() {
         NEXT_TELEMETRY_DISABLED: "1",
         HANA_API_BASE_URL: "https://127.0.0.1:3473",
         NODE_EXTRA_CA_CERTS: cert,
+        HANA_BUYER_ANDROID_APPROVED_URL: "",
+        HANA_SELLER_ANDROID_APPROVED_URL: "",
         HANA_BUYER_ANDROID_PREVIEW_URL: buyerUrl,
         HANA_SELLER_ANDROID_PREVIEW_URL: sellerUrl,
       },
@@ -89,9 +91,24 @@ async function run() {
   assert.match(home, /href="\/download"/);
   const buyer = await (await fetch(webOrigin + "/download")).text();
   assert.match(buyer, /دانلود اپلیکیشن خریدار حنا/);
-  assert.ok(buyer.includes(buyerUrl));
   assert.match(buyer, /نسخه آزمایشی/);
-  assert.match(buyer, /دانلود نسخه آزمایشی خریدار/);
+  assert.match(buyer, /دانلود APK خریدار/);
+  assert.match(buyer, /href="\/api\/mobile-apk\/buyer"/);
+  assert.match(buyer, /href="\/seller\/app"/);
+  assert.doesNotMatch(buyer, /href="\/api\/mobile-apk\/seller"/);
+  assert.equal(buyer.includes(sellerUrl), false, "public page must not reveal seller APK URL");
+  assert.equal(buyer.includes(buyerUrl), false, "public page must not embed server-only APK URL");
+
+  const buyerRedirect = await fetch(webOrigin + "/api/mobile-apk/buyer", { redirect: "manual" });
+  assert.equal(buyerRedirect.status, 302);
+  assert.equal(buyerRedirect.headers.get("location"), buyerUrl);
+  assert.match(buyerRedirect.headers.get("cache-control") ?? "", /no-store/);
+  for (const name of ["seller", "unknown"]) {
+    const publicSeller = await fetch(webOrigin + "/api/mobile-apk/" + name, { redirect: "manual" });
+    assert.equal(publicSeller.status, 404, "public APK endpoint must never serve " + name);
+    assert.equal(publicSeller.headers.get("location"), null);
+    assert.match(publicSeller.headers.get("cache-control") ?? "", /no-store/);
+  }
   assert.equal(upstreamCalls, 0, "public download must not call seller API");
 
   const noAuth = await fetch(webOrigin + "/api/seller/mobile-download");

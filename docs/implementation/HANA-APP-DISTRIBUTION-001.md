@@ -23,3 +23,13 @@ The URL itself is **not** a DRM-protected or one-time private object. If a selle
 - Next HTTPS upstream gateway smoke tests anonymous rejection, approval-only denial, active release availability, suspension revocation, invalid payload denial, and public buyer page visibility.
 - Android native APK/emulator tests remain in PR #194 and are a separate readiness gate.
 - No merge, Stage, Release Approval or Production deployment without explicit owner direction.
+
+## 2026-11-08 — Public preview access and CI hardening (PR #195)
+
+- Public `/download` exposes a buyer-only download action when an explicitly configured `HANA_BUYER_ANDROID_APPROVED_URL` or `HANA_BUYER_ANDROID_PREVIEW_URL` is valid. A preview is visibly identified as **not a release-approved production application**. No fixed preview version or implicitly trusted GitHub release asset ID is embedded in code.
+- `GET /api/mobile-apk/buyer` redirects without caching only to an explicitly configured valid buyer URL; absent configuration it fails closed (503). The public `/api/mobile-apk/seller` and other app identifiers always return 404, whether or not a seller preview URL is configured.
+- The public seller card points only to `/seller/app`. Its downloadable URL is returned solely by `/api/seller/mobile-download` after fresh session, approved registration, activation, current server-side seller role and suspension checks. Exposing a seller app file URL is not the same as authorizing a seller account; re-sharing an already revealed external artifact URL remains possible.
+- `HANA_SELLER_ANDROID_PREVIEW_URL` is an optional, explicitly configured **testing-only** destination for eligible activated sellers and is not an official release. Real release requires human approval of the exact signed artifact, checksum, hosting domain and official HTTPS URL before setting the respective `*_APPROVED_URL` value.
+- The web HTTPS-upstream smoke now asserts public seller route denial, buyer redirect configuration, lack of leaked server-only URLs, review-only denial, suspension revocation, and fail-closed malformed upstream data. Android Gradle download timeouts are external CI infrastructure failures to be checked by a clean rerun; no Android product behavior is changed here.
+
+**Gate:** This PR stays Draft/Open; no merge, Stage, production, or official app release is authorized.
