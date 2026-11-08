@@ -387,8 +387,7 @@ export default function App() {
                     <Pressable onPress={() => { setOtpStep("phone"); setCode(""); setChallengeId(null); setNotice(""); }}>
                       <Text style={styles.muted}>تغییر شماره / دریافت کد جدید</Text>
                     </Pressable>
-                  </>}
-                  )}
+                  </>)}
                   {notice ? <Text style={styles.error} accessibilityRole="alert">{notice}</Text> : null}
                 </>}
           </ScrollView>
