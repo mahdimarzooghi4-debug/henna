@@ -673,14 +673,52 @@ jobs:
           done
           echo "Pinned Android NDK unavailable or corrupt; refusing to build"
           exit 1
+      - name: Make generated Gradle wrappers resilient to network stalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrapper="apps/mobile-consumer/android/gradle/wrapper/gradle-wrapper.properties"
+          test -f "$wrapper"
+          if grep -q '^networkTimeout=' "$wrapper"; then
+            sed -i 's/^networkTimeout=.*/networkTimeout=120000/' "$wrapper"
+          else
+            printf '\nnetworkTimeout=120000\n' >> "$wrapper"
+          fi
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
-        run: ./gradlew :app:assembleRelease --no-daemon
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then break; fi
+            if test "$attempt" -eq 3; then exit 1; fi
+            sleep 15
+          done
+          ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-consumer/android
       - name: Generate native Android project from seller Expo configuration
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile-seller
+      - name: Make seller Gradle wrapper resilient to network stalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrapper="apps/mobile-seller/android/gradle/wrapper/gradle-wrapper.properties"
+          test -f "$wrapper"
+          if grep -q '^networkTimeout=' "$wrapper"; then
+            sed -i 's/^networkTimeout=.*/networkTimeout=120000/' "$wrapper"
+          else
+            printf '\nnetworkTimeout=120000\n' >> "$wrapper"
+          fi
       - name: Compile separate seller Android APK without API origin or credentials
-        run: env -u EXPO_PUBLIC_HANA_API_BASE_URL ./gradlew :app:assembleRelease --no-daemon
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then break; fi
+            if test "$attempt" -eq 3; then exit 1; fi
+            sleep 15
+          done
+          env -u EXPO_PUBLIC_HANA_API_BASE_URL ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-seller/android
       - name: Enable KVM for hardware-accelerated emulator
         run: |
