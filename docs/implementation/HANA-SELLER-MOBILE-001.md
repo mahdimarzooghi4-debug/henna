@@ -35,10 +35,19 @@ Future slices: authenticated seller APK smoke against an isolated PostgreSQL-bac
 - Generated launcher files are prepared before native prebuild; the original approved source icon is retained unchanged for auditability.
 - All changes stay in development PR until exact-head CI, Android Emulator checks, and the owner release gate pass. Old downloaded APKs are not updated in-place.
 
-### Final owner-updated launcher contract (2026-11-08)
+### Historical launcher contract — superseded (2026-11-08)
 
 This replaces the previous **no-lettering** proposal. The owner explicitly requires the visible Persian brand word **«حنا» INSIDE both launcher icons**. Both icons must use the same approved pictorial emblem and the same brand word, with no added slogan, store glyph, outer black stroke or black/cream border. The buyer icon has a full-bleed cream (`#FFF2E3`) background. The seller icon has a full-bleed deep teal (`#055247`) background, with no cream corners.
 
 The deterministic icon generator uses the historical, already committed emblem and crops the existing repository brand wordmark from `hana-cart-logo.png` **above the subtitle**. It regenerates **both** normal 512px square icons and their transparent Android adaptive foregrounds **before Expo prebuild**, ensuring Android launcher masks do not create a black halo. The source assets are not overwritten. Tests assert edge pixels, shared artwork, transparent adaptive corners, and nonempty emblem and Persian word regions.
 
 This does not authorize a public APK or an untested release. CI, installed Android APK visual check, a newly signed build and explicit owner release approval remain mandatory.
+
+
+### Latest owner decision — pictorial-only launcher icons (2026-11-08)
+
+The owner explicitly **reverses and supersedes** the previous wordmark-inside-icon direction above: buyer and seller launcher icons must contain **only the pictorial Henna emblem**, with no visible written «حنا», English/Persian lettering, slogan, subtitle, or invented badge. The OS label under an icon is separate app metadata and remains unchanged.
+
+The deterministic `tools/mobile/generate-seller-icons.mjs` isolates the original approved pictorial mark and now composites only that emblem, never reading the repository's wordmark source. Both 512px normal launcher icons share the same artwork, centered on their approved full-bleed colors: buyer cream `#FFF2E3`, seller deep teal `#055247`. Both Android adaptive foregrounds contain the same centered emblem with transparent surrounding pixels, independently backed by the Android background colors. Expo now points to `hana-buyer-icon-only.png` and `hana-seller-icon-only.png`. Original historical sources remain unchanged.
+
+The CI generator runs before Expo native prebuild. Regression tests check consistent symbols, center-only placement with no separate text area, exact edge colors, transparency and PNG geometry. Previously installed APKs are not automatically updated; new Android builds, visual QA, and explicit human release approval are required. iOS Native remains out of scope. No merge or deploy is authorized.

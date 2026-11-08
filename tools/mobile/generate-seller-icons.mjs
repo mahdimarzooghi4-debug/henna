@@ -1,13 +1,8 @@
-/**
- * Android launcher assets for buyer and seller.
- * Reuses the existing approved Henna emblem and the branded Persian «حنا»
- * wordmark from the repository's own hana-cart-logo.png. The old seller
- * source has an unwanted cream canvas; only its actual non-teal emblem is
- * kept. Everything outside the artwork is full-bleed cream or teal.
- *
- * User's latest contract: both icons MUST include «حنا» lettering and have
- * NO black frame; buyer=cream, seller=dark teal. Do not add the subtitle.
- * Android adaptive foreground stays transparent outside the logo lockup.
+/** Android launcher asset generator.
+ * Latest owner decision: ONLY the approved pictorial Henna emblem.
+ * No separate word lettering, slogan, subtitle, borders, or seller glyph.
+ * Buyer cream and seller teal backgrounds; adaptive icon transparency.
+ * Original approved source assets stay unmodified.
  */
 import sharp from "sharp";
 import { fileURLToPath } from "node:url";
@@ -17,7 +12,6 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const buyerDir = resolve(root, "apps/mobile-consumer/assets");
 const sellerDir = resolve(root, "apps/mobile-seller/assets");
 const sourceSeller = resolve(sellerDir, "hana-seller-app-icon.png");
-const sourceWordmark = resolve(buyerDir, "hana-cart-logo.png");
 const backgrounds = {
   buyer: { r: 255, g: 242, b: 227, alpha: 1 },
   seller: { r: 5, g: 82, b: 71, alpha: 1 },
@@ -77,44 +71,19 @@ const emblem = await sharp(isolated, { raw: { width, height, channels: 4 } })
   .extract({ left: minX, top: minY, width: maxX - minX + 1, height: maxY - minY + 1 })
   .png().toBuffer();
 
-// The repo's approved logo has «حنا» in its upper-left portion, with
-// the subtitle on the bottom row. Crop the main word only (never subtitle).
-const { width: logoWidth, height: logoHeight } = await sharp(sourceWordmark).metadata();
-if (logoWidth !== 220 || logoHeight !== 72)
-  throw new Error("Approved wordmark source dimensions changed; review crop");
-const wordmark = await sharp(sourceWordmark)
-  .extract({ left: 0, top: 0, width: 141, height: 51 })
-  .trim({ threshold: 8 })
-  .png().toBuffer();
-const wordInfo = await sharp(wordmark).metadata();
-if (!wordInfo.width || !wordInfo.height ||
-    wordInfo.width < 70 || wordInfo.height < 20)
-  throw new Error("Henna wordmark crop is incomplete");
-
-async function fitted(buffer, maxWidth, maxHeight) {
-  const image = await sharp(buffer)
-    .resize({ width: maxWidth, height: maxHeight, fit: "inside",
-              kernel: "lanczos3" })
+// Keep a single pictorial mark safely centered in each Android launcher icon.
+async function centeredEmblem(limit) {
+  const buffer = await sharp(emblem)
+    .resize({ width: limit, height: limit, fit: "inside", kernel: "lanczos3" })
     .png().toBuffer();
-  const { width, height } = await sharp(image).metadata();
-  if (!width || !height) throw new Error("Invalid resized icon artwork");
-  return { input: image, left: Math.floor((size - width) / 2), height };
+  const { width: w, height: h } = await sharp(buffer).metadata();
+  if (!w || !h || w > limit || h > limit)
+    throw new Error("Invalid resized emblem");
+  return [{ input: buffer, left: Math.floor((size - w) / 2),
+            top: Math.floor((size - h) / 2) }];
 }
-async function makeLockup(adaptive) {
-  const mark = await fitted(emblem, adaptive ? 160 : 195, adaptive ? 181 : 222);
-  const word = await fitted(wordmark, adaptive ? 252 : 312, adaptive ? 84 : 105);
-  const markTop = adaptive ? 114 : 74;
-  const wordTop = adaptive ? 301 : 310;
-  if (wordTop + word.height >= size - 70)
-    throw new Error("Wordmark exceeds Android icon safe area");
-  const overlays = [
-    { input: mark.input, left: mark.left, top: markTop },
-    { input: word.input, left: word.left, top: wordTop },
-  ];
-  return overlays;
-}
-const regularOverlays = await makeLockup(false);
-const adaptiveOverlays = await makeLockup(true);
+const regularOverlays = await centeredEmblem(336);
+const adaptiveOverlays = await centeredEmblem(276);
 
 async function render(target, color, overlays, transparent) {
   const background = transparent
@@ -126,13 +95,13 @@ async function render(target, color, overlays, transparent) {
     .toFile(target);
 }
 await Promise.all([
-  render(resolve(buyerDir, "hana-buyer-icon-with-word.png"),
+  render(resolve(buyerDir, "hana-buyer-icon-only.png"),
     backgrounds.buyer, regularOverlays, false),
   render(resolve(buyerDir, "hana-buyer-adaptive-foreground.png"),
     backgrounds.buyer, adaptiveOverlays, true),
-  render(resolve(sellerDir, "hana-seller-icon-clean.png"),
+  render(resolve(sellerDir, "hana-seller-icon-only.png"),
     backgrounds.seller, regularOverlays, false),
   render(resolve(sellerDir, "hana-seller-adaptive-foreground.png"),
     backgrounds.seller, adaptiveOverlays, true),
 ]);
-console.log("Generated buyer/seller Android icons with «حنا» and border-free adaptive layers");
+console.log("Generated logo-only buyer/seller Android launcher icons");
