@@ -680,22 +680,24 @@ async function main() {
     name: "مشاهده وضعیت درخواست",
   }).click();
   await otherTab.waitForURL("**/seller/register/status");
-  await otherTab.getByRole("heading", {
-    name: "درخواست در حال بررسی است",
-  }).waitFor();
-  await otherTab.getByText("کد پیگیری: HNA-A1B2C3D4E5F60718", {
+  const actualStatus = otherTab.locator(".seller-status-actual");
+  await actualStatus.locator("summary").waitFor();
+  await actualStatus.locator("summary").click();
+  await actualStatus.getByText(/HNA-A1B2C3D4E5F60718/).waitFor();
+  await actualStatus.getByText("در حال بررسی", {
     exact: true,
   }).waitFor();
-  await otherTab.getByText("بررسی درخواست", { exact: true }).waitFor();
-  const panelButton = otherTab.getByRole("button", {
+  await actualStatus.getByText("بررسی درخواست", {
+    exact: true,
+  }).waitFor();
+  assert.equal(await actualStatus.getByRole("link", {
     name: "ورود به پنل فروشنده",
-  });
-  assert.equal(await panelButton.isDisabled(), true);
+  }).count(), 0, "under-review accounts must not receive seller panel access");
 
   await otherTab.reload();
-  await otherTab.getByText("کد پیگیری: HNA-A1B2C3D4E5F60718", {
-    exact: true,
-  }).waitFor();
+  const refreshedStatus = otherTab.locator(".seller-status-actual");
+  await refreshedStatus.locator("summary").click();
+  await refreshedStatus.getByText(/HNA-A1B2C3D4E5F60718/).waitFor();
 
   draft = {
     ...draft,
@@ -705,10 +707,10 @@ async function main() {
     activatedAtUtc: "2026-09-25T13:45:00Z",
   };
   await otherTab.reload();
-  await otherTab.getByRole("heading", {
-    name: "درخواست فروشندگی تأیید شده است",
-  }).waitFor();
-  const panelLink = otherTab.getByRole("link", {
+  const approvedStatus = otherTab.locator(".seller-status-actual");
+  await approvedStatus.locator("summary").click();
+  await approvedStatus.getByText("تأیید شده", { exact: true }).waitFor();
+  const panelLink = approvedStatus.getByRole("link", {
     name: "ورود به پنل فروشنده",
   });
   await panelLink.waitFor();
