@@ -383,7 +383,7 @@ async function main() {
   await page.locator("#auth-phone").fill("۰۹۱۲۳۴۵۶۷۸۹");
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await page.locator("#auth-code").fill("۱۲۳۴۵۶");
-  await page.getByRole("button", { name: "تأیید کد و ورود" }).click();
+  await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.waitForURL("**/seller/register");
   await page.locator("#store-name").waitFor({ state: "visible" });
   await page.locator("#store-name").waitFor({ state: "attached" });
