@@ -34,3 +34,8 @@ Future slices: authenticated seller APK smoke against an isolated PostgreSQL-bac
 - Seller launcher assets are regenerated deterministically from the already approved emblem: edge-connected cream canvas is removed, the square is filled teal, and Android adaptive foreground is transparent on a teal background.
 - Generated launcher files are prepared before native prebuild; the original approved source icon is retained unchanged for auditability.
 - All changes stay in development PR until exact-head CI, Android Emulator checks, and the owner release gate pass. Old downloaded APKs are not updated in-place.
+
+### User-approved launcher asset constraint (2026-11-08)
+Both buyer and seller launcher icons must show only the **original pictorial Henna emblem**, with **no Persian or Latin brand lettering**, shop glyph, slogan, or caption. Buyer uses the approved cream background; seller uses a uniform deep-teal background without cream corners. Android adaptive foreground must contain only the emblem with transparent surrounding pixels. This applies to app launcher images only; normal accessibility labels and in-app branding may still say «حنا».
+
+The seller generator extracts the original emblem from the historical logo-only icon; it never generates typographic pixels or overlays. Keep the existing buyer emblem-only PNG. Visual review on an installed APK remains necessary because Android launchers may apply masks.
