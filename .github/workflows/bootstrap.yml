@@ -450,6 +450,8 @@ jobs:
         run: node tests/web-auth-visibility-browser-smoke.mjs
       - name: Browser test approved buyer homepage and public catalog states
         run: node tests/web-buyer-browse-browser-smoke.mjs
+      - name: Verify buyer Figma 190:4 header, nav, hero and category alignment
+        run: node tests/web-buyer-homepage-figma-layout-browser-smoke.mjs
       - name: Browser test approved public product detail states
         run: node tests/web-buyer-product-detail-browser-smoke.mjs
       - name: Browser test read-only buyer cart offer comparison
