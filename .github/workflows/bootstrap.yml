@@ -586,6 +586,8 @@ jobs:
         run: npm run mobile:typecheck
       - name: Typecheck seller mobile application
         run: npm run seller-mobile:typecheck
+      - name: Verify no-lettering seller icon generation and Android adaptive layers
+        run: node tools/mobile/generate-seller-icons.mjs && node --test tests/mobile-seller-icon-generation.mjs
       - name: Validate buyer/seller preview entry isolation and status bar configuration
         run: node --test tests/mobile-preview-ui-contract.mjs
       - name: Verify seller mobile seller-access and orders (CI-only mocked transport)
@@ -700,7 +702,28 @@ jobs:
             if test "$attempt" -eq 3; then exit 1; fi
             sleep 15
           done
-          ./gradlew :app:assembleRelease --no-daemon
+          export GRADLE_OPTS="-Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
+          for attempt in 1 2 3; do
+            log_file="$(mktemp)"
+            if ./gradlew :app:assembleRelease --no-daemon >"$log_file" 2>&1; then
+              tail -n 70 "$log_file"
+              rm -f "$log_file"
+              break
+            fi
+            tail -n 110 "$log_file"
+            if ! grep -Eqi '(Read timed out|Connect timed out|Connection reset|HTTP response code: 50[234]|Could not GET|Could not download)' "$log_file"; then
+              echo "Gradle failed for a non-network reason; not retrying" >&2
+              rm -f "$log_file"
+              exit 1
+            fi
+            rm -f "$log_file"
+            if test "$attempt" -eq 3; then
+              echo "Gradle dependency network retries exhausted" >&2
+              exit 1
+            fi
+            echo "Transient Gradle dependency download failure; retrying attempt $((attempt+1))/3"
+            sleep 20
+          done
         working-directory: apps/mobile-consumer/android
       - name: Rebuild clean seller launcher icon and adaptive foreground
         run: node tools/mobile/generate-seller-icons.mjs && node --test tests/mobile-seller-icon-generation.mjs
@@ -732,7 +755,28 @@ jobs:
             if test "$attempt" -eq 3; then exit 1; fi
             sleep 15
           done
-          env -u EXPO_PUBLIC_HANA_API_BASE_URL ./gradlew :app:assembleRelease --no-daemon
+          export GRADLE_OPTS="-Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
+          for attempt in 1 2 3; do
+            log_file="$(mktemp)"
+            if env -u EXPO_PUBLIC_HANA_API_BASE_URL ./gradlew :app:assembleRelease --no-daemon >"$log_file" 2>&1; then
+              tail -n 70 "$log_file"
+              rm -f "$log_file"
+              break
+            fi
+            tail -n 110 "$log_file"
+            if ! grep -Eqi '(Read timed out|Connect timed out|Connection reset|HTTP response code: 50[234]|Could not GET|Could not download)' "$log_file"; then
+              echo "Seller Gradle failed for a non-network reason; not retrying" >&2
+              rm -f "$log_file"
+              exit 1
+            fi
+            rm -f "$log_file"
+            if test "$attempt" -eq 3; then
+              echo "Seller Gradle dependency network retries exhausted" >&2
+              exit 1
+            fi
+            echo "Transient seller Gradle dependency download failure; retrying attempt $((attempt+1))/3"
+            sleep 20
+          done
         working-directory: apps/mobile-seller/android
       - name: Enable KVM for hardware-accelerated emulator
         run: |
