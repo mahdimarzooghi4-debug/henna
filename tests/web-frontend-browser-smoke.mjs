@@ -684,12 +684,18 @@ async function main() {
   await actualStatus.locator("summary").waitFor();
   await actualStatus.locator("summary").click();
   await actualStatus.getByText(/HNA-A۱B۲C۳D۴E۵F۶۰۷۱۸/).waitFor();
-  await actualStatus.getByText("در حال بررسی", {
-    exact: true,
-  }).waitFor();
-  await actualStatus.getByText("بررسی درخواست", {
-    exact: true,
-  }).waitFor();
+  const underReviewOverall = actualStatus.locator(
+    ".seller-status-actual__content p",
+  ).filter({ hasText: "وضعیت درخواست:" });
+  await underReviewOverall.waitFor();
+  assert.match(await underReviewOverall.innerText(),
+    /وضعیت درخواست:\s*در حال بررسی/);
+  const underReviewStep = actualStatus.locator(
+    ".seller-status-actual__content p",
+  ).filter({ hasText: "بررسی درخواست:" });
+  await underReviewStep.waitFor();
+  assert.match(await underReviewStep.innerText(),
+    /بررسی درخواست:\s*در حال بررسی/);
   assert.equal(await actualStatus.getByRole("link", {
     name: "ورود به پنل فروشنده",
   }).count(), 0, "under-review accounts must not receive seller panel access");
@@ -709,7 +715,12 @@ async function main() {
   await otherTab.reload();
   const approvedStatus = otherTab.locator(".seller-status-actual");
   await approvedStatus.locator("summary").click();
-  await approvedStatus.getByText("تأیید شده", { exact: true }).waitFor();
+  const approvedOverall = approvedStatus.locator(
+    ".seller-status-actual__content p",
+  ).filter({ hasText: "وضعیت درخواست:" });
+  await approvedOverall.waitFor();
+  assert.match(await approvedOverall.innerText(),
+    /وضعیت درخواست:\s*تأیید شده/);
   const panelLink = approvedStatus.getByRole("link", {
     name: "ورود به پنل فروشنده",
   });
