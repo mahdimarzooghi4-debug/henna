@@ -528,6 +528,10 @@ jobs:
         run: node --experimental-strip-types --test tests/web-seller-location-reference-smoke.mjs
       - name: Verify public geography Next gateway over isolated CI HTTPS
         run: node tests/web-geography-gateway-smoke.mjs
+      - name: Verify Android release URL policy and seller activation gate
+        run: node --experimental-strip-types --test tests/web-mobile-release-links.mjs
+      - name: Verify buyer download page and authenticated seller link endpoint
+        run: node tests/web-mobile-download-gateway.mjs
       - name: Test buyer browse public catalog parsing and query policy
         run: node --experimental-strip-types --test tests/web-buyer-browse-smoke.mjs
       - name: Test web public product detail DTO and ID policy
@@ -666,6 +670,37 @@ jobs:
           done
           echo "Pinned Android NDK unavailable or corrupt; refusing to build"
           exit 1
+      - name: Use checksum-verified official Gradle distribution CDN in Android CI
+        shell: bash
+        working-directory: apps/mobile-consumer/android
+        run: |
+          set -euo pipefail
+          properties=gradle/wrapper/gradle-wrapper.properties
+          test -f "$properties" || { echo "Missing generated Gradle wrapper properties"; exit 1; }
+          # Expo generates Gradle 9.3.1. Require a review for a version change.
+          if ! grep -Eq '^distributionUrl=.*gradle-9[.]3[.]1-bin[.]zip$' "$properties"; then
+            echo "Unexpected generated Gradle distribution; review before changing CI"
+            exit 1
+          fi
+          # services.gradle.org returned repeated 504 responses in CI.
+          # Download directly from Gradle's official CDN, with its published SHA-256.
+          sed -i 's#services.gradle.org/distributions/#downloads.gradle.org/distributions/#' "$properties"
+          grep -Fq 'downloads.gradle.org/distributions/gradle-9.3.1-bin.zip' "$properties"
+          checksum=b266d5ff6b90eada6dc3b20cb090e3731302e553a27c5d3e4df1f0d76beaff06
+          if grep -q '^distributionSha256Sum=' "$properties"; then
+            grep -qx "distributionSha256Sum=$checksum" "$properties" || {
+              echo "Generated Gradle checksum conflicts with official checksum"
+              exit 1
+            }
+          else
+            printf '\ndistributionSha256Sum=%s\n' "$checksum" >> "$properties"
+          fi
+          if grep -q '^networkTimeout=' "$properties"; then
+            sed -i -E 's/^networkTimeout=.*/networkTimeout=120000/' "$properties"
+          else
+            printf '\nnetworkTimeout=120000\n' >> "$properties"
+          fi
+          grep -qx 'networkTimeout=120000' "$properties"
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
         run: ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-consumer/android

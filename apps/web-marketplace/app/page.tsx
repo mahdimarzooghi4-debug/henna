@@ -1,5 +1,6 @@
 import { SiteHeader } from "../components/site-header";
 import { BuyerBrowse } from "../components/buyer-browse";
+import { BuyerAppBanner } from "../components/buyer-app-banner";
 import {
   buyerBrowseQuery, buyerParamsFromRecord, parseBuyerBrowseLocation,
 } from "../lib/buyer-catalog";
@@ -15,6 +16,7 @@ export default async function HomePage({
   return (
     <>
       <SiteHeader backHref="/auth" backLabel="ورود / ثبت‌نام" />
+      <BuyerAppBanner />
       <BuyerBrowse initialQuery={query} />
     </>
   );
