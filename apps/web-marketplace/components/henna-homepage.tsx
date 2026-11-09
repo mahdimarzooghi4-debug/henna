@@ -50,7 +50,7 @@ export default function HennaHomepage() {
         </div>
 
         <section className={`${styles.container} ${styles.categories}`} id="categories">
-          <div className={styles.sectionHeading}><h2>دسته‌بندی‌های محبوب</h2><Link href="/products#buyer-categories-title">مشاهده همه دسته‌ها</Link></div>
+          <div className={styles.sectionHeading}><h2>دسته‌بندی‌های محبوب</h2><Link href="/products">مشاهده همه دسته‌ها</Link></div>
           <div className={styles.categoryGrid}>{categories.map(([label, image]) => <Link className={styles.category} href={categoryHref(label)} key={label}><span><Image src={`/landing/${image}`} alt="" width={100} height={100} /></span><strong>{label}</strong></Link>)}</div>
         </section>
 
