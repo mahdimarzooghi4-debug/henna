@@ -3,7 +3,7 @@ import Link from "next/link";
 import styles from "./henna-homepage.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
 
-const categoryHref = (label: string) => `/products?categoryName=${encodeURIComponent(label)}#buyer-categories-title`;
+const categoryHref = (label: string) => `/products?categoryName=${encodeURIComponent(label)}`;
 
 export function LandingHeader({ referencePage = false }: { referencePage?: boolean }) {
   return (

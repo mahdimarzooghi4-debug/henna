@@ -176,6 +176,28 @@ async function main() {
   }).getByRole("link", { name: "همه دسته‌ها", exact: true })
     .getAttribute("href"), "/products");
 
+  // An unpublished homepage category never masquerades as a real catalog
+  // filter. Show a clear, same-origin way to reach the Figma overview.
+  await page.goto(base + "/");
+  const bakery = page.locator("#categories").getByRole("link", {
+    name: "نان و شیرینی", exact: true,
+  });
+  assert.ok((await bakery.getAttribute("href"))?.startsWith(
+    "/products?categoryName="));
+  assert.ok(!(await bakery.getAttribute("href")).includes("#"));
+  await bakery.click();
+  await page.waitForURL(url => url.pathname === "/products" &&
+    url.searchParams.has("categoryName"));
+  assert.equal(new URL(page.url()).hash, "");
+  await page.getByText(
+    "برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.",
+  ).waitFor();
+  await page.getByRole("link", {
+    name: "مشاهده صفحه همه کالاها و خدمات", exact: true,
+  }).click();
+  await page.waitForURL(base + "/products");
+  await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
+
   assert.deepEqual(errors, []);
   await context.close();
   console.log("Figma 190:4 buyer header/nav/hero/categories: 1440,1650,1100,900,390 Chromium alignment OK");

@@ -18,7 +18,7 @@ const categories = [
 ] as const;
 
 function categoryHref(label: string) {
-  return `/products?categoryName=${encodeURIComponent(label)}#buyer-categories-title`;
+  return `/products?categoryName=${encodeURIComponent(label)}`;
 }
 
 const steps = [
