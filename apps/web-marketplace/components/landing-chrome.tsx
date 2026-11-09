@@ -3,8 +3,6 @@ import Link from "next/link";
 import styles from "./henna-homepage.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
 
-const categoryHref = (label: string) => `/products?categoryName=${encodeURIComponent(label)}`;
-
 export function LandingHeader({ referencePage = false }: { referencePage?: boolean }) {
   return (
     <div className={referencePage ? `${styles.chrome} ${styles.referenceChrome}` : styles.chrome}>
@@ -15,7 +13,7 @@ export function LandingHeader({ referencePage = false }: { referencePage?: boole
             <Link className={styles.cart} href="/buyer/cart?mode=preview"><span className={styles.cartCount}><LandingCartCount /></span> سبد خرید <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 4h2l2.2 11h10.7L20 8H6"/><circle cx="9" cy="19" r="1"/><circle cx="17" cy="19" r="1"/></svg></Link>
             <Link className={styles.login} href="/account/profile">{referencePage ? "ورود یا حساب کاربری" : "حساب کاربری"} <svg className={styles.actionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 21c.5-4 2.8-6 7-6s6.5 2 7 6"/></svg></Link>
             <span className={styles.divider} />
-            <Link className={styles.sellerLink} href="/seller/register">{referencePage ? "ثبت‌نام فروشگاه‌ها" : "ثبت‌نام فروشگاه‌ها و ارائه‌دهندگان"}</Link>
+            <Link className={styles.sellerLink} href="/seller/register">ثبت‌نام فروشگاه‌ها</Link>
           </div>
           <form className={styles.search} action="/products">
             <input name="search" placeholder={referencePage ? "جست‌وجوی کالاها، خدمات و نیازهای روزمره محله..." : "جست‌وجوی کالاها، خدمات و نیازهای روزمره..."} aria-label="جست‌وجو در کالاها" />
@@ -40,9 +38,6 @@ export function LandingHeader({ referencePage = false }: { referencePage?: boole
               <Link href="/#offers">تخفیف‌های طلایی</Link>
               <Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link>
               <Link href="/benefits#special-plans">طرح‌های ویژه حنا</Link>
-              <Link href="/products">کالاها و خدمات</Link>
-              <Link href={categoryHref("فروشندگان و ارائه‌دهندگان")}>فروشندگان و ارائه‌دهندگان</Link>
-              <Link href={categoryHref("نیازمندی‌های محلی")}>نیازمندی‌های محلی</Link>
               <Link href="/products">همه دسته‌ها</Link>
             </>
           )}
