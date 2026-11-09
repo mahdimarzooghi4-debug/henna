@@ -14,9 +14,11 @@ import {
   type BuyerBrowseLocation, type BuyerCategory, type BuyerPage,
 } from "../lib/buyer-catalog";
 
-type PreviewFilter = "dairy" | "pantry" | null;
-// In-memory demo IDs only; never published category identities.
-const previewFilterProducts = { dairy: ["cheese", "yogurt", "eggs"], pantry: ["rice", "oil"] } as const;
+type PreviewFilter = "dairy" | "pantry" | "honey" | null;
+// These IDs are the eight fixed Figma preview cards, not published catalog IDs.
+const previewFilterProducts: Record<Exclude<PreviewFilter, null>, readonly string[]> = {
+  dairy: ["cheese", "yogurt", "tea", "eggs"], pantry: ["rice", "oil"], honey: ["honey", "walnut"],
+};
 
 type Load<T> =
   | { status: "loading"; key: string }
@@ -313,7 +315,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
             })}>نمایش همهٔ دسته‌ها</button>
           </div>
         )}
-        {categories.status === "loading" ? (
+        {isPreview ? null : categories.status === "loading" ? (
           <p className="buyer-panel" role="status">در حال دریافت دسته‌بندی‌ها…</p>
         ) : categories.status === "unavailable" ? (
           <div className="buyer-panel buyer-panel--error" role="alert">
@@ -342,6 +344,8 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
               onClick={() => setPreviewFilter("dairy")}>لبنیات محلی</button>
             <button type="button" aria-pressed={previewFilter === "pantry"}
               onClick={() => setPreviewFilter("pantry")}>روغن و خواربار</button>
+            <button type="button" aria-pressed={previewFilter === "honey"}
+              onClick={() => setPreviewFilter("honey")}>عسل و خشکبار</button>
           </div>
         )}
         {categoryRecovery && categories.status === "ok" && (
@@ -366,13 +370,13 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
           <button type="button" className={isPreview ? previewFilter === null ? styles.activePromo : "" : selected === null ? styles.activePromo : ""}
             aria-pressed={isPreview ? previewFilter === null : selected === null}
             onClick={() => isPreview ? setPreviewFilter(null) : chooseCategory(null)}>همه</button>
-          <button type="button" className={isPreview && previewFilter === "dairy" ? styles.activePromo : ""}
+          <button type="button" className={(isPreview ? previewFilter === "dairy" : categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "لبنیات محلی")?.id) ? styles.activePromo : ""}
             aria-pressed={isPreview ? previewFilter === "dairy" :
               categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "لبنیات محلی")?.id}
             disabled={!isPreview && (categories.status !== "ok" ||
               !findLandingBuyerCategory(categories.data, "لبنیات محلی"))}
             onClick={() => chooseFigmaCategory("لبنیات محلی", "dairy")}>لبنیات محلی</button>
-          <button type="button" className={isPreview && previewFilter === "pantry" ? styles.activePromo : ""}
+          <button type="button" className={(isPreview ? previewFilter === "pantry" : categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "روغن و خواربار")?.id) ? styles.activePromo : ""}
             aria-pressed={isPreview ? previewFilter === "pantry" :
               categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "روغن و خواربار")?.id}
             disabled={!isPreview && (categories.status !== "ok" ||
