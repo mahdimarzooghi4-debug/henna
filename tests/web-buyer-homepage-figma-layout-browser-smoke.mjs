@@ -64,9 +64,21 @@ async function snapshot(page) {
     const offersGrid = offerCards[0]?.parentElement;
     if (!offersGrid) throw new Error("Today's suggestions grid missing");
     const offersGridColumns = getComputedStyle(offersGrid).gridTemplateColumns.trim().split(/\s+/).length;
+    const impactStats = [...document.querySelectorAll("#impact strong")].map(number => {
+      const item = number.parentElement;
+      if (!item) throw new Error("Impact statistic has no parent");
+      return {
+        value: number.textContent.trim(),
+        label: number.nextElementSibling?.textContent.trim(),
+        left: item.getBoundingClientRect().left,
+        borderRightWidth: getComputedStyle(item).borderRightWidth,
+        borderLeftWidth: getComputedStyle(item).borderLeftWidth,
+      };
+    });
     return {
       boxes,
       navigationScroll,
+      impactStats,
       offers: { count: offerCards.length, visibleCount: visibleOfferCards.length, columns: offersGridColumns },
       viewport: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,
@@ -113,6 +125,19 @@ async function main() {
     if(width===390){
       assert.ok(result.navigationScroll.scrollWidth>result.navigationScroll.clientWidth+10,
         "Mobile category links must remain horizontally scrollable");
+    }
+    // Owner-requested social-impact statistic order and no vertical dividers.
+    assert.deepEqual(result.impactStats.map(s => [s.value, s.label]), [
+      ["۳,۴۰۰+", "فروشگاه محلی فعال"],
+      ["۱۲,۸۰۰+", "خانواده تحت پوشش حمایتی"],
+    ], "Impact statistics must preserve number-label pairings at "+width);
+    assert.ok(result.impactStats[0].left > result.impactStats[1].left,
+      "Store count must appear to the right of family count at "+width);
+    for (const stat of result.impactStats) {
+      assert.equal(stat.borderRightWidth, "0px",
+        "No right-hand divider on impact statistic "+stat.value+" at "+width);
+      assert.equal(stat.borderLeftWidth, "0px",
+        "No left-hand divider on impact statistic "+stat.value+" at "+width);
     }
     assert.equal(result.offers.count,5,
       "Figma 190:4 Today's Suggestions must contain exactly five cards at "+width);
