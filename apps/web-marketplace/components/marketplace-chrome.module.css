@@ -14,6 +14,7 @@
   border-bottom: 1px solid #eae6e1;
 }
 .headerTop {
+  position: relative;
   direction: ltr;
   width: min(1280px, calc(100% - 160px));
   height: 90px;
@@ -23,6 +24,16 @@
   justify-content: space-between;
   align-items: center;
   gap: 0;
+}
+.headerTop::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  height: 1px;
+  background: #eae6e1;
 }
 .actions {
   direction: ltr;
@@ -87,7 +98,7 @@
 .seller { direction: rtl; color: #b5523b; }
 .divider { width: 1px; height: 24px; background: #eae6e1; }
 .search {
-  direction: rtl;
+  direction: ltr;
   width: 420px;
   height: 44px;
   display: flex;
@@ -107,6 +118,7 @@
   color: #303632;
   font: inherit;
   font-size: 14px;
+  direction: rtl;
   text-align: right;
 }
 .search input::placeholder { color: #706963; opacity: 1; }
@@ -215,7 +227,7 @@
 }
 .footerColumn a:hover { color: #1c3f3a; text-decoration: underline; }
 .footerBottom {
-  direction: rtl;
+  direction: ltr;
   width: min(1280px, calc(100% - 160px));
   min-height: 64px;
   margin: 48px auto 0;
@@ -245,6 +257,7 @@
   color: #706963;
   font-size: 13px;
   line-height: 1.5;
+  direction: rtl;
   text-align: right;
 }
 
