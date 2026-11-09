@@ -56,9 +56,18 @@ async function snapshot(page) {
       scrollWidth: navigation.scrollWidth,
       overflowY: getComputedStyle(navigation).overflowY,
     };
+    const offerCards = [...document.querySelectorAll("#offers article")];
+    const visibleOfferCards = offerCards.filter(card => {
+      const rect = card.getBoundingClientRect();
+      return getComputedStyle(card).display !== "none" && rect.width > 0 && rect.height > 0;
+    });
+    const offersGrid = offerCards[0]?.parentElement;
+    if (!offersGrid) throw new Error("Today's suggestions grid missing");
+    const offersGridColumns = getComputedStyle(offersGrid).gridTemplateColumns.trim().split(/\s+/).length;
     return {
       boxes,
       navigationScroll,
+      offers: { count: offerCards.length, visibleCount: visibleOfferCards.length, columns: offersGridColumns },
       viewport: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,
       documentClientWidth: document.documentElement.clientWidth,
@@ -105,6 +114,13 @@ async function main() {
       assert.ok(result.navigationScroll.scrollWidth>result.navigationScroll.clientWidth+10,
         "Mobile category links must remain horizontally scrollable");
     }
+    assert.equal(result.offers.count,5,
+      "Figma 190:4 Today's Suggestions must contain exactly five cards at "+width);
+    assert.equal(result.offers.visibleCount,5,
+      "All five Figma suggestion cards must remain visible at "+width);
+    const expectedOfferColumns = width > 1000 ? 5 : width > 640 ? 3 : 2;
+    assert.equal(result.offers.columns,expectedOfferColumns,
+      "Today's Suggestions responsive grid columns at "+width);
   }
   assert.deepEqual(errors, []);
   await context.close();

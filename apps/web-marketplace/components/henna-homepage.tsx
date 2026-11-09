@@ -4,7 +4,7 @@ import { Fragment } from "react";
 import HeroCarousel from "./hero-carousel";
 import { LandingFooter, LandingHeader } from "./landing-chrome";
 import { LandingAddButton } from "./landing-add-button";
-import { LANDING_PREVIEW_PRODUCTS } from "../lib/landing-preview-products";
+import { LANDING_TODAY_PRODUCTS } from "../lib/landing-preview-products";
 import styles from "./henna-homepage.module.css";
 
 const categories = [
@@ -58,7 +58,7 @@ export default function HennaHomepage() {
           <div className={styles.sectionHeading}><h2>پیشنهادهای امروز</h2><Link href="/products">مشاهده همه محصولات</Link></div>
           <p className={styles.previewNotice}>اطلاعات قیمت و کالا در این بخش نمونهٔ طراحی فیگماست؛ برای موجودی واقعی به کاتالوگ مراجعه کنید.</p>
           <div className={styles.productGrid}>
-            {LANDING_PREVIEW_PRODUCTS.map((product) => (
+            {LANDING_TODAY_PRODUCTS.map((product) => (
               <article className={styles.productCard} key={product.id}>
                 <div className={styles.productImage}>
                   <Image src={`/landing/${product.image}`} alt={product.title} width={400} height={300} />

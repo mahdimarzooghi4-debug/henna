@@ -19,6 +19,10 @@ export const LANDING_PREVIEW_PRODUCTS: LandingPreviewProduct[] = [
   { id: "walnut", title: "مغز گردو درجه یک", detail: "۱ کیلوگرم - باغات طارم", image: "catalog-product-8.png", badge: "عسل و خشکبار", oldPrice: "۵۵۰,۰۰۰", price: "۴۸۰,۰۰۰" },
 ];
 
+// Figma buyer homepage frame 190:4 contains exactly five cards in Today's Suggestions.
+// Keep the full preview catalog above for existing preview-cart compatibility.
+export const LANDING_TODAY_PRODUCTS: LandingPreviewProduct[] = LANDING_PREVIEW_PRODUCTS.slice(0, 5);
+
 export type LandingPreviewCartItem = {
   productId: string;
   quantity: number;
