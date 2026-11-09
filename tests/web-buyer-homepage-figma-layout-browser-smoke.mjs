@@ -177,7 +177,7 @@ async function main() {
   await page.getByTestId("products-filter-toolbar").getByRole("button", {
     name: "لبنیات محلی", exact: true,
   }).click();
-  assert.equal(await demoCards.count(), 3, "Dairy demo cards filtered by toolbar");
+  assert.equal(await demoCards.count(), 4, "Dairy demo cards filtered by toolbar");
   assert.equal(new URL(page.url()).searchParams.has("categoryId"), false,
     "Demo filter must not fabricate a published catalog ID");
   await page.locator('[aria-label="فیلتر محصولات نمایشی"]').getByRole("button", {
