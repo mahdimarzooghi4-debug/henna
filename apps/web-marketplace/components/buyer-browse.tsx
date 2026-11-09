@@ -315,7 +315,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
             })}>نمایش همهٔ دسته‌ها</button>
           </div>
         )}
-        {isPreview ? null : categories.status === "loading" ? (
+        {categories.status === "loading" ? (
           <p className="buyer-panel" role="status">در حال دریافت دسته‌بندی‌ها…</p>
         ) : categories.status === "unavailable" ? (
           <div className="buyer-panel buyer-panel--error" role="alert">
