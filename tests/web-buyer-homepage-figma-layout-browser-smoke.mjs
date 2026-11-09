@@ -171,6 +171,26 @@ async function main() {
   await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
   assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
     "Figma 227:1085 preview shows eight clearly separated sample cards");
+  // The eight Figma cards are demo-only. Both sidebar and toolbar must filter
+  // the SAME in-memory cards, even if the public categories endpoint is 503.
+  const demoCards = page.locator('[aria-label="محصولات فروشگاه"] article');
+  await page.getByTestId("products-filter-toolbar").getByRole("button", {
+    name: "لبنیات محلی", exact: true,
+  }).click();
+  assert.equal(await demoCards.count(), 3, "Dairy demo cards filtered by toolbar");
+  assert.equal(new URL(page.url()).searchParams.has("categoryId"), false,
+    "Demo filter must not fabricate a published catalog ID");
+  await page.locator('[aria-label="فیلتر محصولات نمایشی"]').getByRole("button", {
+    name: "روغن و خواربار", exact: true,
+  }).click();
+  assert.equal(await demoCards.count(), 2, "Pantry demo cards filtered by sidebar");
+  await page.getByTestId("products-filter-toolbar").getByRole("button", {
+    name: "همه", exact: true,
+  }).click();
+  assert.equal(await demoCards.count(), 8, "All demo cards restored");
+  assert.equal(await page.getByTestId("products-filter-toolbar").getByRole("button", {
+    name: "ارزان‌ترین",
+  }).isDisabled(), true, "Sorting without trusted public prices stays disabled");
   assert.equal(await page.getByRole("navigation", {
     name: "دسته‌بندی اصلی",
   }).getByRole("link", { name: "همه دسته‌ها", exact: true })
