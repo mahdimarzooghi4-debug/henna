@@ -198,6 +198,54 @@ async function main() {
   await page.waitForURL(base + "/products");
   await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
 
+  // Figma 227:1085 desktop chrome geometry: 40px announcement,
+  // 90px main header and 61px category navigation on a 1440px canvas.
+  const announcement = await page.getByTestId("marketplace-announcement").boundingBox();
+  const headerTop = await page.getByTestId("marketplace-header-top").boundingBox();
+  const categoryNav = await page.getByTestId("marketplace-category-nav").boundingBox();
+  assert.equal(announcement?.height, 40, "Figma top banner height");
+  assert.equal(headerTop?.height, 90, "Figma main header height");
+  assert.equal(categoryNav?.height, 61, "Figma category navigation height");
+  assert.equal(headerTop?.width, 1280, "Figma header content width");
+  assert.equal(categoryNav?.width, 1280, "Figma navigation content width");
+  for (const label of [
+    "نیازهای روزمره", "فروشندگان / ارائه‌دهندگان", "کالاها و خدمات",
+    "همه دسته‌ها", "دسته‌بندی‌های منتخب", "طرح‌های ویژه",
+    "کالابرگ / اعتبارها", "پیشنهادها",
+  ]) {
+    await page.getByTestId("marketplace-category-nav").getByRole("link", {
+      name: label, exact: true,
+    }).waitFor();
+  }
+
+  const footer = page.getByTestId("marketplace-footer");
+  await footer.scrollIntoViewIfNeeded();
+  await footer.getByText("طرح‌های حمایتی", { exact: true }).waitFor();
+  await footer.getByText("همکاری با حنا", { exact: true }).waitFor();
+  await footer.getByText("دسترسی سریع", { exact: true }).waitFor();
+  assert.equal(await footer.locator(".footerColumn").count(), 3,
+    "Figma footer has three link columns");
+  assert.equal(await footer.locator(".footerColumn a").count(), 12,
+    "Figma footer has four links in each of three columns");
+  assert.equal(await footer.locator(".socialMedia span").count(), 3,
+    "Footer social icon group retains three slots");
+
+  // The same shared chrome must remain inside the viewport on mobile.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(base + "/products", { waitUntil: "domcontentloaded" });
+  await page.getByTestId("marketplace-category-nav").waitFor();
+  await page.getByTestId("marketplace-footer").waitFor();
+  const mobileGeometry = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    navScrollWidth: document.querySelector('[data-testid="marketplace-category-nav"]')?.scrollWidth ?? 0,
+    navClientWidth: document.querySelector('[data-testid="marketplace-category-nav"]')?.clientWidth ?? 0,
+  }));
+  assert.ok(mobileGeometry.scrollWidth <= mobileGeometry.clientWidth + 1,
+    "Marketplace chrome must not create page-wide horizontal overflow on mobile");
+  assert.ok(mobileGeometry.navScrollWidth > mobileGeometry.navClientWidth,
+    "Mobile category navigation remains horizontally scrollable");
+
   assert.deepEqual(errors, []);
   await context.close();
   console.log("Figma 190:4 buyer header/nav/hero/categories: 1440,1650,1100,900,390 Chromium alignment OK");
