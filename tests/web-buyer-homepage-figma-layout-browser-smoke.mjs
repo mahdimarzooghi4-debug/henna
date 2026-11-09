@@ -147,6 +147,57 @@ async function main() {
     assert.equal(result.offers.columns,expectedOfferColumns,
       "Today's Suggestions responsive grid columns at "+width);
   }
+  // Figma 227:1085 (WEB / 01 Products) is a full catalog page,
+  // not a mid-page anchor. Both homepage links must open it from the top.
+  await context.route("**/api/catalog/**", route => route.fulfill({
+    status: 503, contentType: "application/json; charset=utf-8",
+    body: JSON.stringify({ message: "catalog offline in this browser test" }),
+  }));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(base + "/");
+  const allCategoriesNav = page.getByRole("navigation", {
+    name: "دسته‌بندی اصلی",
+  }).getByRole("link", { name: "همه دسته‌ها", exact: true });
+  assert.equal(await allCategoriesNav.getAttribute("href"), "/products");
+  assert.equal(await page.getByRole("link", {
+    name: "مشاهده همه دسته‌ها", exact: true,
+  }).getAttribute("href"), "/products");
+  await allCategoriesNav.click();
+  await page.waitForURL(base + "/products");
+  assert.equal(new URL(page.url()).hash, "",
+    "Catalog should open at the top, not scroll to a filter anchor");
+  await page.getByRole("heading", { name: "فیلترها" }).waitFor();
+  await page.getByText("مرتب‌سازی براساس:").waitFor();
+  await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
+    "Figma 227:1085 preview shows eight clearly separated sample cards");
+  assert.equal(await page.getByRole("navigation", {
+    name: "دسته‌بندی اصلی",
+  }).getByRole("link", { name: "همه دسته‌ها", exact: true })
+    .getAttribute("href"), "/products");
+
+  // An unpublished homepage category never masquerades as a real catalog
+  // filter. Show a clear, same-origin way to reach the Figma overview.
+  await page.goto(base + "/");
+  const bakery = page.locator("#categories").getByRole("link", {
+    name: "نان و شیرینی", exact: true,
+  });
+  assert.ok((await bakery.getAttribute("href"))?.startsWith(
+    "/products?categoryName="));
+  assert.ok(!(await bakery.getAttribute("href")).includes("#"));
+  await bakery.click();
+  await page.waitForURL(url => url.pathname === "/products" &&
+    url.searchParams.has("categoryName"));
+  assert.equal(new URL(page.url()).hash, "");
+  await page.getByText(
+    "برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.",
+  ).waitFor();
+  await page.getByRole("link", {
+    name: "مشاهده صفحه همه کالاها و خدمات", exact: true,
+  }).click();
+  await page.waitForURL(base + "/products");
+  await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
+
   assert.deepEqual(errors, []);
   await context.close();
   console.log("Figma 190:4 buyer header/nav/hero/categories: 1440,1650,1100,900,390 Chromium alignment OK");

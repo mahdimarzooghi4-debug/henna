@@ -106,7 +106,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
     restore();
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
-  }, [initialQuery]);
+  }, [initialQuery, initialCategoryName]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -347,7 +347,10 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
         {categoryNameStatus === "pending" ? (
           <p className="buyer-panel buyer-products-status" role="status">پس از تعیین دسته‌بندی، کالاهای همان دسته نمایش داده می‌شوند…</p>
         ) : categoryNameStatus === "unavailable" || categoryNameStatus === "not-found" ? (
-          <p className="buyer-panel buyer-products-status">برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.</p>
+          <div className="buyer-panel buyer-products-status" role="status">
+            <p>برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.</p>
+            <Link href="/products">مشاهده صفحه همه کالاها و خدمات</Link>
+          </div>
         ) : !search && !selected && (current.status === "loading" || current.status === "unavailable" || current.data.items.length === 0) ? (
           <FigmaCatalogPreview />
         ) : current.status === "loading" ? (
