@@ -14,6 +14,10 @@ import {
   type BuyerBrowseLocation, type BuyerCategory, type BuyerPage,
 } from "../lib/buyer-catalog";
 
+type PreviewFilter = "dairy" | "pantry" | null;
+// In-memory demo IDs only; never published category identities.
+const previewFilterProducts = { dairy: ["cheese", "yogurt", "eggs"], pantry: ["rice", "oil"] } as const;
+
 type Load<T> =
   | { status: "loading"; key: string }
   | { status: "unavailable"; key: string }
@@ -55,6 +59,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
   const [search, setSearch] = useState(initial.search);
   const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
+  const [previewFilter, setPreviewFilter] = useState<PreviewFilter>(null);
   const [products, setProducts] = useState<Load<BuyerPage>>({
     status: "loading", key: "",
   });
@@ -62,11 +67,14 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
     ? buyerCatalogPath(page, selected, search) : "";
   const current = products.key === path && products.status !== "loading"
     ? products : { status: "loading" as const, key: path };
+  const isPreview = !search && !selected && categoryNameStatus === "none" &&
+    (current.status !== "ok" || current.data.items.length === 0);
   const locationState: BuyerBrowseLocation = {
     categoryId: selected, search, page,
   };
 
   function setBrowseLocation(next: BuyerBrowseLocation) {
+    setPreviewFilter(null);
     setSelected(next.categoryId);
     setSearch(next.search);
     setPage(next.page);
@@ -254,6 +262,16 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
     };
   }, []);
 
+  function chooseFigmaCategory(label: string, preview: Exclude<PreviewFilter, null>) {
+    if (isPreview) {
+      setPreviewFilter(preview);
+      return;
+    }
+    if (categories.status !== "ok") return;
+    const published = findLandingBuyerCategory(categories.data, label);
+    if (published) chooseCategory(published.id);
+  }
+
   function chooseCategory(id: string | null) {
     // A category filter can only be selected from current published API data.
     if (id !== null && (categories.status !== "ok" ||
@@ -315,6 +333,17 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
             ))}
           </div>
         )}
+        {isPreview && (
+          <div className={styles.previewCategoryFilters} aria-label="فیلتر محصولات نمایشی">
+            <p>دسته‌بندی کارت‌های نمونه (غیرواقعی)</p>
+            <button type="button" aria-pressed={previewFilter === null}
+              onClick={() => setPreviewFilter(null)}>همه محصولات نمایشی</button>
+            <button type="button" aria-pressed={previewFilter === "dairy"}
+              onClick={() => setPreviewFilter("dairy")}>لبنیات محلی</button>
+            <button type="button" aria-pressed={previewFilter === "pantry"}
+              onClick={() => setPreviewFilter("pantry")}>روغن و خواربار</button>
+          </div>
+        )}
         {categoryRecovery && categories.status === "ok" && (
           <p className="buyer-panel" role="status">{categoryRecovery}</p>
         )}
@@ -325,18 +354,30 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
           </div>
           <div className={styles.figmaFilterGroup}>
             <h3>ویژگی‌ها</h3>
-            <label><input type="checkbox" defaultChecked /> کالابرگ / اعتبارها (در صورت وجود)</label>
-            <label><input type="checkbox" /> دارای پیشنهادها</label>
+            <label title="داده تأییدشده برای این فیلتر موجود نیست"><input type="checkbox" disabled /> کالابرگ / اعتبارها (در صورت وجود)</label>
+            <label title="داده تأییدشده برای این فیلتر موجود نیست"><input type="checkbox" disabled /> دارای پیشنهادها</label>
           </div>
           <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
         </aside>
         <div className={styles.results}>
-      <div className={styles.toolbar} dir="rtl">
-        <div className={styles.sortOptions}><span>مرتب‌سازی براساس:</span><button type="button" aria-pressed="true">جدیدترین</button><button type="button">ارزان‌ترین</button><button type="button">پربازدیدترین</button></div>
+      <div className={styles.toolbar} dir="rtl" data-testid="products-filter-toolbar">
+        <div className={styles.sortOptions}><span>مرتب‌سازی براساس:</span><button type="button" aria-pressed="true" title="ترتیب پیش‌فرض فهرست">جدیدترین</button><button type="button" disabled title="قیمت معتبر برای مرتب‌سازی کاتالوگ موجود نیست">ارزان‌ترین</button><button type="button" disabled title="آمار بازدید معتبر برای مرتب‌سازی موجود نیست">پربازدیدترین</button></div>
         <div className={styles.promotionalFilters}>
-          <button type="button" className={styles.activePromo} onClick={() => chooseCategory(null)}>همه</button>
-          <button type="button" onClick={() => { const c = categories.status === "ok" ? categories.data.find(x => /لبنیات|تخم.?مرغ/.test(x.name)) : undefined; if (c) chooseCategory(c.id); }}>لبنیات محلی</button>
-          <button type="button" onClick={() => { const c = categories.status === "ok" ? categories.data.find(x => /روغن|خواربار/.test(x.name)) : undefined; if (c) chooseCategory(c.id); }}>روغن و خواربار</button>
+          <button type="button" className={isPreview ? previewFilter === null ? styles.activePromo : "" : selected === null ? styles.activePromo : ""}
+            aria-pressed={isPreview ? previewFilter === null : selected === null}
+            onClick={() => isPreview ? setPreviewFilter(null) : chooseCategory(null)}>همه</button>
+          <button type="button" className={isPreview && previewFilter === "dairy" ? styles.activePromo : ""}
+            aria-pressed={isPreview ? previewFilter === "dairy" :
+              categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "لبنیات محلی")?.id}
+            disabled={!isPreview && (categories.status !== "ok" ||
+              !findLandingBuyerCategory(categories.data, "لبنیات محلی"))}
+            onClick={() => chooseFigmaCategory("لبنیات محلی", "dairy")}>لبنیات محلی</button>
+          <button type="button" className={isPreview && previewFilter === "pantry" ? styles.activePromo : ""}
+            aria-pressed={isPreview ? previewFilter === "pantry" :
+              categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "روغن و خواربار")?.id}
+            disabled={!isPreview && (categories.status !== "ok" ||
+              !findLandingBuyerCategory(categories.data, "روغن و خواربار"))}
+            onClick={() => chooseFigmaCategory("روغن و خواربار", "pantry")}>روغن و خواربار</button>
         </div>
       </div>
       <section className="buyer-section" aria-labelledby="buyer-products-title">
@@ -352,7 +393,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
             <Link href="/products">مشاهده صفحه همه کالاها و خدمات</Link>
           </div>
         ) : !search && !selected && (current.status === "loading" || current.status === "unavailable" || current.data.items.length === 0) ? (
-          <FigmaCatalogPreview />
+          <FigmaCatalogPreview filter={previewFilter} />
         ) : current.status === "loading" ? (
           <p className="buyer-panel buyer-products-status" role="status">در حال دریافت کالاها…</p>
         ) : current.status === "unavailable" ? (
@@ -402,7 +443,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
 }
 
 
-function FigmaCatalogPreview() {
+function FigmaCatalogPreview({ filter }: { filter: PreviewFilter }) {
   const [notice, setNotice] = useState("");
   function add(productId: string) {
     const result = addLandingPreviewProduct(productId);
@@ -412,10 +453,13 @@ function FigmaCatalogPreview() {
     } else if (result === "limit") setNotice("حداکثر تعداد مجاز در سبد ۹۹ عدد است.");
     else setNotice("افزودن کالا انجام نشد؛ دوباره تلاش کنید.");
   }
+  const visible = filter === null ? LANDING_PREVIEW_PRODUCTS
+    : LANDING_PREVIEW_PRODUCTS.filter(product => previewFilterProducts[filter].includes(product.id as never));
   return (
     <div className={styles.catalogPreview} aria-label="محصولات فروشگاه" dir="rtl">
+      <p className={styles.previewDisclosure}>نمایش نمونه طراحی — این کارت‌ها دسته‌بندی منتشرشده یا موجودی واقعی نیستند.</p>
       <div className={styles.catalogGrid}>
-        {LANDING_PREVIEW_PRODUCTS.map((product) => (
+        {visible.map((product) => (
           <article key={product.id} className={styles.catalogCard}>
             <div className={styles.catalogImage}>
               <img src={"/landing/" + product.image} alt={product.title} />
