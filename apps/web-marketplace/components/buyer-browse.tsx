@@ -454,7 +454,10 @@ function FigmaCatalogPreview({ filter }: { filter: PreviewFilter }) {
     else setNotice("افزودن کالا انجام نشد؛ دوباره تلاش کنید.");
   }
   const visible = filter === null ? LANDING_PREVIEW_PRODUCTS
-    : LANDING_PREVIEW_PRODUCTS.filter(product => previewFilterProducts[filter].includes(product.id as never));
+    : LANDING_PREVIEW_PRODUCTS.filter(product => {
+      const ids: readonly string[] = previewFilterProducts[filter];
+      return ids.includes(product.id);
+    });
   return (
     <div className={styles.catalogPreview} aria-label="محصولات فروشگاه" dir="rtl">
       <p className={styles.previewDisclosure}>نمایش نمونه طراحی — این کارت‌ها دسته‌بندی منتشرشده یا موجودی واقعی نیستند.</p>
