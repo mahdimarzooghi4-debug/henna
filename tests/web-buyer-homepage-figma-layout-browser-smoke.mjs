@@ -155,6 +155,25 @@ async function main() {
   }));
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base + "/");
+  // Owner-approved homepage-only simplification; product catalog chrome is separate.
+  const homeNav = page.getByRole("navigation", { name: "دسته‌بندی اصلی" });
+  assert.deepEqual(await homeNav.getByRole("link").allTextContents(), [
+    "تخفیف‌های طلایی", "کالابرگ الکترونیکی",
+    "طرح‌های ویژه حنا", "همه دسته‌ها",
+  ], "Only four approved homepage links remain");
+  assert.equal(await page.getByRole("link", {
+    name: "ثبت‌نام فروشگاه‌ها", exact: true,
+  }).count(), 1, "The header uses the approved short signup label");
+  assert.equal(await page.getByRole("link", {
+    name: "ثبت‌نام فروشگاه‌ها", exact: true,
+  }).getAttribute("href"), "/seller/register",
+    "Seller signup destination must remain unchanged");
+  for (const removed of [
+    "نیازمندی‌های محلی", "فروشندگان و ارائه‌دهندگان", "کالاها و خدمات",
+  ]) {
+    assert.equal(await homeNav.getByRole("link", { name: removed, exact: true }).count(),
+      0, removed + " must not appear in homepage navigation");
+  }
   const allCategoriesNav = page.getByRole("navigation", {
     name: "دسته‌بندی اصلی",
   }).getByRole("link", { name: "همه دسته‌ها", exact: true });
