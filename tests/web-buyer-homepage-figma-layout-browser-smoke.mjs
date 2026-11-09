@@ -184,6 +184,14 @@ async function main() {
     name: "روغن و خواربار", exact: true,
   }).click();
   assert.equal(await demoCards.count(), 2, "Pantry demo cards filtered by sidebar");
+  await page.locator('[aria-label="فیلتر محصولات نمایشی"]').getByRole("button", {
+    name: "عسل و خشکبار", exact: true,
+  }).click();
+  assert.equal(await demoCards.count(), 2, "Honey and nuts demo cards filtered by sidebar");
+  await page.getByTestId("products-filter-toolbar").getByRole("button", {
+    name: "لبنیات محلی", exact: true,
+  }).click();
+  assert.equal(await demoCards.count(), 4, "Toolbar and sidebar share the same dairy filter");
   await page.getByTestId("products-filter-toolbar").getByRole("button", {
     name: "همه", exact: true,
   }).click();
