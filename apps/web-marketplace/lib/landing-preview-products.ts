@@ -12,7 +12,7 @@ export const LANDING_PREVIEW_PRODUCTS: LandingPreviewProduct[] = [
   { id: "cheese", title: "پنیر سفید ایرانی ممتاز", detail: "۴۰۰ گرم - لبنیات هراز", image: "catalog-product-1.png", badge: "لبنیات محلی", oldPrice: "۶۵,۰۰۰", price: "۵۴,۰۰۰" },
   { id: "yogurt", title: "ماست سون همزده پرچرب", detail: "۹۰۰ گرم - کاله", image: "catalog-product-2.png", badge: "لبنیات محلی", price: "۴۸,۵۰۰" },
   { id: "rice", title: "برنج هاشمی درجه یک", detail: "۵ کیلوگرم - کشتزار شمال", image: "catalog-product-3.png", badge: "روغن و خواربار", oldPrice: "۷۲۰,۰۰۰", price: "۶۴۰,۰۰۰" },
-  { id: "oil", title: "روغن آفتابگردان خالص", detail: "۱.۵ لیتر - لادن", image: "catalog-product-4.png", price: "۸۹,۰۰۰" },
+  { id: "oil", title: "روغن آفتابگردان خالص", detail: "۱.۵ لیتر - لادن", image: "catalog-product-4.png", badge: "روغن و خواربار", price: "۸۹,۰۰۰" },
   { id: "tea", title: "چای سیاه ارگانیک لاهیجان", detail: "۴۵۰ گرم - ممتاز باروتی", image: "catalog-product-5.png", badge: "لبنیات محلی", oldPrice: "۱۴۵,۰۰۰", price: "۱۲۸,۰۰۰" },
   { id: "honey", title: "عسل طبیعی چند گیاه", detail: "۵۰۰ گرم - زنبورستان البرز", image: "catalog-product-6.png", badge: "عسل و خشکبار", oldPrice: "۲۸۰,۰۰۰", price: "۲۴۵,۰۰۰" },
   { id: "eggs", title: "تخم‌مرغ محلی ارگانیک", detail: "۱۵ عدد - مرغداری سبز", image: "catalog-product-7.png", badge: "لبنیات محلی", price: "۶۵,۰۰۰" },
