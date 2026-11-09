@@ -106,7 +106,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
     restore();
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
-  }, [initialQuery]);
+  }, [initialQuery, initialCategoryName]);
 
   useEffect(() => {
     const abort = new AbortController();
