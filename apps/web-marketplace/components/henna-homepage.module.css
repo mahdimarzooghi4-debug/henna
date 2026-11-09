@@ -159,7 +159,7 @@
 .impactInner h2{font-size:32px;line-height:1.4;margin:0}
 .impactInner p{font-size:16px;line-height:1.55;margin:0}
 .stats{width:100%;justify-content:flex-start;gap:24px;margin:0}
-.stats div{align-items:center;gap:4px;border:0;border-right:1px solid #d7b895;padding:0 24px 0 0}
+.stats div{align-items:center;gap:4px;border:0;padding:0}
 .stats strong{font-size:24px;color:#b5523b}
 .stats span{font-size:12px;white-space:nowrap}
 .benefits{height:423px;padding:64px 0;background:#fff;border-block:1px solid #eae6e1}
