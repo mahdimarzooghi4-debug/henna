@@ -61,7 +61,7 @@ async function snapshot(page) {
       const rect = card.getBoundingClientRect();
       return getComputedStyle(card).display !== "none" && rect.width > 0 && rect.height > 0;
     });
-    const offersGrid = document.querySelector("#offers .productGrid");
+    const offersGrid = offerCards[0]?.parentElement;
     if (!offersGrid) throw new Error("Today's suggestions grid missing");
     const offersGridColumns = getComputedStyle(offersGrid).gridTemplateColumns.trim().split(/\s+/).length;
     return {
