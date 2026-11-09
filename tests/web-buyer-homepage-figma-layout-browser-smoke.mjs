@@ -223,11 +223,11 @@ async function main() {
   await footer.getByText("طرح‌های حمایتی", { exact: true }).waitFor();
   await footer.getByText("همکاری با حنا", { exact: true }).waitFor();
   await footer.getByText("دسترسی سریع", { exact: true }).waitFor();
-  assert.equal(await footer.locator(".footerColumn").count(), 3,
+  assert.equal(await footer.locator('[class*="footerColumn"]').count(), 3,
     "Figma footer has three link columns");
-  assert.equal(await footer.locator(".footerColumn a").count(), 12,
+  assert.equal(await footer.locator('[class*="footerColumn"] a').count(), 12,
     "Figma footer has four links in each of three columns");
-  assert.equal(await footer.locator(".socialMedia span").count(), 3,
+  assert.equal(await footer.locator('[class*="socialMedia"] span').count(), 3,
     "Footer social icon group retains three slots");
 
   // The same shared chrome must remain inside the viewport on mobile.
