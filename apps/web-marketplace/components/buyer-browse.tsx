@@ -2,9 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import {
-  LANDING_PREVIEW_PRODUCTS, LANDING_PREVIEW_CART_EVENT, addLandingPreviewProduct,
-} from "../lib/landing-preview-products";
+import { LANDING_PREVIEW_PRODUCTS } from "../lib/landing-preview-products";
 import styles from "./buyer-marketplace.module.css";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref, findLandingBuyerCategory,
@@ -458,15 +456,6 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
 
 
 function FigmaCatalogPreview({ filter, sort }: { filter: PreviewFilter; sort: PreviewSort }) {
-  const [notice, setNotice] = useState("");
-  function add(productId: string) {
-    const result = addLandingPreviewProduct(productId);
-    if (result === "added") {
-      window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
-      setNotice("کالا به سبد خرید اضافه شد.");
-    } else if (result === "limit") setNotice("حداکثر تعداد مجاز در سبد ۹۹ عدد است.");
-    else setNotice("افزودن کالا انجام نشد؛ دوباره تلاش کنید.");
-  }
   const filtered = LANDING_PREVIEW_PRODUCTS.filter((product) => {
     if (filter === null) return true;
     const ids: readonly string[] = previewFilterProducts[filter];
@@ -487,15 +476,16 @@ function FigmaCatalogPreview({ filter, sort }: { filter: PreviewFilter; sort: Pr
         {visible.length === 0 && <p role="status" className={styles.previewDisclosure}>در این دسته از کارت‌های نمونه، کالای تخفیف‌دار وجود ندارد.</p>}
         {visible.map((product) => (
           <article key={product.id} className={styles.catalogCard}>
-            <div className={styles.catalogImage}>
+            <Link className={styles.catalogImage} href={"/products/" + product.id}>
               <img src={"/landing/" + product.image} alt={product.title} />
               {product.badge && <span className={`${styles.catalogBadge} ${/عسل|خواربار/.test(product.badge) ? styles.catalogBadgeGreen : ""}`}>{product.badge}</span>}
-            </div>
+            </Link>
             <div className={styles.catalogInfo}>
-              <h3>{product.title}</h3><p>{product.detail}</p>
+              <h3><Link href={"/products/" + product.id}>{product.title}</Link></h3><p>{product.detail}</p>
             </div>
             <div className={styles.catalogActions}>
-              <button type="button" onClick={() => add(product.id)}>افزودن +</button>
+              <Link href={"/products/" + product.id} data-testid="preview-product-add"
+                aria-label={"افزودن + — مشاهده جزئیات " + product.title}>افزودن +</Link>
               <div className={styles.catalogPrice}>
                 {product.oldPrice && <del>{product.oldPrice}</del>}
                 <strong>{product.price} تومان</strong>
@@ -504,7 +494,6 @@ function FigmaCatalogPreview({ filter, sort }: { filter: PreviewFilter; sort: Pr
           </article>
         ))}
       </div>
-      {notice && <p className={styles.catalogNotice} role="status" aria-live="polite">{notice} <Link href="/buyer/cart?mode=preview">مشاهده سبد خرید</Link></p>}
     </div>
   );
 }

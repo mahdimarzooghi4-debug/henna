@@ -256,6 +256,64 @@ async function main() {
   }).getByRole("link", { name: "همه دسته‌ها", exact: true })
     .getAttribute("href"), "/products");
 
+  // Owner's purchase journey: a card action opens detail without changing
+  // the cart. Quantity selection and explicit confirmation happen on detail.
+  const readDemoCart = () => page.evaluate(() => JSON.parse(
+    localStorage.getItem("henna:landing-preview-cart:v1") ?? "[]"));
+  await page.evaluate(() => localStorage.removeItem("henna:landing-preview-cart:v1"));
+  const expectedPreviewIds = ["cheese", "yogurt", "rice", "oil", "tea", "honey", "eggs", "walnut"];
+  assert.deepEqual(await demoCards.getByTestId("preview-product-add").evaluateAll(
+    links => links.map(link => link.getAttribute("href"))),
+    expectedPreviewIds.map(id => "/products/" + id),
+    "Every sample has its own detail destination");
+  for (const card of await demoCards.all()) {
+    const href = await card.getByTestId("preview-product-add").getAttribute("href");
+    assert.equal(await card.locator("h3 a").getAttribute("href"), href);
+    assert.equal(await card.locator("a:has(img)").getAttribute("href"), href);
+  }
+
+  const cheeseCard = demoCards.filter({ hasText: "پنیر سفید ایرانی ممتاز" });
+  await cheeseCard.getByTestId("preview-product-add").click();
+  await page.waitForURL(base + "/products/cheese");
+  await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز هراز", exact: true }).waitFor();
+  assert.deepEqual(await readDemoCart(), [], "Opening detail must not add any item");
+  await page.getByRole("button", { name: "افزایش تعداد", exact: true }).click();
+  assert.deepEqual(await readDemoCart(), [], "Quantity editing alone never mutates the cart");
+  await page.getByRole("button", { name: "افزودن به سبد خرید", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "به سبد خرید اضافه شد" }).waitFor();
+  assert.deepEqual(await readDemoCart(), [{ productId: "cheese", quantity: 2 }],
+    "Only explicit confirmation adds the selected quantity");
+  await page.getByRole("link", { name: "مشاهده سبد خرید", exact: true }).click();
+  await page.waitForURL(base + "/buyer/cart?mode=preview");
+  await page.getByRole("heading", { name: "اقلام سبد خرید شما" }).waitFor();
+
+  // A different sample must use its own price/image/detail, not the cheese fixture.
+  await page.goto(base + "/products");
+  await demoCards.filter({ hasText: "ماست سون همزده پرچرب" }).getByTestId("preview-product-add").click();
+  await page.waitForURL(base + "/products/yogurt");
+  await page.getByRole("heading", { name: "ماست سون همزده پرچرب", exact: true }).waitFor();
+  assert.equal(await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز هراز", exact: true }).count(), 0);
+  assert.equal(await page.locator('main [aria-label="تصاویر محصول"] img').count(), 1,
+    "Only the supplied yogurt image is shown");
+  assert.deepEqual(await readDemoCart(), [{ productId: "cheese", quantity: 2 }]);
+  await page.getByRole("button", { name: "افزودن به سبد خرید", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "به سبد خرید اضافه شد" }).waitFor();
+  assert.deepEqual(await readDemoCart(), [
+    { productId: "cheese", quantity: 2 }, { productId: "yogurt", quantity: 1 },
+  ], "Confirming yogurt adds yogurt without overwriting cheese");
+  await page.locator('header a[href="/buyer/cart?mode=preview"]').click();
+  await page.waitForURL(base + "/buyer/cart?mode=preview");
+  await page.getByRole("heading", { name: "اقلام سبد خرید شما" }).waitFor();
+  // Homepage uses the same product-first journey.
+  await page.goto(base + "/");
+  const riceOffer = page.locator("#offers article").filter({ hasText: "برنج هاشمی درجه یک" });
+  await riceOffer.getByTestId("preview-product-add").click();
+  await page.waitForURL(base + "/products/rice");
+  await page.getByRole("heading", { name: "برنج هاشمی درجه یک", exact: true }).waitFor();
+  assert.deepEqual(await readDemoCart(), [
+    { productId: "cheese", quantity: 2 }, { productId: "yogurt", quantity: 1 },
+  ], "Homepage card also opens details without adding");
+
   // An unpublished homepage category never masquerades as a real catalog
   // filter. Show a clear, same-origin way to reach the Figma overview.
   await page.goto(base + "/");

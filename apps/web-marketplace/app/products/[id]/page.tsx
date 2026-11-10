@@ -2,6 +2,7 @@ import { SiteHeader } from "../../../components/site-header";
 import { BuyerProductDetail } from "../../../components/buyer-product-detail";
 import { LandingFooter, LandingHeader } from "../../../components/landing-chrome";
 import { FigmaProductDetailPreview } from "../../../components/figma-product-detail-preview";
+import { LANDING_PREVIEW_PRODUCTS } from "../../../lib/landing-preview-products";
 import {
   buyerBrowseHref, buyerParamsFromRecord, parseBuyerBrowseLocation,
 } from "../../../lib/buyer-catalog";
@@ -13,8 +14,10 @@ export default async function BuyerProductDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  if (id === "cheese") {
-    return <><LandingHeader /><FigmaProductDetailPreview /><LandingFooter /></>;
+  // Only known in-memory design IDs use the preview; UUIDs retain the API-backed path.
+  const previewProduct = LANDING_PREVIEW_PRODUCTS.find((product) => product.id === id);
+  if (previewProduct) {
+    return <><LandingHeader /><FigmaProductDetailPreview key={previewProduct.id} product={previewProduct} /><LandingFooter /></>;
   }
   const backHref = buyerBrowseHref(parseBuyerBrowseLocation(
     buyerParamsFromRecord(await searchParams),

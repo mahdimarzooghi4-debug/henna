@@ -8,45 +8,54 @@ import {
   LANDING_PREVIEW_CART_EVENT,
   readLandingPreviewCart,
   saveLandingPreviewCart,
+  type LandingPreviewProduct,
 } from "../lib/landing-preview-products";
 
-const gallery = [
+const cheeseGallery = [
   { src: "/landing/product-detail-main.png", alt: "پنیر سفید ایرانی ممتاز" },
   { src: "/landing/product-detail-flatbread.png", alt: "پنیر روی نان محلی" },
   { src: "/landing/product-detail-cheese.png", alt: "نمای نزدیک پنیر سفید" },
 ] as const;
 
-export function FigmaProductDetailPreview() {
+export function FigmaProductDetailPreview({ product }: { product: LandingPreviewProduct }) {
+  const isCheese = product.id === "cheese";
+  const title = isCheese ? "پنیر سفید ایرانی ممتاز هراز" : product.title;
+  // Do not substitute cheese photos or invented specifications for other products.
+  const gallery = isCheese ? cheeseGallery : [
+    { src: "/landing/" + product.image, alt: product.title },
+  ];
   const [activeImage, setActiveImage] = useState(0);
-  const [activeThumbnail, setActiveThumbnail] = useState(2);
   const [quantity, setQuantity] = useState(1);
   const [notice, setNotice] = useState("");
+  const [added, setAdded] = useState(false);
 
   function addToCart() {
+    setAdded(false);
     const current = readLandingPreviewCart();
-    const item = current.find((entry) => entry.productId === "cheese");
+    const item = current.find((entry) => entry.productId === product.id);
     if ((item?.quantity ?? 0) + quantity > 99) {
       setNotice("حداکثر تعداد این کالا در سبد ۹۹ عدد است.");
       return;
     }
     const next = item
-      ? current.map((entry) => entry.productId === "cheese"
+      ? current.map((entry) => entry.productId === product.id
           ? { ...entry, quantity: entry.quantity + quantity } : entry)
-      : [...current, { productId: "cheese", quantity }];
+      : [...current, { productId: product.id, quantity }];
     if (!saveLandingPreviewCart(next)) {
       setNotice("افزودن کالا به سبد انجام نشد؛ دوباره تلاش کنید.");
       return;
     }
     window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
-    setNotice("پنیر سفید ایرانی ممتاز به سبد خرید اضافه شد.");
+    setAdded(true);
+    setNotice(product.title + " به سبد خرید اضافه شد.");
   }
 
   return (
     <main className={styles.page} dir="rtl">
       <div className={styles.breadcrumbs}>
         <Link href="/">صفحه اصلی</Link><span>/</span>
-        <Link href="/products">لبنیات ممتاز</Link><span>/</span>
-        <span>پنیر سفید ایرانی ممتاز</span>
+        <Link href="/products">محصولات</Link><span>/</span>
+        <span>{product.title}</span>
       </div>
 
       <div className={styles.layout}>
@@ -55,28 +64,29 @@ export function FigmaProductDetailPreview() {
             <Image src={gallery[activeImage].src} alt={gallery[activeImage].alt}
               fill priority sizes="(max-width: 700px) 100vw, 34vw" />
           </div>
-          <div className={styles.thumbnails}>
+          {gallery.length > 1 && <div className={styles.thumbnails}>
             {gallery.slice(1).map((image, index) => {
               const imageIndex = index + 1;
               return <button key={image.src} type="button"
-                aria-label={image.alt} aria-pressed={activeThumbnail === imageIndex}
-                className={activeThumbnail === imageIndex ? styles.thumbnailActive : styles.thumbnail}
-                onClick={() => { setActiveImage(imageIndex); setActiveThumbnail(imageIndex); }}>
+                aria-label={image.alt} aria-pressed={activeImage === imageIndex}
+                className={activeImage === imageIndex ? styles.thumbnailActive : styles.thumbnail}
+                onClick={() => setActiveImage(activeImage === imageIndex ? 0 : imageIndex)}>
                 <Image src={image.src} alt="" width={88} height={88} />
               </button>;
             })}
-          </div>
+          </div>}
         </section>
 
         <section className={styles.information}>
-          <p className={styles.category}>لبنیات ممتاز</p>
-          <h1>پنیر سفید ایرانی ممتاز هراز</h1>
-          <p className={styles.weight}>وزن خالص: ۴۰۰ گرم</p>
+          {product.badge && <p className={styles.category}>{isCheese ? "لبنیات ممتاز" : product.badge}</p>}
+          <h1>{title}</h1>
+          <p className={styles.weight}>{isCheese ? "وزن خالص: ۴۰۰ گرم" : product.detail}</p>
+          <p className={styles.disclosure}>این اطلاعات و قیمت‌ها نمونهٔ طراحی هستند؛ خرید واقعی انجام نمی‌شود.</p>
 
           <section className={styles.purchase} aria-label="قیمت و افزودن به سبد">
             <div className={styles.priceRow}>
               <span>قیمت پایه بازارگاه (حدودی):</span>
-              <div><del>۶۵,۰۰۰ تومان</del><strong>۵۴,۰۰۰ تومان</strong></div>
+              <div>{product.oldPrice && <del>{product.oldPrice} تومان</del>}<strong>{product.price} تومان</strong></div>
             </div>
             <hr className={styles.purchaseDivider} />
             <p className={styles.hint}>💡 بعد از افزودن به سبد، می‌توانید فروشگاه‌های نزدیک را مقایسه کنید و فروشگاه موردنظر خود را برای ادامه خرید انتخاب کنید.</p>
@@ -93,12 +103,14 @@ export function FigmaProductDetailPreview() {
               </button>
             </div>
             {notice && <p className={styles.notice} role="status">{notice}</p>}
+            {added && <Link className={styles.cartLink} href="/buyer/cart?mode=preview">مشاهده سبد خرید</Link>}
           </section>
 
           <section className={styles.specifications}>
             <h2>مشخصات و ویژگی‌های محصول</h2>
-            <dl><dt>برند تولیدکننده</dt><dd>هراز</dd>
+            {isCheese ? <dl><dt>برند تولیدکننده</dt><dd>هراز</dd>
               <dt>وزن خالص</dt><dd>۴۰۰ گرم</dd></dl>
+              : <dl><dt>اطلاعات نمونه</dt><dd>{product.detail}</dd></dl>}
           </section>
         </section>
       </div>
