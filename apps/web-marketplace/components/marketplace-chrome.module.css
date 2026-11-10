@@ -149,8 +149,9 @@
   margin: 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  /* Mirror homepage: four entries grouped at the RTL start, not stretched out. */
+  justify-content: flex-start;
+  gap: 32px;
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
