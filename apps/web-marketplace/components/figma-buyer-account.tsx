@@ -17,7 +17,7 @@ const nav = [
 ];
 
 export function FigmaBuyerAccount() {
-  const [notice, setNotice] = useState("");
+  const [legalPurchase, setLegalPurchase] = useState(false);
 
   return (
     <main className={styles.page} dir="rtl" data-testid="preview-account">
@@ -31,19 +31,15 @@ export function FigmaBuyerAccount() {
         </aside>
         <section className={styles.content} aria-label="حساب من">
           <article className={styles.legalCard} data-testid="preview-account-legal">
-            <div className={styles.legalHeading}>
-              <h2>خرید حقوقی</h2>
-              <p>برای خرید به نام شرکت و دریافت فاکتور رسمی، اطلاعات شرکت را ثبت کنید.</p>
-            </div>
-            <div className={styles.legalState}>
-              <strong>اطلاعات شرکت نمونه ثبت شده است</strong>
-              <p>این اطلاعات به این حساب کاربری شخص حقیقی متصل است و برای خریدهای حقوقی و دریافت فاکتور رسمی استفاده می‌شود.</p>
-            </div>
-            <div className={styles.legalActions}>
-              <button className={styles.edit} type="button" onClick={() => setNotice("ویرایش اطلاعات شرکت در نسخه نمونه فعال نیست.")}>ویرایش اطلاعات</button>
-              <button className={styles.view} type="button" onClick={() => setNotice("اطلاعات شرکت نمونه ثبت شده است.")}>مشاهده اطلاعات</button>
-            </div>
-            {notice && <p className={styles.notice} role="status">{notice}</p>}
+            <h2>خرید حقوقی</h2>
+            <label className={styles.legalOption}>
+              <input type="checkbox" checked={legalPurchase}
+                onChange={event => setLegalPurchase(event.target.checked)}
+                aria-describedby="preview-legal-help" />
+              <span>درخواست صدور فاکتور رسمی</span>
+            </label>
+            <p id="preview-legal-help">با انتخاب این گزینه، درخواست صدور فاکتور رسمی برای خریدهای شما در آینده مشخص می‌شود.</p>
+            <p className={styles.previewNote}>نسخه نمایشی؛ انتخاب در این صفحه آزمایشی است و فاکتور رسمی صادر نمی‌شود.</p>
           </article>
           <section className={styles.summary} data-testid="preview-account-summary">
             <h1>حساب من</h1>

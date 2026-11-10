@@ -808,8 +808,15 @@ async function main() {
   assert.ok(fieldBoxes[0].width > fieldBoxes[1].width);
   assert.equal(fieldBoxes[1].y, fieldBoxes[2].y);
   assert.equal(await accountInfo.getByRole("link", { name: "ویرایش اطلاعات حساب" }).getAttribute("href"), "/buyer/profile?mode=preview");
-  await accountLegal.getByRole("button", { name: "مشاهده اطلاعات" }).click();
-  await accountLegal.getByRole("status").waitFor();
+  const legalOption = accountLegal.getByRole("checkbox", { name: "درخواست صدور فاکتور رسمی" });
+  assert.equal(await legalOption.isChecked(), false, "Official invoice is opt-in");
+  await legalOption.check();
+  assert.equal(await legalOption.isChecked(), true);
+  await legalOption.uncheck();
+  assert.equal(await legalOption.isChecked(), false);
+  assert.equal(await accountLegal.getByRole("button").count(), 0,
+    "Account legal purchase must not offer company registration/edit actions");
+  await accountLegal.getByText("نسخه نمایشی", { exact: false }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
     "Account layout must not overflow mobile viewport");
