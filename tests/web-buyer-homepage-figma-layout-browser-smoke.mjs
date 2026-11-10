@@ -306,6 +306,24 @@ async function main() {
     "Figma footer has four links in each of three columns");
   assert.equal(await footer.locator('[class*="socialMedia"] span').count(), 3,
     "Footer social icon group retains three slots");
+  const socialIcons = footer.locator('[class*="socialMedia"] span');
+  assert.deepEqual(await socialIcons.evaluateAll(
+    nodes => nodes.map(node => node.getAttribute("aria-label"))),
+    ["اینستاگرام", "توییتر", "لینکدین"],
+    "All three footer vector icons have accessible Persian names");
+  assert.equal(await socialIcons.locator("svg").count(), 3,
+    "Footer icons must be vector SVG, never platform-dependent text glyphs");
+  assert.equal(await socialIcons.first().locator("svg rect").count(), 1,
+    "Instagram icon contains a rounded camera frame");
+  assert.equal(await socialIcons.first().locator("svg circle").count(), 2,
+    "Instagram icon contains a lens and flash dot");
+  const svgSizes = await socialIcons.locator("svg").evaluateAll(nodes =>
+    nodes.map(node => ({
+      width: Math.round(node.getBoundingClientRect().width),
+      height: Math.round(node.getBoundingClientRect().height),
+    })));
+  assert.deepEqual(svgSizes, Array(3).fill({ width: 20, height: 20 }),
+    "Footer social icons render at a consistent 20px square");
 
   // The same shared chrome must remain inside the viewport on mobile.
   await page.setViewportSize({ width: 390, height: 844 });
