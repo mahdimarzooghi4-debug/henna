@@ -15,6 +15,15 @@ import {
 } from "../lib/buyer-catalog";
 
 type PreviewFilter = "dairy" | "pantry" | "honey" | null;
+type PreviewSort = "cheapest" | "expensive" | "discounted" | null;
+
+// Only the eight fixed Figma demo prices may use this display-format parser.
+function previewPrice(value: string): number {
+  return Number(value.replace(/[۰-۹٠-٩]/g, (digit) => {
+    const code = digit.charCodeAt(0);
+    return String(code >= 0x6f0 ? code - 0x6f0 : code - 0x660);
+  }).replace(/[,٬\s]/g, ""));
+}
 // These IDs are the eight fixed Figma preview cards, not published catalog IDs.
 const previewFilterProducts: Record<Exclude<PreviewFilter, null>, readonly string[]> = {
   dairy: ["cheese", "yogurt", "tea", "eggs"], pantry: ["rice", "oil"], honey: ["honey", "walnut"],
@@ -62,6 +71,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
   const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
   const [previewFilter, setPreviewFilter] = useState<PreviewFilter>(null);
+  const [previewSort, setPreviewSort] = useState<PreviewSort>(null);
   const [products, setProducts] = useState<Load<BuyerPage>>({
     status: "loading", key: "",
   });
@@ -77,6 +87,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
 
   function setBrowseLocation(next: BuyerBrowseLocation) {
     setPreviewFilter(null);
+    setPreviewSort(null);
     setSelected(next.categoryId);
     setSearch(next.search);
     setPage(next.page);
@@ -365,23 +376,19 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
         </aside>
         <div className={styles.results}>
       <div className={styles.toolbar} dir="rtl" data-testid="products-filter-toolbar">
-        <div className={styles.sortOptions}><span>مرتب‌سازی براساس:</span><button type="button" aria-pressed="true" title="ترتیب پیش‌فرض فهرست">جدیدترین</button><button type="button" disabled title="قیمت معتبر برای مرتب‌سازی کاتالوگ موجود نیست">ارزان‌ترین</button><button type="button" disabled title="آمار بازدید معتبر برای مرتب‌سازی موجود نیست">پربازدیدترین</button></div>
-        <div className={styles.promotionalFilters}>
-          <button type="button" className={isPreview ? previewFilter === null ? styles.activePromo : "" : selected === null ? styles.activePromo : ""}
-            aria-pressed={isPreview ? previewFilter === null : selected === null}
-            onClick={() => isPreview ? setPreviewFilter(null) : chooseCategory(null)}>همه</button>
-          <button type="button" className={(isPreview ? previewFilter === "dairy" : categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "لبنیات محلی")?.id) ? styles.activePromo : ""}
-            aria-pressed={isPreview ? previewFilter === "dairy" :
-              categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "لبنیات محلی")?.id}
-            disabled={!isPreview && (categories.status !== "ok" ||
-              !findLandingBuyerCategory(categories.data, "لبنیات محلی"))}
-            onClick={() => chooseFigmaCategory("لبنیات محلی", "dairy")}>لبنیات محلی</button>
-          <button type="button" className={(isPreview ? previewFilter === "pantry" : categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "روغن و خواربار")?.id) ? styles.activePromo : ""}
-            aria-pressed={isPreview ? previewFilter === "pantry" :
-              categories.status === "ok" && selected === findLandingBuyerCategory(categories.data, "روغن و خواربار")?.id}
-            disabled={!isPreview && (categories.status !== "ok" ||
-              !findLandingBuyerCategory(categories.data, "روغن و خواربار"))}
-            onClick={() => chooseFigmaCategory("روغن و خواربار", "pantry")}>روغن و خواربار</button>
+        <div className={styles.sortOptions} aria-label="مرتب‌سازی و فیلتر کالاها">
+          <span>مرتب‌سازی براساس:</span>
+          <button type="button" aria-pressed={isPreview && previewSort === "cheapest"}
+            disabled={!isPreview} title={isPreview ? "مرتب‌سازی قیمت کارت‌های نمونه از کم به زیاد" : "قیمت تأییدشده برای مرتب‌سازی کاتالوگ در دسترس نیست"}
+            onClick={() => setPreviewSort(prev => prev === "cheapest" ? null : "cheapest")}>ارزان‌ترین</button>
+          <button type="button" aria-pressed={isPreview && previewSort === "expensive"}
+            disabled={!isPreview} title={isPreview ? "مرتب‌سازی قیمت کارت‌های نمونه از زیاد به کم" : "قیمت تأییدشده برای مرتب‌سازی کاتالوگ در دسترس نیست"}
+            onClick={() => setPreviewSort(prev => prev === "expensive" ? null : "expensive")}>گران‌ترین</button>
+          <button type="button" aria-pressed={isPreview && previewSort === "discounted"}
+            disabled={!isPreview} title={isPreview ? "فقط کارت‌های نمونه با قیمت قبلی بالاتر" : "تخفیف تأییدشده برای کاتالوگ در دسترس نیست"}
+            onClick={() => setPreviewSort(prev => prev === "discounted" ? null : "discounted")}>تخفیف‌دارها</button>
+          <button type="button" aria-pressed={false} disabled
+            title="تا زمان دریافت فهرست اقلام واجد شرایط از مرجع معتبر، فیلتر کالابرگ غیرفعال است">کالابرگ</button>
         </div>
       </div>
       <section className="buyer-section" aria-labelledby="buyer-products-title">
@@ -397,7 +404,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
             <Link href="/products">مشاهده صفحه همه کالاها و خدمات</Link>
           </div>
         ) : !search && !selected && (current.status === "loading" || current.status === "unavailable" || current.data.items.length === 0) ? (
-          <FigmaCatalogPreview filter={previewFilter} />
+          <FigmaCatalogPreview filter={previewFilter} sort={previewSort} />
         ) : current.status === "loading" ? (
           <p className="buyer-panel buyer-products-status" role="status">در حال دریافت کالاها…</p>
         ) : current.status === "unavailable" ? (
@@ -447,7 +454,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
 }
 
 
-function FigmaCatalogPreview({ filter }: { filter: PreviewFilter }) {
+function FigmaCatalogPreview({ filter, sort }: { filter: PreviewFilter; sort: PreviewSort }) {
   const [notice, setNotice] = useState("");
   function add(productId: string) {
     const result = addLandingPreviewProduct(productId);
@@ -457,15 +464,24 @@ function FigmaCatalogPreview({ filter }: { filter: PreviewFilter }) {
     } else if (result === "limit") setNotice("حداکثر تعداد مجاز در سبد ۹۹ عدد است.");
     else setNotice("افزودن کالا انجام نشد؛ دوباره تلاش کنید.");
   }
-  const visible = filter === null ? LANDING_PREVIEW_PRODUCTS
-    : LANDING_PREVIEW_PRODUCTS.filter(product => {
-      const ids: readonly string[] = previewFilterProducts[filter];
-      return ids.includes(product.id);
-    });
+  const filtered = LANDING_PREVIEW_PRODUCTS.filter((product) => {
+    if (filter === null) return true;
+    const ids: readonly string[] = previewFilterProducts[filter];
+    return ids.includes(product.id);
+  });
+  // Demo price/discount metadata must not be interpreted as public offers.
+  const visible = sort === "discounted"
+    ? filtered.filter((product) => product.oldPrice != null &&
+      previewPrice(product.oldPrice) > previewPrice(product.price))
+    : sort === "cheapest" || sort === "expensive"
+      ? [...filtered].sort((a, b) => (sort === "cheapest" ? 1 : -1) *
+        (previewPrice(a.price) - previewPrice(b.price)))
+      : filtered;
   return (
     <div className={styles.catalogPreview} aria-label="محصولات فروشگاه" dir="rtl">
       <p className={styles.previewDisclosure}>نمایش نمونه طراحی — این کارت‌ها دسته‌بندی منتشرشده یا موجودی واقعی نیستند.</p>
       <div className={styles.catalogGrid}>
+        {visible.length === 0 && <p role="status" className={styles.previewDisclosure}>در این دسته از کارت‌های نمونه، کالای تخفیف‌دار وجود ندارد.</p>}
         {visible.map((product) => (
           <article key={product.id} className={styles.catalogCard}>
             <div className={styles.catalogImage}>
