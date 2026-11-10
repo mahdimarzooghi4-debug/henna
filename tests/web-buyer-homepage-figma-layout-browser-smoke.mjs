@@ -784,6 +784,36 @@ async function main() {
   assert.deepEqual(svgSizes, Array(3).fill({ width: 20, height: 20 }),
     "Footer social icons render at a consistent 20px square");
 
+  // Figma WEB / 10 Account (227:2250): preserve existing preview routes.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(base + "/buyer/account?mode=preview");
+  const account = page.getByTestId("preview-account");
+  const accountNav = account.getByRole("complementary", { name: "بخش‌های حساب کاربری" });
+  const accountLegal = account.getByTestId("preview-account-legal");
+  const accountSummary = account.getByTestId("preview-account-summary");
+  const accountInfo = account.getByTestId("preview-account-info");
+  await accountInfo.waitFor();
+  const navBox = await accountNav.boundingBox();
+  const legalBox = await accountLegal.boundingBox();
+  const summaryBox = await accountSummary.boundingBox();
+  const infoBox = await accountInfo.boundingBox();
+  assert.equal(navBox.width, 320, "Account nav matches Figma width");
+  assert.ok(navBox.x > legalBox.x, "Account nav is on the right");
+  assert.ok(legalBox.y < summaryBox.y && summaryBox.y < infoBox.y,
+    "Legal, summary and info are separate ordered cards");
+  assert.equal(await accountNav.locator('[aria-current="page"]').textContent(), "اطلاعات حساب");
+  assert.equal(await accountInfo.locator("dl > div").count(), 3);
+  const fieldBoxes = await accountInfo.locator("dl > div").evaluateAll(nodes =>
+    nodes.map(node => ({ x: node.offsetLeft, y: node.offsetTop, width: node.offsetWidth })));
+  assert.ok(fieldBoxes[0].width > fieldBoxes[1].width);
+  assert.equal(fieldBoxes[1].y, fieldBoxes[2].y);
+  assert.equal(await accountInfo.getByRole("link", { name: "ویرایش اطلاعات حساب" }).getAttribute("href"), "/buyer/profile?mode=preview");
+  await accountLegal.getByRole("button", { name: "مشاهده اطلاعات" }).click();
+  await accountLegal.getByRole("status").waitFor();
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
+    "Account layout must not overflow mobile viewport");
+
   // The same shared chrome must remain inside the viewport on mobile.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(base + "/products", { waitUntil: "domcontentloaded" });
