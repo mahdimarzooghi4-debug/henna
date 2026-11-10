@@ -174,6 +174,16 @@ async function main() {
     assert.equal(await homeNav.getByRole("link", { name: removed, exact: true }).count(),
       0, removed + " must not appear in homepage navigation");
   }
+  // Figma WEB / 11 Auth: the shared homepage login action must reach
+  // the existing auth route without requiring a working SMS provider.
+  const loginLink = page.locator('header a[href="/auth"]');
+  assert.equal(await loginLink.count(), 1, "Shared header login must target /auth");
+  assert.equal(await page.locator('header a[href="/account/profile"]').count(), 0);
+  await loginLink.click();
+  await page.waitForURL(base + "/auth");
+  await page.getByRole("heading", { name: "ورود یا ثبت‌نام در حنا" }).waitFor();
+  await page.locator("#auth-phone").waitFor();
+  await page.goto(base + "/");
   const allCategoriesNav = page.getByRole("navigation", {
     name: "دسته‌بندی اصلی",
   }).getByRole("link", { name: "همه دسته‌ها", exact: true });
