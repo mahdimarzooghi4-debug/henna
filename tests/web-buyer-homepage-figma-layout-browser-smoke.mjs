@@ -587,11 +587,11 @@ async function main() {
   assert.equal(await submitPreview.isEnabled(),true);
   await submitPreview.click();
   await page.waitForURL(base+"/buyer/success?mode=preview");
-  const order=await page.evaluate(()=>JSON.parse(sessionStorage.getItem("henna:figma-preview-order:v1")));
-  assert.equal(order.deliveryMethod,"pickup");
-  assert.equal(order.deliveryFee,0);
-  assert.equal(order.address,"دریافت حضوری از فروشگاه نمونه ۱ (محله رسالت)");
-  assert.deepEqual(order.items,expected);
+  const pickupOrder=await page.evaluate(()=>JSON.parse(sessionStorage.getItem("henna:figma-preview-order:v1")));
+  assert.equal(pickupOrder.deliveryMethod,"pickup");
+  assert.equal(pickupOrder.deliveryFee,0);
+  assert.equal(pickupOrder.address,"دریافت حضوری از فروشگاه نمونه ۱ (محله رسالت)");
+  assert.deepEqual(pickupOrder.items,expected);
   assert.deepEqual(await readDemoCart(),[]);
   // Restore fixture state for the remainder of the existing buyer journey.
   await page.evaluate(items=>{
