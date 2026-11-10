@@ -590,6 +590,8 @@ jobs:
         run: node tools/mobile/generate-seller-icons.mjs && node --test tests/mobile-seller-icon-generation.mjs
       - name: Validate buyer/seller preview entry isolation and status bar configuration
         run: node --test tests/mobile-preview-ui-contract.mjs
+      - name: Test isolated offline preview cart quantity and total
+        run: node --experimental-strip-types --test tests/mobile-preview-cart.mjs
       - name: Verify seller mobile seller-access and orders (CI-only mocked transport)
         run: node --experimental-strip-types --test tests/mobile-seller-access-orders.mjs
       - name: Bundle seller mobile app for Android (not installed APK)
