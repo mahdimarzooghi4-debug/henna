@@ -94,7 +94,7 @@ export function FigmaOrderTracking() {
             {stages.map((stage, index) => (
               <Fragment key={stage}>
                 <div className={styles.stage} data-testid="buyer-tracking-stage">
-                  <span className={[${styles.node}, index < 3 ? styles.done : ""].filter(Boolean).join(" ")} aria-hidden="true">
+                  <span className={[styles.node, index < 3 ? styles.done : ""].filter(Boolean).join(" ")} aria-hidden="true">
                     {index < 3 ? "✓" : ""}
                   </span>
                   <strong className={index === 2 ? styles.active : ""}>{stage}</strong>
