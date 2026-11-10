@@ -248,11 +248,14 @@
   border-radius: 18px;
   background: #faf8f5;
   color: #1c3f3a;
-  font-size: 18px;
-  font-weight: 700;
   line-height: 1;
 }
-.socialMedia span:last-child { font-size: 13px; }
+.socialMedia svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
 .footerBottom p {
   margin: 0;
   color: #706963;
