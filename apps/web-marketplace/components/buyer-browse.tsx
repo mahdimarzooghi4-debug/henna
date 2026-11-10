@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { LANDING_PREVIEW_PRODUCTS } from "../lib/landing-preview-products";
+import { LandingAddButton } from "./landing-add-button";
 import styles from "./buyer-marketplace.module.css";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref, findLandingBuyerCategory,
@@ -476,16 +477,15 @@ function FigmaCatalogPreview({ filter, sort }: { filter: PreviewFilter; sort: Pr
         {visible.length === 0 && <p role="status" className={styles.previewDisclosure}>در این دسته از کارت‌های نمونه، کالای تخفیف‌دار وجود ندارد.</p>}
         {visible.map((product) => (
           <article key={product.id} className={styles.catalogCard}>
-            <Link className={styles.catalogImage} href={"/products/" + product.id}>
+            <div className={styles.catalogImage}>
               <img src={"/landing/" + product.image} alt={product.title} />
               {product.badge && <span className={`${styles.catalogBadge} ${/عسل|خواربار/.test(product.badge) ? styles.catalogBadgeGreen : ""}`}>{product.badge}</span>}
-            </Link>
+            </div>
             <div className={styles.catalogInfo}>
-              <h3><Link href={"/products/" + product.id}>{product.title}</Link></h3><p>{product.detail}</p>
+              <h3>{product.title}</h3><p>{product.detail}</p>
             </div>
             <div className={styles.catalogActions}>
-              <Link href={"/products/" + product.id} data-testid="preview-product-add"
-                aria-label={"افزودن + — مشاهده جزئیات " + product.title}>افزودن +</Link>
+              <LandingAddButton productId={product.id} messageClassName={styles.catalogNotice} />
               <div className={styles.catalogPrice}>
                 {product.oldPrice && <del>{product.oldPrice}</del>}
                 <strong>{product.price} تومان</strong>

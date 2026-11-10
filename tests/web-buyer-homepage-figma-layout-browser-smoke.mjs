@@ -256,63 +256,90 @@ async function main() {
   }).getByRole("link", { name: "همه دسته‌ها", exact: true })
     .getAttribute("href"), "/products");
 
-  // Owner's purchase journey: a card action opens detail without changing
-  // the cart. Quantity selection and explicit confirmation happen on detail.
+  // Latest owner decision: the sample card adds one item and opens the cart.
+  // The prior mandatory detail-first experiment is superseded.
   const readDemoCart = () => page.evaluate(() => JSON.parse(
     localStorage.getItem("henna:landing-preview-cart:v1") ?? "[]"));
   await page.evaluate(() => localStorage.removeItem("henna:landing-preview-cart:v1"));
   const expectedPreviewIds = ["cheese", "yogurt", "rice", "oil", "tea", "honey", "eggs", "walnut"];
-  assert.deepEqual(await demoCards.getByTestId("preview-product-add").evaluateAll(
-    links => links.map(link => link.getAttribute("href"))),
-    expectedPreviewIds.map(id => "/products/" + id),
-    "Every sample has its own detail destination");
-  for (const card of await demoCards.all()) {
-    const href = await card.getByTestId("preview-product-add").getAttribute("href");
-    assert.equal(await card.locator("h3 a").getAttribute("href"), href);
-    assert.equal(await card.locator("a:has(img)").getAttribute("href"), href);
-  }
-
+  const addButtons = demoCards.getByTestId("preview-product-add");
+  assert.deepEqual(await addButtons.evaluateAll(
+    nodes => nodes.map(node => node.getAttribute("data-product-id"))),
+    expectedPreviewIds, "Each catalog button is bound to its own sample product");
+  assert.equal(await demoCards.locator('a[href^="/products/"]').count(), 0,
+    "Sample catalog cards no longer require or link to the detail page");
+  const cartUrl = base + "/buyer/cart?mode=preview";
+  const cartTitle = page.getByRole("heading", { name: "اقلام سبد خرید شما" });
   const cheeseCard = demoCards.filter({ hasText: "پنیر سفید ایرانی ممتاز" });
   await cheeseCard.getByTestId("preview-product-add").click();
-  await page.waitForURL(base + "/products/cheese");
-  await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز هراز", exact: true }).waitFor();
-  assert.deepEqual(await readDemoCart(), [], "Opening detail must not add any item");
-  await page.getByRole("button", { name: "افزایش تعداد", exact: true }).click();
-  assert.deepEqual(await readDemoCart(), [], "Quantity editing alone never mutates the cart");
-  await page.getByRole("button", { name: "افزودن به سبد خرید", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "به سبد خرید اضافه شد" }).waitFor();
-  assert.deepEqual(await readDemoCart(), [{ productId: "cheese", quantity: 2 }],
-    "Only explicit confirmation adds the selected quantity");
-  await page.getByRole("link", { name: "مشاهده سبد خرید", exact: true }).click();
-  await page.waitForURL(base + "/buyer/cart?mode=preview");
-  await page.getByRole("heading", { name: "اقلام سبد خرید شما" }).waitFor();
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
+  assert.deepEqual(await readDemoCart(), [{ productId: "cheese", quantity: 1 }],
+    "Catalog add opens cart immediately and adds exactly one correct item");
+  await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز", exact: true }).waitFor();
 
-  // A different sample must use its own price/image/detail, not the cheese fixture.
   await page.goto(base + "/products");
-  await demoCards.filter({ hasText: "ماست سون همزده پرچرب" }).getByTestId("preview-product-add").click();
-  await page.waitForURL(base + "/products/yogurt");
-  await page.getByRole("heading", { name: "ماست سون همزده پرچرب", exact: true }).waitFor();
-  assert.equal(await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز هراز", exact: true }).count(), 0);
-  assert.equal(await page.locator('main [aria-label="تصاویر محصول"] img').count(), 1,
-    "Only the supplied yogurt image is shown");
-  assert.deepEqual(await readDemoCart(), [{ productId: "cheese", quantity: 2 }]);
-  await page.getByRole("button", { name: "افزودن به سبد خرید", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "به سبد خرید اضافه شد" }).waitFor();
+  const yogurtCard = demoCards.filter({ hasText: "ماست سون همزده پرچرب" });
+  await yogurtCard.getByTestId("preview-product-add").click();
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
   assert.deepEqual(await readDemoCart(), [
+    { productId: "cheese", quantity: 1 }, { productId: "yogurt", quantity: 1 },
+  ], "Adding a different product preserves prior cart contents");
+  await page.getByRole("heading", { name: "ماست سون همزده پرچرب", exact: true }).waitFor();
+
+  // A repeat add increments the existing quantity, rather than replacing it.
+  await page.goto(base + "/products");
+  await cheeseCard.getByTestId("preview-product-add").click();
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
+  const expected = [
     { productId: "cheese", quantity: 2 }, { productId: "yogurt", quantity: 1 },
-  ], "Confirming yogurt adds yogurt without overwriting cheese");
+  ];
+  assert.deepEqual(await readDemoCart(), expected);
+
+  // Opening the header cart never adds another item.
+  await page.goto(base + "/products");
   await page.locator('header a[href="/buyer/cart?mode=preview"]').click();
-  await page.waitForURL(base + "/buyer/cart?mode=preview");
-  await page.getByRole("heading", { name: "اقلام سبد خرید شما" }).waitFor();
-  // Homepage uses the same product-first journey.
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
+  assert.deepEqual(await readDemoCart(), expected);
+
+  // The homepage's recommendation action follows the same direct-cart flow.
   await page.goto(base + "/");
+  assert.equal(await page.locator('#offers article a[href^="/products/"]').count(), 0,
+    "Homepage recommendations do not use the sample detail page");
   const riceOffer = page.locator("#offers article").filter({ hasText: "برنج هاشمی درجه یک" });
   await riceOffer.getByTestId("preview-product-add").click();
-  await page.waitForURL(base + "/products/rice");
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
+  const withRice = [...expected, { productId: "rice", quantity: 1 }];
+  assert.deepEqual(await readDemoCart(), withRice, "Homepage adds the exact chosen item");
   await page.getByRole("heading", { name: "برنج هاشمی درجه یک", exact: true }).waitFor();
-  assert.deepEqual(await readDemoCart(), [
-    { productId: "cheese", quantity: 2 }, { productId: "yogurt", quantity: 1 },
-  ], "Homepage card also opens details without adding");
+
+  // A failed add must not redirect or imply an item was added.
+  await page.goto(base + "/products");
+  await page.evaluate(() => localStorage.setItem("henna:landing-preview-cart:v1",
+    JSON.stringify([{ productId: "cheese", quantity: 99 }])));
+  await cheeseCard.getByTestId("preview-product-add").click();
+  await cheeseCard.getByRole("status").filter({ hasText: "۹۹ عدد" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/products");
+  assert.deepEqual(await readDemoCart(), [{ productId: "cheese", quantity: 99 }]);
+  await page.evaluate(items => localStorage.setItem("henna:landing-preview-cart:v1",
+    JSON.stringify(items)), withRice);
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) {
+      if (key === "henna:landing-preview-cart:v1") throw new Error("CI storage blocked");
+      return original.call(this, key, value);
+    };
+  });
+  await yogurtCard.getByTestId("preview-product-add").click();
+  await yogurtCard.getByRole("status").filter({ hasText: "ذخیرهٔ سبد" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/products");
+  assert.deepEqual(await readDemoCart(), withRice, "Failed storage preserves the old cart");
+  await page.goto(base + "/products");
+  await page.evaluate(() => localStorage.removeItem("henna:landing-preview-cart:v1"));
 
   // An unpublished homepage category never masquerades as a real catalog
   // filter. Show a clear, same-origin way to reach the Figma overview.
