@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormField } from "../../components/form-field";
 import { normalizeDigits, toPersianDigits } from "../../lib/normalize-digits";
 
 // UI preview only. No OTP request, verification, session, account, storage,
 // or protected redirect. The real AuthForm and backend remain unchanged.
 export function AuthPreviewForm() {
+  const router = useRouter();
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -46,18 +48,21 @@ export function AuthPreviewForm() {
           {error && <p id="auth-preview-error" role="alert" className="form-status form-status--error">{error}</p>}
         </form>
       ) : (
-        <div>
-          <p className="auth-card__hint">مرحله ورود کد نمایشی است. هیچ پیامکی ارسال نشده است.</p>
+        <form noValidate onSubmit={(event) => {
+          event.preventDefault();
+          router.push("/buyer/profile?mode=preview");
+        }}>
+          <p className="auth-card__hint">مرحله ورود کد نمایشی است. هیچ پیامکی ارسال نشده است؛ برای بررسی صفحات می‌توانید بدون کد ادامه دهید.</p>
           <FormField id="auth-code" label="کد نمونه (اختیاری)" type="text"
             autoComplete="off" inputMode="numeric" maxLength={6}
             className="field__input--phone auth-card__code-input"
             placeholder="شش رقم نمونه" value={toPersianDigits(code)} inputRef={codeInput}
             onChange={(event) => setCode(normalizeDigits(event.target.value).replace(/\D/g, "").slice(0, 6))} />
-          <Link className="primary-button" href="/buyer/profile?mode=preview">ادامه نمایشی به تکمیل پروفایل</Link>
+          <button className="primary-button" type="submit">ورود و ادامه</button>
           <button className="auth-card__secondary" type="button" onClick={() => {
             setCode(""); setError(""); setStep("phone");
           }}>ویرایش شماره</button>
-        </div>
+        </form>
       )}
       <Link className="auth-card__secondary" href="/auth?mode=live">ورود واقعی با پیامک</Link>
     </section>
