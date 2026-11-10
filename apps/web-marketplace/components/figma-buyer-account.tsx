@@ -34,10 +34,16 @@ export function FigmaBuyerAccount() {
               <strong>{company ? "اطلاعات شرکت در پیش‌نمایش ثبت شده است" : "هنوز مشخصات شرکت ثبت نشده است"}</strong>
               <p>برای درخواست فاکتور رسمی در خرید حقوقی، مشخصات شرکت را یک‌بار در حساب وارد کنید. این نسخه آزمایشی است؛ فقط اطلاعات نمونه وارد کنید.</p>
             </div>
-            <div className={styles.legalActions}>
-              <button className={styles.edit} type="button" onClick={openEdit}>{company?"ویرایش اطلاعات":"ثبت مشخصات شرکت"}</button>
-              {company && <button className={styles.view} type="button" onClick={()=>{setMode(mode==="view"?"closed":"view");setNotice("");}}>مشاهده اطلاعات</button>}
-            </div>
+            {company ? (
+              <div className={styles.legalActions}>
+                <button className={styles.edit} type="button" onClick={openEdit}>ویرایش اطلاعات</button>
+                <button className={styles.view} type="button" onClick={()=>{setMode(mode==="view"?"closed":"view");setNotice("");}}>مشاهده اطلاعات</button>
+              </div>
+            ) : mode !== "edit" ? (
+              <div className={styles.legalActions}>
+                <button className={styles.view} type="button" onClick={openEdit}>تکمیل مشخصات</button>
+              </div>
+            ) : null}
             {mode==="edit" && <form data-testid="preview-company-form" className={styles.companyForm} onSubmit={event=>{
               event.preventDefault();const next=normalizeCompany(draft);
               if(!validPreviewCompany(next)){setNotice("نام شرکت، شناسه ملی ۱۱ رقمی و شماره ثبت را به‌درستی وارد کنید. کد پستی در صورت ورود باید ۱۰ رقم باشد.");return;}

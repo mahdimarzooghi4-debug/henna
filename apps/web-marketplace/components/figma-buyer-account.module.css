@@ -84,7 +84,7 @@
 
 /* Explicit physical placement keeps the account navigation on the right for every tab. */
 .layout { direction:ltr; grid-template-columns:minmax(0,1fr) 320px; }
-.layout > aside { grid-column:2; direction:rtl; }
-.layout > section { grid-column:1; direction:rtl; }
+.layout > aside { grid-column:2; grid-row:1; direction:rtl; }
+.layout > section { grid-column:1; grid-row:1; direction:rtl; }
 @media(max-width:1000px){.layout{grid-template-columns:minmax(0,1fr) 240px;}}
-@media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr);}.layout > aside,.layout > section{grid-column:1;}}
+@media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr);}.layout > aside,.layout > section{grid-column:1;grid-row:auto;}}

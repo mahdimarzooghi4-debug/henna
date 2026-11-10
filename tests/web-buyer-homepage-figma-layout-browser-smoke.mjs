@@ -841,6 +841,9 @@ async function main() {
   await accountLegal.getByText("هنوز مشخصات شرکت ثبت نشده است", { exact: true }).waitFor();
   assert.equal(await accountLegal.getByRole("checkbox").count(), 0,
     "Invoice opt-in belongs to the order, not account company data");
+  assert.equal(await accountLegal.getByRole("button", {
+    name: "ثبت مشخصات شرکت", exact: true,
+  }).count(), 0, "No green company-registration CTA on the account page");
   await accountLegal.getByTestId("preview-company-form").waitFor();
   await accountLegal.getByLabel("نام شرکت",{exact:true}).fill("شرکت نمونه CI");
   await accountLegal.getByLabel("شناسه ملی شرکت",{exact:true}).fill("۱۰۰۰۰۰۰۰۰۰۰");
@@ -873,7 +876,10 @@ async function main() {
     for (const width of [1440, 1650, 1150, 900, 390]) {
       await page.setViewportSize({ width, height: 1000 });
       const g = await page.evaluate(id => {
-        const rect = el => { const { x, right, width } = el.getBoundingClientRect(); return { x, right, width }; };
+        const rect = el => {
+        const { x, y, top, bottom, right, width, height } = el.getBoundingClientRect();
+        return { x, y, top, bottom, right, width, height };
+      };
         const main = document.querySelector('[data-testid="' + id + '"]');
         const nav = main.querySelector("aside");
         const content = main.querySelector("section");
@@ -901,7 +907,12 @@ async function main() {
         near(g.nav.x, expected.navX, route + " stable sidebar position at " + width);
         near(g.content.x, expected.contentX, route + " stable content position at " + width);
       }
-      if (width >= 900) assert.ok(g.nav.x > g.content.x, route + " sidebar on right");
+      if (width >= 900) {
+        assert.ok(g.nav.x > g.content.x, route + " sidebar on right");
+        near(g.nav.y, g.content.y, route + " sidebar/content top alignment at " + width);
+      } else {
+        assert.ok(g.content.y >= g.nav.bottom, route + " mobile content follows the sidebar");
+      }
       assert.ok(g.arrow.right <= g.label.x && g.arrowPath === "M10 3.5 5.5 8 10 12.5", route + " arrow left");
       assert.ok(g.scroll <= g.viewport + 1, route + " no horizontal overflow at " + width);
     }
