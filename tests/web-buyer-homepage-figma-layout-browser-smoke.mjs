@@ -312,7 +312,9 @@ async function main() {
   const riceOffer = page.locator("#offers article").filter({ hasText: "برنج هاشمی درجه یک" });
   const homeAdd = riceOffer.getByTestId("preview-product-add");
   await homeAdd.click();
-  await riceOffer.getByRole("status").filter({ hasText: "به سبد خرید اضافه شد" }).waitFor();
+  await page.locator('header a[href="/buyer/cart?mode=preview"] span').filter({ hasText: /^۴$/ }).waitFor();
+  assert.equal(await riceOffer.getByRole("status").count(), 0,
+    "Successful homepage add must not display a confirmation message");
   assert.equal(new URL(page.url()).pathname, "/", "Homepage add must not navigate");
   assert.equal(await homeAdd.isEnabled(), true, "Shopping can continue after add");
   const withRice = [...expected, { productId: "rice", quantity: 1 }];
