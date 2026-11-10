@@ -1,6 +1,6 @@
-import { LandingFooter, LandingHeader } from "../../../components/landing-chrome";
+import { MarketplaceChrome } from "../../../components/marketplace-chrome";
 import { FigmaBasketReviewPreview } from "../../../components/figma-basket-review-preview";
 
 export default function BuyerBasketReviewPreviewPage() {
-  return <><LandingHeader /><FigmaBasketReviewPreview /><LandingFooter /></>;
+  return <><MarketplaceChrome basket /><FigmaBasketReviewPreview /><MarketplaceChrome basket footerOnly /></>;
 }

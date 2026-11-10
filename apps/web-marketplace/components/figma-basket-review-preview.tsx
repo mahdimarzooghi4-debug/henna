@@ -58,11 +58,12 @@ export function FigmaBasketReviewPreview() {
   }, 0);
   const seller = sellers[sellerId] ?? sellers["store-1"];
 
-  return <main className={styles.page} dir="rtl">
+  return <main className={styles.page} dir="rtl" data-testid="preview-review-page">
+    <div className={styles.container} data-testid="preview-review-content">
     {!loaded ? <p role="status">در حال دریافت سبد نمونه…</p> : items.length === 0 ? (
       <section className={styles.empty}><h1>سبد خرید خالی است</h1>
         <p>برای بازبینی، ابتدا کالاها را به سبد اضافه کنید.</p><Link href="/#offers">رفتن به پیشنهادها</Link></section>
-    ) : <div className={styles.layout}>
+    ) : <div className={styles.layout} data-testid="preview-review-layout">
       <section className={styles.lines}>
         <div className={styles.seller}>
           <div><span>فروشگاه انتخابی: </span><strong>{seller.name}</strong>
@@ -73,7 +74,7 @@ export function FigmaBasketReviewPreview() {
         <ul className={styles.list}>{items.map((item) => {
           const product = LANDING_PREVIEW_PRODUCTS.find((entry) => entry.id === item.productId);
           if (!product) return null;
-          return <li className={styles.item} key={item.productId}>
+          return <li className={styles.item} key={item.productId} data-testid="preview-review-item">
             <div className={styles.product}>
               <Image src={"/landing/" + product.image} alt={product.title} width={64} height={64} />
               <div><h2>{product.title}</h2><p>{product.detail}</p></div>
@@ -105,7 +106,9 @@ export function FigmaBasketReviewPreview() {
           <Link className={styles.compare} href="/buyer/compare?mode=preview">بازگشت به مقایسه فروشگاه‌ها</Link>
         </div>
         {checkoutNotice && <p role="status">{checkoutNotice}</p>}
+        <p className={styles.previewNotice}>این بازبینی نمونهٔ نمایشی است؛ مبلغ‌ها و شرایط ارسال قطعی نیستند و سفارش واقعی ثبت نمی‌شود.</p>
       </aside>
     </div>}
+    </div>
   </main>;
 }

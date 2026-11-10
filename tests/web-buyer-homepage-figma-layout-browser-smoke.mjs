@@ -480,6 +480,48 @@ async function main() {
   assert.equal(await continueCompare.getAttribute("href"),"/buyer/review?mode=preview");
   assert.equal(await page.evaluate(()=>localStorage.getItem("henna:figma-preview-selected-seller:v1")),"store-1");
   assert.deepEqual(await readDemoCart(),expected,"Comparing and selecting does not mutate the basket");
+  // Review shares the approved cart/comparison canvas, with invoice on the left.
+  await continueCompare.click();
+  await page.waitForURL(base + "/buyer/review?mode=preview");
+  const review = page.getByTestId("preview-review-page");
+  const reviewLayout = review.getByTestId("preview-review-layout");
+  await reviewLayout.waitFor();
+  await review.getByText("فروشگاه نمونه ۱ (محله رسالت)", {exact:true}).waitFor();
+  assert.equal(await review.getByTestId("preview-review-item").count(),2);
+  assert.deepEqual(await readDemoCart(),expected);
+  assert.deepEqual(await page.getByTestId("marketplace-category-nav").getByRole("link").allTextContents(),
+    ["همه دسته‌ها","طرح‌های ویژه حنا","کالابرگ الکترونیکی","تخفیف‌های طلایی"]);
+  assert.equal(await review.getByRole("link",{name:"ادامه ثبت سفارش"}).getAttribute("href"),"/buyer/checkout?mode=preview");
+  await review.getByText("این بازبینی نمونهٔ نمایشی است؛ مبلغ‌ها و شرایط ارسال قطعی نیستند و سفارش واقعی ثبت نمی‌شود.").waitFor();
+  for(const width of [1440,1650,1150,390]){
+    await page.setViewportSize({width,height:900});
+    const g=await page.evaluate(()=>{
+      const rect=el=>{const {x,y,width,height,right,bottom}=el.getBoundingClientRect();return {x,y,width,height,right,bottom}};
+      const layout=document.querySelector('[data-testid="preview-review-layout"]');
+      return {layout:rect(layout),lines:rect(layout.querySelector("section")),summary:rect(layout.querySelector("aside")),
+        header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
+        nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
+        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
+    });
+    near(g.layout.x,g.header.x,"Review left edge aligns with header at "+width);
+    near(g.layout.right,g.header.right,"Review right edge aligns with header at "+width);
+    near(g.layout.x,g.nav.x,"Review nav alignment at "+width);
+    near(g.layout.x,g.footer.x,"Review footer alignment at "+width);
+    near(g.layout.right,g.footer.right,"Review footer right edge at "+width);
+    assert.ok(g.scrollWidth<=g.clientWidth+1,"Review no horizontal overflow at "+width);
+    if(width>=1440){
+      near(g.layout.width,1280,"Review desktop canvas");
+      near(g.summary.width,400,"Review invoice width");
+      near(g.lines.x-g.summary.right,32,"Review column gap");
+      near(g.lines.y,g.summary.y,"Review column top alignment");
+    }
+    if(width===390)assert.ok(g.summary.y>=g.lines.bottom,"Mobile invoice follows review items");
+  }
+  await page.setViewportSize({width:1440,height:900});
+  await review.getByRole("link",{name:"بازگشت به مقایسه فروشگاه‌ها",exact:true}).click();
+  await page.waitForURL(base+"/buyer/compare?mode=preview");
+  await sellerCards.first().waitFor();
   await comparePage.getByRole("link",{name:"بازگشت به سبد خرید"}).click();
   await page.waitForURL(cartUrl);
   await cartTitle.waitFor();
