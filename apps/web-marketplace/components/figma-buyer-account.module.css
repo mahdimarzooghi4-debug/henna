@@ -62,7 +62,8 @@
   overflow-wrap: anywhere;
 }
 .navCard { display: grid; gap: 8px; padding: 16px; }
-.navCard a { display: block; padding: 12px; border-radius: 8px; color: #1c3f3a; text-decoration: none; font-size: 14px; font-weight: 500; }
+.navCard a { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border-radius: 8px; color: #1c3f3a; text-decoration: none; font-size: 14px; font-weight: 500; }
+.navChevron { flex: none; color: inherit; }
 .navCard a[aria-current="page"] { background: rgba(181,82,59,.08); color: #b5523b; font-weight: 700; }
 .notice { padding: 12px; border-radius: 8px; background: #edf5f3; }
 @media (max-width: 1000px) {

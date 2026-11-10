@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toPersianDigits } from "../lib/normalize-digits";
 import { useCallback, useEffect, useState } from "react";
 import { parseBuyerProduct, validBuyerProductId, type BuyerProduct } from "../lib/buyer-catalog";
 import { parseCartOfferComparison, parsePurchaseDraft, parseReferenceCart, type CartOfferComparison, type PurchaseDraft, type ReferenceCart } from "../lib/buyer-cart";
@@ -154,7 +155,7 @@ export function BuyerReferenceCartPage() {
           const product = products[item.productId];
           const title = product?.status === "ok" ? product.product.name : product?.status === "missing" ? "این کالا دیگر در کاتالوگ منتشرشده نیست" : "نام کالا از کاتالوگ هنوز تأیید نشده";
           return <li className="buyer-cart-item" key={item.productId}>
-            <div><h3>{title}</h3><p>{item.quantity} {item.unitName} · مقدار درخواستی</p>
+            <div><h3>{title}</h3><p>{toPersianDigits(item.quantity)} {item.unitName} · مقدار درخواستی</p>
               <div className="buyer-cart-quantity">
                 <label htmlFor={"quantity-" + item.productId}>مقدار به {item.unitName}</label>
                 <input id={"quantity-" + item.productId} type="number" min="0"

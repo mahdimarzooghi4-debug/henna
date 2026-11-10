@@ -821,6 +821,17 @@ async function main() {
   assert.ok(legalBox.y < summaryBox.y && summaryBox.y < infoBox.y,
     "Legal, summary and info are separate ordered cards");
   assert.equal(await accountNav.locator('[aria-current="page"]').textContent(), "اطلاعات حساب");
+  const accountRows = accountNav.getByRole("link");
+  assert.equal(await accountRows.locator("svg").count(), 9, "Every account tab has a chevron");
+  const rowGeometry = await accountRows.evaluateAll(rows => rows.map(row => {
+    const label = row.querySelector("span").getBoundingClientRect();
+    const arrow = row.querySelector("svg");
+    const rect = arrow.getBoundingClientRect();
+    return { left: rect.right <= label.left, path: arrow.querySelector("path").getAttribute("d"),
+      transform: getComputedStyle(arrow).transform };
+  }));
+  assert.ok(rowGeometry.every(row => row.left && row.path === "M10 3.5 5.5 8 10 12.5" && row.transform === "none"),
+    "RTL account arrows sit left of labels and point left without mirroring");
   assert.equal(await accountInfo.locator("dl > div").count(), 3);
   const fieldBoxes = await accountInfo.locator("dl > div").evaluateAll(nodes =>
     nodes.map(node => ({ x: node.offsetLeft, y: node.offsetTop, width: node.offsetWidth })));
