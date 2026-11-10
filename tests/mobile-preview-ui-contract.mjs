@@ -7,10 +7,19 @@ const seller = readFileSync("apps/mobile-seller/App.tsx","utf8");
 const bcfg=JSON.parse(readFileSync("apps/mobile-consumer/app.json","utf8"));
 const scfg=JSON.parse(readFileSync("apps/mobile-seller/app.json","utf8"));
 
-test("buyer preview puts no-SMS entry ahead of real OTP and keeps SecureStore logout",()=>{
- assert.match(buyer,/previewLoginEnabled && \(view === "phone" \|\| view === "offline"\)/);
- assert.match(buyer,/view === "phone" && !previewLoginEnabled/);
- assert.match(buyer,/accessibilityLabel="ورود آزمایشی بدون پیامک"/);
+test("buyer preview welcome, phone, code and browse stay isolated from real OTP",()=>{
+ const preview = buyer.slice(buyer.indexOf("function ConsumerPreviewAuthScreen"), buyer.indexOf("const blankBrowseLink:"));
+ assert.match(preview,/step === "welcome"/);
+ assert.match(preview,/accessibilityLabel="ورود"/);
+ assert.match(preview,/setStep\("phone"\)/);
+ assert.match(preview,/isValidIranianMobile\(phone\)/);
+ assert.match(preview,/setStep\("code"\)/);
+ assert.match(preview,/validateOtpEntry\(code\)/);
+ assert.match(preview,/await onContinue\(\)/);
+ assert.equal((preview.match(/<Image /g)||[]).length,1);
+ assert.doesNotMatch(preview,/ورود یا ثبت‌نام|تلاش مجدد|خروج|auth\.requestOtp|auth\.verifyOtp|SecureStore/);
+ assert.match(buyer,/previewLoginEnabled\s*\? <ConsumerPreviewAuthScreen/);
+ assert.match(buyer,/Platform\.OS !== "web"\) await SecureStore\.setItemAsync/);
  assert.match(buyer,/SecureStore\.setItemAsync\(previewSessionKey/);
  assert.match(buyer,/SecureStore\.deleteItemAsync\(previewSessionKey/);
  assert.match(buyer,/onCart=\{\(id\) => \{[\s\S]*?if \(isPreviewSession\)/);

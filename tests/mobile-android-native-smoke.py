@@ -201,8 +201,15 @@ def main():
     # A normal icon launch of the CI preview must expose a no-SMS primary
     # action; it is a local preview session, not an authenticated buyer.
     execute("adb", "shell", "monkey", "-p", package, "1", timeout=60)
-    wait_screen("ورود آزمایشی بدون پیامک")
-    tap_label("ورود آزمایشی بدون پیامک")
+    ui = wait_screen("به بازار اجتماعی حنا خوش آمدید", "ورود")
+    assert "ورود یا ثبت‌نام" not in ui and "تلاش مجدد" not in ui and "خروج" not in ui
+    tap_until_screen("ورود", "شماره موبایل خود را وارد کنید")
+    tap_label("شماره موبایل")
+    execute("adb", "shell", "input", "text", "09123456789")
+    tap_until_screen("دریافت کد تأیید", "کد تأیید را وارد کنید")
+    tap_label("کد شش رقمی تأیید")
+    execute("adb", "shell", "input", "text", "123456")
+    tap_label("ورود")
     wait_screen("کالاها را در حنا مرور کنید")
     # Native preview remains on the catalog without re-entering a code.
     execute("adb", "shell", "am", "force-stop", package)
