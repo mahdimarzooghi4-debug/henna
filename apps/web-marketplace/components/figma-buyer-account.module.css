@@ -1,5 +1,5 @@
 .page {
-  width: min(1280px, calc(100% - 160px));
+  width: min(1280px, calc(100% - clamp(16px, 5.555556vw, 80px) - clamp(16px, 5.555556vw, 80px)));
   margin: 0 auto;
   padding: 40px 0 64px;
   color: #1c3f3a;
@@ -67,11 +67,10 @@
 .navCard a[aria-current="page"] { background: rgba(181,82,59,.08); color: #b5523b; font-weight: 700; }
 .notice { padding: 12px; border-radius: 8px; background: #edf5f3; }
 @media (max-width: 1000px) {
-  .page { width: calc(100% - 48px); }
   .layout { grid-template-columns: 240px minmax(0,1fr); gap: 24px; }
 }
 @media (max-width: 760px) {
-  .page { width: calc(100% - 28px); padding: 24px 0 40px; }
+  .page { padding: 24px 0 40px; }
   .layout { grid-template-columns: minmax(0,1fr); gap: 24px; }
   .fields { grid-template-columns: minmax(0,1fr); }
   .legalCard, .summary, .infoCard { padding: 20px; }

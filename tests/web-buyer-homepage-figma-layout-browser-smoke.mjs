@@ -847,6 +847,36 @@ async function main() {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
     "Account layout must not overflow mobile viewport");
 
+  // Account and profile share the approved chrome canvas at all viewport widths.
+  for (const [route, testId] of [["account", "preview-account"], ["profile", "preview-profile"]]) {
+    await page.goto(base + "/buyer/" + route + "?mode=preview");
+    await page.getByTestId(testId).waitFor();
+    for (const width of [1440, 1650, 1150, 900, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      const g = await page.evaluate(id => {
+        const rect = el => { const { x, right, width } = el.getBoundingClientRect(); return { x, right, width }; };
+        const main = document.querySelector('[data-testid="' + id + '"]');
+        const nav = main.querySelector("aside");
+        const content = main.querySelector("section");
+        const first = nav.querySelector("a");
+        const arrow = first.querySelector("svg");
+        return { body: rect(main), header: rect(document.querySelector('[data-testid="landing-header-top"]')),
+          footer: rect(document.querySelector('[data-testid="landing-footer-top"]')),
+          bottom: rect(document.querySelector('[data-testid="landing-footer-bottom"]')),
+          nav: rect(nav), content: rect(content), label: rect(first.querySelector("span")), arrow: rect(arrow),
+          arrowPath: arrow.querySelector("path").getAttribute("d"),
+          scroll: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth };
+      }, testId);
+      for (const key of ["body", "footer", "bottom"]) {
+        near(g[key].x, g.header.x, route + " " + key + " left aligns at " + width);
+        near(g[key].right, g.header.right, route + " " + key + " right aligns at " + width);
+      }
+      if (width >= 900) assert.ok(g.nav.x > g.content.x, route + " sidebar on right");
+      assert.ok(g.arrow.right <= g.label.x && g.arrowPath === "M10 3.5 5.5 8 10 12.5", route + " arrow left");
+      assert.ok(g.scroll <= g.viewport + 1, route + " no horizontal overflow at " + width);
+    }
+  }
+
   // The same shared chrome must remain inside the viewport on mobile.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(base + "/products", { waitUntil: "domcontentloaded" });

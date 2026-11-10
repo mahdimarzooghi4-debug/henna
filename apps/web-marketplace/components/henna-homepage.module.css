@@ -446,3 +446,13 @@
     grid-template-columns:minmax(0,1fr);
   }
 }
+
+/* Account-specific shared chrome: preserve the approved header canvas, and
+   match both footer content rows at every viewport, not only the Figma frame. */
+.chrome .accountFooter { padding-inline: 0; }
+.chrome .accountFooter .footerGrid,
+.chrome .accountFooter .footerBottom {
+  width: min(var(--buyer-figma-canvas), calc(100% - var(--buyer-figma-gutter) - var(--buyer-figma-gutter)));
+  max-width: var(--buyer-figma-canvas);
+  margin-inline: auto;
+}
