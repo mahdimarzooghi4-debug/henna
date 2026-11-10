@@ -200,6 +200,41 @@ def open_uri(uri, package):
     )
 
 
+def deny_aosp_keyboard_contacts_prompt():
+    """Handle only the fresh AOSP keyboard's optional contacts prompt.
+
+    Deny it before entering the phone number, then restore the actual
+    phone input. No application permission or UI assertion is bypassed.
+    """
+    deadline = time.monotonic() + 12
+    title = "Allow Android Keyboard (AOSP) to access your contacts?"
+    while time.monotonic() < deadline:
+        execute("adb", "shell", "uiautomator", "dump",
+                "/sdcard/hana-keyboard-window.xml", timeout=20)
+        raw = execute("adb", "exec-out", "cat",
+                      "/sdcard/hana-keyboard-window.xml", timeout=20)
+        root = ET.fromstring(raw)
+        if any(node.attrib.get("text") == title for node in root.iter()):
+            deny = next(
+                (node for node in root.iter()
+                 if node.attrib.get("resource-id", "").endswith(
+                     ":id/permission_deny_button")
+                 and node.attrib.get("text") in ("DON’T ALLOW", "DON'T ALLOW")),
+                None,
+            )
+            assert deny is not None, "AOSP keyboard contacts denial not found"
+            coords = list(map(int, re.findall(r"\d+", deny.attrib["bounds"])))
+            assert len(coords) == 4, "Invalid keyboard permission button bounds"
+            x1, y1, x2, y2 = coords
+            execute("adb", "shell", "input", "tap",
+                    str((x1 + x2) // 2), str((y1 + y2) // 2))
+            print("Denied optional AOSP keyboard contacts access.", flush=True)
+            wait_screen("شماره موبایل خود را وارد کنید")
+            tap_label("شماره موبایل")
+            return
+        time.sleep(1)
+
+
 def main():
     assert APK.is_file(), f"Native release APK not built: {APK}"
     sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
@@ -220,6 +255,7 @@ def main():
     assert "ورود یا ثبت‌نام" not in ui and "تلاش مجدد" not in ui and "خروج" not in ui
     tap_until_screen("ورود", "شماره موبایل خود را وارد کنید")
     tap_label("شماره موبایل")
+    deny_aosp_keyboard_contacts_prompt()
     execute("adb", "shell", "input", "text", "09123456789")
     tap_until_screen("دریافت کد تأیید", "کد تأیید را وارد کنید")
     tap_label("کد شش رقمی تأیید")
