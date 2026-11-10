@@ -14,6 +14,7 @@ import {
 } from "./buyer-browse-controller.ts";
 import { colors } from "./theme";
 import { FigmaIcon } from "./figma-icon";
+import { BuyerPreviewAccount, initialPreviewAccount, type PreviewAccountState, type PreviewAccountPage } from "./buyer-preview-account";
 import { changePreviewQuantity, previewCartCount, previewCartTotal, previewPrices, type PreviewCart, type PreviewProductKey } from "./preview-cart.ts";
 
 function Text(props: TextProps) {
@@ -82,7 +83,8 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const [designCategory, setDesignCategory] = useState<string | null>(null);
   const [designBadge, setDesignBadge] = useState<string | null>(null);
   const [previewCart, setPreviewCart] = useState<PreviewCart>({});
-  const [previewPage, setPreviewPage] = useState<"cart" | "detail" | "orders" | "support" | "wallet" | "incidents" | "comparison" | null>(null);
+  const [previewPage, setPreviewPage] = useState<"cart" | "detail" | "comparison" | PreviewAccountPage | null>(null);
+  const [previewAccount,setPreviewAccount] = useState<PreviewAccountState>(initialPreviewAccount);
   const [previewDetail, setPreviewDetail] = useState<PreviewProductKey | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const suggestionsY = useRef(0);
@@ -94,7 +96,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     if (designPreview) setPreviewPage(page); else actual();
   };
   useEffect(() => {
-    if (!designPreview) { setPreviewCart({}); setPreviewPage(null); setPreviewDetail(null); setFilterOpen(false); }
+    if (!designPreview) { setPreviewCart({}); setPreviewAccount(initialPreviewAccount); setPreviewPage(null); setPreviewDetail(null); setFilterOpen(false); setCatalogOpen(false); }
   }, [designPreview]);
   const designProducts = homeDesignProducts.filter(product =>
     (!designQuery || product.name.includes(designQuery) || product.category.includes(designQuery)) &&
@@ -111,9 +113,9 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const openCatalog = () => {
     resetFilters(); setCatalogPanel(false); setCatalogOffers(false); setCatalogSort(false);
     if (!designPreview) controller.restoreLocation({categoryId:null,search:"",page:1});
-    setCatalogOpen(true); setPreviewPage(null);
+    setCatalogOpen(true); setPreviewPage(null); scroll.current?.scrollTo({y:0,animated:false});
   };
-  const returnHome = () => { setCatalogOpen(false); setPreviewPage(null); setCatalogPanel(false); setFilterOpen(false); };
+  const returnHome = () => { setCatalogOpen(false); setPreviewPage(null); setCatalogPanel(false); setFilterOpen(false); scroll.current?.scrollTo({y:0,animated:false}); };
   const openPreviewDetail = (key:PreviewProductKey) => { setPreviewDetail(key); setDetailQuantity(1); setPreviewPage("detail"); };
   const openAccountAction = (action: () => void) => { setAccountMenuOpen(false); action(); };
   const onAccount = isSignedIn ? onLogout : onLogin;
@@ -154,7 +156,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
 
   const bottomNavigation = <>
         <View style={styles.bottomNav}>
-          <Pressable onPress={() => setAccountMenuOpen(true)} accessibilityRole="button" accessibilityLabel="حساب" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="user" size={22} color="#8E8E93" /><Text style={styles.navLabel}>حساب</Text></Pressable>
+          <Pressable onPress={() => designPreview ? setPreviewPage("account") : setAccountMenuOpen(true)} accessibilityRole="button" accessibilityLabel="حساب" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="user" size={22} color="#8E8E93" /><Text style={styles.navLabel}>حساب</Text></Pressable>
           <Pressable onPress={() => showPreview("orders", onOrders)} accessibilityRole="button" accessibilityLabel="سفارش‌های من" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="receipt" size={22} color="#8E8E93" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
           <Pressable onPress={() => showPreview("cart", () => onCart())} accessibilityRole="button" accessibilityLabel="سبد خرید" style={[styles.navItem, previewPage !== "cart" && previewPage !== "comparison" && styles.navInactive]}><FigmaIcon name="cart" size={22} color={previewPage === "cart" || previewPage === "comparison" ? colors.teal : "#8E8E93"} /><Text style={styles.navLabel}>سبد{designPreview && count > 0 ? " (" + persianNumber(count) + ")" : ""}</Text></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="خانه" onPress={returnHome} style={[styles.navItem, (previewPage === "cart" || previewPage === "comparison") && styles.navInactive]}><FigmaIcon name="home" size={22} color={previewPage === "cart" || previewPage === "comparison" ? "#8E8E93" : colors.teal} /><Text style={styles.navLabel}>خانه</Text></Pressable>
@@ -175,11 +177,11 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
 
   if (designPreview && previewPage) {
     const product = homeDesignProducts.find(item => item.key === previewDetail);
-    const title = previewPage === "cart" ? "سبد خرید" : previewPage === "comparison" ? "مقایسه فروشگاه‌ها" : previewPage === "detail" ? "جزئیات محصول" :
-      previewPage === "orders" ? "سفارش‌های من" : previewPage === "support" ? "اعلان‌ها و پشتیبانی" :
-      previewPage === "wallet" ? "کیف پول" : "گزارش‌ها و مرجوعی‌های من";
+    const accountTitles:Record<PreviewAccountPage,string> = {account:"حساب کاربری",profile:"تکمیل اطلاعات حساب",company:"اطلاعات شرکت",addresses:"آدرس‌های من",wallet:"اعتبارها و طرح‌ها",plans:"اعتبارها و طرح‌ها",social:"مشارکت اجتماعی",support:"پشتیبانی حنا",notifications:"اعلان‌ها",orders:"سفارش‌های من",payments:"روش‌های پرداخت",settings:"تنظیمات",incidents:"گزارش‌ها و مرجوعی‌های من"};
+    const title = previewPage === "cart" ? "سبد خرید" : previewPage === "comparison" ? "مقایسه فروشگاه‌ها" : previewPage === "detail" ? "جزئیات محصول" : accountTitles[previewPage];
+    const back = () => setPreviewPage(previewPage === "comparison" ? "cart" : previewPage==="profile"||previewPage==="company"||previewPage==="addresses"||previewPage==="wallet"||previewPage==="plans"||previewPage==="social"||previewPage==="support"||previewPage==="payments"||previewPage==="settings"||previewPage==="incidents" ? "account" : null);
     return <SafeAreaView style={styles.safeArea} edges={["top","bottom"]}>
-      <View style={styles.journeyHeader}><Pressable accessibilityRole="button" accessibilityLabel="بازگشت" onPress={() => setPreviewPage(previewPage === "comparison" ? "cart" : null)} style={styles.bellButton}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text style={styles.journeyTitle}>{title}</Text><Image source={logo} resizeMode="contain" style={styles.journeyLogo}/></View>
+      <View style={styles.journeyHeader}><Pressable accessibilityRole="button" accessibilityLabel="بازگشت" onPress={back} style={styles.bellButton}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text style={styles.journeyTitle}>{title}</Text><Image source={logo} resizeMode="contain" style={styles.journeyLogo}/></View>
       <ScrollView style={styles.fill} contentContainerStyle={styles.previewBody}>
         <Text style={styles.designNotice}>نسخه آزمایشی · هیچ سفارش یا پرداخت واقعی ثبت نمی‌شود.</Text>
         {previewPage === "cart" ? <>
@@ -216,7 +218,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
           <View style={styles.previewPanel}><Text style={styles.emptyTitle}>مشخصات و ویژگی‌ها</Text><Text style={styles.emptyText}>دسته: {product.category}</Text>{product.key === "rice" && <Text style={styles.emptyText}>نوع محصول: برنج طارم · وزن: کیسه ۱۰ کیلوگرمی · بسته‌بندی: کیسه</Text>}</View>
           <View style={styles.previewPanel}><Text style={styles.emptyTitle}>توضیحات محصول</Text><Text style={styles.emptyText}>این کالا برای بررسی مسیر خرید در پیش‌نمایش طراحی نمایش داده شده است.</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="مشاهده سبد خرید" onPress={() => setPreviewPage("cart")} style={styles.previewPanel}><Text style={styles.sectionLink}>مشاهده سبد خرید ({persianNumber(count)})</Text></Pressable>
-        </> : <View style={styles.previewPanel}><Text style={styles.emptyTitle}>{previewPage === "orders" ? "سفارش واقعی ثبت نشده است" : "این بخش به اطلاعات واقعی حساب نیاز دارد"}</Text><Text style={styles.emptyText}>در پیش‌نمایش بدون اتصال سرور، اطلاعات شخصی و عملیات واقعی در دسترس نیستند.</Text></View>}
+        </> : previewPage !== "detail" && <BuyerPreviewAccount key={previewPage} page={previewPage} state={previewAccount} setState={setPreviewAccount} onNavigate={setPreviewPage} onLogout={onLogout} onCatalog={openCatalog}/>}
       </ScrollView>
       {bottomNavigation}
     </SafeAreaView>;
@@ -236,7 +238,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
         <ScrollView ref={scroll} style={styles.fill} contentContainerStyle={styles.scrollBody}
           keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {catalogOpen ? <View style={styles.journeyHeader} testID="buyer-products-227-8"><Pressable accessibilityRole="button" accessibilityLabel="بازگشت به خانه" onPress={returnHome} style={styles.bellButton}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text accessibilityRole="header" style={styles.journeyTitle}>کالاها و خدمات</Text><Image source={logo} resizeMode="contain" style={styles.journeyLogo}/></View> : <View style={styles.header}>
-            <Pressable onPress={() => showPreview("support", onSupport)} accessibilityRole="button" accessibilityLabel="اعلان‌ها و پشتیبانی" style={styles.bellButton}>
+            <Pressable onPress={() => designPreview ? setPreviewPage("notifications") : onSupport()} accessibilityRole="button" accessibilityLabel="اعلان‌ها و پشتیبانی" style={styles.bellButton}>
               <FigmaIcon name="bell" size={20} />
             </Pressable>
             <View style={styles.greeting}>

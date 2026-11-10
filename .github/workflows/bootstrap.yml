@@ -632,6 +632,20 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-device-location.mjs
       - name: Bundle consumer app for Android
         run: npm run mobile:export:android
+      - name: Exercise isolated buyer preview in Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd apps/mobile-consumer
+          npx expo install react-dom react-native-web @expo/metro-runtime --npm
+          EXPO_PUBLIC_HANA_DEMO_LOGIN=true EXPO_PUBLIC_HANA_API_BASE_URL='' npx expo export --platform web --output-dir ../../.ci-buyer-preview
+          cd ../..
+          npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.55.1
+          npx playwright install --with-deps chromium
+          python3 -m http.server 3019 --bind 127.0.0.1 --directory .ci-buyer-preview > /tmp/hana-preview.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/mobile-buyer-journey-browser.mjs
 
   android-native-links:
     # An installed, offline, CI-only Expo APK in Android Emulator.

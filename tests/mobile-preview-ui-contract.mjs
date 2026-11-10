@@ -71,3 +71,11 @@ test("buyer journey both all actions open the same Figma products destination an
  assert.match(home,/setPreviewPage\("comparison"\)/);
  assert.equal((home.match(/useState<PreviewCart>/g)||[]).length,1);
 });
+
+test("buyer account preview is isolated and every account destination has an explicit page",()=>{
+ const account=readFileSync("apps/mobile-consumer/src/buyer-preview-account.tsx","utf8");
+ assert.match(home,/designPreview \? setPreviewPage\("account"\)/);
+ for(const route of ["account","profile","company","addresses","wallet","social","support","notifications","orders"]){assert.ok(account.includes('page==="'+route+'"'),route);}
+ assert.match(account,/setState\(v=>\(\{\.\.\.v,company:/);
+ assert.doesNotMatch(account,/fetch\(|localStorage|sessionStorage|SecureStore/);
+});

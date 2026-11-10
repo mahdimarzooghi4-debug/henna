@@ -16,16 +16,16 @@ Owner scope (2026-11-10): buyer app only, all in-scope mobile pages in one coord
 | 227:634 | Order success | Pending; requires successful authoritative order |
 | 227:706 | Tracking | Existing BuyerOrdersScreen; reconciliation pending |
 | 227:797 | Orders | Existing BuyerOrdersScreen; reconciliation pending |
-| 227:888 | Account | Existing account action sheet; full screen pending |
+| 227:888 | Account | Explicit offline account screen, shared navigation, profile/company/address routes; visual acceptance pending |
 | 245:8 | Auth | Prior PR218; verify against frame and existing real OTP contract |
-| 245:62 | Profile | Pending |
-| 245:128 | Addresses | Existing checkout/address handling; dedicated page pending |
-| 245:255 | Credits & Plans | Existing wallet screen; reconcile pending |
-| 245:344 | Social participation | Pending |
-| 245:446 | Support | Existing BuyerSupportScreen; reconcile pending |
-| 245:528 | Notifications | Existing support controller; reconcile pending |
+| 245:62 | Profile | Session-local sample form, no personal data persistence |
+| 245:128 | Addresses | Local sample address CRUD/default; real geography/map and visual acceptance pending |
+| 245:255 | Credits & Plans | Preview honest unavailable state; real wallet unchanged, reconciliation pending |
+| 245:344 | Social participation | Preview navigation and honest no-data actions; image/real program integration pending |
+| 245:446 | Support | Preview FAQ, no fabricated tickets, actual support retained; reconciliation pending |
+| 245:528 | Notifications | Dedicated honest preview page; actual notifications reconciliation pending |
 | 245:745 | Empty & error states | Pending unified coverage |
-| 326:35, 326:200 | Company unregistered/form | Pending; no real legal registration contract invented |
+| 326:35, 326:200 | Company unregistered/form | Local sample company form saved once in same account state; real legal registration and checkout reuse pending |
 | 326:842, 326:954 | Legal checkout states | Pending; reuse account company data |
 | 842:6059, 842:6170, 842:6226, 842:6258, 842:6290, 842:6324 | Catalog alternate/async/filter states | Inventory; reconcile against canonical 227:8 and owner-approved scope; no silent design replacement |
 
