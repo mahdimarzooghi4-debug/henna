@@ -63,6 +63,9 @@
 .catalogNotice a{margin-right:8px;color:#b5523b;font-weight:700}
 .figmaFilterGroup{width:100%;padding-top:18px;border-top:1px solid #eae6e1;display:grid;gap:12px}
 .figmaFilterGroup h3{margin:0;color:#1c3f3a;font-size:14px}
+.featureLinks{display:flex;flex-direction:column;gap:8px}
+.featureLinks a{display:block;padding:8px 10px;border:1px solid #eae6e1;border-radius:8px;background:#faf8f5;color:#1c3f3a;text-align:right;text-decoration:none;font-size:12px;line-height:1.7}
+.featureLinks a:hover,.featureLinks a:focus-visible{border-color:#b5523b;color:#b5523b;outline-offset:2px}
 .priceInputs{display:flex;gap:12px}
 .priceInputs span{flex:1;padding:8px;border:1px solid #eae6e1;border-radius:8px;background:#faf8f5;color:#706963;font-size:12px;text-align:right;white-space:nowrap}
 .figmaFilterGroup label{display:flex;align-items:center;gap:8px;color:#706963;font-size:12px}
