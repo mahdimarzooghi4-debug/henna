@@ -14,12 +14,7 @@ const initialFields: FormFields = {
   title: "", provinceCity: "", address: "", recipient: "", phone: "", postalCode: "",
 };
 
-const navLinks = [
-  ["/account", "اطلاعات حساب"], ["/account/addresses", "آدرس‌های من"], ["/orders", "سفارش‌های من"],
-  ["/account#payments", "روش‌های پرداخت"], ["/programs", "اعتبارهای من"],
-  ["/programs", "طرح‌های فعال"], ["/programs", "مشارکت‌های اجتماعی"],
-  ["/support", "پشتیبانی"], ["/account#settings", "تنظیمات"],
-] as const;
+import { BuyerAccountNav } from "./buyer-account-nav";
 
 function BuyerHeader() {
   return <>
@@ -33,14 +28,14 @@ function BuyerHeader() {
         <button type="submit" aria-label="جست‌وجو">⌕</button>
       </form>
       <nav className={styles.headerActions} aria-label="دسترسی سریع">
-        <Link href="/basket">سبد خرید</Link><Link href="/auth">ورود یا ثبت‌نام</Link>
+        <Link href="/buyer/cart?mode=preview">سبد خرید</Link><Link href="/auth">ورود یا ثبت‌نام</Link>
         <Link href="/seller/register">ثبت‌نام فروشگاه‌ها</Link>
       </nav>
     </header>
     <nav className={styles.categoryNav} dir="rtl" aria-label="دسته‌بندی‌ها">
       <Link href="/products">همه دسته‌ها</Link><Link href="/products">کالاها و خدمات</Link>
-      <Link href="/products">نیازهای روزمره</Link><Link href="/programs">طرح‌های ویژه</Link>
-      <Link href="/programs">کالابرگ / اعتبارها</Link><Link href="/support">پشتیبانی</Link>
+      <Link href="/products">نیازهای روزمره</Link><Link href="/benefits">طرح‌های ویژه</Link>
+      <Link href="/benefits">کالابرگ / اعتبارها</Link><Link href="/support">پشتیبانی</Link>
     </nav>
   </>;
 }
@@ -49,8 +44,8 @@ function BuyerFooter() {
   return <footer className={styles.footer} dir="rtl">
     <div className={styles.footerGrid}>
       <div><h2>دسترسی سریع</h2><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/about">درباره حنا</Link><Link href="/support">تماس با پشتیبانی</Link></div>
-      <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/seller-guide">شرایط همکاری</Link></div>
-      <div><h2>طرح‌های حمایتی</h2><Link href="/programs">اعتبارات سازمانی</Link><Link href="/programs">طرح‌های فعال</Link></div>
+      <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/courier-partners">شرایط همکاری</Link></div>
+      <div><h2>طرح‌های حمایتی</h2><Link href="/benefits">اعتبارات سازمانی</Link><Link href="/benefits">طرح‌های فعال</Link></div>
       <div className={styles.footerBrand}><Link href="/"><Image src="/hana-logo.png" alt="حنا" width={140} height={79} unoptimized /></Link><p>بازارگاه حنا برای خریدهای روزمره با رویکرد توسعهٔ عادلانه و حمایت اجتماعی.</p></div>
     </div>
     <p className={styles.copyright}>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است. کلیه حقوق برای حنا محفوظ است.</p>
@@ -112,6 +107,7 @@ export function BuyerAddresses() {
   return <div className={styles.page} dir="rtl">
     <BuyerHeader />
     <main className={styles.layout}>
+      <BuyerAccountNav active="addresses" />
       <section className={styles.content} aria-labelledby="addresses-title">
         <div className={styles.titleRow}>
           <div><h1 id="addresses-title">مدیریت آدرس‌های من</h1><p>آدرس‌های تحویل خود را ثبت و ویرایش کنید تا برای مقایسه فروشگاه‌های اطراف و محاسبه زمان تحویل استفاده شوند.</p></div>
@@ -161,10 +157,7 @@ export function BuyerAddresses() {
           <p className={styles.disclaimer}>این مرحله فقط رابط و اعتبارسنجی فرم را آماده می‌کند؛ تا اتصال ذخیره‌سازی حساب کاربری، آدرسی ثبت یا برای سفارش استفاده نمی‌شود.</p>
         </form>}
       </section>
-      <aside className={styles.accountNav} aria-label="منوی حساب کاربری">
-        <h2>اطلاعات حساب</h2>
-        {navLinks.map(([href, label]) => <Link key={label} href={href} aria-current={href === "/account/addresses" ? "page" : undefined} className={href === "/account/addresses" ? styles.activeNav : undefined}>{label}</Link>)}
-      </aside>
+      
     </main>
     <BuyerFooter />
   </div>;
