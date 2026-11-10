@@ -3,15 +3,12 @@ import Link from "next/link";
 import styles from "./marketplace-chrome.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
 
+// Keep the catalog chrome in sync with the owner's approved homepage navigation.
 const navItems = [
-  ["نیازهای روزمره", "/products"],
-  ["فروشندگان / ارائه‌دهندگان", "/seller/register"],
-  ["کالاها و خدمات", "/products"],
   ["همه دسته‌ها", "/products"],
-  ["دسته‌بندی‌های منتخب", "/products"],
-  ["طرح‌های ویژه", "/benefits#special-plans"],
-  ["کالابرگ / اعتبارها", "/benefits#food-credit"],
-  ["پیشنهادها", "/discounts"],
+  ["طرح‌های ویژه حنا", "/benefits#special-plans"],
+  ["کالابرگ الکترونیکی", "/benefits#food-credit"],
+  ["تخفیف‌های طلایی", "/#offers"],
 ] as const;
 
 const footerColumns = [
