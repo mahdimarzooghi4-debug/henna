@@ -92,17 +92,17 @@ export function FigmaCheckoutPreview() {
           <button type="button" className={styles.primary} onClick={placePreviewOrder} disabled={delivery === "courier"} aria-describedby={delivery === "courier" ? "courier-quote-notice" : undefined}>ثبت سفارش</button>
           {notice && <p className={styles.notice} role="status">{notice}</p>}
         </section>
-        <section className={styles.hint}><strong>خرید حقوقی و دریافت فاکتور رسمی</strong><p>با فعال‌کردن این گزینه، فاکتور سفارش به نام شرکت ثبت‌شده صادر می‌شود.</p></section>
+        <section className={styles.hint}><strong>خرید حقوقی و دریافت فاکتور رسمی</strong><p>با فعال‌کردن این گزینه، درخواست صدور فاکتور رسمی به نام شرکت ثبت‌شده در حساب کاربری مشخص می‌شود.</p></section>
       </aside>
 
       <section className={styles.fields} data-testid="preview-checkout-fields">
         <h1>تکمیل و ثبت سفارش</h1>
         <section className={styles.card}>
           <h2>۱. نوع خرید</h2>
-          <label className={styles.toggleRow}><span><strong>خرید حقوقی و دریافت فاکتور رسمی</strong><small>این گزینه اختیاری است. با فعال‌کردن آن، فاکتور سفارش به نام شرکت صادر می‌شود.</small></span>
+          <label className={styles.toggleRow}><span><strong>خرید حقوقی و دریافت فاکتور رسمی</strong><small>این گزینه اختیاری است. اطلاعات شرکت از حساب کاربری استفاده می‌شود.</small></span>
             <input type="checkbox" checked={legal} onChange={(event) => setLegal(event.target.checked)} aria-label="خرید حقوقی و دریافت فاکتور رسمی" />
           </label>
-          {legal && <label className={styles.inputLabel}>نام شرکت و شناسه ملی<input placeholder="نام شرکت ثبت‌شده" /></label>}
+          {legal && <p className={styles.description} data-testid="preview-legal-company-note">اطلاعات شرکت از حساب کاربری شما دریافت می‌شود؛ نیازی به وارد کردن دوباره نیست. در نسخه نمایشی فاکتور رسمی صادر نمی‌شود.</p>}
         </section>
 
         <section className={styles.card}>
