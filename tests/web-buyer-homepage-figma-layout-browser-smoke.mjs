@@ -402,6 +402,90 @@ async function main() {
   assert.deepEqual(await readDemoCart(), expected);
   assert.equal(await cartRows.count(), 2);
 
+  // Figma 227:1487 — seller comparison uses the basket chrome/canvas.
+  // Current sample basket data is retained; no real seller quote is introduced.
+  await comparison.click();
+  await page.waitForURL(base + "/buyer/compare?mode=preview");
+  const comparePage = page.getByTestId("preview-comparison-page");
+  const sellerCards = comparePage.getByTestId("preview-seller-card");
+  await sellerCards.first().waitFor();
+  assert.equal(await sellerCards.count(), 3);
+  assert.deepEqual(await page.getByTestId("marketplace-category-nav").getByRole("link").allTextContents(),
+    ["همه دسته‌ها", "طرح‌های ویژه حنا", "کالابرگ الکترونیکی", "تخفیف‌های طلایی"]);
+  assert.equal(await page.getByTestId("marketplace-announcement").count(), 0);
+  assert.equal(await page.getByTestId("marketplace-footer").locator('a[href="/social#instagram"] svg').count(), 1);
+  await comparePage.getByText("فروشگاه‌ها و قیمت‌های این صفحه نمونه‌ی نمایشی فیگما هستند و سفارش واقعی ثبت نمی‌کنند.").waitFor();
+  const sortGroup = comparePage.getByRole("group", { name: "مرتب‌سازی فروشگاه‌ها" });
+  const order = () => sellerCards.evaluateAll(nodes => nodes.map(node => node.getAttribute("data-seller-id")));
+  assert.deepEqual(await sortGroup.getByRole("button").allTextContents(),
+    ["ارزان‌ترین سبد", "کامل‌ترین سبد", "نزدیک‌ترین", "زمان تحویل"]);
+  assert.equal(await sortGroup.getByRole("button", { name: "زمان تحویل" }).isDisabled(), true);
+  assert.deepEqual(await order(), ["store-3", "store-1", "store-2"]);
+  await sellerCards.first().getByText("۲ کالا ناموجود", { exact: true }).waitFor();
+  assert.match(await sellerCards.first().getByTestId("preview-seller-availability").textContent(), /۱ از ۳/);
+  await sortGroup.getByRole("button", { name: "کامل‌ترین سبد" }).click();
+  assert.deepEqual(await order(), ["store-1", "store-2", "store-3"]);
+  await sortGroup.getByRole("button", { name: "نزدیک‌ترین" }).click();
+  assert.deepEqual(await order(), ["store-2", "store-1", "store-3"]);
+  assert.match(await sellerCards.first().getByTestId("preview-seller-availability").textContent(), /نزدیک‌ترین/);
+  await sortGroup.getByRole("button", { name: "ارزان‌ترین سبد" }).click();
+  assert.deepEqual(await order(), ["store-3", "store-1", "store-2"]);
+
+  for (const width of [1440, 1650, 1150, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const g = await page.evaluate(() => {
+      const rect = el => {
+        const { x,y,width,height,right,bottom } = el.getBoundingClientRect();
+        return {x,y,width,height,right,bottom};
+      };
+      const main = document.querySelector('[data-testid="preview-comparison-page"]');
+      const content = document.querySelector('[data-testid="preview-comparison-content"]');
+      const card = main.querySelector('[data-testid="preview-seller-card"]');
+      const filters = main.querySelector('[role="group"]');
+      return {
+        content:rect(content),card:rect(card),filters:rect(filters),firstFilter:rect(filters.querySelector("button")),
+        identity:rect(card.querySelector('[data-testid="preview-seller-identity"]')),
+        availability:rect(card.querySelector('[data-testid="preview-seller-availability"]')),
+        price:rect(card.querySelector('[data-testid="preview-seller-price"]')),
+        action:rect(card.querySelector('[data-testid="preview-seller-action"]')),
+        header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
+        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,
+        background:getComputedStyle(main).backgroundColor,
+      };
+    });
+    near(g.content.x,g.header.x,"Comparison header alignment at "+width);
+    near(g.content.right,g.header.right,"Comparison right edge at "+width);
+    near(g.footer.x,g.content.x,"Comparison footer alignment at "+width);
+    near(g.card.width,g.content.width,"Comparison full-width card at "+width);
+    assert.equal(g.background,"rgb(250, 248, 245)");
+    assert.ok(g.scrollWidth <= g.clientWidth+1,"Comparison no horizontal overflow at "+width);
+    if (width>=1440) {
+      near(g.content.width,1280,"Comparison Figma canvas");
+      near(g.availability.width,220,"Comparison availability width");
+      near(g.price.width,240,"Comparison price width");
+      near(g.action.width,254,"Comparison action width");
+      near(g.identity.x-g.availability.right,24,"Comparison column gap");
+      assert.ok(g.identity.x>g.availability.x && g.availability.x>g.price.x && g.price.x>g.action.x,
+        "Figma RTL four-column order");
+      near(g.firstFilter.x-g.filters.x,17,"Figma left-aligned sorting");
+    }
+    if(width===390) assert.ok(g.action.y>g.price.y,"Comparison action follows price on mobile");
+  }
+  await page.setViewportSize({width:1440,height:900});
+  const continueCompare = comparePage.getByRole("link", {name:"ادامه به بازبینی سبد"});
+  assert.equal(await continueCompare.count(),0,"No automatic selection");
+  await sellerCards.filter({hasText:"فروشگاه نمونه ۱"}).getByRole("button",{name:"انتخاب این فروشگاه"}).click();
+  await comparePage.getByRole("status").filter({hasText:"فروشگاه نمونه انتخاب شد."}).waitFor();
+  assert.equal(await continueCompare.getAttribute("href"),"/buyer/review?mode=preview");
+  assert.equal(await page.evaluate(()=>localStorage.getItem("henna:figma-preview-selected-seller:v1")),"store-1");
+  assert.deepEqual(await readDemoCart(),expected,"Comparing and selecting does not mutate the basket");
+  await comparePage.getByRole("link",{name:"بازگشت به سبد خرید"}).click();
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
+  assert.deepEqual(await readDemoCart(),expected);
+  await page.evaluate(()=>localStorage.removeItem("henna:figma-preview-selected-seller:v1"));
+
   // A failed add must not redirect or imply an item was added.
   await page.goto(base + "/products");
   await page.evaluate(() => localStorage.setItem("henna:landing-preview-cart:v1",
