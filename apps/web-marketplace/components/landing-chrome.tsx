@@ -3,10 +3,10 @@ import Link from "next/link";
 import styles from "./henna-homepage.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
 
-export function LandingHeader({ referencePage = false }: { referencePage?: boolean }) {
+export function LandingHeader({ referencePage = false, orderTrackingPage = false }: { referencePage?: boolean; orderTrackingPage?: boolean }) {
   return (
-    <div className={referencePage ? `${styles.chrome} ${styles.referenceChrome}` : styles.chrome}>
-      <div className={styles.announcement}>🎉 طرح جدید کالابرگ حنا فعال شد؛ خریدی هوشمندانه با بیشترین حمایت اجتماعی</div>
+    <div className={orderTrackingPage ? `${styles.chrome} ${styles.orderTrackingChrome}` : referencePage ? `${styles.chrome} ${styles.referenceChrome}` : styles.chrome}>
+      <div className={styles.announcement} data-testid={orderTrackingPage ? "buyer-tracking-announcement" : undefined}>{orderTrackingPage ? "بازارگاه حنا؛ کالاها و خدمات در یک تجربه یکپارچه" : "🎉 طرح جدید کالابرگ حنا فعال شد؛ خریدی هوشمندانه با بیشترین حمایت اجتماعی"}</div>
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.actions}>
@@ -24,7 +24,18 @@ export function LandingHeader({ referencePage = false }: { referencePage?: boole
           </Link>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی">
-          {referencePage ? (
+          {orderTrackingPage ? (
+            <>
+              <Link href="/discounts">پیشنهادها</Link>
+              <Link href="/benefits#food-credit">کالابرگ / اعتبارها</Link>
+              <Link href="/benefits#special-plans">طرح‌های ویژه</Link>
+              <Link href="/products">دسته‌بندی‌های منتخب</Link>
+              <Link href="/products">همه دسته‌ها</Link>
+              <Link href="/products">کالاها و خدمات</Link>
+              <Link href="/seller">فروشندگان / ارائه‌دهندگان</Link>
+              <Link href="/products">نیازهای روزمره</Link>
+            </>
+          ) : referencePage ? (
             <>
               <Link href="/discounts">پیشنهادهای طلایی</Link>
               <Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link>
