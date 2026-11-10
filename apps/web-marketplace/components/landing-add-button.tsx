@@ -7,12 +7,13 @@ import {
   LANDING_PREVIEW_CART_EVENT,
 } from "../lib/landing-preview-products";
 
-// Owner-approved journey: add one sample item, then open the existing preview cart.
-// No intervening product-detail page and no real order/payment.
-export function LandingAddButton({ productId, className, messageClassName }: {
+// Homepage adds in place; other approved catalog flows retain direct-cart navigation.
+// No real order or payment is created.
+export function LandingAddButton({ productId, className, messageClassName, stayOnPage = false }: {
   productId: string;
   className?: string;
   messageClassName: string;
+  stayOnPage?: boolean;
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
@@ -24,9 +25,13 @@ export function LandingAddButton({ productId, className, messageClassName }: {
     setMessage("");
     const result = addLandingPreviewProduct(productId);
     if (result === "added") {
+      window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
+      if (stayOnPage) {
+        setMessage("به سبد خرید اضافه شد.");
+        return;
+      }
       navigating.current = true;
       setPending(true);
-      window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
       router.push("/buyer/cart?mode=preview");
     } else if (result === "limit") {
       setMessage("حداکثر تعداد این کالا در سبد ۹۹ عدد است.");

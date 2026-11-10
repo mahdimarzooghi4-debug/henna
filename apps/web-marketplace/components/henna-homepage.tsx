@@ -69,7 +69,7 @@ export default function HennaHomepage() {
                   <p>{product.detail}</p>
                 </div>
                 <div className={styles.productAction}>
-                  <LandingAddButton productId={product.id} className={styles.addButton} messageClassName={styles.addMessage} />
+                  <LandingAddButton stayOnPage productId={product.id} className={styles.addButton} messageClassName={styles.addMessage} />
                   <div className={styles.productPrice}>
                     {product.oldPrice && <del>{product.oldPrice}</del>}
                     <strong><span>{product.price}</span> <small>تومان</small></strong>

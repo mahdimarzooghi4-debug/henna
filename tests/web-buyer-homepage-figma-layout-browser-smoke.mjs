@@ -305,16 +305,24 @@ async function main() {
   await cartTitle.waitFor();
   assert.deepEqual(await readDemoCart(), expected);
 
-  // The homepage's recommendation action follows the same direct-cart flow.
+  // Homepage add stays on the homepage; only an explicit cart click navigates.
   await page.goto(base + "/");
   assert.equal(await page.locator('#offers article a[href^="/products/"]').count(), 0,
     "Homepage recommendations do not use the sample detail page");
   const riceOffer = page.locator("#offers article").filter({ hasText: "برنج هاشمی درجه یک" });
-  await riceOffer.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  const homeAdd = riceOffer.getByTestId("preview-product-add");
+  await homeAdd.click();
+  await riceOffer.getByRole("status").filter({ hasText: "به سبد خرید اضافه شد" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/", "Homepage add must not navigate");
+  assert.equal(await homeAdd.isEnabled(), true, "Shopping can continue after add");
   const withRice = [...expected, { productId: "rice", quantity: 1 }];
   assert.deepEqual(await readDemoCart(), withRice, "Homepage adds the exact chosen item");
+  const homeCartLink = page.locator('header a[href="/buyer/cart?mode=preview"]');
+  await homeCartLink.locator("span").filter({ hasText: /^۴$/ }).waitFor();
+  await homeCartLink.click();
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
+  assert.deepEqual(await readDemoCart(), withRice, "Opening the cart does not add another item");
   await page.getByRole("heading", { name: "برنج هاشمی درجه یک", exact: true }).waitFor();
 
   // Figma 227:1368 — Basket layout on the existing dynamic sample cart.
