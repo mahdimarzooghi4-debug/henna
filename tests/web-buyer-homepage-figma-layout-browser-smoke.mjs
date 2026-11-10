@@ -884,6 +884,16 @@ async function main() {
     }
   }
 
+  // Company information is read from account storage; checkout never asks twice.
+  await page.evaluate(items=>localStorage.setItem("henna:landing-preview-cart:v1",JSON.stringify(items)),expected);
+  await page.goto(base+"/buyer/checkout?mode=preview");
+  const legalCheckout=page.getByTestId("preview-checkout-page");
+  await legalCheckout.getByRole("checkbox",{name:"خرید حقوقی و دریافت فاکتور رسمی"}).check();
+  await legalCheckout.getByTestId("preview-legal-company-note").getByText(/شرکت نمونه CI/).waitFor();
+  assert.equal(await legalCheckout.getByLabel("نام شرکت",{exact:true}).count(),0);
+  assert.equal(await legalCheckout.getByRole("button",{name:"ثبت سفارش",exact:true}).isEnabled(),true);
+  await page.evaluate(()=>localStorage.removeItem("henna:landing-preview-cart:v1"));
+
   // Every account tab has a real destination and a persistent navigation.
   await page.setViewportSize({width:1440,height:1000});
   await page.goto(base + "/buyer/account?mode=preview");

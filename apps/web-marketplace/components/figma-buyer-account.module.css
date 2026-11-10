@@ -76,8 +76,6 @@
   .legalCard, .summary, .infoCard { padding: 20px; }
 }
 
-/* Reserve scrollbar space while moving among the account pages. */
-:global(html:has([data-testid="buyer-account-nav"])) { scrollbar-gutter: stable; }
 .companyForm { display:grid; gap:16px; }
 .companyForm label { display:grid; gap:6px; color:#1c3f3a; font-size:13px; font-weight:600; }
 .companyForm input, .companyForm textarea { width:100%; min-width:0; padding:11px 12px; border:1px solid #eae6e1; border-radius:8px; background:#faf8f5; font:inherit; color:#1c3f3a; }
