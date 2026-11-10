@@ -877,6 +877,30 @@ async function main() {
     }
   }
 
+  // Every account tab has a real destination and a persistent navigation.
+  await page.setViewportSize({width:1440,height:1000});
+  await page.goto(base + "/buyer/account?mode=preview");
+  for (const [label, route, heading] of [
+    ["آدرس‌های من","/account/addresses","مدیریت آدرس‌های من"],
+    ["سفارش‌های من","/buyer/orders?mode=preview","سفارش‌های من"],
+    ["روش‌های پرداخت","/buyer/payments?mode=preview","روش‌های پرداخت"],
+    ["اعتبارهای من","/benefits?section=credits","اعتبارها و طرح‌های من"],
+    ["طرح‌های فعال","/benefits?section=plans","اعتبارها و طرح‌های من"],
+    ["مشارکت‌های اجتماعی","/social","مشارکت اجتماعی"],
+    ["پشتیبانی","/support","پشتیبانی حنا"],
+    ["تنظیمات","/buyer/settings?mode=preview","تنظیمات"],
+    ["اطلاعات حساب","/buyer/account?mode=preview","حساب من"],
+  ]) {
+    const nav = page.getByTestId("buyer-account-nav");
+    await nav.getByRole("link",{name:label,exact:true}).click();
+    await page.waitForURL(base+route);
+    await page.getByRole("heading",{name:heading,exact:true}).waitFor();
+    assert.equal(await nav.locator('[aria-current="page"]').textContent(),label);
+    assert.equal(await nav.getByRole("link").count(),9);
+    if (label==="اعتبارهای من") assert.equal(await page.getByRole("button",{name:"اعتبار حمایتی عمومی",exact:true}).getAttribute("aria-pressed"),"true");
+    if (label==="طرح‌های فعال") assert.equal(await page.getByRole("button",{name:"طرح‌های فعال و کالابرگ‌ها",exact:true}).getAttribute("aria-pressed"),"true");
+  }
+
   // The same shared chrome must remain inside the viewport on mobile.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(base + "/products", { waitUntil: "domcontentloaded" });

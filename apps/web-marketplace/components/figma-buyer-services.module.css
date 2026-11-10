@@ -73,3 +73,8 @@
   .supportFormGrid { grid-template-columns: 1fr; }
   .supportMessage { grid-column: auto; }
 }
+
+/* Shared buyer account navigation: right-hand sidebar and consistent canvas. */
+.layout { direction:rtl; grid-template-columns:320px minmax(0,1fr); }
+@media(max-width:1000px){.layout{grid-template-columns:240px minmax(0,1fr);gap:24px}}
+@media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}}
