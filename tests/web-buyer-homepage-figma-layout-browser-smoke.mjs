@@ -190,34 +190,52 @@ async function main() {
   await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
   assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
     "Figma 227:1085 preview shows eight clearly separated sample cards");
-  // The eight Figma cards are demo-only. Both sidebar and toolbar must filter
-  // the SAME in-memory cards, even if the public categories endpoint is 503.
+  // Owner's toolbar: four controls only; no left category chips.
+  // These demo cards have display prices. Published catalog records do not,
+  // so price sorting cannot claim a real offer or verified eligibility.
   const demoCards = page.locator('[aria-label="محصولات فروشگاه"] article');
-  await page.getByTestId("products-filter-toolbar").getByRole("button", {
-    name: "لبنیات محلی", exact: true,
-  }).click();
-  assert.equal(await demoCards.count(), 4, "Dairy demo cards filtered by toolbar");
+  const sortBar = page.getByTestId("products-filter-toolbar");
+  assert.deepEqual(await sortBar.getByRole("button").allTextContents(),
+    ["ارزان‌ترین", "گران‌ترین", "تخفیف‌دارها", "کالابرگ"]);
+  assert.equal(await sortBar.getByRole("button", { name: "کالابرگ" }).isDisabled(),
+    true, "No verified benefit eligibility means no active kalabarg filter");
+  for (const removed of ["همه", "لبنیات محلی", "روغن و خواربار"]) {
+    assert.equal(await sortBar.getByRole("button", { name: removed, exact: true }).count(),
+      0, "Removed left-side toolbar chip: " + removed);
+  }
+
+  await sortBar.getByRole("button", { name: "ارزان‌ترین" }).click();
+  assert.equal(await demoCards.first().locator("h3").textContent(),
+    "ماست سون همزده پرچرب", "Cheapest Figma demo item first");
+  assert.equal(await demoCards.last().locator("h3").textContent(),
+    "برنج هاشمی درجه یک", "Most expensive Figma demo item last");
+
+  await sortBar.getByRole("button", { name: "گران‌ترین" }).click();
+  assert.equal(await demoCards.first().locator("h3").textContent(),
+    "برنج هاشمی درجه یک", "Descending Figma demo price order");
+  await sortBar.getByRole("button", { name: "تخفیف‌دارها" }).click();
+  assert.equal(await demoCards.count(), 5, "Only five demo items have reduced display prices");
+  assert.equal(await demoCards.locator("del").count(), 5,
+    "Discounted demo products must have a displayed previous price");
+  await sortBar.getByRole("button", { name: "تخفیف‌دارها" }).click();
+  assert.equal(await demoCards.count(), 8, "Re-selecting a sort restores default display");
+
+  const previewCategories = page.locator('[aria-label="فیلتر محصولات نمایشی"]');
+  await previewCategories.getByRole("button", { name: "لبنیات محلی", exact: true }).click();
+  assert.equal(await demoCards.count(), 4, "Right sidebar dairy filter still works");
+  await sortBar.getByRole("button", { name: "ارزان‌ترین" }).click();
+  assert.equal(await demoCards.first().locator("h3").textContent(),
+    "ماست سون همزده پرچرب", "Price order and sidebar category intersect");
+  await sortBar.getByRole("button", { name: "ارزان‌ترین" }).click();
+  await previewCategories.getByRole("button", { name: "روغن و خواربار", exact: true }).click();
+  assert.equal(await demoCards.count(), 2, "Right sidebar pantry filter still works");
+  await previewCategories.getByRole("button", { name: "عسل و خشکبار", exact: true }).click();
+  assert.equal(await demoCards.count(), 2, "Right sidebar honey filter still works");
+  await previewCategories.getByRole("button", { name: "همه محصولات نمایشی", exact: true }).click();
+  assert.equal(await demoCards.count(), 8, "Right sidebar restores all demo products");
   assert.equal(new URL(page.url()).searchParams.has("categoryId"), false,
-    "Demo filter must not fabricate a published catalog ID");
-  await page.locator('[aria-label="فیلتر محصولات نمایشی"]').getByRole("button", {
-    name: "روغن و خواربار", exact: true,
-  }).click();
-  assert.equal(await demoCards.count(), 2, "Pantry demo cards filtered by sidebar");
-  await page.locator('[aria-label="فیلتر محصولات نمایشی"]').getByRole("button", {
-    name: "عسل و خشکبار", exact: true,
-  }).click();
-  assert.equal(await demoCards.count(), 2, "Honey and nuts demo cards filtered by sidebar");
-  await page.getByTestId("products-filter-toolbar").getByRole("button", {
-    name: "لبنیات محلی", exact: true,
-  }).click();
-  assert.equal(await demoCards.count(), 4, "Toolbar and sidebar share the same dairy filter");
-  await page.getByTestId("products-filter-toolbar").getByRole("button", {
-    name: "همه", exact: true,
-  }).click();
-  assert.equal(await demoCards.count(), 8, "All demo cards restored");
-  assert.equal(await page.getByTestId("products-filter-toolbar").getByRole("button", {
-    name: "ارزان‌ترین",
-  }).isDisabled(), true, "Sorting without trusted public prices stays disabled");
+    "Demo filters and sorting must not invent a published catalog category ID");
+
   assert.equal(await page.getByRole("navigation", {
     name: "دسته‌بندی اصلی",
   }).getByRole("link", { name: "همه دسته‌ها", exact: true })
