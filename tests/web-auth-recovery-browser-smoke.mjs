@@ -85,7 +85,7 @@ async function startNext() {
   next = spawn("npm", ["run", "start", "--workspace",
     "@hana/web-marketplace", "--", "-p", "3007", "-H", "127.0.0.1"],
   { detached: true, stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" } });
+    env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1", HANA_AUTH_UI_PREVIEW: "1" } });
   next.stdout.on("data", value => { nextLogs += value.toString(); });
   next.stderr.on("data", value => { nextLogs += value.toString(); });
   for (let i = 0; i < 45; i++) {
@@ -113,7 +113,7 @@ async function main() {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
-  await page.goto(base + "/auth");
+  await page.goto(base + "/auth?mode=live");
   await page.getByText("بررسی وضعیت حساب فعلاً در دسترس نیست", {
     exact: false,
   }).waitFor();
@@ -230,6 +230,33 @@ async function main() {
   assert.equal(await page.locator("#auth-phone").inputValue(), "");
   assert.equal(loggedIn, false);
   assert.deepEqual(pageErrors, []);
+  // Stage preview: no auth API calls, no session, no persisted phone/code.
+  const previewContext = await browser.newContext();
+  let previewApiCalls = 0;
+  await previewContext.route("**/api/auth/**", route => {
+    previewApiCalls++;
+    return route.abort();
+  });
+  const previewPage = await previewContext.newPage();
+  await previewPage.goto(base + "/auth");
+  await previewPage.getByTestId("auth-ui-preview").waitFor();
+  await previewPage.locator("#auth-phone").fill("123");
+  await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
+  await previewPage.getByRole("alert").waitFor();
+  assert.equal(await previewPage.locator("#auth-code").count(), 0);
+  await previewPage.locator("#auth-phone").fill(phone);
+  await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
+  await previewPage.locator("#auth-code").waitFor();
+  await previewPage.getByText("هیچ پیامکی ارسال نشده است", { exact: false }).waitFor();
+  await previewPage.getByRole("button", { name: "ویرایش شماره" }).click();
+  await previewPage.locator("#auth-phone").waitFor();
+  await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
+  await previewPage.getByRole("link", { name: "ادامه نمایشی به تکمیل پروفایل" }).click();
+  await previewPage.waitForURL(base + "/buyer/profile?mode=preview");
+  assert.equal(previewApiCalls, 0);
+  assert.equal(await previewPage.evaluate(() => localStorage.length + sessionStorage.length), 0);
+  assert.equal((await previewContext.cookies()).length, 0);
+  await previewContext.close();
   await context.close();
   console.log("Chromium web auth: 503 retry without reload → focused 202 → 429 → new 202 → unknown send → malformed 202 → six-digit/errors → sign-in/out OK");
 }
