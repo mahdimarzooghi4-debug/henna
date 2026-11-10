@@ -15,6 +15,7 @@ import {
 import { colors } from "./theme";
 import { FigmaIcon } from "./figma-icon";
 import { BuyerPreviewAccount, initialPreviewAccount, type PreviewAccountState, type PreviewAccountPage } from "./buyer-preview-account";
+import { BuyerPreviewPurchase, type PreviewPurchasePage, type PreviewOrder } from "./buyer-preview-purchase";
 import { changePreviewQuantity, previewCartCount, previewCartTotal, previewPrices, type PreviewCart, type PreviewProductKey } from "./preview-cart.ts";
 
 function Text(props: TextProps) {
@@ -83,8 +84,12 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const [designCategory, setDesignCategory] = useState<string | null>(null);
   const [designBadge, setDesignBadge] = useState<string | null>(null);
   const [previewCart, setPreviewCart] = useState<PreviewCart>({});
-  const [previewPage, setPreviewPage] = useState<"cart" | "detail" | "comparison" | PreviewAccountPage | null>(null);
+  const [previewPage, setPreviewPage] = useState<"cart" | "detail" | "comparison" | PreviewPurchasePage | PreviewAccountPage | null>(null);
   const [previewAccount,setPreviewAccount] = useState<PreviewAccountState>(initialPreviewAccount);
+  const [previewOrders,setPreviewOrders] = useState<PreviewOrder[]>([]);
+  const [selectedPreviewOrder,setSelectedPreviewOrder] = useState<number|null>(null);
+  const [legalPreview,setLegalPreview] = useState(false);
+  const [accountReturn,setAccountReturn] = useState<"checkout"|null>(null);
   const [previewDetail, setPreviewDetail] = useState<PreviewProductKey | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const suggestionsY = useRef(0);
@@ -96,7 +101,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     if (designPreview) setPreviewPage(page); else actual();
   };
   useEffect(() => {
-    if (!designPreview) { setPreviewCart({}); setPreviewAccount(initialPreviewAccount); setPreviewPage(null); setPreviewDetail(null); setFilterOpen(false); setCatalogOpen(false); }
+    if (!designPreview) { setPreviewCart({}); setPreviewAccount(initialPreviewAccount); setPreviewOrders([]); setSelectedPreviewOrder(null); setLegalPreview(false); setAccountReturn(null); setPreviewPage(null); setPreviewDetail(null); setFilterOpen(false); setCatalogOpen(false); }
   }, [designPreview]);
   const designProducts = homeDesignProducts.filter(product =>
     (!designQuery || product.name.includes(designQuery) || product.category.includes(designQuery)) &&
@@ -115,7 +120,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     if (!designPreview) controller.restoreLocation({categoryId:null,search:"",page:1});
     setCatalogOpen(true); setPreviewPage(null); scroll.current?.scrollTo({y:0,animated:false});
   };
-  const returnHome = () => { setCatalogOpen(false); setPreviewPage(null); setCatalogPanel(false); setFilterOpen(false); scroll.current?.scrollTo({y:0,animated:false}); };
+  const returnHome = () => { setCatalogOpen(false); setPreviewPage(null); setAccountReturn(null); setCatalogPanel(false); setFilterOpen(false); scroll.current?.scrollTo({y:0,animated:false}); };
   const openPreviewDetail = (key:PreviewProductKey) => { setPreviewDetail(key); setDetailQuantity(1); setPreviewPage("detail"); };
   const openAccountAction = (action: () => void) => { setAccountMenuOpen(false); action(); };
   const onAccount = isSignedIn ? onLogout : onLogin;
@@ -177,9 +182,9 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
 
   if (designPreview && previewPage) {
     const product = homeDesignProducts.find(item => item.key === previewDetail);
-    const accountTitles:Record<PreviewAccountPage,string> = {account:"حساب کاربری",profile:"تکمیل اطلاعات حساب",company:"اطلاعات شرکت",addresses:"آدرس‌های من",wallet:"اعتبارها و طرح‌ها",plans:"اعتبارها و طرح‌ها",social:"مشارکت اجتماعی",support:"پشتیبانی حنا",notifications:"اعلان‌ها",orders:"سفارش‌های من",payments:"روش‌های پرداخت",settings:"تنظیمات",incidents:"گزارش‌ها و مرجوعی‌های من"};
+    const accountTitles:Record<PreviewAccountPage | PreviewPurchasePage,string> = {account:"حساب کاربری",profile:"تکمیل اطلاعات حساب",company:"اطلاعات شرکت",addresses:"آدرس‌های من",wallet:"اعتبارها و طرح‌ها",plans:"اعتبارها و طرح‌ها",social:"مشارکت اجتماعی",support:"پشتیبانی حنا",notifications:"اعلان‌ها",orders:"سفارش‌های من",payments:"روش‌های پرداخت",settings:"تنظیمات",incidents:"گزارش‌ها و مرجوعی‌های من",review:"بررسی سبد",checkout:"ثبت سفارش",success:"ثبت سفارش",tracking:"پیگیری سفارش"};
     const title = previewPage === "cart" ? "سبد خرید" : previewPage === "comparison" ? "مقایسه فروشگاه‌ها" : previewPage === "detail" ? "جزئیات محصول" : accountTitles[previewPage];
-    const back = () => setPreviewPage(previewPage === "comparison" ? "cart" : previewPage==="profile"||previewPage==="company"||previewPage==="addresses"||previewPage==="wallet"||previewPage==="plans"||previewPage==="social"||previewPage==="support"||previewPage==="payments"||previewPage==="settings"||previewPage==="incidents" ? "account" : null);
+    const back = () => {if(accountReturn && (previewPage==="company"||previewPage==="addresses")){setAccountReturn(null);setPreviewPage("checkout");return;}setPreviewPage(previewPage==="comparison"?"cart":previewPage==="review"?"comparison":previewPage==="checkout"?"review":previewPage==="tracking"?"orders":previewPage==="success"?"orders":previewPage==="profile"||previewPage==="company"||previewPage==="addresses"||previewPage==="wallet"||previewPage==="plans"||previewPage==="social"||previewPage==="support"||previewPage==="payments"||previewPage==="settings"||previewPage==="incidents"?"account":null);};
     return <SafeAreaView style={styles.safeArea} edges={["top","bottom"]}>
       <View style={styles.journeyHeader}><Pressable accessibilityRole="button" accessibilityLabel="بازگشت" onPress={back} style={styles.bellButton}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text style={styles.journeyTitle}>{title}</Text><Image source={logo} resizeMode="contain" style={styles.journeyLogo}/></View>
       <ScrollView style={styles.fill} contentContainerStyle={styles.previewBody}>
@@ -207,7 +212,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
         </> : previewPage === "comparison" ? <>
           <View style={styles.previewPanel}><Text style={styles.emptyText}>فروشگاه‌های نزدیک</Text><Text style={styles.emptyTitle}>برای همین سبد، فروشگاه را انتخاب کنید.</Text></View>
           <View style={styles.previewPanel}><Text style={styles.emptyTitle}>پیشنهاد واقعی فروشگاه در دسترس نیست</Text><Text style={styles.emptyText}>این سبد نمونه است. قیمت، فاصله، موجودی و زمان تحویل فروشگاه از داده واقعی دریافت می‌شود؛ در پیش‌نمایش فروشنده یا سفارش ساختگی ثبت نمی‌شود.</Text></View>
-          <Pressable accessibilityRole="button" onPress={()=>setPreviewPage("cart")} style={styles.previewPrimary}><Text style={styles.previewPrimaryText}>بازگشت به سبد خرید</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={()=>{setLegalPreview(false);setPreviewPage("review");}} style={styles.previewPrimary}><Text style={styles.previewPrimaryText}>تمرین ادامه خرید با فروشگاه نمونه</Text></Pressable><Pressable accessibilityRole="button" onPress={()=>setPreviewPage("cart")} style={styles.previewPanel}><Text style={styles.sectionLink}>بازگشت به سبد خرید</Text></Pressable>
         </> : previewPage === "detail" && product ? <>
           <Image source={product.image} resizeMode="cover" style={styles.previewDetailImage}/>
           <View style={styles.comparisonNotice}><Text style={styles.infoText}>این کالا نمونه طراحی است. بعد از افزودن به سبد می‌توانید مسیر مقایسه را بررسی کنید.</Text></View>
@@ -218,7 +223,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
           <View style={styles.previewPanel}><Text style={styles.emptyTitle}>مشخصات و ویژگی‌ها</Text><Text style={styles.emptyText}>دسته: {product.category}</Text>{product.key === "rice" && <Text style={styles.emptyText}>نوع محصول: برنج طارم · وزن: کیسه ۱۰ کیلوگرمی · بسته‌بندی: کیسه</Text>}</View>
           <View style={styles.previewPanel}><Text style={styles.emptyTitle}>توضیحات محصول</Text><Text style={styles.emptyText}>این کالا برای بررسی مسیر خرید در پیش‌نمایش طراحی نمایش داده شده است.</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="مشاهده سبد خرید" onPress={() => setPreviewPage("cart")} style={styles.previewPanel}><Text style={styles.sectionLink}>مشاهده سبد خرید ({persianNumber(count)})</Text></Pressable>
-        </> : previewPage !== "detail" && <BuyerPreviewAccount key={previewPage} page={previewPage} state={previewAccount} setState={setPreviewAccount} onNavigate={setPreviewPage} onLogout={onLogout} onCatalog={openCatalog}/>}
+        </> : previewPage === "review" || previewPage === "checkout" || previewPage === "success" || previewPage === "tracking" || previewPage === "orders" ? <BuyerPreviewPurchase key={previewPage} page={previewPage} cart={previewCart} items={homeDesignProducts} account={previewAccount} orders={previewOrders} selectedOrder={selectedPreviewOrder} legal={legalPreview} setLegal={setLegalPreview} onNavigate={setPreviewPage} onHome={returnHome} onCatalog={openCatalog} onAccountEdit={target=>{setAccountReturn("checkout");setPreviewPage(target);}} onSelectOrder={id=>{setSelectedPreviewOrder(id);setPreviewPage("tracking");}} onSubmit={()=>{const address=previewAccount.addresses.find(a=>a.id===previewAccount.defaultAddress);if(!address||count===0||(legalPreview&&!previewAccount.company))return;const next:PreviewOrder={id:(previewOrders.at(-1)?.id??0)+1,cart:{...previewCart},total:previewCartTotal(previewCart),recipient:address.recipient,company:legalPreview?previewAccount.company?.name??null:null};setPreviewOrders(v=>[...v,next]);setSelectedPreviewOrder(next.id);setPreviewCart({});setPreviewPage("success");}}/> : previewPage !== "detail" && <BuyerPreviewAccount key={previewPage} page={previewPage} state={previewAccount} setState={setPreviewAccount} onNavigate={page=>{if(accountReturn&&page==="account"){setAccountReturn(null);setPreviewPage("checkout");}else setPreviewPage(page);}} onLogout={onLogout} onCatalog={openCatalog}/>}
       </ScrollView>
       {bottomNavigation}
     </SafeAreaView>;

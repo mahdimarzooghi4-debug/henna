@@ -11,11 +11,11 @@ Owner scope (2026-11-10): buyer app only, all in-scope mobile pages in one coord
 | 227:123 | Detail | Preview title, image, quantity, shared cart; actual live detail component retained; visual acceptance pending |
 | 227:208 | Basket | Preview item rows/quantity/remove/sample total, comparison entry; actual BuyerCartScreen retained; visual acceptance pending |
 | 227:302 | Seller comparison | Preview route shows honest unavailable state; no fabricated offers; full API-backed visual reconciliation pending |
-| 227:422 | Basket review | Pending |
-| 227:549 | Checkout | Existing BuyerCheckoutScreen; full reconciliation pending |
-| 227:634 | Order success | Pending; requires successful authoritative order |
-| 227:706 | Tracking | Existing BuyerOrdersScreen; reconciliation pending |
-| 227:797 | Orders | Existing BuyerOrdersScreen; reconciliation pending |
+| 227:422 | Basket review | Explicit local exercise based on same cart; no real inventory/offer |
+| 227:549 | Checkout | Exercise checkout reads default sample address and company; live BuyerCheckoutScreen unchanged |
+| 227:634 | Order success | Explicit sample-only exercise record; no real order/payment |
+| 227:706 | Tracking | Exercise tracking shows only sample registration, no fabricated delivery; live BuyerOrdersScreen unchanged |
+| 227:797 | Orders | Session-local exercise order list and filters; real order history unchanged |
 | 227:888 | Account | Explicit offline account screen, shared navigation, profile/company/address routes; visual acceptance pending |
 | 245:8 | Auth | Prior PR218; verify against frame and existing real OTP contract |
 | 245:62 | Profile | Session-local sample form, no personal data persistence |
@@ -26,7 +26,9 @@ Owner scope (2026-11-10): buyer app only, all in-scope mobile pages in one coord
 | 245:528 | Notifications | Dedicated honest preview page; actual notifications reconciliation pending |
 | 245:745 | Empty & error states | Pending unified coverage |
 | 326:35, 326:200 | Company unregistered/form | Local sample company form saved once in same account state; real legal registration and checkout reuse pending |
-| 326:842, 326:954 | Legal checkout states | Pending; reuse account company data |
+| 326:842, 326:954 | Legal checkout states | Exercise legal flag, reuse sample company; block submit until registered; no real invoice |
 | 842:6059, 842:6170, 842:6226, 842:6258, 842:6290, 842:6324 | Catalog alternate/async/filter states | Inventory; reconcile against canonical 227:8 and owner-approved scope; no silent design replacement |
 
 Explicitly exclude seller-only 245:614 and 245:694, desktop frames, alternative mobile web 452:* until scope is confirmed, and draft Buyer005. Existing approved canonical design decisions remain authoritative. This register records implementation evidence and missing work, not blanket approval. Stage is not Production.
+
+Exercise boundary: a deliberate 'تمرین ادامه خرید با فروشگاه نمونه' action from the comparison unavailable state enters the local mock workflow based on the same cart. It never represents a quote, real seller identity, stock, delivery estimate, order, payment or invoice. No exercise data is sent to APIs or persisted. The order-success/tracking frames are reachable only after explicitly submitting a sample exercise. Real seller comparison and visual QA remain separate acceptance gates.
