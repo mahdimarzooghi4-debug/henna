@@ -527,6 +527,79 @@ async function main() {
     if(width===390)assert.ok(g.summary.y>=g.lines.bottom,"Mobile invoice follows review items");
   }
   await page.setViewportSize({width:1440,height:900});
+  // Checkout shares the same aligned canvas. Delivery choice is functional,
+  // but no courier price is fabricated from the preview fixtures.
+  await review.getByRole("link",{name:"ادامه ثبت سفارش"}).click();
+  await page.waitForURL(base+"/buyer/checkout?mode=preview");
+  const checkout=page.getByTestId("preview-checkout-page");
+  const checkoutLayout=checkout.getByTestId("preview-checkout-layout");
+  await checkoutLayout.waitFor();
+  const pickup=checkout.getByRole("radio",{name:"تحویل حضوری از فروشگاه",exact:true});
+  const courier=checkout.getByRole("radio",{name:"ارسال با پیک",exact:true});
+  const fee=checkout.getByTestId("preview-delivery-fee");
+  const checkoutTotal=checkout.getByTestId("preview-checkout-total");
+  const submitPreview=checkout.getByRole("button",{name:"ثبت سفارش",exact:true});
+  assert.equal(await pickup.isChecked(),true);
+  assert.equal(await fee.textContent(),"۰ تومان");
+  assert.equal(await checkout.getByTestId("preview-courier-fields").count(),0);
+  await checkout.getByTestId("preview-pickup-info").getByText("فروشگاه نمونه ۱ (محله رسالت)",{exact:true}).waitFor();
+  const pickupTotal=await checkoutTotal.textContent();
+  assert.ok(pickupTotal.includes("تومان"));
+  assert.equal(await submitPreview.isEnabled(),true);
+  await courier.check();
+  await checkout.getByTestId("preview-courier-fields").waitFor();
+  assert.equal(await fee.textContent(),"در انتظار تعیین هزینه پیک");
+  assert.equal(await checkoutTotal.textContent(),"پس از تعیین هزینه پیک");
+  assert.equal(await submitPreview.isDisabled(),true);
+  assert.equal(await checkout.getByTestId("preview-pickup-info").count(),0);
+  await checkout.getByRole("button",{name:"تغییر موقعیت روی نقشه"}).waitFor();
+  assert.deepEqual(await readDemoCart(),expected,"Delivery selection does not mutate the cart");
+  assert.deepEqual(await page.getByTestId("marketplace-category-nav").getByRole("link").allTextContents(),
+    ["همه دسته‌ها","طرح‌های ویژه حنا","کالابرگ الکترونیکی","تخفیف‌های طلایی"]);
+  for(const width of [1440,1650,1150,390]){
+    await page.setViewportSize({width,height:900});
+    const g=await page.evaluate(()=>{
+      const rect=el=>{const {x,y,width,height,right,bottom}=el.getBoundingClientRect();return {x,y,width,height,right,bottom}};
+      const layout=document.querySelector('[data-testid="preview-checkout-layout"]');
+      return {layout:rect(layout),fields:rect(layout.querySelector('[data-testid="preview-checkout-fields"]')),
+        summary:rect(layout.querySelector('[data-testid="preview-checkout-summary"]')),
+        header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
+        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
+    });
+    near(g.layout.x,g.header.x,"Checkout header alignment at "+width);
+    near(g.layout.right,g.header.right,"Checkout right edge at "+width);
+    near(g.footer.x,g.layout.x,"Checkout footer alignment at "+width);
+    near(g.footer.right,g.layout.right,"Checkout footer right edge at "+width);
+    assert.ok(g.scrollWidth<=g.clientWidth+1,"Checkout no horizontal overflow at "+width);
+    if(width>=1440){
+      near(g.layout.width,1280,"Checkout desktop canvas");
+      near(g.summary.width,400,"Checkout summary width");
+      near(g.fields.x-g.summary.right,32,"Checkout column gap");
+    }
+    if(width===390)assert.ok(g.summary.y>=g.fields.bottom,"Mobile summary follows checkout fields");
+  }
+  await page.setViewportSize({width:1440,height:900});
+  await pickup.check();
+  assert.equal(await checkoutTotal.textContent(),pickupTotal,"Switching back to pickup restores item-only total");
+  assert.equal(await fee.textContent(),"۰ تومان");
+  assert.equal(await checkout.getByTestId("preview-courier-fields").count(),0);
+  assert.equal(await submitPreview.isEnabled(),true);
+  await submitPreview.click();
+  await page.waitForURL(base+"/buyer/success?mode=preview");
+  const order=await page.evaluate(()=>JSON.parse(sessionStorage.getItem("henna:figma-preview-order:v1")));
+  assert.equal(order.deliveryMethod,"pickup");
+  assert.equal(order.deliveryFee,0);
+  assert.equal(order.address,"دریافت حضوری از فروشگاه نمونه ۱ (محله رسالت)");
+  assert.deepEqual(order.items,expected);
+  assert.deepEqual(await readDemoCart(),[]);
+  // Restore fixture state for the remainder of the existing buyer journey.
+  await page.evaluate(items=>{
+    localStorage.setItem("henna:landing-preview-cart:v1",JSON.stringify(items));
+    sessionStorage.removeItem("henna:figma-preview-order:v1");
+  },expected);
+  await page.goto(base+"/buyer/review?mode=preview");
+  await reviewLayout.waitFor();
   await review.getByRole("link",{name:"بازگشت به مقایسه فروشگاه‌ها",exact:true}).click();
   await page.waitForURL(base+"/buyer/compare?mode=preview");
   await sellerCards.first().waitFor();
