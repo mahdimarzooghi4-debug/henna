@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { BuyerAccountNav } from "./buyer-account-nav";
 import styles from "./figma-buyer-orders.module.css";
+import accountStyles from "./figma-buyer-account.module.css";
 const orders=[
  {id:"order-1",total:"۶۹۳,۵۰۰",status:"در حال آماده‌سازی",date:"۱۴۰۴/۰۲/۱۲",store:"فروشگاه نمونه ۱",items:["پنیر سفید هراز","ماست پرچرب کاله","برنج هاشمی"],legal:true},
  {id:"order-2",total:"۱۴۲,۰۰۰",status:"تحویل‌شده",date:"۱۴۰۴/۰۱/۰۵",store:"فروشگاه نمونه ۲",items:["شیر تازه گاومیش","تخم‌مرغ محلی"]},
@@ -12,7 +13,7 @@ const tabs=["همه سفارش‌ها","جاری","تحویل‌شده","لغو�
 export function FigmaBuyerOrders(){
  const [tab,setTab]=useState(tabs[0]);
  const visible=orders.filter(order=>tab===tabs[0]||(tab==="جاری"&&order.status==="در حال آماده‌سازی")||order.status===tab);
- return <main className={styles.page} dir="rtl"><div className={styles.accountLayout}><BuyerAccountNav active="orders"/><section className={styles.accountContent}><h1>سفارش‌های من</h1><nav className={styles.tabs} aria-label="فیلتر سفارش‌ها">
+ return <main className={accountStyles.page} dir="rtl" data-testid="preview-orders"><div className={accountStyles.layout}><BuyerAccountNav active="orders"/><section className={styles.accountContent}><h1>سفارش‌های من</h1><nav className={styles.tabs} aria-label="فیلتر سفارش‌ها">
   {tabs.map(item=><button key={item} type="button" aria-pressed={tab===item} onClick={()=>setTab(item)}>{item}</button>)}
  </nav>
  <section className={styles.list} aria-label="تاریخچه سفارش‌ها">
