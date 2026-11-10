@@ -190,6 +190,21 @@ async function main() {
   await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
   assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
     "Figma 227:1085 preview shows eight clearly separated sample cards");
+  // The right-hand "Features" section has three real destinations, not
+  // disabled pseudo-checkboxes or invented eligibility/product flags.
+  const featureNav = page.getByRole("navigation", { name: "ویژگی‌های حنا" });
+  assert.deepEqual(await featureNav.getByRole("link").allTextContents(),
+    ["کالابرگ الکترونیکی", "تخفیف‌های طلایی", "طرح‌های ویژه حنا"],
+    "Three owner-approved sidebar feature labels in exact order");
+  assert.deepEqual(await featureNav.getByRole("link").evaluateAll(
+    links => links.map(link => link.getAttribute("href"))),
+    ["/benefits#food-credit", "/#offers", "/benefits#special-plans"],
+    "Feature destinations match existing first-party homepage routes");
+  assert.equal(await featureNav.locator('input[type="checkbox"]').count(), 0,
+    "No misleading eligibility checkboxes in the feature area");
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
+    "Feature destinations must not misclassify the Figma demo catalog");
+
   // Owner's toolbar: four controls only; no left category chips.
   // These demo cards have display prices. Published catalog records do not,
   // so price sorting cannot claim a real offer or verified eligibility.
