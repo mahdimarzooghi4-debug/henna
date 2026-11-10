@@ -14,7 +14,7 @@ import {
 } from "./buyer-browse-controller.ts";
 import { colors } from "./theme";
 import { FigmaIcon } from "./figma-icon";
-import { changePreviewQuantity, previewCartCount, previewCartTotal, type PreviewCart, type PreviewProductKey } from "./preview-cart.ts";
+import { changePreviewQuantity, previewCartCount, previewCartTotal, previewPrices, type PreviewCart, type PreviewProductKey } from "./preview-cart.ts";
 
 function Text(props: TextProps) {
   const weight = StyleSheet.flatten(props.style)?.fontWeight;
@@ -64,6 +64,11 @@ const catalog = new MobileCatalogClient(
 export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSupport, onWallet, onCart, active=true, isSignedIn=false, previewSession=false, link }: {
   onIssues:()=>void; onOrders:()=>void; onSupport:()=>void; onWallet:()=>void; active?:boolean; isSignedIn?:boolean; previewSession?:boolean; onLogin: () => void; onLogout: () => void; onCart: (productId?:string)=>void; link: BuyerLinkEvent;
 }) {
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogPanel, setCatalogPanel] = useState(false);
+  const [catalogOffers, setCatalogOffers] = useState(false);
+  const [catalogSort, setCatalogSort] = useState(false);
+  const [detailQuantity, setDetailQuantity] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(link.route.kind === "detail" ? link.route.id : null);
   const [browse, setBrowse] = useState<BuyerBrowseState>(() => initialBuyerBrowseState(link.route.browse));
   const [controller] = useState(() => new BuyerBrowseController(catalog, setBrowse, link.route.browse));
@@ -77,7 +82,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const [designCategory, setDesignCategory] = useState<string | null>(null);
   const [designBadge, setDesignBadge] = useState<string | null>(null);
   const [previewCart, setPreviewCart] = useState<PreviewCart>({});
-  const [previewPage, setPreviewPage] = useState<"cart" | "detail" | "orders" | "support" | "wallet" | "incidents" | null>(null);
+  const [previewPage, setPreviewPage] = useState<"cart" | "detail" | "orders" | "support" | "wallet" | "incidents" | "comparison" | null>(null);
   const [previewDetail, setPreviewDetail] = useState<PreviewProductKey | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const suggestionsY = useRef(0);
@@ -95,9 +100,23 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     (!designQuery || product.name.includes(designQuery) || product.category.includes(designQuery)) &&
     (!designCategory || product.category === designCategory) &&
     (!designBadge || product.badge === designBadge));
+  const catalogProducts = (["oil","rice","yogurt","cheese","tea"] as const).flatMap(key => homeDesignProducts.filter(item => item.key === key)).filter(item =>
+    (!designQuery || item.name.includes(designQuery) || item.category.includes(designQuery)) &&
+    (!designCategory || item.category === designCategory) && (!catalogOffers || item.badge === "طرح ویژه" || item.badge === "٪ تخفیف"));
+  const displayedCatalogProducts = catalogSort ? [...catalogProducts].sort((a,b)=>previewPrices[a.key]-previewPrices[b.key]) : catalogProducts;
   const scroll = useRef<ScrollView>(null);
   const scrollToSuggestions = () => scroll.current?.scrollTo({ y: suggestionsY.current, animated: true });
   const resetFilters = () => { setDesignBadge(null); setDesignCategory(null); setDesignQuery(""); setDraftSearch(""); setSearchError(""); };
+
+  const openCatalog = () => {
+    resetFilters(); setCatalogPanel(false); setCatalogOffers(false); setCatalogSort(false);
+    if (!designPreview) controller.restoreLocation({categoryId:null,search:"",page:1});
+    setCatalogOpen(true); setPreviewPage(null);
+  };
+  const returnHome = () => { setCatalogOpen(false); setPreviewPage(null); setCatalogPanel(false); setFilterOpen(false); };
+  const openPreviewDetail = (key:PreviewProductKey) => { setPreviewDetail(key); setDetailQuantity(1); setPreviewPage("detail"); };
+  const openAccountAction = (action: () => void) => { setAccountMenuOpen(false); action(); };
+  const onAccount = isSignedIn ? onLogout : onLogin;
 
   useEffect(() => {
     if (!active) { controller.stop(); return; }
@@ -108,6 +127,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   useEffect(() => {
     if (lastLink.current === link.token) return;
     lastLink.current = link.token;
+    setCatalogOpen(false); setPreviewPage(null); setCatalogPanel(false);
     controller.restoreLocation(link.route.browse);
     setDraftSearch(link.route.browse.search);
     setSearchError("");
@@ -132,13 +152,34 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     setSearchError("");
   }
 
+  const bottomNavigation = <>
+        <View style={styles.bottomNav}>
+          <Pressable onPress={() => setAccountMenuOpen(true)} accessibilityRole="button" accessibilityLabel="حساب" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="user" size={22} color="#8E8E93" /><Text style={styles.navLabel}>حساب</Text></Pressable>
+          <Pressable onPress={() => showPreview("orders", onOrders)} accessibilityRole="button" accessibilityLabel="سفارش‌های من" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="receipt" size={22} color="#8E8E93" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
+          <Pressable onPress={() => showPreview("cart", () => onCart())} accessibilityRole="button" accessibilityLabel="سبد خرید" style={[styles.navItem, previewPage !== "cart" && previewPage !== "comparison" && styles.navInactive]}><FigmaIcon name="cart" size={22} color={previewPage === "cart" || previewPage === "comparison" ? colors.teal : "#8E8E93"} /><Text style={styles.navLabel}>سبد{designPreview && count > 0 ? " (" + persianNumber(count) + ")" : ""}</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="خانه" onPress={returnHome} style={[styles.navItem, (previewPage === "cart" || previewPage === "comparison") && styles.navInactive]}><FigmaIcon name="home" size={22} color={previewPage === "cart" || previewPage === "comparison" ? "#8E8E93" : colors.teal} /><Text style={styles.navLabel}>خانه</Text></Pressable>
+        </View>
+        <Modal visible={accountMenuOpen} transparent animationType="slide" onRequestClose={() => setAccountMenuOpen(false)}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setAccountMenuOpen(false)}>
+            <View style={styles.accountSheet}>
+              <View style={styles.sheetHandle} />
+              <Text accessibilityRole="header" style={styles.accountHeading}>حساب کاربری</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="گزارش‌ها و مرجوعی‌های من" onPress={() => openAccountAction(() => showPreview("incidents", onIssues))} style={styles.accountAction}><Text style={styles.accountActionText}>گزارش‌ها و مرجوعی‌های من</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="کیف پول" onPress={() => openAccountAction(() => showPreview("wallet", onWallet))} style={styles.accountAction}><Text style={styles.accountActionText}>کیف پول</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="اعلان‌ها و پشتیبانی" onPress={() => openAccountAction(() => showPreview("support", onSupport))} style={styles.accountAction}><Text style={styles.accountActionText}>اعلان‌ها و پشتیبانی</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={isSignedIn ? "خروج از حساب" : "ورود به حنا"} onPress={() => openAccountAction(onAccount)} style={[styles.accountAction, styles.accountLogout]}><Text style={[styles.accountActionText, styles.accountLogoutText]}>{isSignedIn ? "خروج از حساب" : "ورود به حنا"}</Text></Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+  </>;
+
   if (designPreview && previewPage) {
     const product = homeDesignProducts.find(item => item.key === previewDetail);
-    const title = previewPage === "cart" ? "سبد خرید" : previewPage === "detail" ? (product?.name ?? "جزئیات محصول") :
+    const title = previewPage === "cart" ? "سبد خرید" : previewPage === "comparison" ? "مقایسه فروشگاه‌ها" : previewPage === "detail" ? "جزئیات محصول" :
       previewPage === "orders" ? "سفارش‌های من" : previewPage === "support" ? "اعلان‌ها و پشتیبانی" :
       previewPage === "wallet" ? "کیف پول" : "گزارش‌ها و مرجوعی‌های من";
     return <SafeAreaView style={styles.safeArea} edges={["top","bottom"]}>
-      <View style={styles.previewHeader}><Pressable accessibilityRole="button" accessibilityLabel="بازگشت به خانه" onPress={() => setPreviewPage(null)} style={styles.previewBack}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text style={styles.previewHeading}>{title}</Text></View>
+      <View style={styles.journeyHeader}><Pressable accessibilityRole="button" accessibilityLabel="بازگشت" onPress={() => setPreviewPage(previewPage === "comparison" ? "cart" : null)} style={styles.bellButton}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text style={styles.journeyTitle}>{title}</Text><Image source={logo} resizeMode="contain" style={styles.journeyLogo}/></View>
       <ScrollView style={styles.fill} contentContainerStyle={styles.previewBody}>
         <Text style={styles.designNotice}>نسخه آزمایشی · هیچ سفارش یا پرداخت واقعی ثبت نمی‌شود.</Text>
         {previewPage === "cart" ? <>
@@ -155,15 +196,29 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
                   </View>
                 </View>
               </View>)}
-          {count > 0 && <View style={styles.previewPanel}><Text style={styles.emptyTitle}>جمع سبد آزمایشی</Text><Text style={styles.designPrice}>{persianNumber(previewCartTotal(previewCart))} تومان</Text><Text style={styles.emptyText}>این مبلغ فقط از قیمت‌های نمونه طراحی محاسبه شده است.</Text></View>}
+          {count > 0 && <>
+            <View style={styles.previewPanel}><View style={styles.summaryRow}><Text style={styles.summaryValue}>{persianNumber(previewCartTotal(previewCart))} تومان</Text><Text style={styles.emptyText}>مجموع اقلام مبنا:</Text></View><View style={styles.summaryRow}><Text style={styles.summaryValue}>—</Text><Text style={styles.emptyText}>تخفیف‌های قابل اعمال:</Text></View><View style={[styles.summaryRow,styles.summaryBorder]}><Text style={styles.detailPrice}>{persianNumber(previewCartTotal(previewCart))} تومان</Text><Text style={styles.emptyTitle}>قیمت حدودی سبد:</Text></View></View>
+            <View style={styles.comparisonNotice}><Text style={styles.emptyTitle}>مقایسه فروشگاه‌های نزدیک</Text><Text style={styles.emptyText}>مقایسه واقعی نیازمند پیشنهاد فروشگاه، موجودی و اطلاعات ارسال از سرور است.</Text></View>
+            <Pressable accessibilityRole="button" accessibilityLabel="مقایسه فروشگاه‌ها" onPress={()=>setPreviewPage("comparison")} style={styles.terracottaButton}><Text style={styles.previewPrimaryText}>مقایسه فروشگاه‌ها</Text></Pressable>
+          </>}
           <Pressable accessibilityRole="button" accessibilityLabel="ادامه خرید" onPress={() => setPreviewPage(null)} style={styles.previewPrimary}><Text style={styles.previewPrimaryText}>ادامه خرید</Text></Pressable>
+        </> : previewPage === "comparison" ? <>
+          <View style={styles.previewPanel}><Text style={styles.emptyText}>فروشگاه‌های نزدیک</Text><Text style={styles.emptyTitle}>برای همین سبد، فروشگاه را انتخاب کنید.</Text></View>
+          <View style={styles.previewPanel}><Text style={styles.emptyTitle}>پیشنهاد واقعی فروشگاه در دسترس نیست</Text><Text style={styles.emptyText}>این سبد نمونه است. قیمت، فاصله، موجودی و زمان تحویل فروشگاه از داده واقعی دریافت می‌شود؛ در پیش‌نمایش فروشنده یا سفارش ساختگی ثبت نمی‌شود.</Text></View>
+          <Pressable accessibilityRole="button" onPress={()=>setPreviewPage("cart")} style={styles.previewPrimary}><Text style={styles.previewPrimaryText}>بازگشت به سبد خرید</Text></Pressable>
         </> : previewPage === "detail" && product ? <>
-          <Image source={product.image} resizeMode="contain" style={styles.previewDetailImage}/>
-          <View style={styles.previewPanel}><Text style={styles.previewHeading}>{product.name}</Text><Text style={styles.designPrice}>{product.price}</Text><Text style={styles.emptyText}>دسته: {product.category} · {product.badge} · نمونه طراحی</Text></View>
-          <Pressable accessibilityRole="button" accessibilityLabel={"افزودن " + product.name} onPress={() => changeQuantity(product.key,1)} style={styles.previewPrimary}><Text style={styles.previewPrimaryText}>افزودن به سبد</Text></Pressable>
+          <Image source={product.image} resizeMode="cover" style={styles.previewDetailImage}/>
+          <View style={styles.comparisonNotice}><Text style={styles.infoText}>این کالا نمونه طراحی است. بعد از افزودن به سبد می‌توانید مسیر مقایسه را بررسی کنید.</Text></View>
+          <Text style={styles.emptyText}>نمونه کالا</Text>
+          <Text style={styles.detailTitle}>{product.key === "rice" ? "برنج طارم ایرانی درجه یک دم‌سیاه (کیسه ۱۰ کیلویی)" : product.name}</Text>
+          <Text style={styles.detailPrice}>{product.price}</Text>
+          <View style={styles.detailPurchase}><Pressable accessibilityRole="button" accessibilityLabel={"افزودن " + product.name} onPress={() => changeQuantity(product.key,detailQuantity)} style={[styles.terracottaButton,{flex:1}]}><Text style={styles.previewPrimaryText}>افزودن به سبد خرید</Text></Pressable><View style={styles.quantityRow}><Pressable accessibilityRole="button" accessibilityLabel="افزایش تعداد محصول" onPress={()=>setDetailQuantity(n=>Math.min(99,n+1))} style={styles.quantityButton}><Text style={styles.quantityText}>+</Text></Pressable><Text style={styles.quantityText}>{persianNumber(detailQuantity)}</Text><Pressable accessibilityRole="button" accessibilityLabel="کاهش تعداد محصول" onPress={()=>setDetailQuantity(n=>Math.max(1,n-1))} style={styles.quantityButton}><Text style={styles.quantityText}>−</Text></Pressable></View></View>
+          <View style={styles.previewPanel}><Text style={styles.emptyTitle}>مشخصات و ویژگی‌ها</Text><Text style={styles.emptyText}>دسته: {product.category}</Text>{product.key === "rice" && <Text style={styles.emptyText}>نوع محصول: برنج طارم · وزن: کیسه ۱۰ کیلوگرمی · بسته‌بندی: کیسه</Text>}</View>
+          <View style={styles.previewPanel}><Text style={styles.emptyTitle}>توضیحات محصول</Text><Text style={styles.emptyText}>این کالا برای بررسی مسیر خرید در پیش‌نمایش طراحی نمایش داده شده است.</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="مشاهده سبد خرید" onPress={() => setPreviewPage("cart")} style={styles.previewPanel}><Text style={styles.sectionLink}>مشاهده سبد خرید ({persianNumber(count)})</Text></Pressable>
         </> : <View style={styles.previewPanel}><Text style={styles.emptyTitle}>{previewPage === "orders" ? "سفارش واقعی ثبت نشده است" : "این بخش به اطلاعات واقعی حساب نیاز دارد"}</Text><Text style={styles.emptyText}>در پیش‌نمایش بدون اتصال سرور، اطلاعات شخصی و عملیات واقعی در دسترس نیستند.</Text></View>}
       </ScrollView>
+      {bottomNavigation}
     </SafeAreaView>;
   }
 
@@ -174,18 +229,13 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
 
   const categories = browse.categories;
   const products = browse.products;
-  const openAccountAction = (action: () => void) => {
-    setAccountMenuOpen(false);
-    action();
-  };
-  const onAccount = isSignedIn ? onLogout : onLogin;
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.cream} />
       <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView ref={scroll} style={styles.fill} contentContainerStyle={styles.scrollBody}
           keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
+          {catalogOpen ? <View style={styles.journeyHeader} testID="buyer-products-227-8"><Pressable accessibilityRole="button" accessibilityLabel="بازگشت به خانه" onPress={returnHome} style={styles.bellButton}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text accessibilityRole="header" style={styles.journeyTitle}>کالاها و خدمات</Text><Image source={logo} resizeMode="contain" style={styles.journeyLogo}/></View> : <View style={styles.header}>
             <Pressable onPress={() => showPreview("support", onSupport)} accessibilityRole="button" accessibilityLabel="اعلان‌ها و پشتیبانی" style={styles.bellButton}>
               <FigmaIcon name="bell" size={20} />
             </Pressable>
@@ -194,16 +244,16 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
               <Text style={styles.greetingTitle}>به حنا خوش آمدید</Text>
             </View>
             <Image source={logo} resizeMode="contain" style={styles.logo} accessibilityLabel="حنا" />
-          </View>
+          </View>}
 
           {previewSession && !designPreview ? <Text style={styles.previewNotice}>ورود آزمایشی · کاتالوگ عمومی</Text> : null}
 
           <View style={styles.searchRow}>
-            <Pressable accessibilityRole="button" accessibilityLabel="فیلترهای جست‌وجو" onPress={() => { if (designPreview) setFilterOpen(value=>!value); else scrollToSuggestions(); }} style={styles.searchTool}>
+            <Pressable accessibilityRole="button" accessibilityLabel="فیلترهای جست‌وجو" onPress={() => { if (catalogOpen) setCatalogPanel(value=>!value); else if (designPreview) setFilterOpen(value=>!value); else scrollToSuggestions(); }} style={styles.searchTool}>
               <FigmaIcon name="sliders" size={18} color="#8E8E93" />
             </Pressable>
             <TextInput accessibilityLabel="جست‌وجو در نام کالاها" style={styles.searchInput}
-              placeholder="جست‌وجوی کالا یا دسته..." placeholderTextColor="#8E8E93"
+              placeholder={catalogOpen?"جست‌وجوی کالاها و خدمات...":"جست‌وجوی کالا یا دسته..."} placeholderTextColor="#8E8E93"
               textAlign="right" returnKeyType="search" maxLength={80} value={draftSearch}
               onChangeText={(value) => { setDraftSearch(value); setSearchError(""); }} onSubmitEditing={search} />
             <Pressable accessibilityRole="button" accessibilityLabel="جست‌وجو" onPress={search} style={styles.searchButton}>
@@ -211,6 +261,23 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
             </Pressable>
           </View>
           {searchError ? <Text accessibilityRole="alert" style={styles.searchError}>{searchError}</Text> : null}
+          {catalogOpen ? <>
+            <View style={styles.filters}>
+              {designPreview && <Pressable accessibilityRole="button" onPress={()=>{resetFilters();setCatalogOffers(false);}} style={styles.filterChip}><Text style={styles.filterText}>نمونه کالا</Text></Pressable>}
+              <Pressable accessibilityRole="button" accessibilityState={{expanded:catalogPanel}} onPress={()=>setCatalogPanel(v=>!v)} style={styles.filterChip}><Text style={styles.filterText}>دسته‌بندی‌ها</Text></Pressable>
+              {designPreview && <Pressable accessibilityRole="button" accessibilityState={{selected:catalogOffers}} onPress={()=>setCatalogOffers(v=>!v)} style={[styles.filterChip,catalogOffers&&styles.filterChipActive]}><Text style={[styles.filterText,catalogOffers&&styles.filterTextActive]}>پیشنهادها</Text></Pressable>}
+            </View>
+            <View style={styles.catalogControls}><Pressable accessibilityRole="button" accessibilityLabel="مرتب‌سازی نمونه‌ها" disabled={!designPreview} onPress={()=>setCatalogSort(v=>!v)}><Text style={styles.emptyText}>{designPreview ? (catalogSort?"مرتب‌سازی: کمترین قیمت نمونه":"مرتب‌سازی: ترتیب طرح") : "ترتیب کاتالوگ"}</Text></Pressable><Pressable accessibilityRole="button" onPress={()=>setCatalogPanel(v=>!v)}><Text style={styles.designPrice}>فیلتر پیشرفته</Text></Pressable></View>
+            {catalogPanel && <View style={[styles.previewPanel,{marginHorizontal:20}]}><Text style={styles.emptyTitle}>دسته‌بندی‌ها</Text><View style={styles.catalogChips}>{designPreview ? homeDesignCategories.map(name=><Pressable key={name} accessibilityRole="button" accessibilityState={{selected:designCategory===name}} onPress={()=>setDesignCategory(v=>v===name?null:name)} style={[styles.filterChip,designCategory===name&&styles.filterChipActive]}><Text style={[styles.filterText,designCategory===name&&styles.filterTextActive]}>{name}</Text></Pressable>) : categories.status==="ok" ? categories.data.map(category=><Pressable key={category.id} accessibilityRole="button" accessibilityState={{selected:browse.categoryId===category.id}} onPress={()=>controller.chooseCategory(category.id)} style={[styles.filterChip,browse.categoryId===category.id&&styles.filterChipActive]}><Text style={[styles.filterText,browse.categoryId===category.id&&styles.filterTextActive]}>{category.name}</Text></Pressable>) : <Text style={styles.emptyText}>دسته‌بندی‌ها در دسترس نیستند.</Text>}</View><Pressable accessibilityRole="button" onPress={()=>{resetFilters();setCatalogOffers(false);if(!designPreview)controller.restoreLocation({categoryId:null,search:"",page:1});setCatalogPanel(false);}}><Text style={styles.sectionLink}>پاک کردن فیلترها</Text></Pressable></View>}
+            {designPreview ? <>
+              <Text style={styles.designNotice}>محصولات و قیمت‌ها نمونه‌اند؛ خرید واقعی فعال نیست</Text>
+              {displayedCatalogProducts.length===0 ? <View style={styles.emptyProducts}><Text style={styles.emptyTitle}>کالایی برای این جست‌وجو پیدا نشد</Text></View> : <View style={styles.catalogGrid}>{displayedCatalogProducts.map(product=><View key={product.key} style={styles.catalogCard}>
+                <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات "+product.name} onPress={()=>openPreviewDetail(product.key)} style={styles.catalogImageWrap}><Image source={product.image} resizeMode="cover" style={styles.catalogImage}/><View style={styles.designBadge}><Text style={styles.designBadgeText}>نمونه کالا</Text></View></Pressable>
+                <Text style={styles.designProductName} numberOfLines={2}>{product.key==="rice"?"برنج طارم ایرانی درجه یک":product.key==="yogurt"?"ماست کم‌چرب پاستوریزه":product.name}</Text><Text style={styles.emptyText}>{product.category}</Text><Text style={styles.catalogPrice}>{product.price}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={"افزودن "+product.name} onPress={()=>changeQuantity(product.key,1)} style={styles.designAddButton}><FigmaIcon name="plus" size={12}/><Text style={styles.addButtonText}>افزودن{previewCart[product.key]?" ("+persianNumber(previewCart[product.key]??0)+")":""}</Text></Pressable>
+              </View>)}</View>}
+            </> : products.status==="loading" ? <View style={styles.emptyProducts}><Text style={styles.emptyText}>در حال دریافت کالاها…</Text></View> : products.status==="unavailable" ? <View style={styles.emptyProducts}><Text style={styles.emptyText}>کاتالوگ در دسترس نیست.</Text><Pressable accessibilityRole="button" onPress={()=>void controller.refreshProducts()}><Text style={styles.sectionLink}>تلاش دوباره</Text></Pressable></View> : products.data.items.length===0 ? <View style={styles.emptyProducts}><Text style={styles.emptyTitle}>کالایی برای نمایش وجود ندارد</Text></View> : <><View style={styles.catalogGrid}>{products.data.items.map(product=><View key={product.id} style={styles.catalogCard}><Pressable accessibilityRole="button" accessibilityLabel={"جزئیات "+product.name} onPress={()=>setDetailId(product.id)} style={styles.productImagePlaceholder}><Text style={styles.productPlaceholderGlyph}>✿</Text></Pressable><Text style={styles.designProductName}>{product.name}</Text><Text style={styles.emptyText}>{product.kind==="SERVICE"?"خدمت":"کالا"}</Text><Pressable accessibilityRole="button" accessibilityLabel={"افزودن "+product.name} onPress={()=>onCart(product.id)} style={styles.designAddButton}><Text style={styles.addButtonText}>افزودن</Text></Pressable></View>)}</View><View style={styles.catalogControls}><Pressable accessibilityRole="button" disabled={browse.page<=1} onPress={()=>controller.previousPage()}><Text style={styles.sectionLink}>صفحه قبل</Text></Pressable><Text style={styles.emptyText}>{persianNumber(browse.page)}</Text><Pressable accessibilityRole="button" disabled={browse.page*BROWSE_PAGE_SIZE>=products.data.total} onPress={()=>controller.nextPage()}><Text style={styles.sectionLink}>صفحه بعد</Text></Pressable></View></>}
+          </> : <>
           {designPreview && filterOpen && <View style={styles.previewPanel}><Text style={styles.emptyTitle}>فیلترهای جست‌وجو</Text><Text style={styles.emptyText}>دسته و نوع پیشنهاد را انتخاب کنید.</Text><Pressable accessibilityRole="button" onPress={() => { resetFilters(); setFilterOpen(false); }}><Text style={styles.sectionLink}>پاک کردن فیلترها</Text></Pressable></View>}
 
           <View style={styles.filters}>
@@ -238,7 +305,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
           </View>
 
           <View style={styles.sectionHeadingRow} onLayout={event => { suggestionsY.current = event.nativeEvent.layout.y; }}>
-            <Pressable onPress={() => { if (designPreview) resetFilters(); scrollToSuggestions(); }}><Text style={styles.sectionLink}>همه پیشنهادها</Text></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="همه پیشنهادها" onPress={openCatalog}><Text style={styles.sectionLink}>همه پیشنهادها</Text></Pressable>
             <Text accessibilityLabel="کالاها را در حنا مرور کنید" style={styles.sectionHeading}>پیشنهادهای امروز</Text>
           </View>
           {designPreview ? (
@@ -247,7 +314,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
               {designProducts.length === 0 ? <View style={styles.emptyProducts}><Text style={styles.emptyTitle}>نمونه‌ای برای این انتخاب وجود ندارد</Text><Pressable onPress={() => { setDesignBadge(null); setDesignCategory(null); setDesignQuery(""); setDraftSearch(""); }}><Text style={styles.sectionLink}>نمایش همه نمونه‌ها</Text></Pressable></View> :
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.designRailViewport} contentContainerStyle={styles.designProductRail}>
                 {designProducts.map(product => <View key={product.key} style={styles.designProductCard}>
-                  <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات " + product.name} onPress={() => { setPreviewDetail(product.key); setPreviewPage("detail"); }} style={styles.designProductImageWrap}><Image source={product.image} resizeMode="cover" style={styles.designProductImage}/><View style={styles.designBadge}><Text style={styles.designBadgeText}>{product.badge}</Text></View></Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات " + product.name} onPress={() => openPreviewDetail(product.key)} style={styles.designProductImageWrap}><Image source={product.image} resizeMode="cover" style={styles.designProductImage}/><View style={styles.designBadge}><Text style={styles.designBadgeText}>{product.badge}</Text></View></Pressable>
                   <View style={styles.designProductText}><Text style={styles.designProductName} numberOfLines={2}>{product.name}</Text><Text style={styles.designPrice}>{product.price}</Text><Text style={styles.designOldPrice}>{product.oldPrice || " "}</Text></View>
                   <Pressable accessibilityRole="button" accessibilityLabel={"افزودن " + product.name} onPress={() => changeQuantity(product.key,1)} style={styles.designAddButton}><FigmaIcon name="plus" size={12}/><Text style={styles.addButtonText}> افزودن{previewCart[product.key] ? " (" + persianNumber(previewCart[product.key] ?? 0) + ")" : ""}</Text></Pressable>
                 </View>)}
@@ -280,7 +347,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
           )}
 
           <View style={styles.sectionHeadingRow}>
-            <Pressable onPress={() => designPreview ? setDesignCategory(null) : controller.chooseCategory(null)}><Text style={styles.sectionLink}>مشاهده همه</Text></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="مشاهده همه" onPress={openCatalog}><Text style={styles.sectionLink}>مشاهده همه</Text></Pressable>
             <Text style={styles.sectionHeading}>دسته‌بندی‌های محبوب</Text>
           </View>
           {designPreview ? (
@@ -308,25 +375,10 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
 
           {browse.categoryRecovery && categories.status === "ok" ? <Text accessibilityRole="alert" style={styles.categoryRecovery}>دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.</Text> : null}
           {(designPreview ? designQuery : browse.search) ? <Pressable onPress={() => { setDraftSearch(""); if (designPreview) setDesignQuery(""); else controller.submitSearch(""); }} style={styles.clearSearch}><Text style={styles.sectionLink}>پاک کردن جست‌وجو</Text></Pressable> : null}
+          </>}
         </ScrollView>
-        <View style={styles.bottomNav}>
-          <Pressable onPress={() => setAccountMenuOpen(true)} accessibilityRole="button" accessibilityLabel="حساب" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="user" size={22} color="#8E8E93" /><Text style={styles.navLabel}>حساب</Text></Pressable>
-          <Pressable onPress={() => showPreview("orders", onOrders)} accessibilityRole="button" accessibilityLabel="سفارش‌های من" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="receipt" size={22} color="#8E8E93" /><Text style={styles.navLabel}>سفارش‌ها</Text></Pressable>
-          <Pressable onPress={() => showPreview("cart", () => onCart())} accessibilityRole="button" accessibilityLabel="سبد خرید" style={[styles.navItem, styles.navInactive]}><FigmaIcon name="cart" size={22} color="#8E8E93" /><Text style={styles.navLabel}>سبد{designPreview && count > 0 ? " (" + persianNumber(count) + ")" : ""}</Text></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="خانه" onPress={() => scroll.current?.scrollTo({y:0,animated:true})} style={styles.navItem}><FigmaIcon name="home" size={22} color={colors.teal} /><Text style={styles.navLabel}>خانه</Text></Pressable>
-        </View>
-        <Modal visible={accountMenuOpen} transparent animationType="slide" onRequestClose={() => setAccountMenuOpen(false)}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setAccountMenuOpen(false)}>
-            <View style={styles.accountSheet}>
-              <View style={styles.sheetHandle} />
-              <Text accessibilityRole="header" style={styles.accountHeading}>حساب کاربری</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="گزارش‌ها و مرجوعی‌های من" onPress={() => openAccountAction(() => showPreview("incidents", onIssues))} style={styles.accountAction}><Text style={styles.accountActionText}>گزارش‌ها و مرجوعی‌های من</Text></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="کیف پول" onPress={() => openAccountAction(() => showPreview("wallet", onWallet))} style={styles.accountAction}><Text style={styles.accountActionText}>کیف پول</Text></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="اعلان‌ها و پشتیبانی" onPress={() => openAccountAction(() => showPreview("support", onSupport))} style={styles.accountAction}><Text style={styles.accountActionText}>اعلان‌ها و پشتیبانی</Text></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel={isSignedIn ? "خروج از حساب" : "ورود به حنا"} onPress={() => openAccountAction(onAccount)} style={[styles.accountAction, styles.accountLogout]}><Text style={[styles.accountActionText, styles.accountLogoutText]}>{isSignedIn ? "خروج از حساب" : "ورود به حنا"}</Text></Pressable>
-            </View>
-          </Pressable>
-        </Modal>
+        {bottomNavigation}
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -398,5 +450,23 @@ const styles = StyleSheet.create({
   previewPrimary: { padding: 14, borderRadius: 12, backgroundColor: colors.teal, alignItems: "center" },
   previewPrimaryText: { color: colors.surface, fontSize: 14, fontWeight: "700" },
   previewDetailImage: { width: "100%", height: 220, borderRadius: 16 },
+  journeyHeader: { height: 56, paddingHorizontal:20, flexDirection:"row", alignItems:"center", justifyContent:"space-between", gap:8 },
+  journeyLogo: {width:80,height:36},
+  journeyTitle: {flex:1, color:colors.charcoal,fontSize:18,fontWeight:"700",textAlign:"center"},
+  catalogControls: {paddingHorizontal:20,paddingVertical:8,flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8},
+  catalogChips:{flexDirection:"row-reverse",flexWrap:"wrap",gap:8},
+  catalogGrid:{paddingHorizontal:20,paddingTop:8,paddingBottom:16,flexDirection:"row-reverse",flexWrap:"wrap",justifyContent:"space-between",rowGap:16},
+  catalogCard:{width:"48%",backgroundColor:colors.surface,borderWidth:1,borderColor:"#F0E7DD",borderRadius:16,padding:11,gap:6},
+  catalogImageWrap:{height:100,borderRadius:11,overflow:"hidden",position:"relative"},
+  catalogImage:{width:"100%",height:100},
+  catalogPrice:{color:colors.teal,fontSize:14,fontWeight:"700",...rtl},
+  detailTitle:{color:colors.charcoal,fontSize:20,fontWeight:"800",...rtl},
+  detailPrice:{color:colors.teal,fontSize:19,fontWeight:"800",...rtl},
+  detailPurchase:{flexDirection:"row",alignItems:"center",backgroundColor:colors.surface,padding:10,borderRadius:16,borderWidth:1,borderColor:"#F0E7DD",gap:12},
+  terracottaButton:{backgroundColor:colors.terracotta,borderRadius:12,padding:14,alignItems:"center",justifyContent:"center"},
+  comparisonNotice:{backgroundColor:colors.paleTeal,borderColor:colors.teal,borderWidth:1,borderRadius:16,padding:16,gap:10},
+  summaryRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8},
+  summaryValue:{color:colors.charcoal,fontSize:13,fontWeight:"700"},
+  summaryBorder:{borderTopWidth:1,borderColor:"#F0E7DD",paddingTop:12},
   modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(35,31,28,0.28)" }, accountSheet: { backgroundColor: colors.cream, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 30, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 10 }, sheetHandle: { alignSelf: "center", width: 38, height: 4, borderRadius: 3, backgroundColor: "#D5CFC8", marginBottom: 6 }, accountHeading: { color: colors.charcoal, fontSize: 17, fontWeight: "800", marginBottom: 2, ...rtl }, accountAction: { minHeight: 48, paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.surface, justifyContent: "center" }, accountActionText: { color: colors.charcoal, fontSize: 13, fontWeight: "600", ...rtl }, accountLogout: { backgroundColor: colors.paleTeal }, accountLogoutText: { color: colors.teal, fontWeight: "700" },
 });

@@ -60,3 +60,14 @@ test("owner frame 194:4 offline browser sample has source assets and no real pur
  const samples=home.slice(home.indexOf("const homeDesignProducts"),home.indexOf("const catalog ="));
  assert.doesNotMatch(samples,/productId|sellerId|inventory|onCart|fetch\(/);
 });
+
+test("buyer journey both all actions open the same Figma products destination and retain a single cart",()=>{
+ assert.match(home,/accessibilityLabel="همه پیشنهادها" onPress=\{openCatalog\}/);
+ assert.match(home,/accessibilityLabel="مشاهده همه" onPress=\{openCatalog\}/);
+ assert.match(home,/const openCatalog = \(\) => \{[\s\S]*?setCatalogOpen\(true\)/);
+ assert.match(home,/testID="buyer-products-227-8"/);
+ assert.match(home,/catalogGrid:\{[^\n]*flexDirection:"row-reverse"/);
+ assert.match(home,/onPress=\{\(\)=>changeQuantity\(product.key,1\)\}/);
+ assert.match(home,/setPreviewPage\("comparison"\)/);
+ assert.equal((home.match(/useState<PreviewCart>/g)||[]).length,1);
+});
