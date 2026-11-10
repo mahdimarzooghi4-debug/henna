@@ -259,9 +259,13 @@ async function main() {
   await previewPage.getByRole("button", { name: "ویرایش شماره" }).click();
   await previewPage.locator("#auth-phone").waitFor();
   await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
-  await previewPage.getByRole("link", { name: "ادامه نمایشی به تکمیل پروفایل" }).click();
+  await previewPage.getByRole("button", { name: "ورود و ادامه" }).click();
   await previewPage.waitForURL(base + "/buyer/profile?mode=preview");
   await previewPage.getByRole("heading", { name: "تکمیل اطلاعات حساب" }).waitFor();
+  await previewPage.getByText("اطلاعات این فرم در حساب واقعی ذخیره نمی‌شود", { exact: false }).waitFor();
+  await previewPage.getByRole("button", { name: "ذخیره و ثبت نهایی اطلاعات" }).click();
+  await previewPage.waitForURL(base + "/buyer/account?mode=preview");
+  await previewPage.getByTestId("preview-account").getByRole("heading", { name: "حساب من" }).waitFor();
   assert.equal(previewApiCalls, 0);
   assert.equal(await previewPage.evaluate(() => localStorage.length + sessionStorage.length), 0);
   assert.equal((await previewContext.cookies()).length, 0);
