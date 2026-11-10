@@ -446,3 +446,20 @@
     grid-template-columns:minmax(0,1fr);
   }
 }
+
+
+/* Figma 227:1977 — buyer order-tracking navigation variant. */
+.orderTrackingChrome .nav {
+  height: 61px;
+  box-sizing: border-box;
+  justify-content: flex-end;
+  gap: 24px;
+}
+.orderTrackingChrome .nav a:first-child {
+  color: var(--terracotta);
+  font-weight: 700;
+}
+.orderTrackingChrome .nav a:last-child { color: var(--green); }
+@media (max-width: 900px) {
+  .orderTrackingChrome .nav { justify-content: flex-start; }
+}

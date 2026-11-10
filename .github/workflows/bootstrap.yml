@@ -458,6 +458,8 @@ jobs:
         run: node tests/web-buyer-cart-offers-browser-smoke.mjs
       - name: Browser test saved browse URLs and history across buyer detail
         run: node tests/web-buyer-navigation-browser-smoke.mjs
+      - name: Browser test Figma 227:1977 buyer order tracking layout and preview data
+        run: node tests/web-buyer-order-tracking-browser-smoke.mjs
       - name: Browser test Admin seller application review UI
         run: node tests/web-admin-seller-applications-browser-smoke.mjs
       - name: Browser test Admin organization funding instruction review
