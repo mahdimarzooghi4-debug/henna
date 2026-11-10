@@ -242,7 +242,7 @@ async function main() {
   await previewPage.getByTestId("auth-ui-preview").waitFor();
   await previewPage.locator("#auth-phone").fill("123");
   await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
-  await previewPage.getByRole("alert").waitFor();
+  await previewPage.getByTestId("auth-ui-preview").getByRole("alert").waitFor();
   assert.equal(await previewPage.locator("#auth-code").count(), 0);
   await previewPage.locator("#auth-phone").fill(phone);
   await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
