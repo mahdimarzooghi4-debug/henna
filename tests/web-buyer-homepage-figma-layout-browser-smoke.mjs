@@ -255,14 +255,26 @@ async function main() {
   assert.equal(categoryNav?.height, 61, "Figma category navigation height");
   assert.equal(headerTop?.width, 1280, "Figma header content width");
   assert.equal(categoryNav?.width, 1280, "Figma navigation content width");
-  for (const label of [
-    "نیازهای روزمره", "فروشندگان / ارائه‌دهندگان", "کالاها و خدمات",
-    "همه دسته‌ها", "دسته‌بندی‌های منتخب", "طرح‌های ویژه",
-    "کالابرگ / اعتبارها", "پیشنهادها",
+  // Owner's approved four-item menu is identical to homepage in name/route.
+  const productNav = page.getByTestId("marketplace-category-nav");
+  const navLabels = [
+    "همه دسته‌ها", "طرح‌های ویژه حنا",
+    "کالابرگ الکترونیکی", "تخفیف‌های طلایی",
+  ];
+  const navHrefs = [
+    "/products", "/benefits#special-plans", "/benefits#food-credit", "/#offers",
+  ];
+  assert.deepEqual(await productNav.getByRole("link").allTextContents(), navLabels,
+    "Product categories must contain only the four approved homepage links");
+  assert.deepEqual(await productNav.getByRole("link").evaluateAll(
+    links => links.map(link => link.getAttribute("href"))), navHrefs,
+    "Product category links must match homepage destinations");
+  for (const removed of [
+    "نیازهای روزمره", "فروشندگان / ارائه‌دهندگان", "فروشندگان",
+    "کالاها و خدمات", "دسته‌بندی‌های منتخب", "پیشنهادها",
   ]) {
-    await page.getByTestId("marketplace-category-nav").getByRole("link", {
-      name: label, exact: true,
-    }).waitFor();
+    assert.equal(await productNav.getByRole("link", { name: removed, exact: true }).count(),
+      0, removed + " must not appear in product navigation");
   }
 
   const footer = page.getByTestId("marketplace-footer");
@@ -287,11 +299,14 @@ async function main() {
     clientWidth: document.documentElement.clientWidth,
     navScrollWidth: document.querySelector('[data-testid="marketplace-category-nav"]')?.scrollWidth ?? 0,
     navClientWidth: document.querySelector('[data-testid="marketplace-category-nav"]')?.clientWidth ?? 0,
+    navOverflowX: getComputedStyle(document.querySelector('[data-testid="marketplace-category-nav"]')).overflowX,
   }));
   assert.ok(mobileGeometry.scrollWidth <= mobileGeometry.clientWidth + 1,
     "Marketplace chrome must not create page-wide horizontal overflow on mobile");
-  assert.ok(mobileGeometry.navScrollWidth > mobileGeometry.navClientWidth,
-    "Mobile category navigation remains horizontally scrollable");
+  assert.equal(mobileGeometry.navOverflowX, "auto",
+    "Mobile navigation allows scrolling if four links exceed the viewport");
+  assert.ok(mobileGeometry.navScrollWidth >= mobileGeometry.navClientWidth,
+    "Mobile navigation has no clipped, inaccessible category links");
 
   assert.deepEqual(errors, []);
   await context.close();
