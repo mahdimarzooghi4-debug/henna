@@ -315,16 +315,26 @@ async function main() {
   await cartTitle.waitFor();
   assert.deepEqual(await readDemoCart(), expected);
 
-  // The homepage's recommendation action follows the same direct-cart flow.
+  // Homepage add stays on the homepage; only an explicit cart click navigates.
   await page.goto(base + "/");
   assert.equal(await page.locator('#offers article a[href^="/products/"]').count(), 0,
     "Homepage recommendations do not use the sample detail page");
   const riceOffer = page.locator("#offers article").filter({ hasText: "برنج هاشمی درجه یک" });
-  await riceOffer.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  const homeAdd = riceOffer.getByTestId("preview-product-add");
+  await homeAdd.click();
+  await page.locator('header a[href="/buyer/cart?mode=preview"] span').filter({ hasText: /^۴$/ }).waitFor();
+  assert.equal(await riceOffer.getByRole("status").count(), 0,
+    "Successful homepage add must not display a confirmation message");
+  assert.equal(new URL(page.url()).pathname, "/", "Homepage add must not navigate");
+  assert.equal(await homeAdd.isEnabled(), true, "Shopping can continue after add");
   const withRice = [...expected, { productId: "rice", quantity: 1 }];
   assert.deepEqual(await readDemoCart(), withRice, "Homepage adds the exact chosen item");
+  const homeCartLink = page.locator('header a[href="/buyer/cart?mode=preview"]');
+  await homeCartLink.locator("span").filter({ hasText: /^۴$/ }).waitFor();
+  await homeCartLink.click();
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
+  assert.deepEqual(await readDemoCart(), withRice, "Opening the cart does not add another item");
   await page.getByRole("heading", { name: "برنج هاشمی درجه یک", exact: true }).waitFor();
 
   // Figma 227:1368 — Basket layout on the existing dynamic sample cart.
@@ -602,6 +612,63 @@ async function main() {
   assert.equal(pickupOrder.deliveryFee,0);
   assert.equal(pickupOrder.address,"دریافت حضوری از فروشگاه نمونه ۱ (محله رسالت)");
   assert.deepEqual(pickupOrder.items,expected);
+  assert.deepEqual(await readDemoCart(),[]);
+  // Figma 227:1977: tracking uses the same canvas and the actual local
+  // preview checkout snapshot, not a fictional successful live fulfillment.
+  await page.getByRole("link",{name:"مشاهده جزئیات سفارش",exact:true}).click();
+  await page.waitForURL(base+"/buyer/tracking?mode=preview");
+  const tracking=page.getByTestId("preview-tracking-page");
+  const trackingLayout=tracking.getByTestId("preview-tracking-layout");
+  await trackingLayout.waitFor();
+  await tracking.getByTestId("preview-tracking-seller").getByText(pickupOrder.sellerName,{exact:true}).waitFor();
+  assert.equal(await tracking.getByTestId("preview-tracking-delivery").textContent(),"تحویل حضوری از فروشگاه");
+  assert.equal(await tracking.getByTestId("preview-tracking-address").textContent(),pickupOrder.address);
+  assert.equal(await tracking.getByTestId("preview-tracking-total").textContent(),new Intl.NumberFormat("fa-IR").format(pickupOrder.total)+" تومان");
+  assert.equal(await tracking.getByTestId("preview-tracking-items").locator('[data-testid="preview-tracking-item"]').count(),pickupOrder.items.length);
+  assert.equal(await tracking.getByRole("button",{name:"تماس با فروشگاه",exact:true}).isDisabled(),true);
+  assert.equal(await tracking.getByTestId("preview-tracking-legal").count(),0);
+  assert.deepEqual(await tracking.getByTestId("preview-tracking-stage").allTextContents(),["✓ثبت سفارش","تأیید فروشگاه","آماده‌سازی","آماده دریافت","تحویل"]);
+  assert.equal(await tracking.getByTestId("preview-tracking-stage").locator('[aria-current="step"]').count(),0);
+  assert.equal(await tracking.locator('[aria-current="step"]').count(),1);
+  assert.equal(await tracking.getByRole("link",{name:"بازگشت به سفارش‌ها",exact:true}).getAttribute("href"),"/buyer/orders?mode=preview");
+  for(const width of [1440,1650,1150,390]){
+    await page.setViewportSize({width,height:900});
+    const g=await page.evaluate(()=>{
+      const rect=el=>{const {x,y,width,height,right,bottom}=el.getBoundingClientRect();return {x,y,width,height,right,bottom}};
+      const layout=document.querySelector('[data-testid="preview-tracking-layout"]');
+      return {layout:rect(layout),core:rect(layout.querySelector('[data-testid="preview-tracking-core"]')),
+        sidebar:rect(layout.querySelector('[data-testid="preview-tracking-sidebar"]')),
+        header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
+        nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
+        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
+    });
+    near(g.layout.x,g.header.x,"Tracking header left alignment at "+width);
+    near(g.layout.right,g.header.right,"Tracking header right alignment at "+width);
+    near(g.layout.x,g.nav.x,"Tracking navigation alignment at "+width);
+    near(g.layout.x,g.footer.x,"Tracking footer left alignment at "+width);
+    near(g.layout.right,g.footer.right,"Tracking footer right alignment at "+width);
+    assert.ok(g.scrollWidth<=g.clientWidth+1,"Tracking no horizontal overflow at "+width);
+    if(width>=1440){
+      near(g.layout.width,1280,"Tracking desktop canvas");
+      near(g.sidebar.width,400,"Tracking left sidebar width");
+      near(g.core.x-g.sidebar.right,32,"Tracking column gap");
+      near(g.core.y,g.sidebar.y,"Tracking column top alignment");
+    }
+    if(width===390)assert.ok(g.sidebar.y>=g.core.bottom,"Mobile tracking sidebar follows status");
+  }
+  await page.setViewportSize({width:1440,height:900});
+  // Legal badge follows the stored preview flag; no actual invoice is issued.
+  await page.evaluate(order=>sessionStorage.setItem("henna:figma-preview-order:v1",JSON.stringify({...order,legal:true})),pickupOrder);
+  await page.reload();
+  await tracking.getByTestId("preview-tracking-legal").getByText("خرید حقوقی",{exact:true}).waitFor();
+  assert.equal(await tracking.getByText("درخواست فاکتور رسمی",{exact:true}).count(),1);
+  assert.equal(await tracking.getByText("فاکتور رسمی: به نام شرکت ثبت‌شده",{exact:true}).count(),0);
+  // Missing preview orders must never show invented seller fulfillment.
+  await page.evaluate(()=>sessionStorage.removeItem("henna:figma-preview-order:v1"));
+  await page.reload();
+  await tracking.getByTestId("preview-tracking-empty").waitFor();
+  assert.equal(await tracking.getByTestId("preview-tracking-layout").count(),0);
   assert.deepEqual(await readDemoCart(),[]);
   // Restore fixture state for the remainder of the existing buyer journey.
   await page.evaluate(items=>{
