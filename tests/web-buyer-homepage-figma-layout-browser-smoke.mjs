@@ -838,18 +838,25 @@ async function main() {
   assert.ok(fieldBoxes[0].width > fieldBoxes[1].width);
   assert.equal(fieldBoxes[1].y, fieldBoxes[2].y);
   assert.equal(await accountInfo.getByRole("link", { name: "ویرایش اطلاعات حساب" }).getAttribute("href"), "/buyer/profile?mode=preview");
-  await accountLegal.getByText("اطلاعات شرکت نمونه ثبت شده است", { exact: true }).waitFor();
+  await accountLegal.getByText("هنوز مشخصات شرکت ثبت نشده است", { exact: true }).waitFor();
   assert.equal(await accountLegal.getByRole("checkbox").count(), 0,
     "Invoice opt-in belongs to the order, not account company data");
-  await accountLegal.getByRole("button", { name: "مشاهده اطلاعات" }).click();
-  await accountLegal.getByRole("status").waitFor();
+  await accountLegal.getByRole("button",{name:"ثبت مشخصات شرکت",exact:true}).click();
+  await accountLegal.getByLabel("نام شرکت",{exact:true}).fill("شرکت نمونه CI");
+  await accountLegal.getByLabel("شناسه ملی شرکت",{exact:true}).fill("۱۰۰۰۰۰۰۰۰۰۰");
+  await accountLegal.getByLabel("شماره ثبت",{exact:true}).fill("۱۲۳۴۵");
+  await accountLegal.getByRole("button",{name:"ذخیره مشخصات شرکت",exact:true}).click();
+  await accountLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI",{exact:true}).waitFor();
+  await page.reload();
+  await accountLegal.getByRole("button",{name:"مشاهده اطلاعات",exact:true}).click();
+  await accountLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI",{exact:true}).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
     "Account layout must not overflow mobile viewport");
 
   // Account and profile share the approved chrome canvas at all viewport widths.
-  for (const [route, testId] of [["account", "preview-account"], ["profile", "preview-profile"]]) {
-    await page.goto(base + "/buyer/" + route + "?mode=preview");
+  for (const [route, testId] of [["account", "preview-account"], ["profile", "preview-profile"], ["addresses","preview-addresses"], ["orders","preview-orders"]]) {
+    await page.goto(base + (route==="addresses"?"/account/addresses":"/buyer/" + route + "?mode=preview"));
     await page.getByTestId(testId).waitFor();
     for (const width of [1440, 1650, 1150, 900, 390]) {
       await page.setViewportSize({ width, height: 1000 });
@@ -876,6 +883,16 @@ async function main() {
       assert.ok(g.scroll <= g.viewport + 1, route + " no horizontal overflow at " + width);
     }
   }
+
+  // Company information is read from account storage; checkout never asks twice.
+  await page.evaluate(items=>localStorage.setItem("henna:landing-preview-cart:v1",JSON.stringify(items)),expected);
+  await page.goto(base+"/buyer/checkout?mode=preview");
+  const legalCheckout=page.getByTestId("preview-checkout-page");
+  await legalCheckout.getByRole("checkbox",{name:"خرید حقوقی و دریافت فاکتور رسمی"}).check();
+  await legalCheckout.getByTestId("preview-legal-company-note").getByText(/شرکت نمونه CI/).waitFor();
+  assert.equal(await legalCheckout.getByLabel("نام شرکت",{exact:true}).count(),0);
+  assert.equal(await legalCheckout.getByRole("button",{name:"ثبت سفارش",exact:true}).isEnabled(),true);
+  await page.evaluate(()=>localStorage.removeItem("henna:landing-preview-cart:v1"));
 
   // Every account tab has a real destination and a persistent navigation.
   await page.setViewportSize({width:1440,height:1000});

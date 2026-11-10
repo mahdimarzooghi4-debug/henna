@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./figma-checkout-preview.module.css";
+import { readPreviewCompany, type PreviewCompany } from "../lib/preview-company";
 import { LANDING_PREVIEW_CART_EVENT, LANDING_PREVIEW_PRODUCTS, readLandingPreviewCart, saveLandingPreviewCart, type LandingPreviewCartItem } from "../lib/landing-preview-products";
 
 const selectedSellerKey = "henna:figma-preview-selected-seller:v1";
@@ -25,9 +26,11 @@ export function FigmaCheckoutPreview() {
   // Preview only: pickup has no courier fee; courier quotes are not available.
   const [delivery, setDelivery] = useState<"pickup" | "courier">("pickup");
   const [legal, setLegal] = useState(false);
+  const [company,setCompany]=useState<PreviewCompany|null>(null);
   const [notice, setNotice] = useState("");
   useEffect(() => {
     setItems(readLandingPreviewCart());
+    setCompany(readPreviewCompany());
     try { setSellerId(window.localStorage.getItem(selectedSellerKey) ?? "store-1"); } catch { /* preview default */ }
     const sync = () => setItems(readLandingPreviewCart());
     window.addEventListener(LANDING_PREVIEW_CART_EVENT, sync);
@@ -44,6 +47,7 @@ export function FigmaCheckoutPreview() {
   const selectedSeller = sellers[sellerId] ?? sellers["store-1"];
 
   function placePreviewOrder() {
+    if(legal&&!readPreviewCompany()){setNotice("ابتدا مشخصات شرکت نمونه را در حساب کاربری ثبت کنید.");return;}
     if (delivery === "courier") {
       setNotice("هزینه پیک هنوز مشخص نشده است؛ ثبت سفارش با پیک امکان‌پذیر نیست.");
       return;
@@ -89,7 +93,7 @@ export function FigmaCheckoutPreview() {
           <div><span>اعتبار شخصی:</span><strong>اعتبار شخصی تأمین‌شده توسط کاربر</strong></div>
           <div className={styles.total}><span>مبلغ قابل پرداخت:</span><strong data-testid="preview-checkout-total">{delivery === "pickup" ? format(subtotal) + " تومان" : "پس از تعیین هزینه پیک"}</strong></div>
           {delivery === "courier" && <p className={styles.notice} id="courier-quote-notice">هزینه پیک هنوز مشخص نشده است؛ تا تعیین هزینه، ثبت سفارش با پیک غیرفعال است.</p>}
-          <button type="button" className={styles.primary} onClick={placePreviewOrder} disabled={delivery === "courier"} aria-describedby={delivery === "courier" ? "courier-quote-notice" : undefined}>ثبت سفارش</button>
+          <button type="button" className={styles.primary} onClick={placePreviewOrder} disabled={delivery === "courier" || (legal && !company)} aria-describedby={delivery === "courier" ? "courier-quote-notice" : undefined}>ثبت سفارش</button>
           {notice && <p className={styles.notice} role="status">{notice}</p>}
         </section>
         <section className={styles.hint}><strong>خرید حقوقی و دریافت فاکتور رسمی</strong><p>با فعال‌کردن این گزینه، درخواست صدور فاکتور رسمی به نام شرکت ثبت‌شده در حساب کاربری مشخص می‌شود.</p></section>
@@ -102,7 +106,7 @@ export function FigmaCheckoutPreview() {
           <label className={styles.toggleRow}><span><strong>خرید حقوقی و دریافت فاکتور رسمی</strong><small>این گزینه اختیاری است. اطلاعات شرکت از حساب کاربری استفاده می‌شود.</small></span>
             <input type="checkbox" checked={legal} onChange={(event) => setLegal(event.target.checked)} aria-label="خرید حقوقی و دریافت فاکتور رسمی" />
           </label>
-          {legal && <p className={styles.description} data-testid="preview-legal-company-note">اطلاعات شرکت از حساب کاربری شما دریافت می‌شود؛ نیازی به وارد کردن دوباره نیست. در نسخه نمایشی فاکتور رسمی صادر نمی‌شود.</p>}
+          {legal && <p className={styles.description} data-testid="preview-legal-company-note">{company ? "شرکت ثبت‌شده در پیش‌نمایش: "+company.name+"؛ نیازی به ورود دوباره نیست. فاکتور رسمی صادر نمی‌شود." : <>ابتدا مشخصات شرکت نمونه را در <Link href="/buyer/account?mode=preview">حساب کاربری</Link> ثبت کنید.</>}</p>}
         </section>
 
         <section className={styles.card}>

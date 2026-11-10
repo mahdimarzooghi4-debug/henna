@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { AddressMapPicker, type SelectedMapPoint } from "./address-map-picker";
 import styles from "./buyer-addresses.module.css";
+import accountStyles from "./figma-buyer-account.module.css";
 import { normalizeDigits, toPersianDigits } from "../lib/normalize-digits";
 
 type FieldName = "title" | "provinceCity" | "address" | "recipient" | "phone" | "postalCode";
@@ -15,42 +14,6 @@ const initialFields: FormFields = {
 };
 
 import { BuyerAccountNav } from "./buyer-account-nav";
-
-function BuyerHeader() {
-  return <>
-    <div className={styles.announcement}>بازارگاه حنا؛ خرید روزمره با پشتیبانی از توسعهٔ اجتماعی</div>
-    <header className={styles.header} dir="rtl">
-      <Link href="/" className={styles.logo} aria-label="صفحه اصلی حنا">
-        <Image src="/hana-logo.png" alt="حنا" width={150} height={84} unoptimized priority />
-      </Link>
-      <form action="/products" className={styles.search}>
-        <input name="search" placeholder="جست‌وجوی کالاها و خدمات روزمره…" aria-label="جست‌وجو" />
-        <button type="submit" aria-label="جست‌وجو">⌕</button>
-      </form>
-      <nav className={styles.headerActions} aria-label="دسترسی سریع">
-        <Link href="/buyer/cart?mode=preview">سبد خرید</Link><Link href="/auth">ورود یا ثبت‌نام</Link>
-        <Link href="/seller/register">ثبت‌نام فروشگاه‌ها</Link>
-      </nav>
-    </header>
-    <nav className={styles.categoryNav} dir="rtl" aria-label="دسته‌بندی‌ها">
-      <Link href="/products">همه دسته‌ها</Link><Link href="/products">کالاها و خدمات</Link>
-      <Link href="/products">نیازهای روزمره</Link><Link href="/benefits">طرح‌های ویژه</Link>
-      <Link href="/benefits">کالابرگ / اعتبارها</Link><Link href="/support">پشتیبانی</Link>
-    </nav>
-  </>;
-}
-
-function BuyerFooter() {
-  return <footer className={styles.footer} dir="rtl">
-    <div className={styles.footerGrid}>
-      <div><h2>دسترسی سریع</h2><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/about">درباره حنا</Link><Link href="/support">تماس با پشتیبانی</Link></div>
-      <div><h2>همکاری با حنا</h2><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/courier-partners">شرایط همکاری</Link></div>
-      <div><h2>طرح‌های حمایتی</h2><Link href="/benefits">اعتبارات سازمانی</Link><Link href="/benefits">طرح‌های فعال</Link></div>
-      <div className={styles.footerBrand}><Link href="/"><Image src="/hana-logo.png" alt="حنا" width={140} height={79} unoptimized /></Link><p>بازارگاه حنا برای خریدهای روزمره با رویکرد توسعهٔ عادلانه و حمایت اجتماعی.</p></div>
-    </div>
-    <p className={styles.copyright}>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است. کلیه حقوق برای حنا محفوظ است.</p>
-  </footer>;
-}
 
 function validate(fields: FormFields) {
   const errors: Partial<Record<FieldName, string>> = {};
@@ -104,9 +67,7 @@ export function BuyerAddresses() {
     </label>
   );
 
-  return <div className={styles.page} dir="rtl">
-    <BuyerHeader />
-    <main className={styles.layout}>
+  return <main className={accountStyles.page} dir="rtl" data-testid="preview-addresses"><div className={accountStyles.layout}>
       <BuyerAccountNav active="addresses" />
       <section className={styles.content} aria-labelledby="addresses-title">
         <div className={styles.titleRow}>
@@ -158,7 +119,6 @@ export function BuyerAddresses() {
         </form>}
       </section>
       
-    </main>
-    <BuyerFooter />
-  </div>;
+    </div>
+  </main>;
 }

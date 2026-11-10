@@ -2349,3 +2349,6 @@ a { color: inherit; }
   .seller-submitted-sections { padding: 18px; }
   .seller-submitted-sections > h2 { font-size: 15px; }
 }
+
+/* Keep the shared account canvas stable across short and long tabs. */
+html:has([data-testid="buyer-account-nav"]) { scrollbar-gutter: stable; }

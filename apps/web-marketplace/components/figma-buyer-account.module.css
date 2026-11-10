@@ -75,3 +75,16 @@
   .fields { grid-template-columns: minmax(0,1fr); }
   .legalCard, .summary, .infoCard { padding: 20px; }
 }
+
+.companyForm { display:grid; gap:16px; }
+.companyForm label { display:grid; gap:6px; color:#1c3f3a; font-size:13px; font-weight:600; }
+.companyForm input, .companyForm textarea { width:100%; min-width:0; padding:11px 12px; border:1px solid #eae6e1; border-radius:8px; background:#faf8f5; font:inherit; color:#1c3f3a; }
+.companyForm textarea { min-height:80px; resize:vertical; }
+.companyForm .companyError { color:#a83f2d; }
+
+/* Explicit physical placement keeps the account navigation on the right for every tab. */
+.layout { direction:ltr; grid-template-columns:minmax(0,1fr) 320px; }
+.layout > aside { grid-column:2; direction:rtl; }
+.layout > section { grid-column:1; direction:rtl; }
+@media(max-width:1000px){.layout{grid-template-columns:minmax(0,1fr) 240px;}}
+@media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr);}.layout > aside,.layout > section{grid-column:1;}}
