@@ -85,10 +85,10 @@ const auth = new MobileAuthClient(
   __DEV__,
 );
 
-function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
+function ConsumerAuthScreen({ onAuthenticated }: {
   onAuthenticated: () => Promise<void>;
-  onDemoLogin: () => Promise<void>;
 }) {
+  const [started, setStarted] = useState(false);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -158,9 +158,9 @@ function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
     // Focus the actual step only once it is mounted. An acknowledged resend
     // changes challengeId while remaining in "code", so it also refocuses
     // the cleared six-digit field. A throttled resend changes neither.
-    if (view === "phone") phoneInput.current?.focus();
+    if (view === "phone" && started) phoneInput.current?.focus();
     if (view === "code") codeInput.current?.focus();
-  }, [view, challengeId]);
+  }, [view, challengeId, started]);
 
   async function requestCode(resend = false) {
     if (pending.current ||
@@ -265,12 +265,6 @@ function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.topBar}>
-            <View style={styles.topBarSpacer} />
-            <Text style={styles.topBarTitle}>ورود یا ثبت‌نام</Text>
-            <View style={styles.logoBadge}><Image source={logo} style={styles.logo} resizeMode="contain" accessibilityLabel="حنا" /></View>
-          </View>
-
           <View style={styles.intro}>
             <View style={styles.welcomeLogo}><Image source={logo} style={styles.welcomeLogoImage} resizeMode="contain" /></View>
             <Text style={styles.title}>به بازار اجتماعی حنا خوش آمدید</Text>
@@ -278,28 +272,10 @@ function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
           </View>
 
           <View style={styles.card}>
-            {previewLoginEnabled && (view === "phone" || view === "offline") && (
-              <>
-                <Text style={styles.cardHeading}>بازدید آزمایشی از حنا</Text>
-                <Text style={styles.inputHint}>
-                  برای مشاهده کاتالوگ و بررسی صفحات، نیازی به شماره تلفن یا پیامک نیست.
-                  این ورود آزمایشی به کیف پول، سفارش‌های واقعی یا خرید دسترسی نمی‌دهد.
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="ورود آزمایشی بدون پیامک"
-                  disabled={status === "loading"}
-                  style={({ pressed }) => [
-                    styles.primaryButton, pressed && styles.primaryButtonPressed,
-                  ]}
-                  onPress={() => void onDemoLogin().catch(() =>
-                    Alert.alert("ورود آزمایشی انجام نشد", "ذخیره نشست روی دستگاه ممکن نیست."))}
-                >
-                  <Text style={styles.primaryButtonText}>ورود آزمایشی بدون پیامک</Text>
-                </Pressable>
-              </>
+            {view === "phone" && !started && (
+              <Pressable accessibilityRole="button" accessibilityLabel="ورود" style={styles.primaryButton} onPress={() => setStarted(true)}><Text style={styles.primaryButtonText}>ورود</Text></Pressable>
             )}
-            {view === "phone" && !previewLoginEnabled && (
+            {view === "phone" && started && (
               <>
                 <Text style={styles.cardHeading}>ورود با شماره موبایل</Text>
                 <Text nativeID="mobile-phone-label" style={styles.fieldLabel}>شماره موبایل</Text>
@@ -357,7 +333,7 @@ function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
               </>
             )}
 
-            {view === "code" && !previewLoginEnabled && (
+            {view === "code" && (
               <>
                 {/* Technical OTP step only: its final visual frame needs approved Figma. */}
                 <Text style={styles.fieldLabel}>کد تأیید برای {phone}</Text>
@@ -517,6 +493,64 @@ function ConsumerAuthScreen({ onAuthenticated, onDemoLogin }: {
   );
 }
 
+// Isolated UI walkthrough: no OTP requests, real session, token or phone persistence.
+function ConsumerPreviewAuthScreen({ onContinue }: { onContinue: () => Promise<void> }) {
+  const [step, setStep] = useState<"welcome" | "phone" | "code">("welcome");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const phoneInput = useRef<TextInput>(null);
+  const codeInput = useRef<TextInput>(null);
+  const toPersian = (value: string) => normalizeDigits(value).replace(/[0-9]/g, digit => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
+  useEffect(() => {
+    if (step === "phone") phoneInput.current?.focus();
+    if (step === "code") codeInput.current?.focus();
+  }, [step]);
+  async function continuePreview() {
+    if (busy) return;
+    const checked = validateOtpEntry(code);
+    if (checked.error) { setError(checked.error); return; }
+    setBusy(true);
+    setError("");
+    try { await onContinue(); }
+    catch { setError("ورود آزمایشی انجام نشد؛ دوباره ورود را انتخاب کنید."); }
+    finally { setBusy(false); }
+  }
+  return (
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView style={styles.flex} contentContainerStyle={[styles.content, { justifyContent: "center" }]} keyboardShouldPersistTaps="handled">
+          <View style={styles.intro}>
+            <View style={styles.welcomeLogo}><Image source={logo} style={styles.welcomeLogoImage} resizeMode="contain" accessibilityLabel="حنا" /></View>
+            <Text style={styles.title}>{step === "welcome" ? "به بازار اجتماعی حنا خوش آمدید" : step === "phone" ? "شماره موبایل خود را وارد کنید" : "کد تأیید را وارد کنید"}</Text>
+            {step === "welcome" && <Text style={styles.subtitle}>برای خرید و مشارکت اجتماعی، وارد حساب کاربری خود شوید.</Text>}
+          </View>
+          <View style={styles.card}>
+            {step === "welcome" && <Pressable accessibilityRole="button" accessibilityLabel="ورود" style={styles.primaryButton} onPress={() => setStep("phone")}><Text style={styles.primaryButtonText}>ورود</Text></Pressable>}
+            {step === "phone" && <>
+              <Text style={styles.fieldLabel}>شماره موبایل</Text>
+              <TextInput ref={phoneInput} accessibilityLabel="شماره موبایل" style={[styles.input, !!error && styles.invalidInput]} placeholder="۰۹۱۲۳۴۵۶۷۸۹" placeholderTextColor={colors.muted} keyboardType="phone-pad" maxLength={11} value={toPersian(phone)} onChangeText={value => { setPhone(normalizeDigits(value).replace(/\D/g, "").slice(0, 11)); setError(""); }} />
+              <Text style={styles.inputHint}>نسخه آزمایشی؛ پیامک واقعی ارسال نمی‌شود.</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="دریافت کد تأیید" style={styles.primaryButton} onPress={() => {
+                if (!isValidIranianMobile(phone)) { setError("شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم داشته باشد."); return; }
+                setError(""); setStep("code");
+              }}><Text style={styles.primaryButtonText}>دریافت کد تأیید</Text></Pressable>
+            </>}
+            {step === "code" && <>
+              <Text style={styles.fieldLabel}>کد تأیید برای {toPersian(phone)}</Text>
+              <TextInput ref={codeInput} accessibilityLabel="کد شش رقمی تأیید" style={[styles.input, !!error && styles.invalidInput]} placeholder="شش رقم" placeholderTextColor={colors.muted} keyboardType="number-pad" maxLength={6} value={toPersian(code)} onChangeText={value => { setCode(normalizeDigits(value).replace(/\D/g, "").slice(0, 6)); setError(""); }} />
+              <Text style={styles.inputHint}>برای بررسی صفحات، هر کد شش‌رقمی نمونه را وارد کنید. این کد احراز هویت نیست.</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="ورود" style={styles.primaryButton} disabled={busy} onPress={() => void continuePreview()}><Text style={styles.primaryButtonText}>ورود</Text></Pressable>
+            </>}
+            {!!error && <Text accessibilityRole="alert" style={[styles.formStatus, styles.formStatusError]}>{error}</Text>}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
 const blankBrowseLink: BuyerLinkRoute = {
   kind: "browse", browse: { categoryId: null, search: "", page: 1 },
 };
@@ -631,7 +665,7 @@ export default function App() {
 
   const handleDemoLogin = useCallback(async () => {
     if (!previewLoginEnabled) return;
-    await SecureStore.setItemAsync(previewSessionKey, "v1", secureOptions);
+    if (Platform.OS !== "web") await SecureStore.setItemAsync(previewSessionKey, "v1", secureOptions);
     setIsPreviewSession(true);
     setIsSignedIn(true);
     setScreen("browse");
@@ -640,7 +674,7 @@ export default function App() {
   const logoutBuyer = useCallback(async () => {
     if (isPreviewSession) {
       try {
-        await SecureStore.deleteItemAsync(previewSessionKey, secureOptions);
+        if (Platform.OS !== "web") await SecureStore.deleteItemAsync(previewSessionKey, secureOptions);
         setIsPreviewSession(false);
         setIsSignedIn(false);
         authReturn.current = "browse";
@@ -697,10 +731,9 @@ export default function App() {
           {screen === "wallet" && <BuyerWalletScreen api={commerce}
             onBack={()=>setScreen("browse")}
             onLogin={()=>{authReturn.current="wallet";setScreen("auth");}} />}
-          {screen === "auth" && <ConsumerAuthScreen
-            onAuthenticated={handleAuthenticated}
-            onDemoLogin={handleDemoLogin}
-          />}
+          {screen === "auth" && (previewLoginEnabled
+            ? <ConsumerPreviewAuthScreen onContinue={handleDemoLogin} />
+            : <ConsumerAuthScreen onAuthenticated={handleAuthenticated} />)}
         </>}
 
     </SafeAreaProvider>
