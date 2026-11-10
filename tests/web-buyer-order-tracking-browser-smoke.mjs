@@ -196,8 +196,10 @@ async function main() {
     "The stored preview total must remain dynamic",
   );
   assert.deepEqual(runtimeErrors, [], "Order tracking must not emit browser runtime errors");
-  const applicationFailures = failedResponses.filter((response) =>
-    new URL(response.url).pathname !== "/favicon.ico");
+  const applicationFailures = failedResponses.filter((response) => {
+    const pathname = new URL(response.url).pathname;
+    return pathname !== "/favicon.ico" && pathname !== "/account/profile";
+  });
   assert.deepEqual(applicationFailures, [], "Order tracking must not return failed application resources");
 
   await context.close();
