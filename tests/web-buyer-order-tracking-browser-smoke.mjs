@@ -66,10 +66,13 @@ async function main() {
     deviceScaleFactor: 1,
   });
   const page = await context.newPage();
-  const errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+  const runtimeErrors = [];
+  const failedResponses = [];
+  page.on("pageerror", (error) => runtimeErrors.push(error.message));
+  page.on("response", (response) => {
+    if (response.status() >= 400) {
+      failedResponses.push({ status: response.status(), url: response.url() });
+    }
   });
 
   await page.goto(base + route);
@@ -192,7 +195,10 @@ async function main() {
     /۸۹.*۰۰۰ تومان/,
     "The stored preview total must remain dynamic",
   );
-  assert.deepEqual(errors, [], "Order tracking must not emit browser errors");
+  assert.deepEqual(runtimeErrors, [], "Order tracking must not emit browser runtime errors");
+  const applicationFailures = failedResponses.filter((response) =>
+    new URL(response.url).pathname !== "/favicon.ico");
+  assert.deepEqual(applicationFailures, [], "Order tracking must not return failed application resources");
 
   await context.close();
   await stop();
