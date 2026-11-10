@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { AddressMapPicker, type SelectedMapPoint } from "./address-map-picker";
 import styles from "./buyer-checkout.module.css";
-import { normalizeDigits } from "../lib/normalize-digits";
+import { normalizeDigits, toPersianDigits } from "../lib/normalize-digits";
 import { parsePurchaseDraft, type PurchaseDraft } from "../lib/buyer-cart";
 
 type DraftState = { status: "loading" | "signed-out" | "unavailable" } | { status: "ready"; draft: PurchaseDraft };
@@ -100,7 +100,7 @@ export function BuyerCheckout() {
   const field = (name: keyof CheckoutFields, label: string, placeholder: string) => (
     <label className={styles.field} key={name}>
       <span>{label} <b aria-hidden="true">*</b></span>
-      <input value={fields[name]} onChange={event => setFields(current => ({ ...current, [name]: event.target.value }))}
+      <input value={name === "phone" ? toPersianDigits(fields[name]) : fields[name]} onChange={event => setFields(current => ({ ...current, [name]: name === "phone" ? normalizeDigits(event.target.value) : event.target.value }))}
         placeholder={placeholder} dir={name === "phone" ? "ltr" : "rtl"}
         inputMode={name === "phone" ? "tel" : "text"} maxLength={name === "phone" ? 11 : undefined}
         aria-invalid={validated && errors[name]} />
@@ -161,11 +161,11 @@ export function BuyerCheckout() {
           <section className={styles.card} aria-labelledby="address-title">
             <h2 id="address-title">۲. آدرس و موقعیت تحویل</h2>
             <AddressMapPicker value={point} onChange={setPoint} />
-            {point && <p className={styles.point} role="status">موقعیت انتخاب‌شده: {point.latitude.toFixed(5)}، {point.longitude.toFixed(5)}</p>}
+            {point && <p className={styles.point} role="status">موقعیت انتخاب‌شده: {toPersianDigits(point.latitude.toFixed(5))}، {toPersianDigits(point.longitude.toFixed(5))}</p>}
             <div className={styles.fields}>
               <label className={`${styles.field} ${styles.fullWidth}`}><span>آدرس دقیق پستی <b aria-hidden="true">*</b></span><input value={fields.address} onChange={event => setFields(current => ({ ...current, address: event.target.value }))} placeholder="نشانی دقیق پستی" aria-invalid={validated && errors.address} />{validated && errors.address && <small>نشانی دقیق را وارد کنید.</small>}</label>
               {field("recipient", "نام و نام خانوادگی گیرنده", "نام گیرنده")}
-              {field("phone", "شماره تماس گیرنده", "09xxxxxxxxx")}
+              {field("phone", "شماره تماس گیرنده", "۰۹xxxxxxxxx")}
             </div>
             <button type="button" className={styles.validateButton} onClick={() => setValidated(true)}>بررسی اطلاعات نشانی</button>
             <p className={styles.helper}>نشانی در این پیش‌نمایش فقط در همین صفحه می‌ماند و ذخیره یا برای فروشگاه ارسال نمی‌شود.</p>

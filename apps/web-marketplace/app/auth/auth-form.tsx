@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
-import { normalizeDigits } from "../../lib/normalize-digits";
+import { normalizeDigits, toPersianDigits } from "../../lib/normalize-digits";
 import { sellerRegistrationPath, type AuthReturnTo } from "../../lib/seller-return";
 import {
   otpRequestTransition, type OtpRequestOutcome,
@@ -264,13 +264,13 @@ export function AuthForm({ returnTo }: {
         }}>
           <FormField id="auth-phone" label="شماره موبایل" type="tel"
             autoComplete="tel-national" inputMode="numeric"
-            className="field__input--phone" placeholder="09xxxxxxxxx"
-            maxLength={11} value={phone} required
+            className="field__input--phone" placeholder="۰۹xxxxxxxxx"
+            maxLength={11} value={toPersianDigits(phone)} required
             inputRef={phoneInput} disabled={busy}
             aria-describedby={status === "invalid" ? "auth-feedback" : undefined}
             error={status === "invalid"}
             onChange={(event) => {
-              setPhone(event.target.value);
+              setPhone(normalizeDigits(event.target.value));
               setStatus("idle");
               setMessage("");
             }}
@@ -283,17 +283,17 @@ export function AuthForm({ returnTo }: {
       {stage === "code" && (
         <form noValidate onSubmit={verifyCode}>
           <p className="auth-card__hint">
-            کد تأیید ارسال شد. شماره {phone} را بررسی کنید.
+            کد تأیید ارسال شد. شماره {toPersianDigits(phone)} را بررسی کنید.
           </p>
           <FormField id="auth-code" label="کد تأیید" type="text"
             autoComplete="one-time-code" inputMode="numeric"
             className="field__input--phone auth-card__code-input" placeholder="کد شش‌رقمی"
-            maxLength={6} value={code} required
+            maxLength={6} value={toPersianDigits(code)} required
             inputRef={codeInput} disabled={busy}
             aria-describedby={status === "invalid" ? "auth-feedback" : undefined}
             error={status === "invalid"}
             onChange={(event) => {
-              setCode(event.target.value);
+              setCode(normalizeDigits(event.target.value));
               setStatus("idle");
               setMessage("");
             }}

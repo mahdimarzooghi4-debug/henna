@@ -137,7 +137,8 @@ async function main() {
       document.documentElement.scrollWidth <= window.innerWidth),
     true, "existing approved auth card must fit a 375px mobile browser");
 
-  await page.locator("#auth-phone").fill("۰۹۱۲۳۴۵۶۷۸۹");
+  await page.locator("#auth-phone").fill(phone);
+  assert.equal(await page.locator("#auth-phone").inputValue(), "۰۹۱۲۳۴۵۶۷۸۹");
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await page.locator("#auth-code").waitFor();
   await page.waitForFunction(() =>
@@ -171,7 +172,7 @@ async function main() {
   await page.waitForFunction(() =>
     document.activeElement?.id === "auth-phone");
   assert.equal(await page.locator("#auth-code").count(), 0);
-  assert.equal(await page.locator("#auth-phone").inputValue(), phone);
+  assert.equal(await page.locator("#auth-phone").inputValue(), "۰۹۱۲۳۴۵۶۷۸۹");
   assert.equal(otpRequests, 4);
   assert.equal(verifyCalls, 0);
 
@@ -191,6 +192,7 @@ async function main() {
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await page.locator("#auth-code").waitFor();
   await page.locator("#auth-code").fill("123");
+  assert.equal(await page.locator("#auth-code").inputValue(), "۱۲۳");
   await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.getByText("کد تأیید باید شش رقم باشد.").waitFor();
   assert.equal(verifyCalls, 0);
@@ -212,7 +214,7 @@ async function main() {
   }).waitFor();
   assert.equal(verifyCalls, 2);
   assert.equal(await page.locator("#auth-code").inputValue(),
-    "888888");
+    "۸۸۸۸۸۸");
   await page.locator("#auth-code").fill("۱۲۳۴۵۶");
   await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.getByText("ورود انجام شده است", {

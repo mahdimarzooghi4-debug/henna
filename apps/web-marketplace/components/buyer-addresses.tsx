@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { AddressMapPicker, type SelectedMapPoint } from "./address-map-picker";
 import styles from "./buyer-addresses.module.css";
-import { normalizeDigits } from "../lib/normalize-digits";
+import { normalizeDigits, toPersianDigits } from "../lib/normalize-digits";
 
 type FieldName = "title" | "provinceCity" | "address" | "recipient" | "phone" | "postalCode";
 type FormFields = Record<FieldName, string>;
@@ -95,8 +95,8 @@ export function BuyerAddresses() {
       <span>{label}{required && <b aria-hidden="true"> *</b>}</span>
       <input
         name={name}
-        value={fields[name]}
-        onChange={(event) => updateField(name, event.target.value)}
+        value={name === "phone" || name === "postalCode" ? toPersianDigits(fields[name]) : fields[name]}
+        onChange={(event) => updateField(name, name === "phone" || name === "postalCode" ? normalizeDigits(event.target.value) : event.target.value)}
         placeholder={placeholder}
         required={required}
         inputMode={inputMode}
@@ -144,13 +144,13 @@ export function BuyerAddresses() {
           <h2>ثبت آدرس جدید</h2>
           <p className={styles.formIntro}>محل تحویل را روی نقشه مشخص کنید و اطلاعات گیرنده را وارد کنید.</p>
           <AddressMapPicker value={point} onChange={setPoint} />
-          {point && <p className={styles.pointNotice} role="status">موقعیت انتخاب‌شده: {point.latitude.toFixed(5)}، {point.longitude.toFixed(5)}</p>}
+          {point && <p className={styles.pointNotice} role="status">موقعیت انتخاب‌شده: {toPersianDigits(point.latitude.toFixed(5))}، {toPersianDigits(point.longitude.toFixed(5))}</p>}
           <div className={styles.formGrid}>
             {field("title", "عنوان آدرس", "مثلاً خانه یا محل کار", true)}
             {field("provinceCity", "استان و شهر", "استان، شهر", true)}
             <div className={styles.fullWidth}>{field("address", "آدرس دقیق پستی", "خیابان، کوچه، پلاک و واحد", true)}</div>
             {field("recipient", "نام و نام خانوادگی گیرنده", "نام گیرنده", true)}
-            {field("phone", "شماره تماس گیرنده", "09xxxxxxxxx", true, "tel")}
+            {field("phone", "شماره تماس گیرنده", "۰۹xxxxxxxxx", true, "tel")}
             {field("postalCode", "کد پستی (اختیاری)", "۱۰ رقم", false, "numeric")}
           </div>
           <div className={styles.formActions}>
