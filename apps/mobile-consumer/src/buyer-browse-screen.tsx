@@ -215,8 +215,8 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
 
           <View style={styles.filters}>
             {([["طرح ویژه", "طرح ویژه  🔥"], ["کالابرگ", "✓  کالابرگ"], ["٪ تخفیف", "٪  تخفیف‌دار"]] as const).map(([badge, label]) => {
-              const selected = designPreview ? designBadge === badge : badge === "کالابرگ";
-              return designPreview ? <Pressable key={badge} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setDesignBadge(current => current === badge ? null : badge)} style={[styles.filterChip, selected && styles.filterChipActive]}><Text style={[styles.filterText, selected && styles.filterTextActive]}>{label}</Text></Pressable> : <View key={badge} style={[styles.filterChip, selected && styles.filterChipActive]}><Text style={[styles.filterText, selected && styles.filterTextActive]}>{label}</Text></View>;
+              const selected = (designBadge ?? "کالابرگ") === badge;
+              return designPreview ? <Pressable key={badge} accessibilityRole="button" accessibilityState={{ selected: designBadge === badge }} onPress={() => setDesignBadge(current => current === badge ? null : badge)} style={[styles.filterChip, selected && styles.filterChipActive]}><Text style={[styles.filterText, selected && styles.filterTextActive]}>{label}</Text></Pressable> : <View key={badge} style={[styles.filterChip, selected && styles.filterChipActive]}><Text style={[styles.filterText, selected && styles.filterTextActive]}>{label}</Text></View>;
             })}
           </View>
 
