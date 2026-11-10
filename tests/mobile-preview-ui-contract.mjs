@@ -43,3 +43,17 @@ test("status bar icons use dark content against light surfaces",()=>{
  assert.match(bcfg.expo.icon,/hana-buyer-icon-only\.png$/);
  assert.match(scfg.expo.icon,/hana-seller-icon-only\.png$/);
 });
+
+const home=readFileSync("apps/mobile-consumer/src/buyer-browse-screen.tsx","utf8");
+test("owner frame 194:4 offline browser sample has source assets and no real purchase",()=>{
+ assert.match(home,/Platform\.OS === "web" && previewSession &&[\s\S]*?EXPO_PUBLIC_HANA_DEMO_LOGIN === "true" && !process\.env\.EXPO_PUBLIC_HANA_API_BASE_URL/);
+ assert.match(home,/پیش‌نمایش طراحی · قیمت‌ها نمونه‌اند؛ خرید واقعی فعال نیست/);
+ assert.match(home,/accessibilityState=\{\{disabled:true\}\}/);
+ assert.match(home,/rgba\(15,91,90,0\.85\)/);
+ assert.match(home,/bottomNav: \{ height: 84/);
+ for(let n=1;n<=5;n++){
+   assert.ok(readFileSync("apps/mobile-consumer/assets/figma/home-product-"+n+".jpg").length>1000);
+ }
+ const samples=home.slice(home.indexOf("const homeDesignProducts"),home.indexOf("const catalog ="));
+ assert.doesNotMatch(samples,/productId|sellerId|inventory|onCart|fetch\(/);
+});
