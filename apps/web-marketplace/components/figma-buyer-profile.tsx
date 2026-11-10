@@ -2,10 +2,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./figma-buyer-profile.module.css";
+import accountStyles from "./figma-buyer-account.module.css";
 import { BuyerAccountNav } from "./buyer-account-nav";
 export function FigmaBuyerProfile(){
  const router=useRouter();
- return <main className={styles.page} dir="rtl" data-testid="preview-profile"><div className={styles.layout}>
+ return <main className={accountStyles.page + " " + styles.pageSurface} dir="rtl" data-testid="preview-profile"><div className={accountStyles.layout}>
   <BuyerAccountNav active="account" />
   <section className={styles.content}><div className={styles.heading}><h1>تکمیل اطلاعات حساب</h1><p>مشخصات کاربر را برای تکمیل حساب خود ثبت کنید.</p></div>
    <form className={styles.form} onSubmit={event=>{event.preventDefault();router.push("/buyer/account?mode=preview");}}>

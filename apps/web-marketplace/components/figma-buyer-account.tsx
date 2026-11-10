@@ -13,7 +13,11 @@ export function FigmaBuyerAccount() {
   const [company,setCompany]=useState<PreviewCompany|null>(null);
   const [draft,setDraft]=useState<PreviewCompany>(emptyPreviewCompany);
   const [mode,setMode]=useState<"closed"|"view"|"edit">("closed");
-  useEffect(()=>{setCompany(readPreviewCompany());},[]);
+  useEffect(()=>{
+    const saved=readPreviewCompany();
+    setCompany(saved);
+    if(!saved) setMode("edit");
+  },[]);
   const openEdit=()=>{setDraft(company??emptyPreviewCompany);setNotice("");setMode("edit");};
 
   return (
@@ -34,7 +38,7 @@ export function FigmaBuyerAccount() {
               <button className={styles.edit} type="button" onClick={openEdit}>{company?"ویرایش اطلاعات":"ثبت مشخصات شرکت"}</button>
               {company && <button className={styles.view} type="button" onClick={()=>{setMode(mode==="view"?"closed":"view");setNotice("");}}>مشاهده اطلاعات</button>}
             </div>
-            {mode==="edit" && <form className={styles.companyForm} onSubmit={event=>{
+            {mode==="edit" && <form data-testid="preview-company-form" className={styles.companyForm} onSubmit={event=>{
               event.preventDefault();const next=normalizeCompany(draft);
               if(!validPreviewCompany(next)){setNotice("نام شرکت، شناسه ملی ۱۱ رقمی و شماره ثبت را به‌درستی وارد کنید. کد پستی در صورت ورود باید ۱۰ رقم باشد.");return;}
               if(!savePreviewCompany(next)){setNotice("ذخیره اطلاعات نمونه انجام نشد.");return;}

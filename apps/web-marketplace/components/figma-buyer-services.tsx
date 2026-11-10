@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import styles from "./figma-buyer-services.module.css";
+import accountStyles from "./figma-buyer-account.module.css";
 
 type ServiceKind="credits"|"social"|"support";
 import { BuyerAccountNav } from "./buyer-account-nav";
@@ -15,7 +16,7 @@ export function FigmaBuyerServices({kind,section="plans"}:{kind:ServiceKind;sect
  const [tab,setTab]=useState(section==="credits"?"اعتبار حمایتی عمومی":"طرح‌های فعال و کالابرگ‌ها");const [notice,setNotice]=useState("");
  const heading=kind==="credits"?"اعتبارها و طرح‌های من":kind==="social"?"مشارکت اجتماعی":"پشتیبانی حنا";
  const description=kind==="credits"?"در این بخش می‌توانید وضعیت انواع حمایت‌ها، طرح‌های فعال سازمانی یا دولتی و سهم اعتبارات تخصیص‌یافته به حساب خود را مدیریت و پیگیری کنید.":kind==="social"?"در این بخش می‌توانید طرح‌های اجتماعی و وضعیت مشارکت‌های اختیاری خود را مشاهده کنید.":"مرکز ارتباطات، پاسخ به سوالات متداول و پیگیری درخواست‌ها. ما در کوتاه‌ترین زمان برای حل مشکلات خرید و مسائل مربوط به اعتبارها در کنار شما هستیم.";
- return <main className={styles.page} dir="rtl"><div className={styles.layout}>
+ return <main className={accountStyles.page} dir="rtl" data-testid={"preview-" + kind}><div className={accountStyles.layout}>
   <BuyerAccountNav active={kind==="credits"?section:kind} />
   <section className={styles.content}>
    <header className={kind==="credits"?styles.creditsSummary:styles.summary}><div className={styles.summaryCopy}><span className={styles.kicker}>{kind==="social"?"خریدی هوشمند و مسئولانه":kind==="support"?"پشتیبانی ۲۴ ساعته فعال":kind==="credits"?"":"حساب کاربری"}</span><h1>{heading}</h1><p>{description}</p></div>{kind==="credits"&&<span className={styles.summaryBadge}>اعتبارات و تسهیلات فعال</span>}</header>

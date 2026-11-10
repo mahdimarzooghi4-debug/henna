@@ -841,7 +841,7 @@ async function main() {
   await accountLegal.getByText("هنوز مشخصات شرکت ثبت نشده است", { exact: true }).waitFor();
   assert.equal(await accountLegal.getByRole("checkbox").count(), 0,
     "Invoice opt-in belongs to the order, not account company data");
-  await accountLegal.getByRole("button",{name:"ثبت مشخصات شرکت",exact:true}).click();
+  await accountLegal.getByTestId("preview-company-form").waitFor();
   await accountLegal.getByLabel("نام شرکت",{exact:true}).fill("شرکت نمونه CI");
   await accountLegal.getByLabel("شناسه ملی شرکت",{exact:true}).fill("۱۰۰۰۰۰۰۰۰۰۰");
   await accountLegal.getByLabel("شماره ثبت",{exact:true}).fill("۱۲۳۴۵");
@@ -854,9 +854,21 @@ async function main() {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
     "Account layout must not overflow mobile viewport");
 
-  // Account and profile share the approved chrome canvas at all viewport widths.
-  for (const [route, testId] of [["account", "preview-account"], ["profile", "preview-profile"], ["addresses","preview-addresses"], ["orders","preview-orders"]]) {
-    await page.goto(base + (route==="addresses"?"/account/addresses":"/buyer/" + route + "?mode=preview"));
+  // Every account destination shares one canvas, sidebar width and content width.
+  const accountCanvasRoutes = [
+    ["account","preview-account","/buyer/account?mode=preview"],
+    ["profile","preview-profile","/buyer/profile?mode=preview"],
+    ["addresses","preview-addresses","/account/addresses"],
+    ["orders","preview-orders","/buyer/orders?mode=preview"],
+    ["payments","preview-payments","/buyer/payments?mode=preview"],
+    ["credits","preview-credits","/benefits?section=credits"],
+    ["social","preview-social","/social"],
+    ["support","preview-support","/support"],
+    ["settings","preview-settings","/buyer/settings?mode=preview"],
+  ];
+  const canvasByWidth = new Map();
+  for (const [route, testId, path] of accountCanvasRoutes) {
+    await page.goto(base + path);
     await page.getByTestId(testId).waitFor();
     for (const width of [1440, 1650, 1150, 900, 390]) {
       await page.setViewportSize({ width, height: 1000 });
@@ -877,6 +889,17 @@ async function main() {
       for (const key of ["body", "footer", "bottom"]) {
         near(g[key].x, g.header.x, route + " " + key + " left aligns at " + width);
         near(g[key].right, g.header.right, route + " " + key + " right aligns at " + width);
+      }
+      const expected = canvasByWidth.get(width);
+      if (route === "account") {
+        canvasByWidth.set(width, { body: g.body.width, nav: g.nav.width, content: g.content.width,
+          navX: g.nav.x, contentX: g.content.x });
+      } else {
+        near(g.body.width, expected.body, route + " stable page width at " + width);
+        near(g.nav.width, expected.nav, route + " stable sidebar width at " + width);
+        near(g.content.width, expected.content, route + " stable content width at " + width);
+        near(g.nav.x, expected.navX, route + " stable sidebar position at " + width);
+        near(g.content.x, expected.contentX, route + " stable content position at " + width);
       }
       if (width >= 900) assert.ok(g.nav.x > g.content.x, route + " sidebar on right");
       assert.ok(g.arrow.right <= g.label.x && g.arrowPath === "M10 3.5 5.5 8 10 12.5", route + " arrow left");
