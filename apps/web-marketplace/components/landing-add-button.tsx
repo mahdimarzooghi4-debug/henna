@@ -26,10 +26,7 @@ export function LandingAddButton({ productId, className, messageClassName, stayO
     const result = addLandingPreviewProduct(productId);
     if (result === "added") {
       window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
-      if (stayOnPage) {
-        setMessage("به سبد خرید اضافه شد.");
-        return;
-      }
+      if (stayOnPage) return;
       navigating.current = true;
       setPending(true);
       router.push("/buyer/cart?mode=preview");
