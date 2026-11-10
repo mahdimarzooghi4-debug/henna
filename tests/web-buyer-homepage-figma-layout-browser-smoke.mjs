@@ -317,6 +317,91 @@ async function main() {
   assert.deepEqual(await readDemoCart(), withRice, "Homepage adds the exact chosen item");
   await page.getByRole("heading", { name: "برنج هاشمی درجه یک", exact: true }).waitFor();
 
+  // Figma 227:1368 — Basket layout on the existing dynamic sample cart.
+  // The sample frame's two item titles/prices are not inserted into storage.
+  const basket = page.getByTestId("preview-cart-page");
+  const cartRows = basket.getByTestId("preview-cart-item");
+  const cartNav = page.getByTestId("marketplace-category-nav");
+  assert.deepEqual(await cartNav.getByRole("link").allTextContents(), [
+    "همه دسته‌ها", "طرح‌های ویژه حنا", "کالابرگ الکترونیکی", "تخفیف‌های طلایی",
+  ], "Basket uses the approved four-link navigation");
+  assert.deepEqual(await cartNav.getByRole("link").evaluateAll(
+    links => links.map(link => link.getAttribute("href"))),
+    ["/products", "/benefits#special-plans", "/benefits#food-credit", "/#offers"]);
+  assert.equal(await page.getByTestId("marketplace-announcement").count(), 0,
+    "Basket reference has no catalog announcement strip");
+  assert.equal(await page.getByRole("link", { name: "ثبت‌نام فروشگاه‌ها", exact: true }).getAttribute("href"),
+    "/seller/register");
+  const comparison = basket.getByRole("link", { name: "مشاهده مقایسه فروشگاه‌ها", exact: true });
+  assert.equal(await comparison.getAttribute("href"), "/buyer/compare?mode=preview");
+  assert.equal(await cartRows.count(), 3);
+  await basket.getByText("این سبد نمونه‌ی نمایشی است؛ مبلغ‌ها تقریبی‌اند و سفارش واقعی ثبت نمی‌شود.").waitFor();
+  assert.equal(await page.getByTestId("marketplace-footer").locator('a[href="/social#instagram"] svg').count(), 1,
+    "Basket keeps its social destination with the corrected vector icon");
+  for (const width of [1440, 1650, 1150, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const g = await page.evaluate(() => {
+      const rect = el => {
+        const { x, y, width, height, right, bottom } = el.getBoundingClientRect();
+        return { x, y, width, height, right, bottom };
+      };
+      const layout = document.querySelector('[data-testid="preview-cart-layout"]');
+      const items = layout.querySelector("section");
+      const summary = layout.querySelector("aside");
+      const row = items.querySelector("li");
+      const price = row.querySelector('strong[title="قیمت هر واحد"]');
+      const remove = row.querySelector('button[class*="remove"]');
+      const img = row.querySelector("img");
+      return {
+        layout:rect(layout),items:rect(items),summary:rect(summary),row:rect(row),
+        price:rect(price),remove:rect(remove),img:rect(img),
+        header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
+        nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
+        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        scrollWidth:document.documentElement.scrollWidth,
+        clientWidth:document.documentElement.clientWidth,
+        background:getComputedStyle(document.querySelector('[data-testid="preview-cart-page"]')).backgroundColor,
+      };
+    });
+    near(g.layout.x,g.header.x,"Basket content aligns with header at "+width);
+    near(g.layout.right,g.header.right,"Basket content right edge at "+width);
+    near(g.footer.x,g.layout.x,"Basket footer aligns at "+width);
+    near(g.footer.right,g.layout.right,"Basket footer right edge at "+width);
+    assert.equal(g.background,"rgb(250, 248, 245)");
+    assert.ok(g.scrollWidth <= g.clientWidth + 1, "Basket must not overflow at "+width);
+    if (width >= 1440) {
+      near(g.layout.width,1280,"Basket Figma 1280px canvas");
+      near(g.summary.width,400,"Basket 400px summary");
+      near(g.items.x-g.summary.right,32,"Basket columns gap");
+      near(g.summary.y,g.items.y,"Basket column top alignment");
+      near(g.row.height,122,"Basket row min height");
+      near(g.img.width,80,"Basket product image width");
+      near(g.img.height,80,"Basket product image height");
+      assert.ok(g.price.x > g.remove.x, "RTL price is next to quantity, remove at left");
+      assert.ok(g.img.x > g.price.x, "Product image remains on right");
+    }
+    if (width === 390) {
+      assert.ok(g.summary.y >= g.items.bottom, "Mobile summary follows cart items");
+      assert.ok(g.img.width <= 64 && g.img.height <= 64, "Mobile thumbnail fits card");
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const img of await cartRows.locator("img").all()) {
+    await img.scrollIntoViewIfNeeded();
+    assert.equal(await img.evaluate(async el => { try { await el.decode(); return el.naturalWidth > 0; } catch { return false; } }), true,
+      "Each basket thumbnail must be a loaded local product image");
+  }
+  // Quantity editing and deletion are still functional after the layout change.
+  const yogurtRow = cartRows.filter({ hasText: "ماست سون همزده پرچرب" });
+  await yogurtRow.getByRole("button", { name: "افزایش تعداد ماست سون همزده پرچرب" }).click();
+  assert.deepEqual(await readDemoCart(), withRice.map(item =>
+    item.productId === "yogurt" ? { ...item, quantity: 2 } : item));
+  await yogurtRow.getByRole("button", { name: "کاهش تعداد ماست سون همزده پرچرب" }).click();
+  assert.deepEqual(await readDemoCart(), withRice);
+  await cartRows.filter({ hasText: "برنج هاشمی درجه یک" }).getByRole("button", { name: "حذف کالا ×" }).click();
+  assert.deepEqual(await readDemoCart(), expected);
+  assert.equal(await cartRows.count(), 2);
+
   // A failed add must not redirect or imply an item was added.
   await page.goto(base + "/products");
   await page.evaluate(() => localStorage.setItem("henna:landing-preview-cart:v1",

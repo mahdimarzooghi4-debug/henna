@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import styles from "./marketplace-chrome.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
@@ -60,7 +61,18 @@ function UserIcon() {
   );
 }
 
-export function MarketplaceChrome({ footerOnly = false, initialSearch = "" }: { footerOnly?: boolean; initialSearch?: string }) {
+// Basket uses the same approved marketplace chrome, without the catalog announcement.
+function SocialMark({ basket, label, href, children }: {
+  basket: boolean; label: string; href: string; children: ReactNode;
+}) {
+  return basket
+    ? <Link href={href} aria-label={label} title={label}>{children}</Link>
+    : <span aria-label={label} title={label}>{children}</span>;
+}
+
+export function MarketplaceChrome({ footerOnly = false, initialSearch = "", basket = false }: {
+  footerOnly?: boolean; initialSearch?: string; basket?: boolean;
+}) {
   if (footerOnly) {
     return (
       <footer className={styles.footer} dir="rtl" data-testid="marketplace-footer">
@@ -74,29 +86,32 @@ export function MarketplaceChrome({ footerOnly = false, initialSearch = "" }: { 
           {footerColumns.map((column) => (
             <div className={styles.footerColumn} key={column.title}>
               <h2>{column.title}</h2>
-              {column.links.map(([label, href]) => <Link href={href} key={label}>{label}</Link>)}
+              {column.links.map(([label, href]) => <Link href={
+                basket && label === "اعتبارات سازمانی" ? "/organization" :
+                basket && label === "کارت‌های معیشتی" ? "/benefits#food-credit" : href
+              } key={label}>{label}</Link>)}
             </div>
           ))}
         </div>
         <div className={styles.footerBottom} data-testid="marketplace-footer-bottom">
           <div className={styles.socialMedia} aria-label="شبکه‌های اجتماعی حنا">
-            <span aria-label="اینستاگرام" title="اینستاگرام">
+            <SocialMark basket={basket} label="اینستاگرام" href="/social#instagram">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" focusable="false">
                 <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
                 <circle cx="12" cy="12" r="4" />
                 <circle cx="17.5" cy="6.8" r=".8" fill="currentColor" stroke="none" />
               </svg>
-            </span>
-            <span aria-label="توییتر" title="توییتر">
+            </SocialMark>
+            <SocialMark basket={basket} label="توییتر" href="/social#twitter">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
                 <path d="M18.9 3H22l-6.8 7.8L23.2 21h-6.3L12 14.6 6.4 21H3.2l7.3-8.4L2.8 3h6.4l4.5 5.9L18.9 3Zm-1.1 16h1.7L8.2 4.9H6.4L17.8 19Z" />
               </svg>
-            </span>
-            <span aria-label="لینکدین" title="لینکدین">
+            </SocialMark>
+            <SocialMark basket={basket} label="لینکدین" href="/social#linkedin">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
                 <path d="M5.2 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM3.6 9h3.2v11H3.6V9Zm5.3 0H12v1.5h.1a3.6 3.6 0 0 1 3.3-1.8c3.5 0 4.1 2.3 4.1 5.2V20h-3.3v-5.4c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V20H8.9V9Z" />
               </svg>
-            </span>
+            </SocialMark>
           </div>
           <p>حنا با هدف برقراری عدالت اجتماعی توسعه داده شده است.<br />کلیه حقوق برای حنا محفوظ است.</p>
         </div>
@@ -106,10 +121,10 @@ export function MarketplaceChrome({ footerOnly = false, initialSearch = "" }: { 
 
   return (
     <>
-      <div className={styles.announcement} dir="rtl" data-testid="marketplace-announcement">
+      {!basket && <div className={styles.announcement} dir="rtl" data-testid="marketplace-announcement">
         بازارگاه حنا؛ کالاها و خدمات در یک تجربه یکپارچه
-      </div>
-      <header className={styles.header} dir="rtl">
+      </div>}
+      <header className={basket ? `${styles.header} ${styles.basketHeader}` : styles.header} dir="rtl">
         <div className={styles.headerTop} data-testid="marketplace-header-top">
           <div className={styles.actions}>
             <Link className={styles.cart} href="/buyer/cart?mode=preview">

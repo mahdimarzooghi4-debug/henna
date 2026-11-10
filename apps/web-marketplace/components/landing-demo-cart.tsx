@@ -71,26 +71,27 @@ export function LandingDemoCartPage() {
   }, 0);
 
   return (
-    <main dir="rtl" className={styles.page}>
-      <p className={styles.notice}>این سبد نمونه‌ی نمایشی است؛ مبلغ‌ها تقریبی‌اند و سفارش واقعی ثبت نمی‌شود.</p>
+    <main dir="rtl" className={styles.page} data-testid="preview-cart-page">
+      <div className={styles.container}>
       {!loaded ? <p role="status">در حال دریافت سبد…</p> : items.length === 0 ? (
         <section className={styles.empty}>
           <h1>سبد خرید خالی است</h1>
           <p>برای شروع، یک کالا به سبد خرید اضافه کن.</p>
           <Link href="/#offers">رفتن به پیشنهادهای امروز</Link>
+          <p className={styles.notice}>این سبد نمونه‌ی نمایشی است؛ مبلغ‌ها تقریبی‌اند و سفارش واقعی ثبت نمی‌شود.</p>
         </section>
       ) : (
-        <div className={styles.layout}>
+        <div className={styles.layout} data-testid="preview-cart-layout">
           <section className={styles.items} aria-labelledby="landing-cart-items-title">
             <h1 id="landing-cart-items-title" className={styles.title}>اقلام سبد خرید شما</h1>
             <ul className={styles.list}>
               {items.map((item) => {
                 const product = LANDING_PREVIEW_PRODUCTS.find((entry) => entry.id === item.productId);
                 if (!product) return null;
-                return <li className={styles.item} key={item.productId}>
+                return <li className={styles.item} key={item.productId} data-testid="preview-cart-item" data-product-id={item.productId}>
                   <div className={styles.product}>
                     <Image className={styles.image} src={"/landing/" + product.image}
-                      alt={product.title} width={70} height={70} />
+                      alt={product.title} width={80} height={80} />
                     <div className={styles.productInfo}><h3>{product.title}</h3><p>{product.detail}</p></div>
                   </div>
                   <div className={styles.quantity} aria-label={"تعداد " + product.title}>
@@ -105,12 +106,12 @@ export function LandingDemoCartPage() {
                         ? { ...entry, quantity: Math.max(1, entry.quantity - 1) } : entry))}>−</button>
                   </div>
                   <div className={styles.actionsPrice}>
+                    <strong className={styles.price} title="قیمت هر واحد">{product.price} تومان</strong>
                     <button type="button" className={styles.remove} onClick={() => {
                       removeLandingPreviewProduct(item.productId);
                       sync();
                       window.dispatchEvent(new Event(LANDING_PREVIEW_CART_EVENT));
                     }}>حذف کالا ×</button>
-                    <strong className={styles.price}>{product.price} تومان</strong>
                   </div>
                 </li>;
               })}
@@ -128,9 +129,11 @@ export function LandingDemoCartPage() {
               <p>حنا فروشگاه‌های محله را بر اساس موجودی کامل کالاها، قیمت کل، فاصله و اطلاعات شناخته‌شده ارسال برای همین سبد مقایسه می‌کند.</p>
             </div>
             <Link className={styles.compareButton} href="/buyer/compare?mode=preview">مشاهده مقایسه فروشگاه‌ها</Link>
+            <p className={styles.notice}>این سبد نمونه‌ی نمایشی است؛ مبلغ‌ها تقریبی‌اند و سفارش واقعی ثبت نمی‌شود.</p>
           </aside>
         </div>
       )}
+      </div>
     </main>
   );
 }

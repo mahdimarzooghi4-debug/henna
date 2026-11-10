@@ -240,7 +240,8 @@
   gap: 24px;
 }
 .socialMedia { direction: ltr; display: flex; align-items: center; gap: 12px; }
-.socialMedia span {
+.socialMedia span,
+.socialMedia a {
   width: 36px;
   height: 36px;
   display: grid;
@@ -249,6 +250,7 @@
   background: #faf8f5;
   color: #1c3f3a;
   line-height: 1;
+  text-decoration: none;
 }
 .socialMedia svg {
   display: block;
@@ -316,4 +318,14 @@
   .footerColumn a { font-size: 12px; }
   .footerBottom { margin-top: 28px; padding-top: 18px; align-items: flex-start; flex-direction: column; gap: 16px; }
   .footerBottom p { font-size: 11px; }
+}
+
+/* Basket's Figma header shares the existing canvas; avoid fixed-width
+ * search overflow in the intermediate desktop range. */
+@media (min-width: 1101px) {
+  .basketHeader .headerTop {
+    grid-template-columns: 435px minmax(0, 420px) 145px;
+    column-gap: 12px;
+  }
+  .basketHeader .search { width: 100%; }
 }
