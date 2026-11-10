@@ -5,7 +5,7 @@
 .intro{text-align:right;display:grid;gap:12px}
 .intro h1{margin:0;font-size:28px;font-weight:800;line-height:1.4}
 .intro p{margin:0;color:#706963;font-size:16px;line-height:1.5}
-.filters{direction:ltr;display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:16px;border:1px solid #eae6e1;border-radius:12px;background:#fff}
+.filters{direction:rtl;display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:16px;padding:16px;border:1px solid #eae6e1;border-radius:12px;background:#fff}
 .filter,.activeFilter{border:0;padding:0;background:transparent;color:#706963;font:inherit;font-size:14px;line-height:1.5;cursor:pointer;white-space:nowrap}
 .activeFilter{color:#b5523b;font-weight:700}
 .filter:disabled{opacity:.45;cursor:not-allowed}

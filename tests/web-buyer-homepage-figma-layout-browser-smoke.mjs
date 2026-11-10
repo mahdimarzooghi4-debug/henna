@@ -444,6 +444,7 @@ async function main() {
       const filters = main.querySelector('[role="group"]');
       return {
         content:rect(content),card:rect(card),filters:rect(filters),firstFilter:rect(filters.querySelector("button")),
+        filterDirection:getComputedStyle(filters).direction,filterButtons:Array.from(filters.querySelectorAll("button"),rect),filterPaddingRight:parseFloat(getComputedStyle(filters).paddingRight),filterBorderRight:parseFloat(getComputedStyle(filters).borderRightWidth),
         identity:rect(card.querySelector('[data-testid="preview-seller-identity"]')),
         availability:rect(card.querySelector('[data-testid="preview-seller-availability"]')),
         price:rect(card.querySelector('[data-testid="preview-seller-price"]')),
@@ -460,6 +461,13 @@ async function main() {
     near(g.card.width,g.content.width,"Comparison full-width card at "+width);
     assert.equal(g.background,"rgb(250, 248, 245)");
     assert.ok(g.scrollWidth <= g.clientWidth+1,"Comparison no horizontal overflow at "+width);
+    assert.equal(g.filterDirection,"rtl","Comparison sorting direction at "+width);
+    near(g.filters.right-g.firstFilter.right,g.filterPaddingRight+g.filterBorderRight,"First sort tab starts at right edge at "+width);
+    for(let i=1;i<g.filterButtons.length;i++){
+      const prev=g.filterButtons[i-1],curr=g.filterButtons[i];
+      if(Math.abs(curr.y-prev.y)<2)assert.ok(curr.right<=prev.x,"Sort tabs run right to left at "+width);
+      else assert.ok(curr.y>prev.y,"Wrapped sort tabs keep row order at "+width);
+    }
     if (width>=1440) {
       near(g.content.width,1280,"Comparison Figma canvas");
       near(g.availability.width,220,"Comparison availability width");
@@ -468,7 +476,7 @@ async function main() {
       near(g.identity.x-g.availability.right,24,"Comparison column gap");
       assert.ok(g.identity.x>g.availability.x && g.availability.x>g.price.x && g.price.x>g.action.x,
         "Figma RTL four-column order");
-      near(g.firstFilter.x-g.filters.x,17,"Figma left-aligned sorting");
+      near(g.filters.right-g.firstFilter.right,17,"Right-aligned comparison sorting");
     }
     if(width===390) assert.ok(g.action.y>g.price.y,"Comparison action follows price on mobile");
   }
