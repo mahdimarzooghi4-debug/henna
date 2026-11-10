@@ -544,6 +544,15 @@ async function main() {
   const checkout=page.getByTestId("preview-checkout-page");
   const checkoutLayout=checkout.getByTestId("preview-checkout-layout");
   await checkoutLayout.waitFor();
+  const invoiceOption = checkout.getByRole("checkbox", { name: "خرید حقوقی و دریافت فاکتور رسمی" });
+  assert.equal(await invoiceOption.isChecked(), false);
+  await invoiceOption.check();
+  await checkout.getByTestId("preview-legal-company-note").waitFor();
+  assert.equal(await checkout.getByPlaceholder("نام شرکت ثبت‌شده").count(), 0,
+    "Checkout must not ask for already registered company information");
+  await invoiceOption.uncheck();
+  assert.equal(await invoiceOption.isChecked(), false);
+  assert.equal(await checkout.getByTestId("preview-legal-company-note").count(), 0);
   const pickup=checkout.getByRole("radio",{name:"تحویل حضوری از فروشگاه",exact:true});
   const courier=checkout.getByRole("radio",{name:"ارسال با پیک",exact:true});
   const fee=checkout.getByTestId("preview-delivery-fee");
@@ -808,15 +817,11 @@ async function main() {
   assert.ok(fieldBoxes[0].width > fieldBoxes[1].width);
   assert.equal(fieldBoxes[1].y, fieldBoxes[2].y);
   assert.equal(await accountInfo.getByRole("link", { name: "ویرایش اطلاعات حساب" }).getAttribute("href"), "/buyer/profile?mode=preview");
-  const legalOption = accountLegal.getByRole("checkbox", { name: "درخواست صدور فاکتور رسمی" });
-  assert.equal(await legalOption.isChecked(), false, "Official invoice is opt-in");
-  await legalOption.check();
-  assert.equal(await legalOption.isChecked(), true);
-  await legalOption.uncheck();
-  assert.equal(await legalOption.isChecked(), false);
-  assert.equal(await accountLegal.getByRole("button").count(), 0,
-    "Account legal purchase must not offer company registration/edit actions");
-  await accountLegal.getByText("نسخه نمایشی", { exact: false }).waitFor();
+  await accountLegal.getByText("اطلاعات شرکت نمونه ثبت شده است", { exact: true }).waitFor();
+  assert.equal(await accountLegal.getByRole("checkbox").count(), 0,
+    "Invoice opt-in belongs to the order, not account company data");
+  await accountLegal.getByRole("button", { name: "مشاهده اطلاعات" }).click();
+  await accountLegal.getByRole("status").waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
     "Account layout must not overflow mobile viewport");

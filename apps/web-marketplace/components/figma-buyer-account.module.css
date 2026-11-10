@@ -17,6 +17,7 @@
   background: #fff;
 }
 .legalCard { display: grid; gap: 20px; padding: 24px; }
+.legalHeading, .legalState { display: grid; gap: 8px; }
 .legalCard h2, .summary h1, .infoCard h2 {
   margin: 0;
   font-size: 18px;
@@ -24,8 +25,11 @@
   color: #1c3f3a;
 }
 .legalCard p, .summary p { margin: 0; color: #706963; font-size: 14px; line-height: 1.5; }
-.infoActions { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
-.edit {
+.legalState { padding: 16px; border-radius: 12px; background: rgba(181,82,59,.08); }
+.legalState strong { color: #b5523b; font-size: 14px; font-weight: 600; }
+.legalState p { font-size: 13px; }
+.legalActions, .infoActions { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.edit, .view {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -39,6 +43,7 @@
   cursor: pointer;
 }
 .edit { background: #1c3f3a; color: #fff; }
+.view { border-color: #eae6e1; background: #faf8f5; color: #1c3f3a; }
 .summary { display: grid; gap: 8px; padding: 24px; }
 .infoCard { display: grid; gap: 24px; padding: 24px; }
 .divider { height: 1px; background: #eae6e1; }
@@ -59,9 +64,7 @@
 .navCard { display: grid; gap: 8px; padding: 16px; }
 .navCard a { display: block; padding: 12px; border-radius: 8px; color: #1c3f3a; text-decoration: none; font-size: 14px; font-weight: 500; }
 .navCard a[aria-current="page"] { background: rgba(181,82,59,.08); color: #b5523b; font-weight: 700; }
-.legalOption { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: 600; }
-.legalOption input { width: 18px; height: 18px; accent-color: #1c3f3a; flex: none; cursor: pointer; }
-.legalCard .previewNote { font-size: 12px; }
+.notice { padding: 12px; border-radius: 8px; background: #edf5f3; }
 @media (max-width: 1000px) {
   .page { width: calc(100% - 48px); }
   .layout { grid-template-columns: 240px minmax(0,1fr); gap: 24px; }
