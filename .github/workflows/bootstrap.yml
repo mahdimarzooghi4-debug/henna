@@ -803,11 +803,13 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          target: google_apis
+          # The native tests need Android framework/Keystore/intent resolution,
+          # not Google Play services. AOSP avoids Pixel Launcher ANRs seen in CI.
+          target: default
           arch: x86_64
           profile: pixel_6
-          cores: 2
-          ram-size: 3072M
+          cores: 4
+          ram-size: 4096M
           disable-animations: true
           script: python3 tests/mobile-android-native-smoke.py && python3 tests/mobile-seller-android-smoke.py
       - name: Retain tested buyer APK (CI debug build - not a public release)

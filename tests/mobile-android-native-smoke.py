@@ -67,15 +67,30 @@ def dismiss_known_emulator_anr():
         observed = next((title for title in known if title in values), None)
         if observed is None:
             return False
-        wait = next(
+        # If the emulator's own launcher is stuck, close only that
+        # known system process so Android can restart it. Never dismiss
+        # or mask an ANR belonging to the Henna application.
+        preferred_action = (
+            "Close app"
+            if observed == "Pixel Launcher isn't responding"
+            else "Wait"
+        )
+        action = next(
             (node for node in root.iter()
-             if node.attrib.get("text") == "Wait" or
-             node.attrib.get("content-desc") == "Wait"),
+             if node.attrib.get("text") == preferred_action or
+             node.attrib.get("content-desc") == preferred_action),
             None,
         )
-        if wait is None:
+        if action is None and preferred_action != "Wait":
+            action = next(
+                (node for node in root.iter()
+                 if node.attrib.get("text") == "Wait" or
+                 node.attrib.get("content-desc") == "Wait"),
+                None,
+            )
+        if action is None:
             return False
-        bounds = wait.attrib.get("bounds", "")
+        bounds = action.attrib.get("bounds", "")
         coords = list(map(int, re.findall(r"\d+", bounds)))
         if len(coords) != 4:
             return False
@@ -83,7 +98,7 @@ def dismiss_known_emulator_anr():
         execute("adb", "shell", "input", "tap",
                 str((x1 + x2) // 2), str((y1 + y2) // 2))
         print(
-            f"Dismissed known emulator system ANR ({observed}); "
+            f"Handled known emulator system ANR ({observed}) via {preferred_action}; "
             "continuing strict app UI checks.",
             flush=True,
         )
