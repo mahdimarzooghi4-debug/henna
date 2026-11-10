@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
-import { normalizeDigits } from "../../lib/normalize-digits";
+import { normalizeDigits, toPersianDigits } from "../../lib/normalize-digits";
 
 // UI preview only. No OTP request, verification, session, account, storage,
 // or protected redirect. The real AuthForm and backend remain unchanged.
@@ -38,10 +38,10 @@ export function AuthPreviewForm() {
         }}>
           <FormField id="auth-phone" label="شماره موبایل" type="tel"
             autoComplete="off" inputMode="numeric" maxLength={11}
-            className="field__input--phone" placeholder="09xxxxxxxxx"
-            value={phone} required inputRef={phoneInput} error={!!error}
+            className="field__input--phone" placeholder="۰۹xxxxxxxxx"
+            value={toPersianDigits(phone)} required inputRef={phoneInput} error={!!error}
             aria-describedby={error ? "auth-preview-error" : undefined}
-            onChange={(event) => { setPhone(event.target.value); setError(""); }} />
+            onChange={(event) => { setPhone(normalizeDigits(event.target.value)); setError(""); }} />
           <button className="primary-button" type="submit">دریافت کد تأیید</button>
           {error && <p id="auth-preview-error" role="alert" className="form-status form-status--error">{error}</p>}
         </form>
@@ -51,7 +51,7 @@ export function AuthPreviewForm() {
           <FormField id="auth-code" label="کد نمونه (اختیاری)" type="text"
             autoComplete="off" inputMode="numeric" maxLength={6}
             className="field__input--phone auth-card__code-input"
-            placeholder="شش رقم نمونه" value={code} inputRef={codeInput}
+            placeholder="شش رقم نمونه" value={toPersianDigits(code)} inputRef={codeInput}
             onChange={(event) => setCode(normalizeDigits(event.target.value).replace(/\D/g, "").slice(0, 6))} />
           <Link className="primary-button" href="/buyer/profile?mode=preview">ادامه نمایشی به تکمیل پروفایل</Link>
           <button className="auth-card__secondary" type="button" onClick={() => {

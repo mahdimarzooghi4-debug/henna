@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toPersianDigits } from "../lib/normalize-digits";
 import { useEffect, useState } from "react";
 import { AddReferenceCartItem } from "./buyer-reference-cart";
 import {
@@ -246,14 +247,14 @@ function BuyerOffers({ productId, reloadToken }: {
                 onClick={() => setPage((value) => Math.max(1, value - 1))}>
                 قبلی
               </button>
-              <span>صفحهٔ {page} از {pageCount}</span>
+              <span>صفحهٔ {toPersianDigits(page)} از {toPersianDigits(pageCount)}</span>
               <button type="button" disabled={page >= pageCount}
                 onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>
                 بعدی
               </button>
             </nav>
           )}
-          <p className="buyer-offers-count">نمایش {start + 1} تا {Math.min(start + current.data.items.length, current.data.total)} از {current.data.total} پیشنهاد</p>
+          <p className="buyer-offers-count">نمایش {toPersianDigits(start + 1)} تا {toPersianDigits(Math.min(start + current.data.items.length, current.data.total))} از {toPersianDigits(current.data.total)} پیشنهاد</p>
         </>
       )}
     </section>

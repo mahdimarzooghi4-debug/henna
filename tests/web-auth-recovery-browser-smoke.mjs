@@ -137,7 +137,8 @@ async function main() {
       document.documentElement.scrollWidth <= window.innerWidth),
     true, "existing approved auth card must fit a 375px mobile browser");
 
-  await page.locator("#auth-phone").fill("۰۹۱۲۳۴۵۶۷۸۹");
+  await page.locator("#auth-phone").fill(phone);
+  assert.equal(await page.locator("#auth-phone").inputValue(), "۰۹۱۲۳۴۵۶۷۸۹");
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await page.locator("#auth-code").waitFor();
   await page.waitForFunction(() =>
@@ -171,7 +172,7 @@ async function main() {
   await page.waitForFunction(() =>
     document.activeElement?.id === "auth-phone");
   assert.equal(await page.locator("#auth-code").count(), 0);
-  assert.equal(await page.locator("#auth-phone").inputValue(), phone);
+  assert.equal(await page.locator("#auth-phone").inputValue(), "۰۹۱۲۳۴۵۶۷۸۹");
   assert.equal(otpRequests, 4);
   assert.equal(verifyCalls, 0);
 
@@ -191,6 +192,7 @@ async function main() {
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await page.locator("#auth-code").waitFor();
   await page.locator("#auth-code").fill("123");
+  assert.equal(await page.locator("#auth-code").inputValue(), "۱۲۳");
   await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.getByText("کد تأیید باید شش رقم باشد.").waitFor();
   assert.equal(verifyCalls, 0);
@@ -212,7 +214,7 @@ async function main() {
   }).waitFor();
   assert.equal(verifyCalls, 2);
   assert.equal(await page.locator("#auth-code").inputValue(),
-    "888888");
+    "۸۸۸۸۸۸");
   await page.locator("#auth-code").fill("۱۲۳۴۵۶");
   await page.getByRole("button", { name: "ورود و ادامه" }).click();
   await page.getByText("ورود انجام شده است", {
@@ -238,21 +240,28 @@ async function main() {
     return route.abort();
   });
   const previewPage = await previewContext.newPage();
-  await previewPage.goto(base + "/auth");
+  await previewPage.goto(base + "/");
+  await previewPage.locator('header a[href="/auth"]').click();
+  await previewPage.waitForURL(base + "/auth");
   await previewPage.getByTestId("auth-ui-preview").waitFor();
   await previewPage.locator("#auth-phone").fill("123");
   await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await previewPage.getByTestId("auth-ui-preview").getByRole("alert").waitFor();
   assert.equal(await previewPage.locator("#auth-code").count(), 0);
   await previewPage.locator("#auth-phone").fill(phone);
+  assert.equal(await previewPage.locator("#auth-phone").inputValue(), "۰۹۱۲۳۴۵۶۷۸۹");
+  assert.equal(await previewPage.locator("#auth-phone").getAttribute("placeholder"), "۰۹xxxxxxxxx");
   await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await previewPage.locator("#auth-code").waitFor();
+  await previewPage.locator("#auth-code").fill("123456");
+  assert.equal(await previewPage.locator("#auth-code").inputValue(), "۱۲۳۴۵۶");
   await previewPage.getByText("هیچ پیامکی ارسال نشده است", { exact: false }).waitFor();
   await previewPage.getByRole("button", { name: "ویرایش شماره" }).click();
   await previewPage.locator("#auth-phone").waitFor();
   await previewPage.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await previewPage.getByRole("link", { name: "ادامه نمایشی به تکمیل پروفایل" }).click();
   await previewPage.waitForURL(base + "/buyer/profile?mode=preview");
+  await previewPage.getByRole("heading", { name: "تکمیل اطلاعات حساب" }).waitFor();
   assert.equal(previewApiCalls, 0);
   assert.equal(await previewPage.evaluate(() => localStorage.length + sessionStorage.length), 0);
   assert.equal((await previewContext.cookies()).length, 0);

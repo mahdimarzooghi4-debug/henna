@@ -154,7 +154,7 @@ async function main() {
   await page.getByRole("link", { name: "مشاهدهٔ سبد مرجع" }).click();
   await page.waitForURL(base + "/buyer/cart");
   await page.getByRole("heading", { name: good.name }).waitFor();
-  await page.getByText("2.5 کیلوگرم · مقدار درخواستی").waitFor();
+  await page.getByText("۲.۵ کیلوگرم · مقدار درخواستی").waitFor();
   await page.getByRole("button", { name: "حذف از سبد" }).click();
   await page.getByRole("heading", { name: "سبد مرجع خالی است" }).waitFor();
   assert.deepEqual(cart, { revision: 2, items: [] });

@@ -174,6 +174,16 @@ async function main() {
     assert.equal(await homeNav.getByRole("link", { name: removed, exact: true }).count(),
       0, removed + " must not appear in homepage navigation");
   }
+  // Figma WEB / 11 Auth: the shared homepage login action must reach
+  // the existing auth route without requiring a working SMS provider.
+  const loginLink = page.locator('header a[href="/auth"]');
+  assert.equal(await loginLink.count(), 1, "Shared header login must target /auth");
+  assert.equal(await page.locator('header a[href="/account/profile"]').count(), 0);
+  await loginLink.click();
+  await page.waitForURL(base + "/auth");
+  await page.getByRole("heading", { name: "ورود یا ثبت‌نام در حنا" }).waitFor();
+  await page.locator("#auth-phone").waitFor();
+  await page.goto(base + "/");
   const allCategoriesNav = page.getByRole("navigation", {
     name: "دسته‌بندی اصلی",
   }).getByRole("link", { name: "همه دسته‌ها", exact: true });
@@ -305,16 +315,26 @@ async function main() {
   await cartTitle.waitFor();
   assert.deepEqual(await readDemoCart(), expected);
 
-  // The homepage's recommendation action follows the same direct-cart flow.
+  // Homepage add stays on the homepage; only an explicit cart click navigates.
   await page.goto(base + "/");
   assert.equal(await page.locator('#offers article a[href^="/products/"]').count(), 0,
     "Homepage recommendations do not use the sample detail page");
   const riceOffer = page.locator("#offers article").filter({ hasText: "برنج هاشمی درجه یک" });
-  await riceOffer.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  const homeAdd = riceOffer.getByTestId("preview-product-add");
+  await homeAdd.click();
+  await page.locator('header a[href="/buyer/cart?mode=preview"] span').filter({ hasText: /^۴$/ }).waitFor();
+  assert.equal(await riceOffer.getByRole("status").count(), 0,
+    "Successful homepage add must not display a confirmation message");
+  assert.equal(new URL(page.url()).pathname, "/", "Homepage add must not navigate");
+  assert.equal(await homeAdd.isEnabled(), true, "Shopping can continue after add");
   const withRice = [...expected, { productId: "rice", quantity: 1 }];
   assert.deepEqual(await readDemoCart(), withRice, "Homepage adds the exact chosen item");
+  const homeCartLink = page.locator('header a[href="/buyer/cart?mode=preview"]');
+  await homeCartLink.locator("span").filter({ hasText: /^۴$/ }).waitFor();
+  await homeCartLink.click();
+  await page.waitForURL(cartUrl);
+  await cartTitle.waitFor();
+  assert.deepEqual(await readDemoCart(), withRice, "Opening the cart does not add another item");
   await page.getByRole("heading", { name: "برنج هاشمی درجه یک", exact: true }).waitFor();
 
   // Figma 227:1368 — Basket layout on the existing dynamic sample cart.
@@ -534,6 +554,15 @@ async function main() {
   const checkout=page.getByTestId("preview-checkout-page");
   const checkoutLayout=checkout.getByTestId("preview-checkout-layout");
   await checkoutLayout.waitFor();
+  const invoiceOption = checkout.getByRole("checkbox", { name: "خرید حقوقی و دریافت فاکتور رسمی" });
+  assert.equal(await invoiceOption.isChecked(), false);
+  await invoiceOption.check();
+  await checkout.getByTestId("preview-legal-company-note").waitFor();
+  assert.equal(await checkout.getByPlaceholder("نام شرکت ثبت‌شده").count(), 0,
+    "Checkout must not ask for already registered company information");
+  await invoiceOption.uncheck();
+  assert.equal(await invoiceOption.isChecked(), false);
+  assert.equal(await checkout.getByTestId("preview-legal-company-note").count(), 0);
   const pickup=checkout.getByRole("radio",{name:"تحویل حضوری از فروشگاه",exact:true});
   const courier=checkout.getByRole("radio",{name:"ارسال با پیک",exact:true});
   const fee=checkout.getByTestId("preview-delivery-fee");
@@ -773,6 +802,39 @@ async function main() {
     })));
   assert.deepEqual(svgSizes, Array(3).fill({ width: 20, height: 20 }),
     "Footer social icons render at a consistent 20px square");
+
+  // Figma WEB / 10 Account (227:2250): preserve existing preview routes.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(base + "/buyer/account?mode=preview");
+  const account = page.getByTestId("preview-account");
+  const accountNav = account.getByRole("complementary", { name: "بخش‌های حساب کاربری" });
+  const accountLegal = account.getByTestId("preview-account-legal");
+  const accountSummary = account.getByTestId("preview-account-summary");
+  const accountInfo = account.getByTestId("preview-account-info");
+  await accountInfo.waitFor();
+  const navBox = await accountNav.boundingBox();
+  const legalBox = await accountLegal.boundingBox();
+  const summaryBox = await accountSummary.boundingBox();
+  const infoBox = await accountInfo.boundingBox();
+  assert.equal(navBox.width, 320, "Account nav matches Figma width");
+  assert.ok(navBox.x > legalBox.x, "Account nav is on the right");
+  assert.ok(legalBox.y < summaryBox.y && summaryBox.y < infoBox.y,
+    "Legal, summary and info are separate ordered cards");
+  assert.equal(await accountNav.locator('[aria-current="page"]').textContent(), "اطلاعات حساب");
+  assert.equal(await accountInfo.locator("dl > div").count(), 3);
+  const fieldBoxes = await accountInfo.locator("dl > div").evaluateAll(nodes =>
+    nodes.map(node => ({ x: node.offsetLeft, y: node.offsetTop, width: node.offsetWidth })));
+  assert.ok(fieldBoxes[0].width > fieldBoxes[1].width);
+  assert.equal(fieldBoxes[1].y, fieldBoxes[2].y);
+  assert.equal(await accountInfo.getByRole("link", { name: "ویرایش اطلاعات حساب" }).getAttribute("href"), "/buyer/profile?mode=preview");
+  await accountLegal.getByText("اطلاعات شرکت نمونه ثبت شده است", { exact: true }).waitFor();
+  assert.equal(await accountLegal.getByRole("checkbox").count(), 0,
+    "Invoice opt-in belongs to the order, not account company data");
+  await accountLegal.getByRole("button", { name: "مشاهده اطلاعات" }).click();
+  await accountLegal.getByRole("status").waitFor();
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
+    "Account layout must not overflow mobile viewport");
 
   // The same shared chrome must remain inside the viewport on mobile.
   await page.setViewportSize({ width: 390, height: 844 });
