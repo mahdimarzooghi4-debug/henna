@@ -97,8 +97,8 @@ export function FigmaBasketReviewPreview() {
         <div className={styles.metrics}>
           <div><span>جمع کالاها:</span><strong>{format(subtotal + discount)} تومان</strong></div>
           <div><span>تخفیف ویژه کالابرگ:</span><strong className={styles.discount}>{format(discount)} تومان</strong></div>
-          <div><span>هزینه ارسال محلی:</span><strong>رایگان</strong></div>
-          <div className={styles.total}><span>مبلغ نهایی:</span><strong>{format(subtotal)} تومان</strong></div>
+          <div><span>هزینه ارسال:</span><strong>پس از انتخاب روش تحویل</strong></div>
+          <div className={styles.total}><span>مبلغ کالاها پس از تخفیف:</span><strong>{format(subtotal)} تومان</strong></div>
         </div>
         <div className={styles.divider} />
         <div className={styles.reviewActions}>

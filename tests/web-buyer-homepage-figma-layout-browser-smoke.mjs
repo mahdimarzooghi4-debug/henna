@@ -444,6 +444,7 @@ async function main() {
       const filters = main.querySelector('[role="group"]');
       return {
         content:rect(content),card:rect(card),filters:rect(filters),firstFilter:rect(filters.querySelector("button")),
+        filterDirection:getComputedStyle(filters).direction,filterButtons:Array.from(filters.querySelectorAll("button"),rect),filterPaddingRight:parseFloat(getComputedStyle(filters).paddingRight),filterBorderRight:parseFloat(getComputedStyle(filters).borderRightWidth),
         identity:rect(card.querySelector('[data-testid="preview-seller-identity"]')),
         availability:rect(card.querySelector('[data-testid="preview-seller-availability"]')),
         price:rect(card.querySelector('[data-testid="preview-seller-price"]')),
@@ -460,6 +461,13 @@ async function main() {
     near(g.card.width,g.content.width,"Comparison full-width card at "+width);
     assert.equal(g.background,"rgb(250, 248, 245)");
     assert.ok(g.scrollWidth <= g.clientWidth+1,"Comparison no horizontal overflow at "+width);
+    assert.equal(g.filterDirection,"rtl","Comparison sorting direction at "+width);
+    near(g.filters.right-g.firstFilter.right,g.filterPaddingRight+g.filterBorderRight,"First sort tab starts at right edge at "+width);
+    for(let i=1;i<g.filterButtons.length;i++){
+      const prev=g.filterButtons[i-1],curr=g.filterButtons[i];
+      if(Math.abs(curr.y-prev.y)<2)assert.ok(curr.right<=prev.x,"Sort tabs run right to left at "+width);
+      else assert.ok(curr.y>prev.y,"Wrapped sort tabs keep row order at "+width);
+    }
     if (width>=1440) {
       near(g.content.width,1280,"Comparison Figma canvas");
       near(g.availability.width,220,"Comparison availability width");
@@ -468,7 +476,7 @@ async function main() {
       near(g.identity.x-g.availability.right,24,"Comparison column gap");
       assert.ok(g.identity.x>g.availability.x && g.availability.x>g.price.x && g.price.x>g.action.x,
         "Figma RTL four-column order");
-      near(g.firstFilter.x-g.filters.x,17,"Figma left-aligned sorting");
+      near(g.filters.right-g.firstFilter.right,17,"Right-aligned comparison sorting");
     }
     if(width===390) assert.ok(g.action.y>g.price.y,"Comparison action follows price on mobile");
   }
@@ -519,6 +527,79 @@ async function main() {
     if(width===390)assert.ok(g.summary.y>=g.lines.bottom,"Mobile invoice follows review items");
   }
   await page.setViewportSize({width:1440,height:900});
+  // Checkout shares the same aligned canvas. Delivery choice is functional,
+  // but no courier price is fabricated from the preview fixtures.
+  await review.getByRole("link",{name:"ادامه ثبت سفارش"}).click();
+  await page.waitForURL(base+"/buyer/checkout?mode=preview");
+  const checkout=page.getByTestId("preview-checkout-page");
+  const checkoutLayout=checkout.getByTestId("preview-checkout-layout");
+  await checkoutLayout.waitFor();
+  const pickup=checkout.getByRole("radio",{name:"تحویل حضوری از فروشگاه",exact:true});
+  const courier=checkout.getByRole("radio",{name:"ارسال با پیک",exact:true});
+  const fee=checkout.getByTestId("preview-delivery-fee");
+  const checkoutTotal=checkout.getByTestId("preview-checkout-total");
+  const submitPreview=checkout.getByRole("button",{name:"ثبت سفارش",exact:true});
+  assert.equal(await pickup.isChecked(),true);
+  assert.equal(await fee.textContent(),"۰ تومان");
+  assert.equal(await checkout.getByTestId("preview-courier-fields").count(),0);
+  await checkout.getByTestId("preview-pickup-info").getByText("فروشگاه نمونه ۱ (محله رسالت)",{exact:true}).waitFor();
+  const pickupTotal=await checkoutTotal.textContent();
+  assert.ok(pickupTotal.includes("تومان"));
+  assert.equal(await submitPreview.isEnabled(),true);
+  await courier.check();
+  await checkout.getByTestId("preview-courier-fields").waitFor();
+  assert.equal(await fee.textContent(),"در انتظار تعیین هزینه پیک");
+  assert.equal(await checkoutTotal.textContent(),"پس از تعیین هزینه پیک");
+  assert.equal(await submitPreview.isDisabled(),true);
+  assert.equal(await checkout.getByTestId("preview-pickup-info").count(),0);
+  await checkout.getByRole("button",{name:"تغییر موقعیت روی نقشه"}).waitFor();
+  assert.deepEqual(await readDemoCart(),expected,"Delivery selection does not mutate the cart");
+  assert.deepEqual(await page.getByTestId("marketplace-category-nav").getByRole("link").allTextContents(),
+    ["همه دسته‌ها","طرح‌های ویژه حنا","کالابرگ الکترونیکی","تخفیف‌های طلایی"]);
+  for(const width of [1440,1650,1150,390]){
+    await page.setViewportSize({width,height:900});
+    const g=await page.evaluate(()=>{
+      const rect=el=>{const {x,y,width,height,right,bottom}=el.getBoundingClientRect();return {x,y,width,height,right,bottom}};
+      const layout=document.querySelector('[data-testid="preview-checkout-layout"]');
+      return {layout:rect(layout),fields:rect(layout.querySelector('[data-testid="preview-checkout-fields"]')),
+        summary:rect(layout.querySelector('[data-testid="preview-checkout-summary"]')),
+        header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
+        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
+    });
+    near(g.layout.x,g.header.x,"Checkout header alignment at "+width);
+    near(g.layout.right,g.header.right,"Checkout right edge at "+width);
+    near(g.footer.x,g.layout.x,"Checkout footer alignment at "+width);
+    near(g.footer.right,g.layout.right,"Checkout footer right edge at "+width);
+    assert.ok(g.scrollWidth<=g.clientWidth+1,"Checkout no horizontal overflow at "+width);
+    if(width>=1440){
+      near(g.layout.width,1280,"Checkout desktop canvas");
+      near(g.summary.width,400,"Checkout summary width");
+      near(g.fields.x-g.summary.right,32,"Checkout column gap");
+    }
+    if(width===390)assert.ok(g.summary.y>=g.fields.bottom,"Mobile summary follows checkout fields");
+  }
+  await page.setViewportSize({width:1440,height:900});
+  await pickup.check();
+  assert.equal(await checkoutTotal.textContent(),pickupTotal,"Switching back to pickup restores item-only total");
+  assert.equal(await fee.textContent(),"۰ تومان");
+  assert.equal(await checkout.getByTestId("preview-courier-fields").count(),0);
+  assert.equal(await submitPreview.isEnabled(),true);
+  await submitPreview.click();
+  await page.waitForURL(base+"/buyer/success?mode=preview");
+  const pickupOrder=await page.evaluate(()=>JSON.parse(sessionStorage.getItem("henna:figma-preview-order:v1")));
+  assert.equal(pickupOrder.deliveryMethod,"pickup");
+  assert.equal(pickupOrder.deliveryFee,0);
+  assert.equal(pickupOrder.address,"دریافت حضوری از فروشگاه نمونه ۱ (محله رسالت)");
+  assert.deepEqual(pickupOrder.items,expected);
+  assert.deepEqual(await readDemoCart(),[]);
+  // Restore fixture state for the remainder of the existing buyer journey.
+  await page.evaluate(items=>{
+    localStorage.setItem("henna:landing-preview-cart:v1",JSON.stringify(items));
+    sessionStorage.removeItem("henna:figma-preview-order:v1");
+  },expected);
+  await page.goto(base+"/buyer/review?mode=preview");
+  await reviewLayout.waitFor();
   await review.getByRole("link",{name:"بازگشت به مقایسه فروشگاه‌ها",exact:true}).click();
   await page.waitForURL(base+"/buyer/compare?mode=preview");
   await sellerCards.first().waitFor();
