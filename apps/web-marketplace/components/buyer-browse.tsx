@@ -369,8 +369,11 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
           </div>
           <div className={styles.figmaFilterGroup}>
             <h3>ویژگی‌ها</h3>
-            <label title="داده تأییدشده برای این فیلتر موجود نیست"><input type="checkbox" disabled /> کالابرگ / اعتبارها (در صورت وجود)</label>
-            <label title="داده تأییدشده برای این فیلتر موجود نیست"><input type="checkbox" disabled /> دارای پیشنهادها</label>
+            <nav className={styles.featureLinks} aria-label="ویژگی‌های حنا">
+              <Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link>
+              <Link href="/#offers">تخفیف‌های طلایی</Link>
+              <Link href="/benefits#special-plans">طرح‌های ویژه حنا</Link>
+            </nav>
           </div>
           <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
         </aside>
