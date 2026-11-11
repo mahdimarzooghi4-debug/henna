@@ -7,9 +7,9 @@ import { LandingCartCount } from "./landing-demo-cart";
 // Keep the catalog chrome in sync with the owner's approved homepage navigation.
 const navItems = [
   ["همه دسته‌ها", "/products"],
-  ["طرح‌های ویژه حنا", "/benefits#special-plans"],
-  ["کالابرگ الکترونیکی", "/benefits#food-credit"],
-  ["تخفیف‌های طلایی", "/#offers"],
+  ["طرح‌های ویژه حنا", "/benefits/special-plans"],
+  ["کالابرگ الکترونیکی", "/benefits/food-credit"],
+  ["تخفیف‌های طلایی", "/discounts"],
 ] as const;
 
 const footerColumns = [
@@ -34,7 +34,7 @@ const footerColumns = [
   {
     title: "طرح‌های حمایتی",
     links: [
-      ["ثبت‌نام کالابرگ", "/benefits#food-credit"],
+      ["راهنمای کالابرگ", "/benefits/food-credit"],
       ["اعتبارات سازمانی", "/benefits"],
       ["کارت‌های معیشتی", "/benefits"],
       ["گزارش شفافیت مالی", "/impact"],
@@ -88,7 +88,7 @@ export function MarketplaceChrome({ footerOnly = false, initialSearch = "", bask
               <h2>{column.title}</h2>
               {column.links.map(([label, href]) => <Link href={
                 basket && label === "اعتبارات سازمانی" ? "/organization" :
-                basket && label === "کارت‌های معیشتی" ? "/benefits#food-credit" : href
+                basket && label === "کارت‌های معیشتی" ? "/benefits/food-credit" : href
               } key={label}>{label}</Link>)}
             </div>
           ))}
