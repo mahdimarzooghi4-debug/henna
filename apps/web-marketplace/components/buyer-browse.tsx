@@ -389,9 +389,9 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "", initi
           <div className={styles.figmaFilterGroup}>
             <h3>ویژگی‌ها</h3>
             <nav className={styles.featureLinks} aria-label="ویژگی‌های حنا">
-              <Link href={catalogCollectionHref("kalabarg")}>کالابرگ الکترونیکی</Link>
-              <Link href={catalogCollectionHref("golden")}>تخفیف‌های طلایی</Link>
-              <Link href={catalogCollectionHref("henna")}>طرح‌های ویژه حنا</Link>
+              <Link href={catalogCollectionHref("kalabarg")} aria-current={initialCollection === "kalabarg" ? "page" : undefined}>کالابرگ الکترونیکی</Link>
+              <Link href={catalogCollectionHref("golden")} aria-current={initialCollection === "golden" ? "page" : undefined}>تخفیف‌های طلایی</Link>
+              <Link href={catalogCollectionHref("henna")} aria-current={initialCollection === "henna" ? "page" : undefined}>طرح‌های ویژه حنا</Link>
             </nav>
           </div>
           <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
