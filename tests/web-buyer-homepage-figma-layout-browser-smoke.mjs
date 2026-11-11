@@ -162,6 +162,51 @@ async function main() {
   }));
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base + "/");
+  // Owner request: the three carousel secondary CTAs are removed, while each
+  // slide retains one real /products action and the slider controls.
+  const heroActions = page.locator('section[aria-labelledby="home-title"]');
+  const slideButtons = [
+    ["مشاهده پیشنهادها", "شروع خرید روزانه"],
+    ["طرح‌های مسئولیت اجتماعی", "خرید از کسب‌وکارهای محلی"],
+    ["استعلام اعتبار یارانه", "خرید با کالابرگ"],
+  ];
+  for (let i=0;i<slideButtons.length;i++) {
+    if(i>0) await heroActions.getByRole("button", {
+      name: "رفتن به اسلاید " + (i+1),
+    }).click();
+    const [removed, retained] = slideButtons[i];
+    assert.equal(await heroActions.getByRole("link",{name:removed,exact:true}).count(),0,
+      removed+" must not appear in slide "+(i+1));
+    assert.equal(await heroActions.locator("a").count(),1,
+      "Each hero slide keeps exactly one shopping link");
+    assert.equal(await heroActions.getByRole("link",{name:retained,exact:true}).getAttribute("href"),
+      "/products","Primary shopping CTA remains functional");
+  }
+
+  // Each colored card and the shared category menu must lead to an actual,
+  // distinguishable destination, not a legacy anchor into account credits.
+  const promoRoutes = [
+    ["/discounts","پیشنهادها و تخفیف‌های حنا"],
+    ["/benefits/food-credit","کالابرگ الکترونیکی"],
+    ["/benefits/special-plans","طرح‌های ویژه حنا"],
+  ];
+  const promoCards = page.locator('section[aria-labelledby="home-title"] + div > a');
+  assert.deepEqual(await promoCards.evaluateAll(anchors=>anchors.map(a=>a.getAttribute("href"))),
+    promoRoutes.map(([route])=>route),"Three home promo cards have distinct page routes");
+  for(let i=0;i<promoRoutes.length;i++){
+    const [url,heading] = promoRoutes[i];
+    await promoCards.nth(i).click();
+    await page.waitForURL(base+url);
+    await page.getByRole("heading",{name:heading,exact:true}).first().waitFor();
+    assert.equal(new URL(page.url()).hash,"","Promo must open its page, not a dead anchor");
+    await page.goto(base+"/");
+  }
+  const expectedHomeNavRoutes = [
+    "/discounts", "/benefits/food-credit", "/benefits/special-plans", "/products",
+  ];
+  assert.deepEqual(await page.getByRole("navigation",{name:"دسته‌بندی اصلی"})
+    .getByRole("link").evaluateAll(links=>links.map(a=>a.getAttribute("href"))),
+    expectedHomeNavRoutes,"Homepage category links open their dedicated pages");
   // Owner-approved homepage-only simplification; product catalog chrome is separate.
   const homeNav = page.getByRole("navigation", { name: "دسته‌بندی اصلی" });
   assert.deepEqual(await homeNav.getByRole("link").allTextContents(), [
@@ -215,7 +260,7 @@ async function main() {
     "Three owner-approved sidebar feature labels in exact order");
   assert.deepEqual(await featureNav.getByRole("link").evaluateAll(
     links => links.map(link => link.getAttribute("href"))),
-    ["/benefits#food-credit", "/#offers", "/benefits#special-plans"],
+    ["/benefits/food-credit", "/discounts", "/benefits/special-plans"],
     "Feature destinations match existing first-party homepage routes");
   assert.equal(await featureNav.locator('input[type="checkbox"]').count(), 0,
     "No misleading eligibility checkboxes in the feature area");
@@ -354,7 +399,7 @@ async function main() {
   ], "Basket uses the approved four-link navigation");
   assert.deepEqual(await cartNav.getByRole("link").evaluateAll(
     links => links.map(link => link.getAttribute("href"))),
-    ["/products", "/benefits#special-plans", "/benefits#food-credit", "/#offers"]);
+    ["/products", "/benefits/special-plans", "/benefits/food-credit", "/discounts"]);
   assert.equal(await page.getByTestId("marketplace-announcement").count(), 0,
     "Basket reference has no catalog announcement strip");
   assert.equal(await page.getByRole("link", { name: "ثبت‌نام فروشگاه‌ها", exact: true }).getAttribute("href"),
@@ -765,7 +810,7 @@ async function main() {
     "کالابرگ الکترونیکی", "تخفیف‌های طلایی",
   ];
   const navHrefs = [
-    "/products", "/benefits#special-plans", "/benefits#food-credit", "/#offers",
+    "/products", "/benefits/special-plans", "/benefits/food-credit", "/discounts",
   ];
   assert.deepEqual(await productNav.getByRole("link").allTextContents(), navLabels,
     "Product categories must contain only the four approved homepage links");
