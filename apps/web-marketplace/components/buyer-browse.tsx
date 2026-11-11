@@ -166,9 +166,13 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
     setCategoryName("");
     setCategoryNameStatus("none");
     setCategoryRecovery("");
-    window.history.replaceState(
-      window.history.state, "", buyerBrowseHref(next) + window.location.hash,
-    );
+    // Dedicated category pages must keep their stable shareable path.
+    // The regular /products listing still canonicalizes to a validated ID.
+    if (window.location.pathname === "/products") {
+      window.history.replaceState(
+        window.history.state, "", buyerBrowseHref(next) + window.location.hash,
+      );
+    }
   }, [categoryName, categoryNameStatus, categories, search]);
 
   useEffect(() => {
