@@ -309,7 +309,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
 
   return (
     <main dir="rtl" className={`buyer-main ${styles.main}`}>
-      <h1 className={styles.visuallyHidden}>کالاها و خدمات منتشرشده در حنا</h1>
+      <h1 className={styles.visuallyHidden}>کالاهای منتشرشده در حنا</h1>
       <div className={styles.layout}>
         <aside className={styles.filters} aria-labelledby="buyer-filter-title">
           <h2 id="buyer-filter-title">فیلترها</h2>
@@ -384,7 +384,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
               <Link href="/benefits/special-plans">طرح‌های ویژه حنا</Link>
             </nav>
           </div>
-          <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
+          <p className={styles.filterNote}>فهرست فقط کالاهای منتشرشده را نشان می‌دهد.</p>
         </aside>
         <div className={styles.results}>
       <div className={styles.toolbar} dir="rtl" data-testid="products-filter-toolbar">
@@ -413,7 +413,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
         ) : categoryNameStatus === "unavailable" || categoryNameStatus === "not-found" ? (
           <div className="buyer-panel buyer-products-status" role="status">
             <p>برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.</p>
-            <Link href="/products">مشاهده صفحه همه کالاها و خدمات</Link>
+            <Link href="/products">مشاهده صفحه همه کالاها</Link>
           </div>
         ) : !search && !selected && (current.status === "loading" || current.status === "unavailable" || current.data.items.length === 0) ? (
           <FigmaCatalogPreview filter={previewFilter} sort={previewSort} />
@@ -440,7 +440,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
                   <li className="buyer-product" key={item.id}>
                     <div className={styles.productVisual} aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M10 18h28l-2 22H12l-2-22Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M17 19v-4a7 7 0 0 1 14 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M20 27h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg></div>
                     <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
-                    <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}</p>
+                    <p className="buyer-product__kind">کالا</p>
                     {item.description && <p>{item.description}</p>}
                   </li>
                 ))}

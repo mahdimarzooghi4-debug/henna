@@ -95,7 +95,7 @@ export function BuyerProductDetail({ id, backHref }: {
   return (
     <main dir="rtl" className="buyer-detail-main">
       <p className="buyer-detail-eyebrow">جزئیات کاتالوگ عمومی حنا</p>
-      <h1>جزئیات کالا یا خدمت</h1>
+      <h1>جزئیات کالا</h1>
       <p className="buyer-detail-intro">
         فقط اطلاعات منتشرشده از API حنا؛ خرید در این مرحله فعال نیست.
       </p>
@@ -105,7 +105,7 @@ export function BuyerProductDetail({ id, backHref }: {
           role="status">در حال دریافت جزئیات…</div>
       ) : current.status === "missing" ? (
         <div className="buyer-detail-card buyer-detail-card--status">
-          <h2>این کالا یا خدمت پیدا نشد</h2>
+          <h2>این کالا پیدا نشد</h2>
           <p>این شناسه در کاتالوگ منتشرشدهٔ حنا قابل مشاهده نیست.</p>
         </div>
       ) : current.status === "unavailable" ? (
@@ -124,25 +124,14 @@ export function BuyerProductDetail({ id, backHref }: {
           <article className="buyer-detail-card">
             <p className="buyer-detail-card__eyebrow">محتوای منتشرشدهٔ کاتالوگ</p>
             <h2>{current.product.name}</h2>
-            <p className="buyer-detail-kind">نوع: {
-              current.product.kind === "SERVICE" ? "خدمت" : "کالا"
-            }</p>
             <p className="buyer-detail-category">
               شناسهٔ دسته‌بندی: <bdi dir="ltr">{current.product.categoryId}</bdi>
             </p>
             {current.product.description !== null &&
               <p className="buyer-detail-description">{current.product.description}</p>}
           </article>
-          {current.product.kind === "GOOD" ? (
-            <>
-              <BuyerOffers productId={current.product.id} reloadToken={retry} />
-              <AddReferenceCartItem product={current.product} />
-            </>
-          ) : (
-            <p className="buyer-detail-disclosure">
-              پیشنهاد فروش کالای فیزیکی برای این خدمت نمایش داده نمی‌شود.
-            </p>
-          )}
+          <BuyerOffers productId={current.product.id} reloadToken={retry} />
+          <AddReferenceCartItem product={current.product} />
           <p className="buyer-detail-disclosure">
             قیمت و مقدار، دادهٔ پیشنهاد منتشرشدهٔ فروشنده است؛ مقدار اعلام‌شده تضمین موجودی لحظه‌ای نیست و رزرو، ارسال یا خرید در این مرحله انجام نمی‌شود.
           </p>
@@ -151,11 +140,6 @@ export function BuyerProductDetail({ id, backHref }: {
       <Link href={backHref} className="buyer-detail-button buyer-detail-button--back">
         بازگشت به فهرست کالاها
       </Link>
-      {current.status === "ok" && current.product.kind === "SERVICE" && (
-        <Link href="/buyer/cart" className="buyer-detail-button buyer-detail-button--back">
-          مشاهدهٔ سبد مرجع
-        </Link>
-      )}
     </main>
   );
 }

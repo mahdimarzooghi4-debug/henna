@@ -351,7 +351,7 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
             onPress={onHome} style={({ pressed }) => [styles.headerBack, pressed && styles.pressed]}>
             <Image source={browseBackIcon} style={styles.catalogBackIcon} accessibilityLabel="بازگشت" />
           </Pressable>
-          <Text style={styles.headerTitle}>کالاها و خدمات</Text>
+          <Text style={styles.headerTitle}>کالاها</Text>
           <Image source={logo} resizeMode="contain" style={styles.logo}
             accessibilityLabel="حنا" />
         </View>
@@ -366,8 +366,8 @@ export function BuyerBrowseScreen({ onLogin, link, homeMode = false, onEnterCata
               style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
               <Image source={browseSlidersIcon} style={styles.catalogFilterIcon} accessibilityLabel="فیلترها" />
             </Pressable>
-            <TextInput accessibilityLabel="جست‌وجو در کالاها و خدمات"
-              style={styles.searchInput} placeholder="جست‌وجوی کالاها و خدمات..."
+            <TextInput accessibilityLabel="جست‌وجو در کالاها"
+              style={styles.searchInput} placeholder="جست‌وجوی کالاها..."
               placeholderTextColor="#8e8e93" textAlign="right"
               returnKeyType="search" maxLength={80} value={draftSearch}
               onChangeText={(value) => { setDraftSearch(value); setSearchError(""); }}
