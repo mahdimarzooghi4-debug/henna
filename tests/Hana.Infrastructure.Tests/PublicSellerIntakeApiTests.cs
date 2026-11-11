@@ -58,6 +58,18 @@ public sealed class PublicSellerIntakeApiTests
             confirmed = true,
         };
 
+        object WithOfferingType(string offeringType) => new
+        {
+            payload.storeName, payload.ownerName, payload.phone, payload.city,
+            payload.address, payload.postalCode, payload.applicantType,
+            payload.businessName, payload.businessDescription, offeringType,
+            payload.activityAddress, payload.activityHours, payload.sellerDelivery,
+            payload.pickup, payload.serviceArea, payload.registrationContactName,
+            payload.registrationContactRole, payload.backupPhone,
+            payload.websiteOrSocial, payload.businessEmail, payload.responseHours,
+            payload.confirmed
+        };
+
         async Task<HttpResponseMessage> PostAsync(string? secret, object body)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post,
@@ -80,6 +92,12 @@ public sealed class PublicSellerIntakeApiTests
 
         using var withoutSecret = await PostAsync(null, payload);
         Assert.Equal(HttpStatusCode.BadRequest, withoutSecret.StatusCode);
+        foreach (var invalidOffering in new[] { "SERVICE", "BOTH" })
+        {
+            using var rejected = await PostAsync(token,
+                WithOfferingType(invalidOffering));
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        }
         using var created = await PostAsync(token, payload);
         Assert.Equal(HttpStatusCode.OK, created.StatusCode);
         using var createdJson = JsonDocument.Parse(await created.Content.ReadAsStringAsync());

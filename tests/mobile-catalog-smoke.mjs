@@ -71,7 +71,7 @@ test("public listing supports pagination, category filter and encoded search", a
   }]);
   assert.deepEqual(await client.list({
     page: 2, pageSize: 1, categoryId: CATEGORY,
-    search: " کالا & خدمت? ",
+    search: " کالا & چای? ",
   }), {
     status: "ok",
     data: { items: [product], total: 1, page: 2, pageSize: 1 },
@@ -81,7 +81,7 @@ test("public listing supports pagination, category filter and encoded search", a
   assert.equal(url.searchParams.get("page"), "2");
   assert.equal(url.searchParams.get("pageSize"), "1");
   assert.equal(url.searchParams.get("categoryId"), CATEGORY);
-  assert.equal(url.searchParams.get("search"), "کالا & خدمت?");
+  assert.equal(url.searchParams.get("search"), "کالا & چای?");
   checkPublicCall(calls[0]);
   // An actual empty response is different from a network outage.
   assert.deepEqual(await client.list(), {
@@ -89,6 +89,16 @@ test("public listing supports pagination, category filter and encoded search", a
       items: [], total: 0, page: 1, pageSize: 20,
     },
   });
+});
+
+test("service rows are rejected from public listings and details", async () => {
+  const listing = harness([{
+    body: { items: [{ ...product, kind: "SERVICE" }], total: 1, page: 1, pageSize: 20 },
+  }]);
+  assert.deepEqual(await listing.client.list(), { status: "unavailable" });
+
+  const detail = harness([{ body: { ...product, kind: "SERVICE" } }]);
+  assert.deepEqual(await detail.client.detail(PRODUCT), { status: "unavailable" });
 });
 
 test("published detail is shaped without price; non-public detail is 404", async () => {
