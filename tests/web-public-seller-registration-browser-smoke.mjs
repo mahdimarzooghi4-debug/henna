@@ -122,6 +122,26 @@ try{
   await mobile.getByRole("link",{name:"شروع ثبت‌نام جدید"}).waitFor();
   assert.equal(await mobile.locator("html").evaluate(e=>e.scrollWidth<=window.innerWidth),
     true,"mobile seller Start must not overflow horizontally");
+  // Figma 282:8 -> 282:68 -> 282:119, in a real 390px mobile viewport.
+  await mobile.getByRole("link",{name:"شروع ثبت‌نام جدید"}).click();
+  await mobile.waitForURL(base+"/seller/register/new");
+  const progress=mobile.getByRole("navigation",{
+    name:"پیشرفت ثبت‌نام فروشنده در موبایل",
+  });
+  assert.equal(await progress.locator("div").first().locator("span").count(),8,
+    "the mobile registration progress must have eight Figma stages");
+  await progress.getByText("مرحله ۲ از ۸").waitFor();
+  assert.equal(await mobile.locator("html").evaluate(e=>e.scrollWidth<=window.innerWidth),
+    true,"mobile applicant cards must fit without horizontal scrolling");
+  await mobile.getByLabel("شخص حقوقی").check();
+  assert.equal(await mobile.getByLabel("شخص حقوقی").isChecked(),true);
+  await mobile.getByLabel("شخص حقیقی").check();
+  assert.equal(await mobile.getByLabel("شخص حقیقی").isChecked(),true);
+  await mobile.getByRole("button",{name:"ادامه"}).click();
+  await mobile.getByRole("heading",{name:"احراز هویت",exact:true}).waitFor();
+  await progress.getByText("مرحله ۳ از ۸").waitFor();
+  assert.equal(await mobile.locator("html").evaluate(e=>e.scrollWidth<=window.innerWidth),
+    true,"mobile identity step must remain inside 390px viewport");
   assert.deepEqual(pageErrors,[],"browser runtime errors");
   console.log("PASS public seller Figma start, account-free intake and receipt");
 } finally {
