@@ -324,6 +324,7 @@ jobs:
           for attempt in {1..45}; do
             if curl --fail --silent http://127.0.0.1:3000/auth -o /tmp/hana-auth.html; then
               curl --fail --silent http://127.0.0.1:3000/seller/register -o /tmp/hana-seller.html
+              curl --fail --silent http://127.0.0.1:3000/seller/register/new -o /tmp/hana-seller-new.html
               curl --fail --silent http://127.0.0.1:3000/hana-logo.png -o /tmp/hana-logo.png
               curl --fail --silent http://127.0.0.1:3000/admin/seller-applications -o /tmp/hana-admin-applications.html
               curl --fail --silent http://127.0.0.1:3000/admin/seller-applications/123e4567-e89b-42d3-a456-426614174000 -o /tmp/hana-admin-application.html
@@ -331,14 +332,15 @@ jobs:
               curl --fail --silent http://127.0.0.1:3000/admin/organization-funding-instructions/123e4567-e89b-42d3-a456-426614174000 -o /tmp/hana-admin-funding-instruction.html
               curl --fail --silent http://127.0.0.1:3000/admin-assets/list-imgLogo.png -o /tmp/hana-admin-logo.png
               grep -q 'ورود به حنا' /tmp/hana-auth.html
-              grep -q 'ثبت‌نام فروشگاه در حنا' /tmp/hana-seller.html
+              grep -q 'شروع ثبت‌نام جدید' /tmp/hana-seller.html
+              grep -q 'نوع متقاضی' /tmp/hana-seller-new.html
               grep -q 'درخواست‌های ثبت‌نام فروشنده' /tmp/hana-admin-applications.html
               grep -q 'جزئیات درخواست ثبت‌نام فروشنده' /tmp/hana-admin-application.html
               grep -q 'بررسی دستور منبع سازمان' /tmp/hana-admin-funding-instructions.html
               grep -q 'بررسی دستور منبع سازمان' /tmp/hana-admin-funding-instruction.html
               # No input is editable until the authenticated draft GET and
               # revision have both been loaded by the client.
-              grep -q 'disabled=""' /tmp/hana-seller.html
+              grep -q 'href="/seller/register/new"' /tmp/hana-seller.html
               test -s /tmp/hana-logo.png
               test -s /tmp/hana-admin-logo.png
               # Route mutations need an exact same-origin Origin header.
@@ -438,9 +440,13 @@ jobs:
           set -euo pipefail
           npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.55.1
           npx playwright install --with-deps chromium
+      - name: Verify buyer Figma 190:4 header, nav, hero and category alignment
+        run: node tests/web-buyer-homepage-figma-layout-browser-smoke.mjs
       - name: Browser test seller Catalog offer creation and publication
         run: node tests/web-seller-offers-browser-smoke.mjs
-      - name: Browser test approved buyer login and seller form across two tabs
+      - name: Browser test public Figma seller registration without buyer login
+        run: node tests/web-public-seller-registration-browser-smoke.mjs
+      - name: Browser test legacy account-linked seller form across two tabs
         run: node tests/web-frontend-browser-smoke.mjs
       - name: Test web session recheck policy without interrupting OTP
         run: node --experimental-strip-types --test tests/web-session-visibility-smoke.mjs
@@ -559,6 +565,13 @@ jobs:
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
         run: ./gradlew :app:assembleRelease --no-daemon
         working-directory: apps/mobile-consumer/android
+      - name: Upload installable test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: henna-android-test-apk-${{ github.sha }}
+          path: apps/mobile-consumer/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Enable KVM for hardware-accelerated emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -575,3 +588,11 @@ jobs:
           ram-size: 3072M
           disable-animations: true
           script: python3 tests/mobile-android-native-smoke.py
+      - name: Upload actual installed Android app preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: henna-android-app-preview-${{ github.sha }}
+          path: henna-android-*-preview.png
+          if-no-files-found: warn
+          retention-days: 7

@@ -4,3 +4,8 @@ export function normalizeDigits(value: string): string {
     .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0))
     .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
 }
+
+/** Render digits in Persian without changing the underlying identifier or value. */
+export function toPersianDigits(value: string | number): string {
+  return normalizeDigits(String(value)).replace(/[0-9]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
+}

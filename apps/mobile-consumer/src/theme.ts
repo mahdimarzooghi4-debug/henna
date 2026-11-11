@@ -22,5 +22,4 @@ export const space = {
   xl: 32,
 } as const;
 
-// The Figma file uses Vazirmatn; local licensed font bytes are not yet
-// supplied. React Native uses the platform fallback rather than a fake font.
+// Typography uses the Estedad variable font bundled with the mobile app.

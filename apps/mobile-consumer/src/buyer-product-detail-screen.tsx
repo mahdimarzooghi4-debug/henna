@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import {
   BackHandler, Image, Pressable, ScrollView, StatusBar,
-  StyleSheet, Text, View,
+  StyleSheet, View
 } from "react-native";
+import { Text } from "./typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BuyerDetailController, type BuyerDetailState } from "./buyer-detail-controller.ts";

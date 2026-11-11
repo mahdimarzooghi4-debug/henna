@@ -196,7 +196,7 @@ async function main() {
   assert.equal(otpRequests, 1);
 
   await page.getByRole("button", {
-    name: "تأیید کد و ورود",
+    name: "ورود و ادامه",
   }).click();
   await page.getByText("ورود انجام شده است", {
     exact: false,

@@ -122,7 +122,7 @@ async function main() {
   page.setDefaultTimeout(10000);
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
-  await page.goto(base);
+  await page.goto(base + "/products");
   await page.getByRole("link", { name: published.name, exact: true }).click();
   await page.waitForURL(base + "/products/" + ID);
   await page.getByRole("heading", { name: published.name }).waitFor();
@@ -133,7 +133,7 @@ async function main() {
   assert.equal(await page.getByRole("button", { name: /سبد|خرید/ }).count(), 0);
   await page.getByRole("link", { name: "بازگشت به فهرست کالاها" }).click();
   await page.getByRole("link", { name: published.name, exact: true }).waitFor();
-  assert.equal(new URL(page.url()).pathname, "/");
+  assert.equal(new URL(page.url()).pathname, "/products");
 
   await page.goto(base + "/products/" + OTHER);
   await page.getByRole("heading", { name: good.name }).waitFor();
@@ -154,7 +154,7 @@ async function main() {
   await page.getByRole("link", { name: "مشاهدهٔ سبد مرجع" }).click();
   await page.waitForURL(base + "/buyer/cart");
   await page.getByRole("heading", { name: good.name }).waitFor();
-  await page.getByText("2.5 کیلوگرم · مقدار درخواستی").waitFor();
+  await page.getByText("۲.۵ کیلوگرم · مقدار درخواستی").waitFor();
   await page.getByRole("button", { name: "حذف از سبد" }).click();
   await page.getByRole("heading", { name: "سبد مرجع خالی است" }).waitFor();
   assert.deepEqual(cart, { revision: 2, items: [] });
@@ -237,7 +237,7 @@ async function main() {
   }).getAttribute("href");
   const backLocation = new URL(backHref, base);
   assert.equal(backLocation.origin, base);
-  assert.equal(backLocation.pathname, "/");
+  assert.equal(backLocation.pathname, "/products");
   assert.equal(backLocation.searchParams.get("search"), "جست‌وجوی فارسی");
   assert.equal(backLocation.searchParams.get("page"), "2");
   assert.deepEqual([...backLocation.searchParams.keys()].sort(),
