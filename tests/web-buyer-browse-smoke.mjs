@@ -23,12 +23,10 @@ test("empty published response is not a network or schema failure", () => {
   assert.equal(parseBuyerPage({}, 1), null);
 });
 
-test("legacy service rows without new unit metadata remain valid", () => {
+test("service rows are rejected from the goods-only public catalog", () => {
   const service = { ...product, kind: "SERVICE" };
-  assert.deepEqual(parseBuyerProduct(service, PRODUCT), service);
-  assert.deepEqual(parseBuyerPage({ ...listing, items: [service] }, 1), {
-    ...listing, items: [service],
-  });
+  assert.equal(parseBuyerProduct(service, PRODUCT), null);
+  assert.equal(parseBuyerPage({ ...listing, items: [service] }, 1), null);
 });
 
 test("only allowlisted public catalog identity and description enter the UI", () => {
@@ -56,11 +54,11 @@ test("only allowlisted public catalog identity and description enter the UI", ()
 test("only genuine selected UUID and normalized search reach the browse query", () => {
   assert.equal(buyerCatalogPath(1, null, ""),
     "/api/catalog/products?page=1&pageSize=20");
-  const url = new URL(buyerCatalogPath(2, CATEGORY, "کالا & خدمت"),
+  const url = new URL(buyerCatalogPath(2, CATEGORY, "کالا & چای"),
     "https://www.hana.test");
   assert.deepEqual([...url.searchParams],
     [["page", "2"], ["pageSize", "20"], ["categoryId", CATEGORY],
-      ["search", "کالا & خدمت"]]);
+      ["search", "کالا & چای"]]);
   assert.equal(validBuyerSearch("کالا"), true);
   assert.equal(validBuyerSearch("x".repeat(81)), false);
   assert.equal(validBuyerSearch("a\n"), false);

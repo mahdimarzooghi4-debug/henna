@@ -18,7 +18,7 @@ const goods = Array.from({ length: 21 }, (_, n) => ({
   id: "60000000-0000-4000-8000-" + String(n + 1).padStart(12, "0"),
   categoryId: n === 0 ? categoryA : categoryB,
   name: "عنوان واقعی API در تست " + String(n + 1),
-  kind: n === 0 ? "SERVICE" : "GOOD",
+  kind: "GOOD",
   description: n === 0 ? "توضیح تأییدشدهٔ API" : null,
 }));
 let mode = "empty";

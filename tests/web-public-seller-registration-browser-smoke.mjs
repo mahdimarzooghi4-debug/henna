@@ -64,10 +64,19 @@ try{
   });
 
   await page.goto(base+"/seller/register");
-  await page.getByRole("heading",{name:"ثبت‌نام فروشنده / ارائه‌دهنده"}).waitFor();
-  await page.getByRole("heading",{name:"امکانات پنل فروشنده / ارائه‌دهنده"}).waitFor();
-  assert.equal(await page.getByRole("link",{name:"ورود به حساب کاربری"}).count(),1,
-    "Login may be offered but cannot be a prerequisite");
+  await page.getByRole("heading",{name:"ثبت‌نام فروشنده",exact:true}).waitFor();
+  assert.equal(await page.getByRole("heading",{name:/امکانات پنل/}).count(),0);
+  const banner=page.getByRole("banner");
+  assert.equal(await banner.getByRole("link").count(),1,
+    "the header contains only the home-return action");
+  assert.equal(await banner.getByRole("link",{name:"بازگشت به صفحه اصلی"}).getAttribute("href"),"/");
+  assert.equal(await page.getByTestId("landing-footer-top").count(),1);
+  assert.equal(await page.getByTestId("landing-footer-bottom").count(),1);
+  const startCard=page.locator('[data-testid="seller-register-start"] > div');
+  const cardBounds=await startCard.boundingBox();
+  assert.ok(cardBounds && Math.abs(cardBounds.x+cardBounds.width/2-1365/2)<3,
+    "the registration card is centered");
+  assert.doesNotMatch(await page.locator("body").innerText(),/ارائه.?دهنده|خدمت/);
   await page.getByRole("link",{name:"شروع ثبت‌نام جدید"}).click();
   await page.waitForURL(base+"/seller/register/new");
   await page.getByRole("heading",{name:"نوع متقاضی",exact:true}).waitFor();
@@ -86,9 +95,10 @@ try{
   for(const [key,val] of Object.entries({
     storeName:"فروشگاه آزاد",city:"تهران",address:"نشانی آزمایشی",
     postalCode:"1234567890",businessName:"آزمایش فروشندگی",
-    businessDescription:"فروش و ارائه کالاهای آزمایشی",
+    businessDescription:"فروش کالاهای آزمایشی",
   }))await page.locator('[name="'+key+'"]').fill(val);
-  await page.getByLabel("کالا", {exact:true}).check();
+  assert.match(await page.locator("body").innerText(),/فروش کالا/);
+  assert.doesNotMatch(await page.locator("body").innerText(),/خدمت|ارائه.?دهنده/);
   await page.getByRole("button",{name:"ادامه"}).click();
 
   await page.getByRole("heading",{name:"محدوده فعالیت"}).waitFor();
@@ -130,6 +140,11 @@ try{
   await mobile.setViewportSize({width:390,height:850});
   await mobile.goto(base+"/seller/register");
   await mobile.getByRole("link",{name:"شروع ثبت‌نام جدید"}).waitFor();
+  assert.equal(await mobile.getByRole("banner").getByRole("link").count(),1);
+  assert.equal(await mobile.getByTestId("landing-footer-top").count(),1);
+  const mobileFooter=await mobile.getByTestId("landing-footer-top").boundingBox();
+  assert.ok(mobileFooter && mobileFooter.height>0,"homepage footer remains visible on mobile");
+  assert.doesNotMatch(await mobile.locator("body").innerText(),/ارائه.?دهنده|خدمت/);
   assert.equal(await mobile.locator("html").evaluate(e=>e.scrollWidth<=window.innerWidth),
     true,"mobile seller Start must not overflow horizontally");
   // Figma 282:8 -> 282:68 -> 282:119, in a real 390px mobile viewport.
@@ -143,6 +158,7 @@ try{
   await progress.getByText("مرحله ۲ از ۸").waitFor();
   assert.equal(await mobile.locator("html").evaluate(e=>e.scrollWidth<=window.innerWidth),
     true,"mobile applicant cards must fit without horizontal scrolling");
+  assert.doesNotMatch(await mobile.locator("body").innerText(),/ارائه.?دهنده|خدمت/);
   await mobile.getByLabel("شخص حقوقی").check();
   assert.equal(await mobile.getByLabel("شخص حقوقی").isChecked(),true);
   await mobile.getByLabel("شخص حقیقی").check();

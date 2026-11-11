@@ -138,9 +138,9 @@ async function fakeApi(route) {
     const body = req.postDataJSON();
     assert.equal(body.categoryId, businessCategoryId);
     assert.equal(body.businessName, "کسب‌وکار مرورگر");
-    assert.equal(body.description, "ارائه کالا و خدمات محلی در مرورگر CI");
+    assert.equal(body.description, "فروش کالاهای محلی در مرورگر CI");
     assert.equal(body.businessPhone, "02112345678");
-    assert.equal(body.offeringType, "BOTH");
+    assert.equal(body.offeringType, "GOOD");
     assert.equal(body.revision, draft?.revision);
     assert.equal(draft?.completedStep, 3);
     draft = {
@@ -567,11 +567,11 @@ async function main() {
   await otherTab.locator("#seller-business-name")
     .fill("کسب‌وکار مرورگر");
   await otherTab.locator("#seller-business-description")
-    .fill("ارائه کالا و خدمات محلی در مرورگر CI");
+    .fill("فروش کالاهای محلی در مرورگر CI");
   await otherTab.locator("#seller-business-phone")
     .fill("۰۲۱۱۲۳۴۵۶۷۸");
   await otherTab.getByRole("button", {
-    name: "کالا و خدمت", exact: true,
+    name: "فروش کالا", exact: true,
   }).click();
 
   await otherTab.getByRole("button", {
@@ -582,7 +582,7 @@ async function main() {
   }).waitFor();
   assert.equal(draft.businessCategoryId, businessCategoryId);
   assert.equal(draft.businessPhone, "02112345678");
-  assert.equal(draft.offeringType, "BOTH");
+  assert.equal(draft.offeringType, "GOOD");
   assert.equal(draft.completedStep, 4);
   assert.equal(draft.revision, 6);
   await otherTab.locator(".seller-business__completed").getByText("دسته‌بندی مرورگر CI", { exact: true }).waitFor();
