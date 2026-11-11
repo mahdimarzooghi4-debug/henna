@@ -215,7 +215,7 @@ async function main() {
       .getByRole("link",{name:label,exact:true}).getAttribute("aria-current"),"page",
       "The selected catalog filter is visibly and accessibly active");
     const sourceExplanation = [
-      "فروشگاه‌دار", "مرجع معتبر", "خود حنا",
+      "مغازه‌دار", "مرجع معتبر", "خود حنا",
     ][i];
     await page.getByTestId("catalog-collection-status")
       .getByText(sourceExplanation,{exact:false}).waitFor();
