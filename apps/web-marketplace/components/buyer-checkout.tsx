@@ -7,6 +7,7 @@ import { AddressMapPicker, type SelectedMapPoint } from "./address-map-picker";
 import styles from "./buyer-checkout.module.css";
 import { normalizeDigits, toPersianDigits } from "../lib/normalize-digits";
 import { parsePurchaseDraft, type PurchaseDraft } from "../lib/buyer-cart";
+import { BnplCheckoutGate } from "./bnpl-checkout-gate";
 
 type DraftState = { status: "loading" | "signed-out" | "unavailable" } | { status: "ready"; draft: PurchaseDraft };
 
@@ -184,6 +185,7 @@ export function BuyerCheckout() {
               <span>پرداخت آنلاین با کارت بانکی</span><small>پس از اتصال درگاه فعال می‌شود</small>
             </label>
             <p className={styles.paymentNote}>پرداخت در محل در حنا پشتیبانی نمی‌شود. پرداخت آنلاین تا اتصال درگاه غیرفعال است.</p>
+            <BnplCheckoutGate/>
           </section>
           {validated && Object.values(errors).some(Boolean) && <p className={styles.validationMessage} role="alert">نشانی و اطلاعات گیرنده را بررسی کنید.</p>}
         </form>

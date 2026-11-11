@@ -925,12 +925,42 @@ async function main() {
     }
   }
 
+  // BNPL directory offers real external links, not pretend checkout authorization.
+  for (const width of [1440,390]) {
+    await page.setViewportSize({width,height:900});
+    await page.goto(base + "/buyer/payments?mode=preview");
+    await page.getByTestId("bnpl-provider-cards").waitFor();
+    assert.equal(await page.getByTestId("bnpl-provider-card").count(),3);
+    await page.getByTestId("bnpl-integration-notice").getByText(/متصل نشده/).waitFor();
+    for (const [name,href] of [
+      ["اسنپ‌پی","https://snapppay.ir/"],
+      ["دیجی‌پی","https://www.mydigipay.com/"],
+      ["تارا","https://taracredit.com/"],
+    ]) {
+      const link=page.getByRole("link",{name:"ورود به سایت "+name});
+      assert.equal(await link.getAttribute("href"),href);
+      assert.equal(await link.getAttribute("target"),"_blank");
+      const rel=await link.getAttribute("rel");
+      assert.ok(rel.includes("noopener")&&rel.includes("noreferrer"));
+    }
+    assert.equal(await page.getByText("برای مشاهده روش‌های پرداخت ابتدا وارد شوید").count(),0);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),
+      "BNPL cards must not overflow viewport at "+width);
+    await page.goto(base+"/checkout",{waitUntil:"domcontentloaded"});
+    await page.getByTestId("bnpl-checkout-unavailable").waitFor();
+    assert.equal(await page.getByTestId("bnpl-checkout-unavailable").locator('input').count(),0,
+      "Unconnected BNPL providers cannot be selected for checkout");
+  }
+
   // Company information is read from account storage; checkout never asks twice.
   await page.evaluate(items=>localStorage.setItem("henna:landing-preview-cart:v1",JSON.stringify(items)),expected);
   await page.goto(base+"/buyer/checkout?mode=preview");
   const legalCheckout=page.getByTestId("preview-checkout-page");
   await legalCheckout.getByRole("checkbox",{name:"خرید حقوقی و دریافت فاکتور رسمی"}).check();
   await legalCheckout.getByTestId("preview-legal-company-note").getByText(/شرکت نمونه CI/).waitFor();
+  await legalCheckout.getByTestId("bnpl-checkout-unavailable").waitFor();
+  assert.equal(await legalCheckout.getByRole("radio",{name:/پرداخت هنگام دریافت حضوری|پرداخت در محل/}).count(),0,
+    "Cash on delivery is never offered in preview checkout");
   assert.equal(await legalCheckout.getByLabel("نام شرکت",{exact:true}).count(),0);
   assert.equal(await legalCheckout.getByRole("button",{name:"ثبت سفارش",exact:true}).isEnabled(),true);
   await page.evaluate(()=>localStorage.removeItem("henna:landing-preview-cart:v1"));

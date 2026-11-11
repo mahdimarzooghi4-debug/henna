@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./figma-checkout-preview.module.css";
 import { readPreviewCompany, type PreviewCompany } from "../lib/preview-company";
+import { BnplCheckoutGate } from "./bnpl-checkout-gate";
 import { LANDING_PREVIEW_CART_EVENT, LANDING_PREVIEW_PRODUCTS, readLandingPreviewCart, saveLandingPreviewCart, type LandingPreviewCartItem } from "../lib/landing-preview-products";
 
 const selectedSellerKey = "henna:figma-preview-selected-seller:v1";
@@ -145,13 +146,14 @@ export function FigmaCheckoutPreview() {
         <section className={styles.card}>
           <h2>۴. روش پرداخت</h2>
           <div className={styles.paymentOptions}>
-            {[["cod", delivery === "pickup" ? "پرداخت هنگام دریافت حضوری" : "پرداخت در محل (کارتخوان سیار)"], ["online", "پرداخت آنلاین با کارت بانکی"], ["credit", "اعتبار حمایتی (در صورت موجود بودن)"]].map(([key, label]) =>
+            {[["online", "پرداخت آنلاین با کارت بانکی (نمایشی)"], ["credit", "اعتبار حمایتی (نمایشی؛ در صورت موجود بودن)"]].map(([key, label]) =>
               <label className={`${styles.payment} ${payment === key ? styles.paymentActive : ""}`} key={key}>
                 <input type="radio" name="payment" value={key} checked={payment === key} onChange={() => setPayment(key)} />{label}
               </label>)}
           </div>
+          <BnplCheckoutGate/>
         </section>
-        <p className={styles.disclosure}>اطلاعات این صفحه نمونه است و پرداخت یا سفارش واقعی انجام نمی‌شود.</p>
+        <p className={styles.disclosure}>اطلاعات این صفحه نمونه است و پرداخت یا سفارش واقعی انجام نمی‌شود. پرداخت هنگام تحویل در حنا وجود ندارد.</p>
         <Link className={styles.back} href="/buyer/review?mode=preview">بازگشت به بررسی سبد</Link>
       </section>
     </div>
