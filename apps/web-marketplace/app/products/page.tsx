@@ -29,7 +29,7 @@ export default async function ProductsPage({
 
   return (
     <>
-      <MarketplaceChrome initialSearch={browseState.search} />
+      <MarketplaceChrome initialSearch={browseState.search} activeCollection={collection} />
       <BuyerBrowse initialQuery={query} initialCategoryName={categoryName} initialCollection={collection} />
       <MarketplaceChrome footerOnly />
     </>
