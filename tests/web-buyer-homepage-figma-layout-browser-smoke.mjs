@@ -211,6 +211,14 @@ async function main() {
     await page.waitForURL(base+route);
     await page.getByTestId("catalog-collection-status")
       .getByRole("heading",{name:"فیلتر فعال: "+label,exact:true}).waitFor();
+    assert.equal(await page.getByTestId("marketplace-category-nav")
+      .getByRole("link",{name:label,exact:true}).getAttribute("aria-current"),"page",
+      "The selected catalog filter is visibly and accessibly active");
+    const sourceExplanation = [
+      "فروشگاه‌دار", "مرجع معتبر", "خود حنا",
+    ][i];
+    await page.getByTestId("catalog-collection-status")
+      .getByText(sourceExplanation,{exact:false}).waitFor();
     assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),0,
       "Never show Figma product fixtures as promotion-eligible");
     assert.equal(await page.locator('[aria-label="فهرست کالاهای منتشرشده"] li').count(),0,
