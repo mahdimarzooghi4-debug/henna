@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { parseCatalogCollection } from "../../lib/buyer-catalog-collections";
 import { MarketplaceChrome } from "../../components/marketplace-chrome";
 import { BuyerBrowse } from "../../components/buyer-browse";
 import {
@@ -24,11 +25,12 @@ export default async function ProductsPage({
     validBuyerSearch(params.categoryName)
     ? params.categoryName.trim() : "";
   const query = buyerBrowseQuery(browseState);
+  const collection = parseCatalogCollection(params.collection);
 
   return (
     <>
       <MarketplaceChrome initialSearch={browseState.search} />
-      <BuyerBrowse initialQuery={query} initialCategoryName={categoryName} />
+      <BuyerBrowse initialQuery={query} initialCategoryName={categoryName} initialCollection={collection} />
       <MarketplaceChrome footerOnly />
     </>
   );
