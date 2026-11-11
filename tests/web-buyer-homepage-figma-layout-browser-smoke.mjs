@@ -822,7 +822,7 @@ async function main() {
     "Legal, summary and info are separate ordered cards");
   assert.equal(await accountNav.locator('[aria-current="page"]').textContent(), "اطلاعات حساب");
   const accountRows = accountNav.getByRole("link");
-  assert.equal(await accountRows.locator("svg").count(), 9, "Every account tab has a chevron");
+  assert.equal(await accountRows.locator("svg").count(), 8, "Every remaining account tab has a chevron");
   const rowGeometry = await accountRows.evaluateAll(rows => rows.map(row => {
     const label = row.querySelector("span").getBoundingClientRect();
     const arrow = row.querySelector("svg");
