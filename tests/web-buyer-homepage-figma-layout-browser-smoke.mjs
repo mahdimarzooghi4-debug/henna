@@ -1066,6 +1066,26 @@ async function main() {
       assert.equal(await contact.locator('a[href="mailto:info@hennamarket.ir"]').count(),1);
       assert.equal(await contact.locator('[class*="footerContactIcon"] svg').count(),3,
         "Address, phone and email each have a vector icon");
+      const footerAlignment = await page.evaluate(() => {
+        const brand = document.querySelector('[data-testid="footer-brand"]');
+        const logo = brand.querySelector('a[href="/"]');
+        const contact = document.querySelector('[data-testid="footer-contact"]');
+        const contactHeading = contact.querySelector("h3");
+        const contactIcon = contact.querySelector('[class*="footerContactIcon"]');
+        return {
+          brandRight:brand.getBoundingClientRect().right,
+          logoRight:logo.getBoundingClientRect().right,
+          contactRight:contact.getBoundingClientRect().right,
+          headingRight:contactHeading.getBoundingClientRect().right,
+          iconRight:contactIcon.getBoundingClientRect().right,
+        };
+      });
+      near(footerAlignment.brandRight,footerAlignment.logoRight,
+        "Footer Hana logo anchored to right edge at "+width+" on "+path);
+      near(footerAlignment.contactRight,footerAlignment.headingRight,
+        "Footer contact heading anchored to right edge at "+width+" on "+path);
+      near(footerAlignment.contactRight,footerAlignment.iconRight,
+        "Footer contact heading aligned with icon column at "+width+" on "+path);
       const bounds = await page.evaluate(() => ({
         scroll:document.documentElement.scrollWidth,
         viewport:document.documentElement.clientWidth,
