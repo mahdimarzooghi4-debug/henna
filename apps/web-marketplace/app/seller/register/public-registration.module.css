@@ -37,3 +37,25 @@
 @media(max-width:720px){.root{padding:0 14px}.steps{justify-content:flex-start;padding:12px}
   .steps>span{font-size:11px}.grid{grid-template-columns:1fr}
   .card{padding:20px 15px}.choices{gap:12px}}
+
+.applicantChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.applicantCard{min-height:182px;box-sizing:border-box;display:flex;flex-direction:column;
+  align-items:stretch;gap:12px;padding:22px 24px;border:1px solid #eae6e1;
+  border-radius:16px;background:#fff;text-align:right;cursor:pointer;color:#1c3f3a}
+.applicantCard:hover{border-color:#d8a18f}
+.applicantCardActive{border:1.5px solid #b5523b;background:#fff1ed}
+.applicantCardTop{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:8px}
+.applicantIcon{width:48px;height:48px;border-radius:50%;background:#faf8f5;
+  display:grid;place-items:center;color:#1c3f3a}
+.applicantCardActive .applicantIcon{background:#fff;color:#b5523b}
+.applicantIcon svg{width:23px;height:23px}
+.applicantCard input[type=radio]{width:18px;height:18px;margin:0;accent-color:#b5523b;cursor:pointer}
+.applicantCard strong{font-size:16px;line-height:1.7}
+.applicantDescription{font-size:13px;line-height:1.8;color:#706963}
+@media(max-width:720px){
+  .applicantChoices{grid-template-columns:1fr;gap:12px}
+  .applicantCard{min-height:150px;padding:18px}
+  .applicantCardTop{margin-bottom:3px}
+  .applicantIcon{width:40px;height:40px}
+  .applicantDescription{font-size:13px}
+}
