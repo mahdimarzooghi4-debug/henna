@@ -59,3 +59,22 @@
   .applicantIcon{width:40px;height:40px}
   .applicantDescription{font-size:13px}
 }
+
+/* Mobile application flow follows the eight-segment 390px Figma frames.
+   Width includes padding so the form never overflows the viewport. */
+.root{box-sizing:border-box}
+.mobileProgress{display:none}
+@media(max-width:720px){
+  .steps{display:none}
+  .mobileProgress{display:flex;flex-direction:column;gap:9px;padding:13px 0;
+    margin:0 0 16px;background:#fff;border-bottom:1px solid #eae6e1}
+  .mobileProgressBars{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+  .mobileProgressBars span{height:5px;border-radius:5px;display:block}
+  .mobileProgressDone{background:#1c3f3a}
+  .mobileProgressCurrent{background:#b5523b}
+  .mobileProgressPending{background:#eae6e1}
+  .mobileProgressCaption{display:flex;align-items:center;justify-content:space-between;
+    gap:12px;font-size:12px;line-height:1.5}
+  .mobileProgressCaption strong{color:#b5523b;font-weight:700}
+  .mobileProgressCaption span{color:#706963}
+}
