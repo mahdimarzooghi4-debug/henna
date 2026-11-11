@@ -442,7 +442,9 @@ jobs:
         run: node tests/web-buyer-homepage-figma-layout-browser-smoke.mjs
       - name: Browser test seller Catalog offer creation and publication
         run: node tests/web-seller-offers-browser-smoke.mjs
-      - name: Browser test approved buyer login and seller form across two tabs
+      - name: Browser test public Figma seller registration without buyer login
+        run: node tests/web-public-seller-registration-browser-smoke.mjs
+      - name: Browser test legacy account-linked seller form across two tabs
         run: node tests/web-frontend-browser-smoke.mjs
       - name: Test web session recheck policy without interrupting OTP
         run: node --experimental-strip-types --test tests/web-session-visibility-smoke.mjs
