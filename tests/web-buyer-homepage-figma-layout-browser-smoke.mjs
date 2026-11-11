@@ -1050,10 +1050,22 @@ async function main() {
         "Seller collaboration contains only registration and seller panel");
       assert.equal(await footer.getByText("فرصت‌های شغلی").count(),0);
       assert.equal(await footer.getByText("شرایط همکاری پیک‌ها").count(),0);
+      const footerColumns = footer.locator(":scope > div");
+      assert.equal(await footerColumns.nth(0).getAttribute("data-testid"),"footer-contact",
+        "Contact replaces the removed support-plan column");
+      assert.equal(await footerColumns.nth(3).getAttribute("data-testid"),"footer-brand",
+        "Hana brand remains the last (rightmost) desktop footer column");
+      assert.equal(await footer.getByText("طرح‌های حمایتی",{exact:true}).count(),0,
+        "Removed support-plan column does not reappear");
+      const brand = page.getByTestId("footer-brand");
+      assert.equal(await brand.locator('img[alt="حنا"]').count(),1,"Hana logo restored in the footer");
+      assert.equal(await brand.locator('a[href="/"]').count(),1,"Footer brand links to homepage");
       const contact = page.getByTestId("footer-contact");
       await contact.getByText("تهران، خیابان انقلاب، خیابان رازی، کوچه شهبازیان، پلاک ۲۲").waitFor();
       assert.equal(await contact.locator('a[href="tel:+982166485374"]').count(),1);
       assert.equal(await contact.locator('a[href="mailto:info@hennamarket.ir"]').count(),1);
+      assert.equal(await contact.locator('[class*="footerContactIcon"] svg').count(),3,
+        "Address, phone and email each have a vector icon");
       const bounds = await page.evaluate(() => ({
         scroll:document.documentElement.scrollWidth,
         viewport:document.documentElement.clientWidth,
@@ -1061,6 +1073,13 @@ async function main() {
         footer:document.querySelector('[data-testid="landing-footer-top"]').getBoundingClientRect(),
       }));
       assert.ok(bounds.scroll <= bounds.viewport+1, "No horizontal overflow on "+path+" at "+width);
+      if (width >= 1000) {
+        const columns = await footerColumns.evaluateAll(nodes =>
+          nodes.map(node => ({ left:node.getBoundingClientRect().left, right:node.getBoundingClientRect().right }))
+        );
+        assert.ok(columns[0].right <= columns[3].left,
+          "Contact appears to the left of the restored Hana logo on "+path);
+      }
       near(bounds.header.left,bounds.footer.left,"Public footer left alignment on "+path+" at "+width);
       near(bounds.header.right,bounds.footer.right,"Public footer right alignment on "+path+" at "+width);
     }
