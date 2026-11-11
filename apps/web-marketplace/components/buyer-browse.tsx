@@ -369,9 +369,9 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
           <div className={styles.figmaFilterGroup}>
             <h3>ویژگی‌ها</h3>
             <nav className={styles.featureLinks} aria-label="ویژگی‌های حنا">
-              <Link href="/benefits#food-credit">کالابرگ الکترونیکی</Link>
-              <Link href="/#offers">تخفیف‌های طلایی</Link>
-              <Link href="/benefits#special-plans">طرح‌های ویژه حنا</Link>
+              <Link href="/benefits/food-credit">کالابرگ الکترونیکی</Link>
+              <Link href="/discounts">تخفیف‌های طلایی</Link>
+              <Link href="/benefits/special-plans">طرح‌های ویژه حنا</Link>
             </nav>
           </div>
           <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
