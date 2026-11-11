@@ -3,13 +3,14 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import styles from "./marketplace-chrome.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
+import { catalogCollectionHref } from "../lib/buyer-catalog-collections";
 
 // Keep the catalog chrome in sync with the owner's approved homepage navigation.
 const navItems = [
   ["همه دسته‌ها", "/products"],
-  ["طرح‌های ویژه حنا", "/benefits/special-plans"],
-  ["کالابرگ الکترونیکی", "/benefits/food-credit"],
-  ["تخفیف‌های طلایی", "/discounts"],
+  ["طرح‌های ویژه حنا", catalogCollectionHref("henna")],
+  ["کالابرگ الکترونیکی", catalogCollectionHref("kalabarg")],
+  ["تخفیف‌های طلایی", catalogCollectionHref("golden")],
 ] as const;
 
 const footerColumns = [
