@@ -467,3 +467,34 @@
   max-width: var(--buyer-figma-canvas);
   margin-inline: auto;
 }
+
+/* Footer contract: four useful columns aligned with the shared header canvas.
+   Background stays full bleed; avoid fixed heights so contact details never clip. */
+.chrome .footer { height:auto; min-height:0; }
+.chrome .footer .footerGrid {
+  height:auto;
+  grid-template-columns:minmax(140px,.85fr) minmax(160px,.95fr) minmax(160px,.95fr) minmax(280px,1.55fr);
+  align-items:start;
+  column-gap:32px;
+  row-gap:24px;
+}
+.chrome .footer .footerGrid > div { min-width:0; }
+.chrome .footer .footerGrid > div:not(:last-child) { align-items:flex-end; text-align:right; }
+.chrome .footer .footerContact { display:flex; flex-direction:column; align-items:flex-start; text-align:right; direction:rtl; }
+.chrome .footer .footerContact h3 { margin:0 0 14px; color:#1c3f3a; font-size:15px; font-weight:800; }
+.chrome .footer .footerContact address { display:grid; gap:12px; font-style:normal; line-height:1.85; }
+.chrome .footer .footerContact address > div { display:grid; gap:2px; }
+.chrome .footer .footerContact address span { color:#706963; font-size:12px; font-weight:600; }
+.chrome .footer .footerContact address p { margin:0; max-width:380px; color:#1c3f3a; font-size:13px; line-height:1.85; }
+.chrome .footer .footerContact address a { justify-self:start; color:#1c3f3a; text-decoration:none; font-size:13px; overflow-wrap:anywhere; }
+.chrome .footer .footerContact address a:hover { color:#b5523b; text-decoration:underline; }
+.chrome .footer .footerBottom { height:auto; min-height:64px; margin-top:28px; }
+@media(max-width:1000px){
+ .chrome .footer .footerGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .chrome .footer .footerBottom { margin-top:20px; }
+}
+@media(max-width:640px){
+ .chrome .footer .footerGrid { grid-template-columns:minmax(0,1fr); gap:22px; }
+ .chrome .footer .footerGrid > div:not(:last-child){align-items:flex-start;}
+ .chrome .footer .footerBottom { margin-top:22px; }
+}

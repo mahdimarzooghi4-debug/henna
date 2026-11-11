@@ -1031,6 +1031,49 @@ async function main() {
   assert.ok(mobileGeometry.navScrollWidth >= mobileGeometry.navClientWidth,
     "Mobile navigation has no clipped, inaccessible category links");
 
+  // Informational footer and public pages use one approved visual system.
+  for (const width of [1440,390]) {
+    await page.setViewportSize({width,height:900});
+    for (const [path, title] of [
+      ["/faq","سؤالات متداول"],
+      ["/terms","قوانین و مقررات حنا"],
+      ["/about","خرید محلی، انتخاب آگاهانه، حمایت مسئولانه"],
+    ]) {
+      await page.goto(base + path);
+      await page.getByTestId("public-guide").waitFor();
+      await page.getByRole("heading",{level:1,name:title}).waitFor();
+      const footer = page.getByTestId("landing-footer-top");
+      assert.equal(await footer.locator(":scope > div").count(),4,
+        "Exactly four footer columns on "+path);
+      const cooperation = footer.getByText("همکاری با حنا").locator("..");
+      assert.equal(await cooperation.locator("a").count(),2,
+        "Seller collaboration contains only registration and seller panel");
+      assert.equal(await footer.getByText("فرصت‌های شغلی").count(),0);
+      assert.equal(await footer.getByText("شرایط همکاری پیک‌ها").count(),0);
+      const contact = page.getByTestId("footer-contact");
+      await contact.getByText("تهران، خیابان انقلاب، خیابان رازی، کوچه شهبازیان، پلاک ۲۲").waitFor();
+      assert.equal(await contact.locator('a[href="tel:+982166485374"]').count(),1);
+      assert.equal(await contact.locator('a[href="mailto:info@hennamarket.ir"]').count(),1);
+      const bounds = await page.evaluate(() => ({
+        scroll:document.documentElement.scrollWidth,
+        viewport:document.documentElement.clientWidth,
+        header:document.querySelector('[data-testid="landing-header-top"]').getBoundingClientRect(),
+        footer:document.querySelector('[data-testid="landing-footer-top"]').getBoundingClientRect(),
+      }));
+      assert.ok(bounds.scroll <= bounds.viewport+1, "No horizontal overflow on "+path+" at "+width);
+      near(bounds.header.left,bounds.footer.left,"Public footer left alignment on "+path+" at "+width);
+      near(bounds.header.right,bounds.footer.right,"Public footer right alignment on "+path+" at "+width);
+    }
+    await page.goto(base + "/faq");
+    const question = page.locator('details').first();
+    assert.equal(await question.getAttribute("open"),null);
+    await question.locator("summary").click();
+    assert.ok(await question.evaluate(node=>node.open),"FAQ answer expands by user interaction");
+    await question.locator("summary").click();
+    assert.equal(await question.getAttribute("open"),null,"FAQ answer collapses");
+    await page.goto(base + "/terms");
+    await page.getByText("راهنمای عمومی، نه قرارداد لازم‌الاجرا",{exact:false}).waitFor();
+  }
   assert.deepEqual(errors, []);
   await context.close();
   console.log("Figma 190:4 buyer header/nav/hero/categories: 1440,1650,1100,900,390 Chromium alignment OK");
