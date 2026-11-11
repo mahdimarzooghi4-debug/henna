@@ -73,7 +73,7 @@ const nav = [
   { group: "بازارگاه", items: [
     { label: "کاربران و حساب‌ها", icon: "imgUsersIcon" },
     { label: "سازمان‌ها", icon: "imgUsersIcon" },
-    { label: "فروشندگان و ارائه‌دهندگان", icon: "imgStoreIcon" },
+    { label: "فروشندگان", icon: "imgStoreIcon" },
     { label: "درخواست‌های ثبت‌نام فروشنده", icon: "imgClipboardIcon", active: true },
     { label: "کالاها", icon: "imgFrame1" },
     { label: "دسته‌بندی‌ها", icon: "imgFolderIcon" },
@@ -82,7 +82,7 @@ const nav = [
   { group: "عملیات و طرح‌ها", items: [
     { label: "طرح‌ها و اعتبارها", icon: "imgFrame3" },
     { label: "مشارکت اجتماعی", icon: "imgMessageIcon" },
-    { label: "ارسال و ارائه‌دهندگان لجستیک", icon: "imgFrame4" },
+    { label: "ارسال و حمل‌ونقل", icon: "imgFrame4" },
     { label: "تسویه‌ها و تراکنش‌ها", icon: "imgFrame5" },
     { label: "پشتیبانی", icon: "imgHelpIcon" },
     { label: "اعلان‌ها", icon: "imgFrame6" },
@@ -197,7 +197,7 @@ export function AdminSellerApplicationsList() {
     <main className="admin-content">
       <div className="admin-page-heading">
         <h1>درخواست‌های ثبت‌نام فروشنده</h1>
-        <p>بررسی درخواست‌های ثبت‌نام فروشندگان و ارائه‌دهندگان در بازارگاه حنا</p>
+        <p>بررسی درخواست‌های ثبت‌نام فروشندگان کالا در بازارگاه حنا</p>
       </div>
 
       <div className="admin-filters" role="group" aria-label="فیلتر وضعیت بررسی">
