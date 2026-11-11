@@ -75,7 +75,7 @@ const nav = [
     { label: "سازمان‌ها", icon: "imgUsersIcon" },
     { label: "فروشندگان و ارائه‌دهندگان", icon: "imgStoreIcon" },
     { label: "درخواست‌های ثبت‌نام فروشنده", icon: "imgClipboardIcon", active: true },
-    { label: "کالاها و خدمات", icon: "imgFrame1" },
+    { label: "کالاها", icon: "imgFrame1" },
     { label: "دسته‌بندی‌ها", icon: "imgFolderIcon" },
     { label: "سفارش‌ها", icon: "imgFrame2" },
   ] },
@@ -369,7 +369,7 @@ export function AdminSellerApplicationDetail({ applicationId }: { applicationId:
                   <Field label="نام تجاری کسب‌وکار" value={application.businessName ?? application.storeName} />
                   <Field label="محدوده فعالیت" value={application.city} />
                   <Field label="نشانی فعالیت" value={application.activityAddress} />
-                  <Field label="محدودهٔ ارائهٔ خدمت" value={application.serviceArea} />
+                  <Field label="محدوده فعالیت فروشگاه" value={application.serviceArea} />
                   <Field label="ساعات فعالیت" value={application.activityHours} />
                   <Field label="تحویل توسط فروشنده" value={application.sellerDelivery} />
                   <Field label="تحویل حضوری" value={application.pickup} />

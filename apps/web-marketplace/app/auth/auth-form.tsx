@@ -207,10 +207,10 @@ export function AuthForm({ returnTo }: {
         ? "کد یا اطلاعات تأیید معتبر نیست."
         : response.status === 429
           ? "تعداد تلاش‌ها زیاد است؛ کمی بعد تلاش کنید."
-          : "خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+          : "فرایند تأیید کد در دسترس نیست؛ ورود انجام نشد.");
     } catch {
       setStatus("unavailable");
-      setMessage("خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+      setMessage("فرایند تأیید کد در دسترس نیست؛ ورود انجام نشد.");
     } finally {
       pending.current = false;
     }
@@ -248,7 +248,7 @@ export function AuthForm({ returnTo }: {
   return (
     <section className="surface-card auth-card" aria-labelledby="auth-heading">
       <h2 id="auth-heading">ورود یا ثبت‌نام در حنا</h2>
-      <p className="auth-card__hint">برای دسترسی به کالاها، خدمات هوشمند محله و اعتبارات حمایتی خود، شماره موبایل خود را وارد کنید.</p>
+      <p className="auth-card__hint">برای دسترسی به کالاهای بازارگاه و اعتبارات حمایتی خود، شماره موبایل خود را وارد کنید.</p>
       {stage === "checking" && <p role="status">در حال بررسی وضعیت ورود…</p>}
       {stage === "session-unavailable" && (
         <div role="status">
