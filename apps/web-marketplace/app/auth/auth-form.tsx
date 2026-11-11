@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
 import { normalizeDigits, toPersianDigits } from "../../lib/normalize-digits";
-import { sellerRegistrationPath, type AuthReturnTo } from "../../lib/seller-return";
+import { sellerRegistrationPath, sellerAccountRegistrationPath, type AuthReturnTo } from "../../lib/seller-return";
 import {
   otpRequestTransition, type OtpRequestOutcome,
 } from "../../lib/otp-request-transition";
@@ -321,7 +321,7 @@ export function AuthForm({ returnTo }: {
           <p className="form-status" role="status">
             ورود انجام شده است. حساب پایه شما فعال است.
           </p>
-          {returnTo === sellerRegistrationPath && (
+          {(returnTo === sellerRegistrationPath || returnTo === sellerAccountRegistrationPath) && (
             <Link href={sellerRegistrationPath} className="auth-card__secondary">
               ادامه ثبت‌نام فروشگاه
             </Link>
