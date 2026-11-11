@@ -37,7 +37,7 @@ function harness(responses) {
 }
 
 test("seller return destination remains exact and same-origin", () => {
-  assert.equal(sellerLoginHref, "/auth?returnTo=%2Fseller%2Fregister");
+  assert.equal(sellerLoginHref, "/auth?returnTo=%2Fseller%2Fregister%2Faccount");
   assert.equal(safeSellerReturnTo(sellerRegistrationPath),
     sellerRegistrationPath);
   for (const value of [
