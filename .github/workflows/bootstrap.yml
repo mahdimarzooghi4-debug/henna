@@ -2,7 +2,7 @@ name: Bootstrap checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/seller-mobile-001-access-orders]
   pull_request:
 
 permissions:
@@ -584,6 +584,18 @@ jobs:
         working-directory: apps/mobile-consumer
       - name: Typecheck consumer app
         run: npm run mobile:typecheck
+      - name: Typecheck seller mobile application
+        run: npm run seller-mobile:typecheck
+      - name: Verify buyer and seller «حنا» launcher icon generation and adaptive layers
+        run: node tools/mobile/generate-seller-icons.mjs && node --test tests/mobile-seller-icon-generation.mjs
+      - name: Validate buyer/seller preview entry isolation and status bar configuration
+        run: node --test tests/mobile-preview-ui-contract.mjs
+      - name: Test isolated offline preview cart quantity and total
+        run: node --experimental-strip-types --test tests/mobile-preview-cart.mjs
+      - name: Verify seller mobile seller-access and orders (CI-only mocked transport)
+        run: node --experimental-strip-types --test tests/mobile-seller-access-orders.mjs
+      - name: Bundle seller mobile app for Android (not installed APK)
+        run: npm run seller-mobile:export:android
       - name: Test mobile OTP and SecureStore session semantics (CI-only mocked API/store)
         run: node --experimental-strip-types --test tests/mobile-auth-smoke.mjs
       - name: Test native checkout partial basket and original-intent recovery
@@ -620,6 +632,20 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-device-location.mjs
       - name: Bundle consumer app for Android
         run: npm run mobile:export:android
+      - name: Exercise isolated buyer preview in Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd apps/mobile-consumer
+          npx expo install react-dom react-native-web @expo/metro-runtime --npm
+          EXPO_PUBLIC_HANA_DEMO_LOGIN=true EXPO_PUBLIC_HANA_API_BASE_URL='' npx expo export --platform web --output-dir ../../.ci-buyer-preview
+          cd ../..
+          npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.55.1
+          npx playwright install --with-deps chromium
+          python3 -m http.server 3019 --bind 127.0.0.1 --directory .ci-buyer-preview > /tmp/hana-preview.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tests/mobile-buyer-journey-browser.mjs
 
   android-native-links:
     # An installed, offline, CI-only Expo APK in Android Emulator.
@@ -629,6 +655,7 @@ jobs:
     env:
       EXPO_NO_TELEMETRY: '1'
       CI: '1'
+      EXPO_PUBLIC_HANA_DEMO_LOGIN: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -640,6 +667,8 @@ jobs:
           java-version: '17'
       - name: Install monorepo dependencies
         run: npm install --no-audit --no-fund
+      - name: Generate both owner-approved «حنا» icons before native prebuild
+        run: node tools/mobile/generate-seller-icons.mjs && node --test tests/mobile-seller-icon-generation.mjs
       - name: Generate native Android project from committed Expo configuration
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile-consumer
@@ -666,9 +695,105 @@ jobs:
           done
           echo "Pinned Android NDK unavailable or corrupt; refusing to build"
           exit 1
+      - name: Make generated Gradle wrappers resilient to network stalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrapper="apps/mobile-consumer/android/gradle/wrapper/gradle-wrapper.properties"
+          test -f "$wrapper"
+          # Avoid GitHub-hosted runner 504 from the services.gradle.org redirect.
+          # downloads.gradle.org is the official direct Gradle distribution host.
+          grep -Fq 'gradle-9.3.1-bin.zip' "$wrapper"
+          sed -i 's#services.gradle.org/distributions/#downloads.gradle.org/distributions/#' "$wrapper"
+          grep -Fq 'downloads.gradle.org/distributions/gradle-9.3.1-bin.zip' "$wrapper"
+          if grep -q '^networkTimeout=' "$wrapper"; then
+            sed -i 's/^networkTimeout=.*/networkTimeout=120000/' "$wrapper"
+          else
+            printf '\nnetworkTimeout=120000\n' >> "$wrapper"
+          fi
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
-        run: ./gradlew :app:assembleRelease --no-daemon
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then break; fi
+            if test "$attempt" -eq 3; then exit 1; fi
+            sleep 15
+          done
+          export GRADLE_OPTS="-Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
+          for attempt in 1 2 3; do
+            log_file="$(mktemp)"
+            if ./gradlew :app:assembleRelease --no-daemon >"$log_file" 2>&1; then
+              tail -n 70 "$log_file"
+              rm -f "$log_file"
+              break
+            fi
+            tail -n 110 "$log_file"
+            if ! grep -Eqi '(Read timed out|Connect timed out|Connection reset|HTTP response code: 50[234]|Could not GET|Could not download)' "$log_file"; then
+              echo "Gradle failed for a non-network reason; not retrying" >&2
+              rm -f "$log_file"
+              exit 1
+            fi
+            rm -f "$log_file"
+            if test "$attempt" -eq 3; then
+              echo "Gradle dependency network retries exhausted" >&2
+              exit 1
+            fi
+            echo "Transient Gradle dependency download failure; retrying attempt $((attempt+1))/3"
+            sleep 20
+          done
         working-directory: apps/mobile-consumer/android
+      - name: Generate native Android project from seller Expo configuration
+        run: npx expo prebuild --platform android --no-install
+        working-directory: apps/mobile-seller
+      - name: Make seller Gradle wrapper resilient to network stalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrapper="apps/mobile-seller/android/gradle/wrapper/gradle-wrapper.properties"
+          test -f "$wrapper"
+          # Avoid GitHub-hosted runner 504 from the services.gradle.org redirect.
+          # downloads.gradle.org is the official direct Gradle distribution host.
+          grep -Fq 'gradle-9.3.1-bin.zip' "$wrapper"
+          sed -i 's#services.gradle.org/distributions/#downloads.gradle.org/distributions/#' "$wrapper"
+          grep -Fq 'downloads.gradle.org/distributions/gradle-9.3.1-bin.zip' "$wrapper"
+          if grep -q '^networkTimeout=' "$wrapper"; then
+            sed -i 's/^networkTimeout=.*/networkTimeout=120000/' "$wrapper"
+          else
+            printf '\nnetworkTimeout=120000\n' >> "$wrapper"
+          fi
+      - name: Compile separate seller Android APK without API origin or credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then break; fi
+            if test "$attempt" -eq 3; then exit 1; fi
+            sleep 15
+          done
+          export GRADLE_OPTS="-Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
+          for attempt in 1 2 3; do
+            log_file="$(mktemp)"
+            if env -u EXPO_PUBLIC_HANA_API_BASE_URL ./gradlew :app:assembleRelease --no-daemon >"$log_file" 2>&1; then
+              tail -n 70 "$log_file"
+              rm -f "$log_file"
+              break
+            fi
+            tail -n 110 "$log_file"
+            if ! grep -Eqi '(Read timed out|Connect timed out|Connection reset|HTTP response code: 50[234]|Could not GET|Could not download)' "$log_file"; then
+              echo "Seller Gradle failed for a non-network reason; not retrying" >&2
+              rm -f "$log_file"
+              exit 1
+            fi
+            rm -f "$log_file"
+            if test "$attempt" -eq 3; then
+              echo "Seller Gradle dependency network retries exhausted" >&2
+              exit 1
+            fi
+            echo "Transient seller Gradle dependency download failure; retrying attempt $((attempt+1))/3"
+            sleep 20
+          done
+        working-directory: apps/mobile-seller/android
       - name: Enable KVM for hardware-accelerated emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -678,10 +803,77 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          target: google_apis
+          # The native tests need Android framework/Keystore/intent resolution,
+          # not Google Play services. AOSP avoids Pixel Launcher ANRs seen in CI.
+          target: default
           arch: x86_64
           profile: pixel_6
-          cores: 2
-          ram-size: 3072M
+          cores: 4
+          ram-size: 4096M
           disable-animations: true
-          script: python3 tests/mobile-android-native-smoke.py
+          script: python3 tests/mobile-android-native-smoke.py && python3 tests/mobile-seller-android-smoke.py
+      - name: Retain tested buyer APK (CI debug build - not a public release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hana-buyer-android-ci-debug-apk
+          path: apps/mobile-consumer/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Retain tested seller APK (CI debug build - not a public release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hana-seller-android-ci-debug-apk
+          path: apps/mobile-seller/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-mobile-preview:
+    # Only the owner-controlled seller mobile PR can publish explicitly labeled
+    # debug-signed preview APKs; this is not a production release.
+    if: (github.event_name == 'pull_request' && github.event.pull_request.number == 194 && github.event.pull_request.head.ref == 'feat/seller-mobile-001-access-orders' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'push' && github.ref == 'refs/heads/feat/seller-mobile-001-access-orders')
+    needs: [android-native-links]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Download buyer APK built and emulator-tested in this run
+        uses: actions/download-artifact@v4
+        with:
+          name: hana-buyer-android-ci-debug-apk
+          path: artifacts/buyer
+      - name: Download seller APK built and emulator-tested in this run
+        uses: actions/download-artifact@v4
+        with:
+          name: hana-seller-android-ci-debug-apk
+          path: artifacts/seller
+      - name: Prepare stable preview asset names
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/buyer/app-release.apk
+          test -s artifacts/seller/app-release.apk
+          mv artifacts/buyer/app-release.apk artifacts/hana-buyer-preview.apk
+          mv artifacts/seller/app-release.apk artifacts/hana-seller-preview.apk
+          sha256sum artifacts/*.apk | tee artifacts/SHA256SUMS.txt
+      - name: Publish debug APKs as a GitHub prerelease for website downloads
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="hana-mobile-preview-${RUN_NUMBER}-${RUN_ATTEMPT}"
+          gh release create "$tag" \
+            artifacts/hana-buyer-preview.apk \
+            artifacts/hana-seller-preview.apk \
+            artifacts/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$HEAD_SHA" \
+            --title "Henna Android Preview ${RUN_NUMBER} (Debug)" \
+            --notes "Experimental Android preview APKs built and emulator-tested by CI. Both APKs are CI-only debug-signed and are NOT production/store releases. SHA-256 checksums are attached. Do not use for real commerce or production operations." \
+            --prerelease

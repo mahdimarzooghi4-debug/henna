@@ -62,20 +62,37 @@ def dismiss_known_emulator_anr():
         }
         known = {
             "Pixel Launcher isn't responding",
+            "Quickstep isn't responding",
             "com.google.android.googlesdksetup isn't responding",
         }
         observed = next((title for title in known if title in values), None)
         if observed is None:
             return False
-        wait = next(
+        # If the emulator's own launcher is stuck, close only that
+        # known system process so Android can restart it. Never dismiss
+        # or mask an ANR belonging to the Henna application.
+        preferred_action = (
+            "Close app"
+            if observed in {"Pixel Launcher isn't responding",
+                            "Quickstep isn't responding"}
+            else "Wait"
+        )
+        action = next(
             (node for node in root.iter()
-             if node.attrib.get("text") == "Wait" or
-             node.attrib.get("content-desc") == "Wait"),
+             if node.attrib.get("text") == preferred_action or
+             node.attrib.get("content-desc") == preferred_action),
             None,
         )
-        if wait is None:
+        if action is None and preferred_action != "Wait":
+            action = next(
+                (node for node in root.iter()
+                 if node.attrib.get("text") == "Wait" or
+                 node.attrib.get("content-desc") == "Wait"),
+                None,
+            )
+        if action is None:
             return False
-        bounds = wait.attrib.get("bounds", "")
+        bounds = action.attrib.get("bounds", "")
         coords = list(map(int, re.findall(r"\d+", bounds)))
         if len(coords) != 4:
             return False
@@ -83,7 +100,7 @@ def dismiss_known_emulator_anr():
         execute("adb", "shell", "input", "tap",
                 str((x1 + x2) // 2), str((y1 + y2) // 2))
         print(
-            f"Dismissed known emulator system ANR ({observed}); "
+            f"Handled known emulator system ANR ({observed}) via {preferred_action}; "
             "continuing strict app UI checks.",
             flush=True,
         )
@@ -104,6 +121,7 @@ def wait_screen(*phrases, timeout=110):
                 print("Observed native UI: " + " / ".join(phrases), flush=True)
                 return last
             if ("Pixel Launcher isn't responding" in last or
+                    "Quickstep isn't responding" in last or
                     "com.google.android.googlesdksetup isn't responding" in last):
                 dismiss_known_emulator_anr()
                 continue
@@ -185,6 +203,62 @@ def open_uri(uri, package):
     )
 
 
+def configure_aosp_keyboard_contacts_denial():
+    """Pre-deny optional contacts for the CI emulator's system keyboard only.
+
+    The permission prompt can appear after the first input tap or even
+    after adb input text. Set the same denial before launching Henna so
+    the asynchronous system dialog cannot intercept the real UI test.
+    Never change any permission belonging to the app under test.
+    """
+    keyboard = execute("adb", "shell", "settings", "get", "secure",
+                       "default_input_method").strip().split("/", 1)[0]
+    if keyboard != "com.android.inputmethod.latin":
+        return
+    permission = "android.permission.READ_CONTACTS"
+    execute("adb", "shell", "pm", "revoke", "--user", "0",
+            keyboard, permission)
+    execute("adb", "shell", "pm", "set-permission-flags", "--user", "0",
+            keyboard, permission, "user-set", "user-fixed")
+    print("Pre-denied optional AOSP keyboard contacts access in CI.",
+          flush=True)
+
+
+def deny_aosp_keyboard_contacts_prompt():
+    """Handle only the fresh AOSP keyboard's optional contacts prompt.
+
+    Deny it before entering the phone number, then restore the actual
+    phone input. No application permission or UI assertion is bypassed.
+    """
+    deadline = time.monotonic() + 12
+    title = "Allow Android Keyboard (AOSP) to access your contacts?"
+    while time.monotonic() < deadline:
+        execute("adb", "shell", "uiautomator", "dump",
+                "/sdcard/hana-keyboard-window.xml", timeout=20)
+        raw = execute("adb", "exec-out", "cat",
+                      "/sdcard/hana-keyboard-window.xml", timeout=20)
+        root = ET.fromstring(raw)
+        if any(node.attrib.get("text") == title for node in root.iter()):
+            deny = next(
+                (node for node in root.iter()
+                 if node.attrib.get("resource-id", "").endswith(
+                     ":id/permission_deny_button")
+                 and node.attrib.get("text") in ("DON’T ALLOW", "DON'T ALLOW")),
+                None,
+            )
+            assert deny is not None, "AOSP keyboard contacts denial not found"
+            coords = list(map(int, re.findall(r"\d+", deny.attrib["bounds"])))
+            assert len(coords) == 4, "Invalid keyboard permission button bounds"
+            x1, y1, x2, y2 = coords
+            execute("adb", "shell", "input", "tap",
+                    str((x1 + x2) // 2), str((y1 + y2) // 2))
+            print("Denied optional AOSP keyboard contacts access.", flush=True)
+            wait_screen("شماره موبایل خود را وارد کنید")
+            tap_label("شماره موبایل")
+            return
+        time.sleep(1)
+
+
 def main():
     assert APK.is_file(), f"Native release APK not built: {APK}"
     sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
@@ -197,6 +271,26 @@ def main():
     package = match.group(1)
     print(f"Installed APK package={package}, sha=CI native build", flush=True)
     execute("adb", "install", "-r", str(APK), timeout=150)
+    configure_aosp_keyboard_contacts_denial()
+
+    # A normal icon launch of the CI preview must expose a no-SMS primary
+    # action; it is a local preview session, not an authenticated buyer.
+    execute("adb", "shell", "monkey", "-p", package, "1", timeout=60)
+    ui = wait_screen("به بازار اجتماعی حنا خوش آمدید", "ورود")
+    assert "ورود یا ثبت‌نام" not in ui and "تلاش مجدد" not in ui and "خروج" not in ui
+    tap_until_screen("ورود", "شماره موبایل خود را وارد کنید")
+    tap_label("شماره موبایل")
+    deny_aosp_keyboard_contacts_prompt()
+    execute("adb", "shell", "input", "text", "09123456789")
+    tap_until_screen("دریافت کد تأیید", "کد تأیید را وارد کنید")
+    tap_label("کد شش رقمی تأیید")
+    execute("adb", "shell", "input", "text", "123456")
+    tap_label("ورود")
+    wait_screen("کالاها را در حنا مرور کنید")
+    # Native preview remains on the catalog without re-entering a code.
+    execute("adb", "shell", "am", "force-stop", package)
+    execute("adb", "shell", "monkey", "-p", package, "1", timeout=60)
+    wait_screen("کالاها را در حنا مرور کنید")
 
     # Actual Android app launch from a COLD-start external detail URI.
     execute("adb", "shell", "am", "force-stop", package)
@@ -238,6 +332,7 @@ def main():
     print("HANA_NATIVE_ORDERS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
     execute("adb", "shell", "input", "keyevent", "4")
     wait_screen("کالاها را در حنا مرور کنید", TERM)
+    tap_until_screen("حساب", "حساب کاربری")
     tap_until_screen("گزارش‌ها و مرجوعی‌های من", "گزارش‌ها و مرجوعی‌های من", "پاسخ سرور تأیید نشد")
     print("HANA_NATIVE_INCIDENTS_SCREENSHOT="+base64.b64encode(subprocess.check_output(["adb","exec-out","screencap","-p"])).decode(),flush=True)
     execute("adb", "shell", "input", "keyevent", "4")

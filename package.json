@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "apps/web-marketplace",
-    "apps/mobile-consumer"
+    "apps/mobile-consumer",
+    "apps/mobile-seller"
   ],
   "scripts": {
     "web:dev": "npm run dev --workspace @hana/web-marketplace",
@@ -12,6 +13,8 @@
     "mobile:dev": "npm run start --workspace @hana/mobile-consumer",
     "mobile:typecheck": "npm run typecheck --workspace @hana/mobile-consumer",
     "mobile:export:android": "npm run export:android --workspace @hana/mobile-consumer",
-    "mobile:export:ios": "npm run export:ios --workspace @hana/mobile-consumer"
+    "mobile:export:ios": "npm run export:ios --workspace @hana/mobile-consumer",
+    "seller-mobile:typecheck": "npm run typecheck --workspace @hana/mobile-seller",
+    "seller-mobile:export:android": "npm run export:android --workspace @hana/mobile-seller"
   }
 }

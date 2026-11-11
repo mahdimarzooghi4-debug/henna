@@ -22,5 +22,4 @@ export const space = {
   xl: 32,
 } as const;
 
-// Vazirmatn 400/700 are packaged through @expo-google-fonts/vazirmatn and
-// loaded by App.tsx before the buyer UI is rendered.
+// Estedad variable weights are loaded by App.tsx before the buyer UI renders.
