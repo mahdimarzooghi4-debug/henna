@@ -35,7 +35,7 @@
   .main>section>div:last-child{min-height:438px;box-sizing:border-box}
 }
 @media(max-width:700px){
-  .headerContent{width:calc(100% - 40px);min-height:124px;height:124px;padding:0;align-items:center}
+  .headerContent{width:calc(100% - 40px);min-height:124px;height:124px;padding:0;align-items:center;direction:ltr}
   .headerActions{display:none}
   .brand img{width:50px;height:24px}
   .main{width:calc(100% - 32px);margin:0 auto;min-height:0}
