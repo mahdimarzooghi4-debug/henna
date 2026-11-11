@@ -1,5 +1,4 @@
 "use client";
-import {useState} from "react";
 import Link from "next/link";
 import Image from "next/image";
 import styles from "./seller-registration-start.module.css";
@@ -12,7 +11,9 @@ const benefits=[
 ] as const;
 
 export function SellerRegistrationStart(){
-  const [returning,setReturning]=useState(false);
+  function showReturning(id:string){
+    document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"center"});
+  }
   return <>
     <section className={styles.grid} data-testid="seller-register-start-desktop">
       <div className={styles.panel}>
@@ -21,8 +22,8 @@ export function SellerRegistrationStart(){
         <p>برای ارائه کالا یا خدمت در بازارگاه حنا، مراحل ثبت‌نام کسب‌وکار را تکمیل کنید.</p>
         <div className={styles.buttons}>
           <Link className={styles.primary} href="/seller/register/new">شروع ثبت‌نام جدید</Link>
-          <button type="button" className={styles.secondary} onClick={()=>setReturning(s=>!s)}
-            aria-expanded={returning} aria-controls="seller-returning-actions-desktop">
+          <button type="button" className={styles.secondary} onClick={()=>showReturning("seller-returning-actions-desktop")}
+            aria-controls="seller-returning-actions-desktop">
             قبلاً ثبت‌نام کرده‌ام
           </button>
         </div>
@@ -32,10 +33,6 @@ export function SellerRegistrationStart(){
             <Link href="/seller/register/public-status">مشاهده وضعیت درخواست</Link>
             <Link href="/seller/register/account">ادامه ثبت‌نام</Link>
           </div>
-          {returning&&<p role="status" className={styles.note}>
-            درخواست جدید بدون ورود ثبت می‌شود. پرونده‌های قدیمی متصل به حساب،
-            از مسیر جداگانه ادامه پیدا می‌کنند.
-          </p>}
         </div>
       </div>
       <div className={styles.panel}>
@@ -66,8 +63,8 @@ export function SellerRegistrationStart(){
       </div>
       <div className={styles.mobileActions}>
         <Link aria-label="شروع ثبت‌نام جدید" className={styles.primary} href="/seller/register/new">شروع ثبت‌نام</Link>
-        <button type="button" className={styles.secondary} onClick={()=>setReturning(s=>!s)}
-          aria-expanded={returning} aria-controls="seller-returning-actions-mobile">
+        <button type="button" className={styles.secondary} onClick={()=>showReturning("seller-returning-actions-mobile")}
+          aria-controls="seller-returning-actions-mobile">
           قبلاً ثبت‌نام کرده‌ام
         </button>
         <div className={styles.mobileReturning} id="seller-returning-actions-mobile">
@@ -76,10 +73,6 @@ export function SellerRegistrationStart(){
             <Link href="/seller/register/account">ادامه ثبت‌نام</Link>
             <Link href="/seller/register/public-status">مشاهده وضعیت درخواست</Link>
           </div>
-          {returning&&<p role="status" className={styles.note}>
-            درخواست جدید بدون ورود ثبت می‌شود. پرونده‌های قدیمی متصل به حساب،
-            از مسیر جداگانه ادامه پیدا می‌کنند.
-          </p>}
         </div>
       </div>
     </section>
