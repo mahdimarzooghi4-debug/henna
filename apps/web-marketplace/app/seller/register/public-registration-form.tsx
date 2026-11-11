@@ -41,7 +41,7 @@ export function PublicSellerRegistrationForm() {
   const [checking,setChecking]=useState(true);
   const [error,setError]=useState("");
   const [receipt,setReceipt]=useState<{trackingCode:string;submittedAtUtc:string}|null>(null);
-  const change=(key:keyof Values,value:string|boolean)=>{
+  const change=<K extends keyof Values>(key:K,value:Values[K])=>{
     // Human confirmation applies to the exact reviewed fields, not to
     // values edited later in the wizard.
     setConfirmed(false);
