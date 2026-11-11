@@ -6,8 +6,7 @@ export const buyerAccountTabs = [
  ["orders","سفارش‌های من","/buyer/orders?mode=preview"],
  ["payments","روش‌های پرداخت","/buyer/payments?mode=preview"],
  ["credits","اعتبارهای من","/benefits?section=credits"],
- ["plans","طرح‌های فعال","/benefits?section=plans"],
- ["social","مشارکت‌های اجتماعی","/social"],
+ ["social","مشارکت اجتماعی","/social"],
  ["support","پشتیبانی","/support"],
  ["settings","تنظیمات","/buyer/settings?mode=preview"],
 ] as const;

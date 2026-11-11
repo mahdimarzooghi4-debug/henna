@@ -935,9 +935,8 @@ async function main() {
     ["آدرس‌های من","/account/addresses","مدیریت آدرس‌های من"],
     ["سفارش‌های من","/buyer/orders?mode=preview","سفارش‌های من"],
     ["روش‌های پرداخت","/buyer/payments?mode=preview","روش‌های پرداخت"],
-    ["اعتبارهای من","/benefits?section=credits","اعتبارها و طرح‌های من"],
-    ["طرح‌های فعال","/benefits?section=plans","اعتبارها و طرح‌های من"],
-    ["مشارکت‌های اجتماعی","/social","مشارکت اجتماعی"],
+    ["اعتبارهای من","/benefits?section=credits","اعتبارهای من"],
+    ["مشارکت اجتماعی","/social","مشارکت اجتماعی"],
     ["پشتیبانی","/support","پشتیبانی حنا"],
     ["تنظیمات","/buyer/settings?mode=preview","تنظیمات"],
     ["اطلاعات حساب","/buyer/account?mode=preview","حساب من"],
@@ -947,10 +946,46 @@ async function main() {
     await page.waitForURL(base+route);
     await page.getByRole("heading",{name:heading,exact:true}).waitFor();
     assert.equal(await nav.locator('[aria-current="page"]').textContent(),label);
-    assert.equal(await nav.getByRole("link").count(),9);
-    if (label==="اعتبارهای من") assert.equal(await page.getByRole("button",{name:"اعتبار حمایتی عمومی",exact:true}).getAttribute("aria-pressed"),"true");
-    if (label==="طرح‌های فعال") assert.equal(await page.getByRole("button",{name:"طرح‌های فعال و کالابرگ‌ها",exact:true}).getAttribute("aria-pressed"),"true");
+    assert.equal(await nav.getByRole("link").count(),8);
+    assert.equal(await nav.getByRole("link",{name:"طرح‌های فعال",exact:true}).count(),0);
+    if (label==="مشارکت اجتماعی") {
+      await page.getByTestId("buyer-social-report").waitFor();
+      assert.equal(await page.getByRole("link",{name:"انتخاب طرح جدید"}).count(),0);
+      await page.getByText("در انتظار گزارش تأییدشده").first().waitFor();
+    }
   }
+
+  // A legacy plans link resolves to the same credit view, not a separate tab.
+  await page.goto(base + "/benefits?section=plans");
+  await page.getByRole("heading",{name:"اعتبارهای من",exact:true}).waitFor();
+  assert.equal(await page.getByRole("link",{name:"طرح‌های فعال",exact:true}).count(),0);
+  // The card view consumes multiple independent, account-scoped grants; no sample
+  // balances are visible without a validated response from the read model.
+  const sampleGrants = {
+    items: [
+      { id:"10000000-0000-4000-8000-000000000001", programId:"20000000-0000-4000-8000-000000000001",
+        grantedRial:1250000, availableRial:750000, expiresAtUtc:"2030-11-01T00:00:00Z", categoryIds:["30000000-0000-4000-8000-000000000001"] },
+      { id:"10000000-0000-4000-8000-000000000002", programId:"20000000-0000-4000-8000-000000000002",
+        grantedRial:450000, availableRial:0, expiresAtUtc:"2030-11-01T00:00:00Z", categoryIds:["30000000-0000-4000-8000-000000000002"] },
+    ],
+    page:1, pageSize:20,
+  };
+  await page.route("**/api/buyer/credits?page=1", route => route.fulfill({
+    status:200, contentType:"application/json", body:JSON.stringify(sampleGrants),
+  }));
+  await page.goto(base + "/benefits?section=credits");
+  await page.getByTestId("buyer-credit-card").first().waitFor();
+  assert.equal(await page.getByTestId("buyer-credit-card").count(),2,
+    "Each valid credit grant appears as its own card");
+  await page.unroute("**/api/buyer/credits?page=1");
+  await page.route("**/api/buyer/credits?page=1", route => route.fulfill({
+    status:503, contentType:"application/json", body:JSON.stringify({message:"unavailable"}),
+  }));
+  await page.goto(base + "/benefits?section=credits");
+  await page.getByText("اطلاعات اعتبارهای حساب در دسترس نیست. این وضعیت به معنای نداشتن اعتبار نیست.").waitFor();
+  assert.equal(await page.getByTestId("buyer-credit-card").count(),0,
+    "No balance or sample credit is invented on upstream failure");
+  await page.unroute("**/api/buyer/credits?page=1");
 
   // The same shared chrome must remain inside the viewport on mobile.
   await page.setViewportSize({ width: 390, height: 844 });
