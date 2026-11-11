@@ -32,8 +32,9 @@ public sealed class PublicSellerIntakeApiTests
         using var client = factory.CreateClient();
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var otherToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var uniqueStoreName = "فروشگاه تست عمومی " + Guid.NewGuid().ToString("N");
         var payload = new {
-            storeName = "فروشگاه تست عمومی",
+            storeName = uniqueStoreName,
             ownerName = "مسئول درخواست",
             phone = "09123456789",
             city = "شهر تست",
@@ -74,7 +75,8 @@ public sealed class PublicSellerIntakeApiTests
                 request.Headers.Add("X-Hana-Seller-Intake-Token", secret);
             return await client.SendAsync(request);
         }
-        var beforeDrafts = await db.RegistrationDrafts.CountAsync();
+        Assert.False(await db.RegistrationDrafts.AsNoTracking()
+            .AnyAsync(x => x.StoreName == uniqueStoreName));
 
         using var withoutSecret = await PostAsync(null, payload);
         Assert.Equal(HttpStatusCode.BadRequest, withoutSecret.StatusCode);
@@ -111,9 +113,11 @@ public sealed class PublicSellerIntakeApiTests
         Assert.Equal(tracking,status.RootElement.GetProperty("trackingCode").GetString());
         Assert.Equal("RECEIVED",status.RootElement.GetProperty("status").GetString());
 
-        Assert.Equal(beforeDrafts,await db.RegistrationDrafts.CountAsync());
-        Assert.Empty(db.ChangeTracker.Entries<SellerRegistrationDraft>()
-            .Where(x=>x.State==EntityState.Added));
+        // Other integration tests run concurrently against the CI database:
+        // assert isolation by this application's exact unique identity, not
+        // by a fragile global count of unrelated drafts.
+        Assert.False(await db.RegistrationDrafts.AsNoTracking()
+            .AnyAsync(x => x.StoreName == uniqueStoreName));
 
         var digest=Convert.ToHexString(SHA256.HashData(Convert.FromHexString(token)));
         await db.Database.ExecuteSqlInterpolatedAsync(
