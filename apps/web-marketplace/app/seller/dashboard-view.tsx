@@ -32,12 +32,6 @@ const capabilityCards = [
   ["گزارش‌ها", "reports"],
 ] as const;
 
-function offeringLabel(value: SellerAccess["offeringType"]) {
-  if (value === "GOOD") return "کالا";
-  if (value === "SERVICE") return "خدمت";
-  return "کالا و خدمت";
-}
-
 export function SellerDashboardView() {
   const [state, setState] = useState<
     | { kind: "loading" }
@@ -147,7 +141,7 @@ export function SellerDashboardView() {
         <header className="seller-panel__header">
           <div>
             <p className="seller-panel__eyebrow">
-              پنل فروشندگان و ارائه‌دهندگان
+              پنل فروشندگان
             </p>
             <h1>پیشخوان مدیریت کسب‌وکار</h1>
             <p>
@@ -168,10 +162,6 @@ export function SellerDashboardView() {
             <p>{seller.storeName}</p>
           </div>
           <dl>
-            <div>
-              <dt>نوع ارائه</dt>
-              <dd>{offeringLabel(seller.offeringType)}</dd>
-            </div>
             <div>
               <dt>وضعیت فروشندگی</dt>
               <dd className="seller-panel__active">فعال</dd>
