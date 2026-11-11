@@ -42,7 +42,7 @@ export function SellerRegistrationStart(){
         <h2 className={styles.benefitsHeading}>امکانات پنل فروشنده / ارائه‌دهنده</h2>
         <div className={styles.benefits}>
           {benefits.map(([title,description])=><div key={title} className={styles.benefit}>
-            <span className={styles.star} aria-hidden="true">☆</span>
+            <span className={styles.star} aria-hidden="true"><Image src="/seller-registration/star.svg" alt="" width={24} height={24} unoptimized /></span>
             <div><strong>{title}</strong><p>{description}</p></div>
           </div>)}
         </div>
@@ -59,7 +59,7 @@ export function SellerRegistrationStart(){
         <p className={styles.mobileIntro}>برای ارائه کالا یا خدمت در بازارگاه حنا، مراحل ثبت‌نام کسب‌وکار را تکمیل کنید.</p>
         <div className={styles.mobileBenefits}>
           {benefits.map(([title,description])=><div key={title} className={styles.mobileBenefit}>
-            <span className={styles.mobileStar} aria-hidden="true">☆</span>
+            <span className={styles.mobileStar} aria-hidden="true"><Image src="/seller-registration/star.svg" alt="" width={18} height={18} unoptimized /></span>
             <div><strong>{title}</strong><p>{description}</p></div>
           </div>)}
         </div>
