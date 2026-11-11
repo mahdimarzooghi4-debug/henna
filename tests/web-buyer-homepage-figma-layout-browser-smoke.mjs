@@ -183,27 +183,52 @@ async function main() {
       "/products","Primary shopping CTA remains functional");
   }
 
-  // All three central promotional cards are a single, full-surface path
-  // into the real shopping catalog; their distinct visual identity stays intact.
+  // Promotional copy stays distinct; each whole card and corresponding
+  // navigation filter must select its *own provenance-qualified* collection.
+  // Until the backend publishes verified eligibility, show no fake matches.
   const promoCards = page.locator('section[aria-labelledby="home-title"] + div > a');
+  const selectedCollections = [
+    ["/products?collection=golden", "تخفیف‌های طلایی"],
+    ["/products?collection=kalabarg", "کالابرگ الکترونیکی"],
+    ["/products?collection=henna", "طرح‌های ویژه حنا"],
+  ];
   assert.equal(await promoCards.count(),3,"Homepage has exactly three promo cards");
   assert.deepEqual(await promoCards.evaluateAll(anchors=>anchors.map(a=>a.getAttribute("href"))),
-    ["/products","/products","/products"],
-    "Every promotional card opens the same shopping catalog");
+    selectedCollections.map(([route])=>route),
+    "Each promotional card carries its separate real-catalog filter");
+  let unverifiedProductRequests=0;
+  await page.route("**/api/catalog/products?*",route=>{
+    unverifiedProductRequests++;
+    return route.fulfill({status:200,contentType:"application/json",
+      body:JSON.stringify({items:[],page:1,pageSize:20,total:0})});
+  });
   for(let i=0;i<3;i++){
+    const [route,label]=selectedCollections[i];
     const card=promoCards.nth(i);
     assert.equal(await card.getByText("مشاهده کالاها و شروع خرید ←",{exact:true}).count(),1,
-      "Every card uses the same catalog CTA");
+      "Every promo keeps the owner's common CTA text");
     await card.click();
-    await page.waitForURL(base+"/products");
-    await page.getByRole("heading",{name:"فیلترها"}).waitFor();
-    await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
-    assert.equal(new URL(page.url()).hash,"",
-      "Promo cards open the catalog at its top without a stale anchor");
+    await page.waitForURL(base+route);
+    await page.getByTestId("catalog-collection-status")
+      .getByRole("heading",{name:"فیلتر فعال: "+label,exact:true}).waitFor();
+    assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),0,
+      "Never show Figma product fixtures as promotion-eligible");
+    assert.equal(await page.locator('[aria-label="فهرست کالاهای منتشرشده"] li').count(),0,
+      "Do not label unverified published identities as promotion-eligible");
     await page.goto(base+"/");
   }
+  assert.equal(unverifiedProductRequests,0,
+    "Selected collections must not fetch ordinary unfiltered catalog products");
+  await page.unroute("**/api/catalog/products?*");
+  await page.goto(base+"/products?collection=unsupported");
+  await page.getByTestId("catalog-collection-status")
+    .getByRole("heading",{name:"فیلتر انتخاب‌شده معتبر نیست"}).waitFor();
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),0);
+  await page.getByRole("link",{name:"نمایش همه کالاها بدون این فیلتر"}).click();
+  await page.waitForURL(base+"/products");
+  await page.goto(base+"/");
   const expectedHomeNavRoutes = [
-    "/discounts", "/benefits/food-credit", "/benefits/special-plans", "/products",
+    "/products?collection=golden", "/products?collection=kalabarg", "/products?collection=henna", "/products",
   ];
   assert.deepEqual(await page.getByRole("navigation",{name:"دسته‌بندی اصلی"})
     .getByRole("link").evaluateAll(links=>links.map(a=>a.getAttribute("href"))),
@@ -261,7 +286,7 @@ async function main() {
     "Three owner-approved sidebar feature labels in exact order");
   assert.deepEqual(await featureNav.getByRole("link").evaluateAll(
     links => links.map(link => link.getAttribute("href"))),
-    ["/benefits/food-credit", "/discounts", "/benefits/special-plans"],
+    ["/products?collection=kalabarg", "/products?collection=golden", "/products?collection=henna"],
     "Feature destinations match existing first-party homepage routes");
   assert.equal(await featureNav.locator('input[type="checkbox"]').count(), 0,
     "No misleading eligibility checkboxes in the feature area");
@@ -400,7 +425,7 @@ async function main() {
   ], "Basket uses the approved four-link navigation");
   assert.deepEqual(await cartNav.getByRole("link").evaluateAll(
     links => links.map(link => link.getAttribute("href"))),
-    ["/products", "/benefits/special-plans", "/benefits/food-credit", "/discounts"]);
+    ["/products", "/products?collection=henna", "/products?collection=kalabarg", "/products?collection=golden"]);
   assert.equal(await page.getByTestId("marketplace-announcement").count(), 0,
     "Basket reference has no catalog announcement strip");
   assert.equal(await page.getByRole("link", { name: "ثبت‌نام فروشگاه‌ها", exact: true }).getAttribute("href"),
@@ -845,7 +870,7 @@ async function main() {
     "کالابرگ الکترونیکی", "تخفیف‌های طلایی",
   ];
   const navHrefs = [
-    "/products", "/benefits/special-plans", "/benefits/food-credit", "/discounts",
+    "/products", "/products?collection=henna", "/products?collection=kalabarg", "/products?collection=golden",
   ];
   assert.deepEqual(await productNav.getByRole("link").allTextContents(), navLabels,
     "Product categories must contain only the four approved homepage links");
