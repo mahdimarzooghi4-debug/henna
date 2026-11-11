@@ -62,6 +62,7 @@ def dismiss_known_emulator_anr():
         }
         known = {
             "Pixel Launcher isn't responding",
+            "Quickstep isn't responding",
             "com.google.android.googlesdksetup isn't responding",
         }
         observed = next((title for title in known if title in values), None)
@@ -72,7 +73,8 @@ def dismiss_known_emulator_anr():
         # or mask an ANR belonging to the Henna application.
         preferred_action = (
             "Close app"
-            if observed == "Pixel Launcher isn't responding"
+            if observed in {"Pixel Launcher isn't responding",
+                            "Quickstep isn't responding"}
             else "Wait"
         )
         action = next(
@@ -119,6 +121,7 @@ def wait_screen(*phrases, timeout=110):
                 print("Observed native UI: " + " / ".join(phrases), flush=True)
                 return last
             if ("Pixel Launcher isn't responding" in last or
+                    "Quickstep isn't responding" in last or
                     "com.google.android.googlesdksetup isn't responding" in last):
                 dismiss_known_emulator_anr()
                 continue
@@ -200,6 +203,27 @@ def open_uri(uri, package):
     )
 
 
+def configure_aosp_keyboard_contacts_denial():
+    """Pre-deny optional contacts for the CI emulator's system keyboard only.
+
+    The permission prompt can appear after the first input tap or even
+    after adb input text. Set the same denial before launching Henna so
+    the asynchronous system dialog cannot intercept the real UI test.
+    Never change any permission belonging to the app under test.
+    """
+    keyboard = execute("adb", "shell", "settings", "get", "secure",
+                       "default_input_method").strip().split("/", 1)[0]
+    if keyboard != "com.android.inputmethod.latin":
+        return
+    permission = "android.permission.READ_CONTACTS"
+    execute("adb", "shell", "pm", "revoke", "--user", "0",
+            keyboard, permission)
+    execute("adb", "shell", "pm", "set-permission-flags", "--user", "0",
+            keyboard, permission, "user-set", "user-fixed")
+    print("Pre-denied optional AOSP keyboard contacts access in CI.",
+          flush=True)
+
+
 def deny_aosp_keyboard_contacts_prompt():
     """Handle only the fresh AOSP keyboard's optional contacts prompt.
 
@@ -247,6 +271,7 @@ def main():
     package = match.group(1)
     print(f"Installed APK package={package}, sha=CI native build", flush=True)
     execute("adb", "install", "-r", str(APK), timeout=150)
+    configure_aosp_keyboard_contacts_denial()
 
     # A normal icon launch of the CI preview must expose a no-SMS primary
     # action; it is a local preview session, not an authenticated buyer.
