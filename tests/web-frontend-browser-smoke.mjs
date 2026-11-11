@@ -350,7 +350,7 @@ async function startWeb() {
     if (web.exitCode !== null)
       throw Error("Next exited before ready: " + webLogs);
     try {
-      if ((await fetch(base + "/seller/register", {
+      if ((await fetch(base + "/seller/register/account", {
         signal: AbortSignal.timeout(1000),
       })).ok) return;
     } catch { /* wait */ }
@@ -374,17 +374,17 @@ async function main() {
 
   // Signed-out seller must redirect to the EXACT approved web auth flow;
   // it cannot edit a draft, guess revision zero or invent an authenticated UI.
-  await page.goto(base + "/seller/register");
+  await page.goto(base + "/seller/register/account");
   await page.getByText("برای ذخیره پیش‌نویس ابتدا").waitFor();
   assert.equal(await page.locator("#store-name").isDisabled(), true);
   assert.equal(writes, 0);
   await page.getByRole("link", { name: "وارد حساب حنا شوید" }).click();
-  await page.waitForURL("**/auth?returnTo=%2Fseller%2Fregister");
+  await page.waitForURL("**/auth?returnTo=%2Fseller%2Fregister%2Faccount");
   await page.locator("#auth-phone").fill("۰۹۱۲۳۴۵۶۷۸۹");
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   await page.locator("#auth-code").fill("۱۲۳۴۵۶");
   await page.getByRole("button", { name: "ورود و ادامه" }).click();
-  await page.waitForURL("**/seller/register");
+  await page.waitForURL("**/seller/register/account");
   await page.locator("#store-name").waitFor({ state: "visible" });
   await page.locator("#store-name").waitFor({ state: "attached" });
   await page.waitForFunction(() =>
@@ -448,7 +448,7 @@ async function main() {
   const otherTab = await context.newPage();
   otherTab.setDefaultTimeout(10000);
   otherTab.on("pageerror", err => { pageErrors.push(err.message); });
-  await otherTab.goto(base + "/seller/register");
+  await otherTab.goto(base + "/seller/register/account");
   await otherTab.waitForFunction(() =>
     document.querySelector("#store-name")?.value === "فروشگاه مرورگر");
   await page.locator("#store-name").fill("فروشگاه پنجره اول");
@@ -511,7 +511,7 @@ async function main() {
     name: "حساب کاربری", exact: true,
   }).click();
   assert.equal(confirmCount, 1);
-  assert.equal(new URL(page.url()).pathname, "/seller/register");
+  assert.equal(new URL(page.url()).pathname, "/seller/register/account");
   assert.equal(await page.locator("#store-address").inputValue(),
     "نشانی ذخیره نشده");
 

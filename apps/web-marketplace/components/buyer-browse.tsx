@@ -5,6 +5,7 @@ import Link from "next/link";
 import { LANDING_PREVIEW_PRODUCTS } from "../lib/landing-preview-products";
 import { LandingAddButton } from "./landing-add-button";
 import styles from "./buyer-marketplace.module.css";
+import { CATALOG_COLLECTIONS, catalogCollectionHref, type CatalogCollectionSelection } from "../lib/buyer-catalog-collections";
 import {
   BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref, findLandingBuyerCategory,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
@@ -47,8 +48,9 @@ async function publicJson(path: string, signal: AbortSignal): Promise<unknown> {
 }
 
 /** Figma 476:3/476:4 (empty) + 478:2/478:22 (API-backed); approved by owner. */
-export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
+export function BuyerBrowse({ initialQuery = "", initialCategoryName = "", initialCollection = null }: {
   initialQuery?: string; initialCategoryName?: string;
+  initialCollection?: CatalogCollectionSelection;
 }) {
   // Parse server-provided URL before the first paint or catalog request:
   // a directly shared /?page=2&search=... must not flash page 1 results.
@@ -74,11 +76,13 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
   const [products, setProducts] = useState<Load<BuyerPage>>({
     status: "loading", key: "",
   });
-  const path = categoryNameStatus === "none"
+  // Do not fetch or show unfiltered products for a filter lacking an
+  // authoritative, source-qualified catalog read model.
+  const path = initialCollection === null && categoryNameStatus === "none"
     ? buyerCatalogPath(page, selected, search) : "";
   const current = products.key === path && products.status !== "loading"
     ? products : { status: "loading" as const, key: path };
-  const isPreview = !search && !selected && categoryNameStatus === "none" &&
+  const isPreview = initialCollection === null && !search && !selected && categoryNameStatus === "none" &&
     (current.status !== "ok" || current.data.items.length === 0);
   const locationState: BuyerBrowseLocation = {
     categoryId: selected, search, page,
@@ -97,6 +101,12 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
     const href = buyerBrowseHref(next);
+    if (initialCollection !== null) {
+      // Switching out of a source-filtered view must discard that filter;
+      // keeping it in history would claim unrelated catalog items qualify.
+      window.location.assign(href);
+      return;
+    }
     // A category landing must never keep an unrelated category in its URL
     // after the buyer chooses a different taxonomy filter.
     if (window.location.pathname.startsWith("/categories/")) {
@@ -110,7 +120,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
 
   useEffect(() => {
     function restore() {
-      if (window.location.pathname !== "/products") return;
+      if (window.location.pathname !== "/products" || initialCollection !== null) return;
       const next = parseBuyerBrowseLocation(
         new URLSearchParams(window.location.search),
       );
@@ -132,7 +142,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
     restore();
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
-  }, [initialQuery, initialCategoryName]);
+  }, [initialQuery, initialCategoryName, initialCollection]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -182,7 +192,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
   }, [categoryName, categoryNameStatus, categories, search]);
 
   useEffect(() => {
-    if (categoryNameStatus !== "none") {
+    if (initialCollection !== null || categoryNameStatus !== "none") {
       setProducts({ status: "loading", key: "" });
       return;
     }
@@ -201,7 +211,7 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
         if (active) setProducts({ status: "unavailable", key: path });
       });
     return () => { active = false; abort.abort(); };
-  }, [path, page, productRetry, categoryNameStatus]);
+  }, [path, page, productRetry, categoryNameStatus, initialCollection]);
 
   useEffect(() => {
     // The published taxonomy is authoritative only after a valid 200. An
@@ -379,9 +389,9 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
           <div className={styles.figmaFilterGroup}>
             <h3>ویژگی‌ها</h3>
             <nav className={styles.featureLinks} aria-label="ویژگی‌های حنا">
-              <Link href="/benefits/food-credit">کالابرگ الکترونیکی</Link>
-              <Link href="/discounts">تخفیف‌های طلایی</Link>
-              <Link href="/benefits/special-plans">طرح‌های ویژه حنا</Link>
+              <Link href={catalogCollectionHref("kalabarg")} aria-current={initialCollection === "kalabarg" ? "page" : undefined}>کالابرگ الکترونیکی</Link>
+              <Link href={catalogCollectionHref("golden")} aria-current={initialCollection === "golden" ? "page" : undefined}>تخفیف‌های طلایی</Link>
+              <Link href={catalogCollectionHref("henna")} aria-current={initialCollection === "henna" ? "page" : undefined}>طرح‌های ویژه حنا</Link>
             </nav>
           </div>
           <p className={styles.filterNote}>فهرست فقط کالاها و خدمات منتشرشده را نشان می‌دهد.</p>
@@ -408,7 +418,16 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
         {pageRecovery && (
           <p className="buyer-panel" role="status">{pageRecovery}</p>
         )}
-        {categoryNameStatus === "pending" ? (
+        {initialCollection !== null ? (
+          <div className="buyer-panel buyer-products-status" role="status" data-testid="catalog-collection-status">
+            <h3>{initialCollection === "invalid"
+              ? "فیلتر انتخاب‌شده معتبر نیست"
+              : `فیلتر فعال: ${CATALOG_COLLECTIONS[initialCollection].title}`}</h3>
+            {initialCollection !== "invalid" && <p>{CATALOG_COLLECTIONS[initialCollection].description}</p>}
+            <p>فهرست تأییدشده کالاهای مشمول این فیلتر هنوز از منبع معتبر به کاتالوگ متصل نشده است. تا آن زمان، کالای عمومی یا نمونهٔ طراحی را به‌اشتباه به‌عنوان مشمول نمایش نمی‌دهیم.</p>
+            <Link href="/products">نمایش همه کالاها بدون این فیلتر</Link>
+          </div>
+        ) : categoryNameStatus === "pending" ? (
           <p className="buyer-panel buyer-products-status" role="status">پس از تعیین دسته‌بندی، کالاهای همان دسته نمایش داده می‌شوند…</p>
         ) : categoryNameStatus === "unavailable" || categoryNameStatus === "not-found" ? (
           <div className="buyer-panel buyer-products-status" role="status">
