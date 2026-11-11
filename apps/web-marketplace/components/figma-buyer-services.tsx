@@ -14,7 +14,7 @@ const tickets=[
  {status:"در حال بررسی",date:"۱۴۰۴/۱۲/۰۸",title:"پیگیری وضعیت ارسال سفارش نمونه",id:"#۱۰۱۹",detail:"در حال پیگیری هماهنگی با پیک فروشگاه جهت بررسی تاخیر تحویل."},
  {status:"ثبت شده",date:"۱۴۰۴/۱۱/۲۵",title:"درخواست ثبت مجدد کد ملی حمایتی",id:"#۱۰۰۲",detail:"درخواست استعلام تکمیلی از پایگاه اطلاعات رفاهی ثبت شد."},
 ];
-export function FigmaBuyerServices({kind}:{kind:ServiceKind}){
+export function FigmaBuyerServices({kind,previewCredits=false}:{kind:ServiceKind;previewCredits?:boolean}){
  const [notice,setNotice]=useState("");
  const heading=kind==="credits"?"اعتبارهای من":kind==="social"?"مشارکت اجتماعی":"پشتیبانی حنا";
  const description=kind==="credits"?"اعتبارهای ثبت‌شده برای حساب شما به‌صورت کارت‌های مستقل نمایش داده می‌شوند.":kind==="social"?"گزارش عمومی و تأییدشده عملکرد اجتماعی حنا در حمایت از خانواده‌های کم‌برخوردار.":"مرکز ارتباطات، پاسخ به سوالات متداول و پیگیری درخواست‌ها. ما در کوتاه‌ترین زمان برای حل مشکلات خرید و مسائل مربوط به اعتبارها در کنار شما هستیم.";
@@ -22,7 +22,7 @@ export function FigmaBuyerServices({kind}:{kind:ServiceKind}){
   <BuyerAccountNav active={kind} />
   <section className={styles.content}>
    <header className={kind==="credits"?styles.creditsSummary:styles.summary}><div className={styles.summaryCopy}><span className={styles.kicker}>{kind==="social"?"خریدی هوشمند و مسئولانه":kind==="support"?"پشتیبانی ۲۴ ساعته فعال":kind==="credits"?"":"حساب کاربری"}</span><h1>{heading}</h1><p>{description}</p></div></header>
-   {kind==="credits"&&<BuyerCreditCards/>}
+   {kind==="credits"&&<BuyerCreditCards preview={previewCredits}/>}
    {kind==="social"&&<BuyerSocialReport/>}
    {kind==="support"&&<><section className={styles.faq}><h2>سوالات متداول کاربران</h2>{supportFaq.map((q,i)=><details key={q} open><summary>{q}</summary><p>{i===0?"جزئیات و شرایط طرح‌های فعال در صفحه اعتبارها نمایش داده می‌شود.":"برای پیگیری، درخواست خود را ثبت کنید یا از فهرست درخواست‌های قبلی وضعیت را ببینید."}</p></details>)}</section>
     <section className={styles.supportForm} id="support-new-request"><h2>ثبت درخواست پشتیبانی جدید</h2><form onSubmit={(event)=>{event.preventDefault();setNotice("درخواست نمونه آماده است؛ ارسال واقعی پس از اتصال سامانه پشتیبانی فعال می‌شود.");}}><div className={styles.supportFormGrid}><label><span>شماره سفارش مرتبط (اختیاری)</span><input name="orderNumber" inputMode="numeric" dir="ltr" placeholder="نمونه: ۱۰۰۲۴۵۶" /></label><label><span>موضوع درخواست</span><input name="subject" placeholder="مثال: مغایرت فاکتور، مشکل در پرداخت، خطای اعتبارسنجی..." required /></label><label className={styles.supportMessage}><span>متن پیام و توضیحات مشکل</span><textarea name="message" placeholder="جزئیات درخواست خود را با ذکر نام فروشگاه و زمان حدودی بنویسید..." rows={3} required /></label></div><div className={styles.supportActions}><button type="submit">ثبت و ارسال پیام به پشتیبانی</button><Link href="tel:02191004304">تماس مستقیم با پشتیبانی تلفنی (۰۲۱-۹۱۰۰۴۳۰۴)</Link></div></form></section>

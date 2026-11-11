@@ -962,6 +962,24 @@ async function main() {
     }
   }
 
+  // Preview is explicitly opted-in on local dev and is never a financial grant.
+  let previewApiCalls = 0;
+  await page.route("**/api/buyer/credits?page=*", route => {
+    previewApiCalls += 1;
+    return route.fulfill({status:500,body:"Unexpected preview credit API access"});
+  });
+  await page.goto(base + "/benefits?section=credits&mode=preview");
+  await page.getByTestId("buyer-credit-preview-notice").waitFor();
+  assert.equal(await page.getByTestId("buyer-credit-card").count(),3,
+    "Three distinctly labeled, fictional credits appear in the account preview");
+  await page.getByText("اعتبار سازمانی",{exact:true}).waitFor();
+  await page.getByText("اعتبار کالای اساسی",{exact:true}).waitFor();
+  assert.equal(await page.getByText("نمونه ـ غیرقابل استفاده").count(),3);
+  assert.equal(await page.getByText("وارد حساب شوید").count(),0,
+    "Preview must not ask the preview account to sign in again");
+  assert.equal(previewApiCalls,0,"Preview never calls the real credit BFF");
+  await page.unroute("**/api/buyer/credits?page=*");
+
   // A legacy plans link resolves to the same credit view, not a separate tab.
   await page.goto(base + "/benefits?section=plans");
   await page.getByRole("heading",{name:"اعتبارهای من",exact:true}).waitFor();

@@ -5,17 +5,36 @@ import { parseBuyerCreditsPage, type BuyerCredit } from "../lib/buyer-credits";
 import styles from "./figma-buyer-services.module.css";
 
 type CreditState = "loading" | "ready" | "signin" | "unavailable";
+type DisplayCredit = BuyerCredit & { title?: string; source?: string };
+
+// Entirely fictional UI examples, not CreditGrants, funding or entitlements.
+// Never use these as BFF responses or submit them to checkout.
+const DEMO_CREDITS: DisplayCredit[] = [
+  { id:"10000000-0000-4000-8000-000000000101", programId:"20000000-0000-4000-8000-000000000101",
+    title:"اعتبار حمایتی عمومی", source:"طرح نمونه حنا",
+    grantedRial:25000000, availableRial:17500000, expiresAtUtc:"2028-12-31T23:59:59Z",
+    categoryIds:["30000000-0000-4000-8000-000000000101"] },
+  { id:"10000000-0000-4000-8000-000000000102", programId:"20000000-0000-4000-8000-000000000102",
+    title:"اعتبار سازمانی", source:"سازمان نمونه (غیرواقعی)",
+    grantedRial:12000000, availableRial:12000000, expiresAtUtc:"2028-09-30T23:59:59Z",
+    categoryIds:["30000000-0000-4000-8000-000000000102"] },
+  { id:"10000000-0000-4000-8000-000000000103", programId:"20000000-0000-4000-8000-000000000103",
+    title:"اعتبار کالای اساسی", source:"برنامه آزمایشی",
+    grantedRial:8000000, availableRial:0, expiresAtUtc:"2028-06-30T23:59:59Z",
+    categoryIds:["30000000-0000-4000-8000-000000000103"] },
+];
 const rial = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 const persianDate = (value: string) =>
   new Intl.DateTimeFormat("fa-IR", { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Tehran" }).format(new Date(value));
 
-export function BuyerCreditCards() {
+export function BuyerCreditCards({preview=false}:{preview?:boolean}) {
   const [page, setPage] = useState(1);
   const [revision, retry] = useState(0);
   const [items, setItems] = useState<BuyerCredit[]>([]);
-  const [state, setState] = useState<CreditState>("loading");
+  const [state, setState] = useState<CreditState>(preview ? "ready" : "loading");
   const [hasMore, setHasMore] = useState(false);
   useEffect(() => {
+    if (preview) return;
     const controller = new AbortController();
     void (async () => {
       setState("loading");
@@ -38,30 +57,39 @@ export function BuyerCreditCards() {
       }
     })();
     return () => controller.abort();
-  }, [page, revision]);
+  }, [page, revision, preview]);
 
   const now = Date.now();
+  const displayed: DisplayCredit[] = preview ? DEMO_CREDITS : items;
   return <div aria-live="polite" data-testid="buyer-credit-area">
-    {state === "signin" ? <section className={styles.creditMessage}>
-      برای مشاهده اعتبارهای خود ابتدا <Link href="/auth?returnTo=%2Fbenefits%3Fsection%3Dcredits">وارد حساب شوید</Link>.
+    {preview && <section className={styles.creditPreviewBanner} data-testid="buyer-credit-preview-notice" role="status">
+      <strong>پیش‌نمایش اعتبارها — داده نمایشی</strong>
+      <p>مبالغ، نام طرح‌ها و وضعیت کارت‌ها کاملاً نمونه هستند و هیچ اعتبار واقعی یا قابل خرجی به حساب شما تعلق نمی‌دهند.</p>
+    </section>}
+    {!preview && state === "signin" ? <section className={styles.creditMessage}>
+      نشست این حساب برای دریافت داده‌های واقعی اعتبار معتبر نیست.
+      <Link href="/auth?returnTo=%2Fbenefits%3Fsection%3Dcredits"> احراز هویت مجدد</Link>
     </section> : null}
-    {state === "unavailable" ? <section className={styles.creditMessage} role="status">
+    {!preview && state === "unavailable" ? <section className={styles.creditMessage} role="status">
       اطلاعات اعتبارهای حساب در دسترس نیست. این وضعیت به معنای نداشتن اعتبار نیست.
       <button type="button" className={styles.creditLoadMore}
         onClick={() => { setPage(1); retry(v => v + 1); }}>تلاش مجدد</button>
     </section> : null}
-    {state === "loading" && items.length === 0 ? <p role="status">در حال دریافت اعتبارهای حساب…</p> : null}
-    {state === "ready" && items.length === 0 ? <section className={styles.creditMessage}>اعتباری برای این حساب ثبت نشده است.</section> : null}
-    {items.length > 0 && <div className={styles.creditCards} data-testid="buyer-credit-cards">
-      {items.map(credit => {
+    {!preview && state === "loading" && items.length === 0 ? <p role="status">در حال دریافت اعتبارهای حساب…</p> : null}
+    {!preview && state === "ready" && items.length === 0 ? <section className={styles.creditMessage}>اعتباری برای این حساب ثبت نشده است.</section> : null}
+    {displayed.length > 0 && <div className={styles.creditCards} data-testid="buyer-credit-cards">
+      {displayed.map(credit => {
         const expired = Date.parse(credit.expiresAtUtc) <= now;
         const status = expired ? "منقضی" : credit.availableRial === 0 ? "مصرف‌شده" : "قابل استفاده";
         return <article key={credit.id} className={styles.creditCard} data-testid="buyer-credit-card">
           <div className={styles.creditCardHead}>
-            <div><h2>اعتبار حمایتی</h2><span className={styles.creditCardCode}>شناسه برنامه: {credit.programId.slice(0,8)}</span></div>
+            <div><h2>{credit.title ?? "اعتبار حمایتی"}</h2>
+              <span className={styles.creditCardCode}>{preview ? credit.source : `شناسه برنامه: ${credit.programId.slice(0,8)}`}</span>
+              {preview && <span className={styles.creditPreviewBadge}>نمونه ـ غیرقابل استفاده</span>}
+            </div>
             <span className={expired ? styles.creditStatusExpired : styles.creditStatus}>{status}</span>
           </div>
-          <div><span className={styles.creditAmount}>{rial(credit.availableRial)} <small>ریال</small></span><p>مانده ثبت‌شده</p></div>
+          <div><span className={styles.creditAmount}>{rial(credit.availableRial)} <small>ریال</small></span><p>{preview ? "مانده نمونه" : "مانده ثبت‌شده"}</p></div>
           <dl className={styles.creditDetails}>
             <div><dt>اعتبار اولیه</dt><dd>{rial(credit.grantedRial)} ریال</dd></div>
             <div><dt>مصرف‌شده</dt><dd>{rial(credit.grantedRial-credit.availableRial)} ریال</dd></div>
@@ -71,8 +99,8 @@ export function BuyerCreditCards() {
         </article>;
       })}
     </div>}
-    {state === "loading" && items.length > 0 ? <p role="status">در حال دریافت کارت‌های بیشتر…</p> : null}
-    {state === "ready" && hasMore && <button type="button" className={styles.creditLoadMore}
+    {!preview && state === "loading" && items.length > 0 ? <p role="status">در حال دریافت کارت‌های بیشتر…</p> : null}
+    {!preview && state === "ready" && hasMore && <button type="button" className={styles.creditLoadMore}
       onClick={() => setPage(v => v + 1)}>نمایش اعتبارهای بیشتر</button>}
   </div>;
 }
