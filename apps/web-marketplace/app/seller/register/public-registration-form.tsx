@@ -27,7 +27,7 @@ const empty:Values={
   backupPhone:"",websiteOrSocial:"",businessEmail:"",responseHours:""
 };
 const stages=[
-  "شروع ثبت‌نام","نوع متقاضی","مشخصات هویتی",
+  "شروع ثبت‌نام","نوع متقاضی","احراز هویت",
   "اطلاعات کسب‌وکار","محدوده فعالیت","اطلاعات تکمیلی",
   "بازبینی و ثبت","وضعیت درخواست",
 ] as const;
@@ -71,7 +71,7 @@ export function PublicSellerRegistrationForm() {
     if(step===3){
       const phone=normalizeDigits(values.phone.trim());
       if(!values.ownerName.trim() || values.ownerName.length>120 ||
-        !/^09\\d{9}$/.test(phone) || !acknowledged){
+        !/^09\d{9}$/.test(phone) || !acknowledged){
         setError("نام مسئول و شماره موبایل معتبر را وارد و اطلاعیه بررسی هویت را تأیید کنید.");
         return;
       }
