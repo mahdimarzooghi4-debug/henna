@@ -5,7 +5,8 @@
 .headerActions{display:flex;align-items:center;gap:16px;font-size:14px;font-weight:650}
 .sellerLabel{color:#b5523b}
 .separator{height:24px;border-left:1px solid #eae6e1}
-.optionalLogin{background:#faf8f5;padding:9px 16px;border-radius:10px;text-decoration:none;color:#1c3f3a}
+.optionalLogin{background:#faf8f5;padding:9px 16px;border-radius:10px;text-decoration:none;color:#1c3f3a;display:inline-flex;align-items:center;gap:6px}
+.optionalLogin svg{width:16px;height:16px;flex:0 0 16px}
 .optionalLogin:hover{background:#f1ede9}
 .main{width:min(1280px,calc(100% - 44px));margin:0 auto;min-height:420px}
 .footer{background:#fff;border-top:1px solid #eae6e1;padding:60px max(22px,calc((100% - 1280px)/2)) 30px;font-size:13px;color:#706963}
