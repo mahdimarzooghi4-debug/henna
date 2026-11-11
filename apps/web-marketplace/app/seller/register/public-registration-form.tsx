@@ -33,7 +33,7 @@ const stages=[
 ] as const;
 
 export function PublicSellerRegistrationForm() {
-  const [step,setStep]=useState(1);
+  const [step,setStep]=useState(2);
   const [values,setValues]=useState<Values>(empty);
   const [confirmed,setConfirmed]=useState(false);
   const [acknowledged,setAcknowledged]=useState(false);
@@ -65,27 +65,30 @@ export function PublicSellerRegistrationForm() {
 
   function next(){
     setError("");
-    if(step===1){
+    if(step===2 && !values.applicantType){
+      setError("نوع متقاضی را انتخاب کنید.");return;
+    }
+    if(step===3){
+      const phone=normalizeDigits(values.phone.trim());
+      if(!values.ownerName.trim() || values.ownerName.length>120 ||
+        !/^09\\d{9}$/.test(phone) || !acknowledged){
+        setError("نام مسئول و شماره موبایل معتبر را وارد و اطلاعیه بررسی هویت را تأیید کنید.");
+        return;
+      }
+      setValues(v=>({...v,phone}));
+    }
+    if(step===4){
       const result=validateSellerDraft({
         storeName:values.storeName,ownerName:values.ownerName,
         phone:values.phone,city:values.city,address:values.address,
         postalCode:values.postalCode,
       });
-      if(result.firstInvalid){
-        setError(Object.values(result.errors)[0]??"اطلاعات اولیه کامل نیست.");
+      if(result.firstInvalid||!values.businessName.trim()||
+        !values.businessDescription.trim()||!values.offeringType){
+        setError(Object.values(result.errors)[0]??"اطلاعات کسب‌وکار و نوع ارائه را کامل کنید.");
         return;
       }
       setValues(v=>({...v,...result.values}));
-    }
-    if(step===2 && !values.applicantType){
-      setError("نوع متقاضی را انتخاب کنید.");return;
-    }
-    if(step===3 && !acknowledged){
-      setError("توجه به مرحله بررسی هویت را تأیید کنید.");return;
-    }
-    if(step===4 && (!values.businessName.trim() ||
-      !values.businessDescription.trim() || !values.offeringType)){
-      setError("اطلاعات کسب‌وکار و نوع ارائه را کامل کنید.");return;
     }
     if(step===5 && (!values.activityAddress.trim() ||
       !values.activityHours.trim() || !values.serviceArea.trim() ||
@@ -101,7 +104,7 @@ export function PublicSellerRegistrationForm() {
   }
   function back(){
     setError("");
-    setStep(s=>Math.max(1,s-1));
+    setStep(s=>Math.max(2,s-1));
   }
 
   async function submit(){
@@ -167,14 +170,6 @@ export function PublicSellerRegistrationForm() {
       <p className={styles.intro}>برای ارسال درخواست همکاری نیازی به ورود یا ساخت حساب خریدار ندارید.
         اطلاعات واردشده صرفاً درخواست بررسی است و فعال‌سازی فروشگاه محسوب نمی‌شود.</p>
 
-      {step===1&&<div className={styles.grid}>
-        {field("storeName","نام فروشگاه",true,"text","مثلاً سوپرمارکت بهار")}
-        {field("ownerName","نام و نام خانوادگی مسئول")}
-        {field("phone","شماره موبایل مسئول",true,"tel","09xxxxxxxxx")}
-        {field("city","شهر / منطقه")}
-        {field("address","نشانی فروشگاه")}
-        {field("postalCode","کدپستی",true,"text","۱۰ رقم")}
-      </div>}
       {step===2&&<fieldset className={styles.choices}><legend>نوع متقاضی</legend>
         <label><input type="radio" name="applicantType" checked={values.applicantType==="NATURAL"}
           onChange={()=>change("applicantType","NATURAL")}/> شخص حقیقی</label>
@@ -182,14 +177,20 @@ export function PublicSellerRegistrationForm() {
           onChange={()=>change("applicantType","LEGAL")}/> شخص حقوقی</label>
       </fieldset>}
       {step===3&&<div className={styles.info}>
-        <p><strong>مسئول درخواست:</strong> {values.ownerName} — {values.phone}</p>
-        <p>شماره موبایل و مشخصات واردشده هنوز احراز هویت نشده‌اند.
-          احراز هویت واقعی باید پیش از هرگونه تأیید یا فعال‌سازی فروشندگی انجام شود.</p>
+        <div className={styles.grid}>
+          {field("ownerName","نام و نام خانوادگی مسئول")}
+          {field("phone","شماره موبایل مسئول",true,"tel","09xxxxxxxxx")}
+        </div>
+        <p>این مرحله صرفاً ثبت اطلاعات هویتی اولیه است؛ شماره همراه و هویت هنوز تأیید نشده‌اند. احراز هویت معتبر پیش از تأیید فروشندگی جداگانه انجام می‌شود.</p>
         <label><input type="checkbox" checked={acknowledged}
           onChange={e=>setAcknowledged(e.target.checked)}/>
           متوجه هستم ثبت اطلاعات به معنای احراز هویت نیست.</label>
       </div>}
       {step===4&&<div className={styles.grid}>
+        {field("storeName","نام فروشگاه",true,"text","مثلاً سوپرمارکت بهار")}
+        {field("city","شهر / منطقه")}
+        {field("address","نشانی فروشگاه")}
+        {field("postalCode","کدپستی",true,"text","۱۰ رقم")}
         {field("businessName","نام کسب‌وکار")}
         {field("businessDescription","توضیح فعالیت و محصولات یا خدمات")}
         <fieldset className={styles.choices}><legend>نوع ارائه</legend>
@@ -240,7 +241,7 @@ export function PublicSellerRegistrationForm() {
 
       {error&&<p role="alert" className={styles.error}>{error}</p>}
       {step<8&&<div className={styles.actions}>
-        {step>1&&<button type="button" className={styles.secondary} onClick={back}
+        {step>2&&<button type="button" className={styles.secondary} onClick={back}
           disabled={busy}>مرحله قبل</button>}
         {step<7?<button type="button" className={styles.primary} onClick={next}>
           ادامه</button>:<button type="button" className={styles.primary}
