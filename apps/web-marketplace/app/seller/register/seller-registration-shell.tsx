@@ -13,7 +13,12 @@ export function SellerRegistrationShell({children}: {children:React.ReactNode}){
         <div className={styles.headerActions}>
           <span className={styles.sellerLabel}>ثبت‌نام فروشگاه‌ها و ارائه‌دهندگان</span>
           <span className={styles.separator} aria-hidden="true"/>
-          <Link className={styles.optionalLogin} href="/auth">ورود به حساب کاربری</Link>
+          <Link className={styles.optionalLogin} href="/auth">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.2"/><path d="M5 21c.5-4 2.8-6 7-6s6.5 2 7 6"/>
+            </svg>
+            ورود به حساب کاربری
+          </Link>
         </div>
       </div>
     </header>
