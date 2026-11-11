@@ -99,6 +99,7 @@ internal static class PublicSellerIntakeEndpoints
                 return Results.StatusCode(503);
             }
         }).WithName("SubmitPublicSellerIntake")
+          .RequireRateLimiting("public-seller-intake")
           .DisableAntiforgery()
           .Produces(StatusCodes.Status429TooManyRequests);
 
@@ -184,8 +185,8 @@ internal static class PublicSellerIntakeEndpoints
     }
 
     private static bool ValidText(string? text, int max) =>
-        text is not null && text.Trim().Length is > 0 and var len &&
-        len <= max && !text.Any(char.IsControl);
+        text is not null && text.Trim().Length > 0 &&
+        text.Trim().Length <= max && !text.Any(char.IsControl);
 
     private static bool ValidOptional(string? text, int max) =>
         text is null || text.Length == 0 ||
