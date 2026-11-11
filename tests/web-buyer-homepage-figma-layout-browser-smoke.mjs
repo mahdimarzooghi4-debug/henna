@@ -183,22 +183,23 @@ async function main() {
       "/products","Primary shopping CTA remains functional");
   }
 
-  // Each colored card and the shared category menu must lead to an actual,
-  // distinguishable destination, not a legacy anchor into account credits.
-  const promoRoutes = [
-    ["/discounts","پیشنهادها و تخفیف‌های حنا"],
-    ["/benefits/food-credit","کالابرگ الکترونیکی"],
-    ["/benefits/special-plans","طرح‌های ویژه حنا"],
-  ];
+  // All three central promotional cards are a single, full-surface path
+  // into the real shopping catalog; their distinct visual identity stays intact.
   const promoCards = page.locator('section[aria-labelledby="home-title"] + div > a');
+  assert.equal(await promoCards.count(),3,"Homepage has exactly three promo cards");
   assert.deepEqual(await promoCards.evaluateAll(anchors=>anchors.map(a=>a.getAttribute("href"))),
-    promoRoutes.map(([route])=>route),"Three home promo cards have distinct page routes");
-  for(let i=0;i<promoRoutes.length;i++){
-    const [url,heading] = promoRoutes[i];
-    await promoCards.nth(i).click();
-    await page.waitForURL(base+url);
-    await page.getByRole("heading",{name:heading,exact:true}).first().waitFor();
-    assert.equal(new URL(page.url()).hash,"","Promo must open its page, not a dead anchor");
+    ["/products","/products","/products"],
+    "Every promotional card opens the same shopping catalog");
+  for(let i=0;i<3;i++){
+    const card=promoCards.nth(i);
+    assert.equal(await card.getByText("مشاهده کالاها و شروع خرید ←",{exact:true}).count(),1,
+      "Every card uses the same catalog CTA");
+    await card.click();
+    await page.waitForURL(base+"/products");
+    await page.getByRole("heading",{name:"فیلترها"}).waitFor();
+    await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
+    assert.equal(new URL(page.url()).hash,"",
+      "Promo cards open the catalog at its top without a stale anchor");
     await page.goto(base+"/");
   }
   const expectedHomeNavRoutes = [
