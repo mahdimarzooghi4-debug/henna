@@ -4,6 +4,8 @@ Status: **navigation/read boundary implemented; authoritative product filtering 
 
 ## Confirmed product meaning
 
+**Owner terminology clarification:** «طرح‌های ویژه حنا» is the public-facing name for **«تخفیف‌های حنا»** (discounts granted by Henna itself). «تخفیف‌های طلایی» is the public-facing name for **«تخفیف‌های مغازه»** (discounts granted by each seller/store owner on its own offers). These are exactly the two discount origins, not four independent campaigns or collections. Neither origin is inferred from a catalog item's attributes.
+
 The three entries are distinct **product lists**, not separate purchase products and not labels interchangeable with catalog categories:
 
 | Entry | Owner-provided provenance | Qualifying evidence needed |
