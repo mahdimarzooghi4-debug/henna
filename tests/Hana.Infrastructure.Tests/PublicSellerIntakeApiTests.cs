@@ -58,18 +58,6 @@ public sealed class PublicSellerIntakeApiTests
             confirmed = true,
         };
 
-        object WithOfferingType(string offeringType) => new
-        {
-            payload.storeName, payload.ownerName, payload.phone, payload.city,
-            payload.address, payload.postalCode, payload.applicantType,
-            payload.businessName, payload.businessDescription, offeringType,
-            payload.activityAddress, payload.activityHours, payload.sellerDelivery,
-            payload.pickup, payload.serviceArea, payload.registrationContactName,
-            payload.registrationContactRole, payload.backupPhone,
-            payload.websiteOrSocial, payload.businessEmail, payload.responseHours,
-            payload.confirmed
-        };
-
         async Task<HttpResponseMessage> PostAsync(string? secret, object body)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post,
@@ -92,12 +80,6 @@ public sealed class PublicSellerIntakeApiTests
 
         using var withoutSecret = await PostAsync(null, payload);
         Assert.Equal(HttpStatusCode.BadRequest, withoutSecret.StatusCode);
-        foreach (var invalidOffering in new[] { "SERVICE", "BOTH" })
-        {
-            using var rejected = await PostAsync(token,
-                WithOfferingType(invalidOffering));
-            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
-        }
         using var created = await PostAsync(token, payload);
         Assert.Equal(HttpStatusCode.OK, created.StatusCode);
         using var createdJson = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
@@ -140,5 +122,60 @@ public sealed class PublicSellerIntakeApiTests
         var digest=Convert.ToHexString(SHA256.HashData(Convert.FromHexString(token)));
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM seller.public_registration_intakes WHERE credential_digest = {digest}");
+    }
+
+    [Fact]
+    public async Task PublicIntakeRejectsServiceAndMixedOfferings()
+    {
+        if (string.IsNullOrWhiteSpace(
+            Environment.GetEnvironmentVariable("ConnectionStrings__IdentityDb")))
+            return;
+
+        // Keep these invalid-input probes in their own host so the main
+        // idempotency test stays within the public endpoint's five-request
+        // per-minute IP budget without weakening the production rate limit.
+        using var factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(b => b.UseEnvironment("Development"));
+        using var client = factory.CreateClient();
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        object Payload(string offeringType) => new
+        {
+            storeName = "فروشگاه تست عمومی",
+            ownerName = "مسئول درخواست",
+            phone = "09123456789",
+            city = "شهر تست",
+            address = "نشانی تست",
+            postalCode = "1234567890",
+            applicantType = "NATURAL",
+            businessName = "کسب‌وکار تست",
+            businessDescription = "فروش محصولات تست",
+            offeringType,
+            activityAddress = "نشانی فعالیت تست",
+            activityHours = "۹ تا ۱۷",
+            sellerDelivery = true,
+            pickup = false,
+            serviceArea = "محدوده تست",
+            registrationContactName = "مسئول درخواست",
+            registrationContactRole = (string?)null,
+            backupPhone = (string?)null,
+            websiteOrSocial = (string?)null,
+            businessEmail = (string?)null,
+            responseHours = "۹ تا ۱۷",
+            confirmed = true,
+        };
+        async Task<HttpResponseMessage> PostAsync(object body)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post,
+                "/api/v1/seller/public-registration");
+            request.Headers.Add("X-Hana-Seller-Intake-Token", token);
+            request.Content = JsonContent.Create(body);
+            return await client.SendAsync(request);
+        }
+
+        foreach (var invalidOffering in new[] { "SERVICE", "BOTH" })
+        {
+            using var rejected = await PostAsync(Payload(invalidOffering));
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        }
     }
 }

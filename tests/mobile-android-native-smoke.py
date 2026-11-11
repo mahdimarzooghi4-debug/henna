@@ -143,7 +143,7 @@ def main():
     # Actual Android app launch from a COLD-start external detail URI.
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(DETAIL, package)
-    ui = wait_screen("جزئیات کالا یا خدمت", "دریافت جزئیات تأیید نشد")
+    ui = wait_screen("جزئیات کالا", "دریافت جزئیات تأیید نشد")
     assert "نشست شما فعال است" not in ui
 
     # Both native and app back behaviors return to public browse with the
@@ -157,11 +157,11 @@ def main():
     open_uri("hana://browse?search=" + BROWSE.split("search=", 1)[1], package)
     wait_screen("کالاها و خدمات", TERM)
     open_uri("hana://products/" + BUYER_ID, package)
-    wait_screen("جزئیات کالا یا خدمت", "دریافت جزئیات تأیید نشد")
+    wait_screen("جزئیات کالا", "دریافت جزئیات تأیید نشد")
 
     # Unapproved auth/admin routes must not steal the current buyer screen.
     open_uri("hana://auth", package)
-    ui = wait_screen("جزئیات کالا یا خدمت")
+    ui = wait_screen("جزئیات کالا")
     assert "ورود به حنا" not in ui
 
     # COLD-start browse URI should restore a real input, not just a

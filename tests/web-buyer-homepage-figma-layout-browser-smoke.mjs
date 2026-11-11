@@ -247,12 +247,12 @@ async function main() {
     "تخفیف‌های طلایی", "کالابرگ الکترونیکی",
     "طرح‌های ویژه حنا", "همه دسته‌ها",
   ], "Only four approved homepage links remain");
-  assert.equal(await page.getByRole("link", {
+  const sellerSignupLink = page.locator("header").getByRole("link", {
     name: "ثبت‌نام فروشگاه‌ها", exact: true,
-  }).count(), 1, "The header uses the approved short signup label");
-  assert.equal(await page.getByRole("link", {
-    name: "ثبت‌نام فروشگاه‌ها", exact: true,
-  }).getAttribute("href"), "/seller/register",
+  });
+  assert.equal(await sellerSignupLink.count(), 1,
+    "The header uses the approved short signup label");
+  assert.equal(await sellerSignupLink.getAttribute("href"), "/seller/register",
     "Seller signup destination must remain unchanged");
   for (const removed of [
     "نیازمندی‌های محلی", "فروشندگان و ارائه‌دهندگان", "کالاها و خدمات",
