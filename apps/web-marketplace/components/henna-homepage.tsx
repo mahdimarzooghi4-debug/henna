@@ -6,20 +6,7 @@ import { LandingFooter, LandingHeader } from "./landing-chrome";
 import { LandingAddButton } from "./landing-add-button";
 import { LANDING_TODAY_PRODUCTS } from "../lib/landing-preview-products";
 import styles from "./henna-homepage.module.css";
-
-const categories = [
-  ["نان و شیرینی", "category-bread.png"],
-  ["کنسرو و آماده", "category-canned.png"],
-  ["بهداشتی و سلامت", "category-health.png"],
-  ["میوه و صیفی", "category-produce.png"],
-  ["روغن و خواربار", "category-grocery.png"],
-  ["نوشیدنی‌ها", "category-drinks.png"],
-  ["لبنیات محلی", "category-dairy.png"],
-] as const;
-
-function categoryHref(label: string) {
-  return `/products?categoryName=${encodeURIComponent(label)}`;
-}
+import { LANDING_CATEGORIES, landingCategoryHref } from "../lib/landing-category-pages";
 
 const steps = [
   ["انتخاب آزادانه کالاها", "کالاها، لبنیات، نان روزانه، تخفیف‌ها یا اقلام کالابرگی مورد نیاز خود را مستقیماً جست‌وجو کرده و بدون محدودیت به سبد خریدتان اضافه کنید.", "۱"],
@@ -51,7 +38,7 @@ export default function HennaHomepage() {
 
         <section className={`${styles.container} ${styles.categories}`} id="categories">
           <div className={styles.sectionHeading}><h2>دسته‌بندی‌های محبوب</h2><Link href="/products">مشاهده همه دسته‌ها</Link></div>
-          <div className={styles.categoryGrid}>{categories.map(([label, image]) => <Link className={styles.category} href={categoryHref(label)} key={label}><span><Image src={`/landing/${image}`} alt="" width={100} height={100} /></span><strong>{label}</strong></Link>)}</div>
+          <div className={styles.categoryGrid}>{LANDING_CATEGORIES.map((category) => <Link className={styles.category} href={landingCategoryHref(category.slug)} key={category.slug}><span><Image src={`/landing/${category.image}`} alt="" width={100} height={100} /></span><strong>{category.label}</strong></Link>)}</div>
         </section>
 
         <section className={`${styles.container} ${styles.offers}`} id="offers">
