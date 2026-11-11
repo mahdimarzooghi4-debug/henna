@@ -498,13 +498,14 @@
 .chrome .footer .footerBottom { height:auto; min-height:64px; margin-top:28px; }
 @media(max-width:1000px){
  .chrome .footer .footerGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .chrome .footer .footerBrand { grid-column:2; grid-row:2; }
  .chrome .footer .footerBottom { margin-top:20px; }
 }
 @media(max-width:640px){
  .chrome .footer .footerGrid { grid-template-columns:minmax(0,1fr); gap:24px; }
  .chrome .footer .footerGrid > div:not(:last-child){align-items:flex-start;}
- .chrome .footer .footerBrand { grid-row:1; align-items:flex-start; }
+ .chrome .footer .footerBrand { grid-column:1; grid-row:1; align-items:flex-start; }
  .chrome .footer .footerBrand > a { align-self:flex-start; }
- .chrome .footer .footerContact { grid-row:4; }
+ .chrome .footer .footerContact { grid-column:1; grid-row:4; }
  .chrome .footer .footerBottom { margin-top:22px; }
 }

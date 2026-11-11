@@ -1032,7 +1032,7 @@ async function main() {
     "Mobile navigation has no clipped, inaccessible category links");
 
   // Informational footer and public pages use one approved visual system.
-  for (const width of [1440,390]) {
+  for (const width of [1440,900,390]) {
     await page.setViewportSize({width,height:900});
     for (const [path, title] of [
       ["/faq","سؤالات متداول"],
