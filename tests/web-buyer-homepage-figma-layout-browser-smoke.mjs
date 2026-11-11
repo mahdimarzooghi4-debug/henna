@@ -39,6 +39,8 @@ async function snapshot(page) {
       promos: 'section[aria-labelledby="home-title"] + div',
       categories: "#categories",
       offers: "#offers",
+      footerTop: '[data-testid="landing-footer-top"]',
+      footerBottom: '[data-testid="landing-footer-bottom"]',
     };
     const boxes = {};
     for (const [name,selector] of Object.entries(selectors)) {
@@ -107,10 +109,15 @@ async function main() {
     const expectedWidth = Math.min(1280, width - 2*gutter);
     near(reference.width, expectedWidth, "Hero width at " + width);
     near(reference.left, (width-expectedWidth)/2, "Hero left edge at " + width);
-    for (const name of ["header","navigation","promos","categories","offers"]) {
+    for (const name of ["header","navigation","promos","categories","offers","footerTop","footerBottom"]) {
       near(result.boxes[name].left,reference.left,name+" left edge at "+width);
       near(result.boxes[name].right,reference.right,name+" right edge at "+width);
     }
+    // The footer background remains full width; only its content follows
+    // the approved shared header canvas (including 1650px and mobile).
+    const footerFrame = await page.locator("#footer").boundingBox();
+    near(footerFrame.x, 0, "Homepage footer background starts at viewport edge at "+width);
+    near(footerFrame.width, width, "Homepage footer background fills viewport at "+width);
     assert.ok(result.documentWidth<=result.documentClientWidth+1,
       "Unexpected page-wide horizontal overflow at "+width+
       ": document="+result.documentWidth+", viewport="+result.documentClientWidth);

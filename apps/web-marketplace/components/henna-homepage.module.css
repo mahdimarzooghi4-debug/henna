@@ -456,3 +456,14 @@
   max-width: var(--buyer-figma-canvas);
   margin-inline: auto;
 }
+
+/* Shared homepage footer canvas: the white background remains full-bleed,
+   while both footer rows align with the header's 1280px responsive canvas.
+   The account footer already follows this contract. */
+.chrome .footer { padding-inline: 0; }
+.chrome .footer .footerGrid,
+.chrome .footer .footerBottom {
+  width: min(var(--buyer-figma-canvas), calc(100% - var(--buyer-figma-gutter) - var(--buyer-figma-gutter)));
+  max-width: var(--buyer-figma-canvas);
+  margin-inline: auto;
+}
