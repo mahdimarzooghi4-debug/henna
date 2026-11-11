@@ -1,0 +1,39 @@
+.root{width:min(1100px,100%);margin:0 auto 48px;direction:rtl}
+.steps{display:flex;gap:8px;flex-wrap:wrap;padding:16px 20px;background:#fff;
+  border:1px solid #e3c7ae;border-radius:15px;margin:18px 0 20px;
+  color:#504e49;font-size:12px;justify-content:space-between}
+.steps>span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.steps b{display:grid;place-items:center;border:1px solid #eee7e1;border-radius:50%;
+  width:23px;height:23px;font-size:12px}
+.steps .active{color:#ae4e38;font-weight:800}
+.steps .active b{background:#b5523b;border-color:#b5523b;color:white}
+.card{background:white;border:1px solid #e3c7ae;border-radius:15px;padding:25px 22px}
+.card h2{margin:0 0 12px;color:#173b35;font-size:19px}
+.intro{margin:0 0 21px;font-size:13px;line-height:1.9;color:#645f5a}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.field{display:flex;flex-direction:column;gap:7px;font-size:13px;color:#183e37;font-weight:700}
+.field input{font:inherit;font-weight:400;width:100%;box-sizing:border-box;min-height:47px;
+  border:1px solid #d9b798;border-radius:10px;padding:10px 14px;color:#183e37;
+  background:#fff}
+.field input:focus{outline:2px solid #183e37;outline-offset:2px}
+.choices{border:1px solid #e7ddd3;border-radius:12px;padding:13px 16px;display:flex;
+  flex-wrap:wrap;gap:20px;align-items:center;font-size:14px}
+.choices legend{font-weight:750;padding:0 5px}
+.choices label,.review label,.info label{display:flex;gap:9px;align-items:center;cursor:pointer}
+.info{border-radius:11px;background:#e5f1ef;padding:15px 18px;line-height:2;
+  color:#1b4b46;font-size:14px}
+.review{line-height:1.9;color:#304d47;font-size:14px}
+.review p{margin:6px 0}
+.actions{display:flex;justify-content:flex-start;gap:12px;margin-top:25px}
+.primary,.secondary{font:inherit;min-height:43px;border-radius:10px;padding:9px 22px;
+  font-size:13px;font-weight:800;cursor:pointer}
+.primary{background:#b5523b;color:white;border:1px solid #b5523b}
+.secondary{background:white;border:1px solid #b5523b;color:#b5523b}
+.primary:disabled{opacity:.55;cursor:not-allowed}
+.error{color:#9d2929;background:#fceeee;border-radius:9px;padding:12px;margin:18px 0}
+.success{background:#e5f1ef;border-radius:12px;color:#16463f;padding:20px;line-height:2}
+.success h3{margin:0 0 10px}
+.success a{font-weight:700;color:#a94c35}
+@media(max-width:720px){.root{padding:0 14px}.steps{justify-content:flex-start;padding:12px}
+  .steps>span{font-size:11px}.grid{grid-template-columns:1fr}
+  .card{padding:20px 15px}.choices{gap:12px}}
