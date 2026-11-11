@@ -164,6 +164,16 @@ export function PublicSellerRegistrationForm() {
         <b>{new Intl.NumberFormat("fa-IR").format(i+1)}</b>{label}
       </span>)}
     </nav>
+    <nav className={styles.mobileProgress} aria-label="پیشرفت ثبت‌نام فروشنده در موبایل">
+      <div className={styles.mobileProgressBars} aria-hidden="true">
+        {stages.map((stage,i)=><span key={stage}
+          className={i+1<step?styles.mobileProgressDone:i+1===step?styles.mobileProgressCurrent:styles.mobileProgressPending}/>)}
+      </div>
+      <div className={styles.mobileProgressCaption}>
+        <strong>{step===8?"وضعیت درخواست":"ثبت اطلاعات کاربری"}</strong>
+        <span>مرحله {new Intl.NumberFormat("fa-IR").format(step)} از ۸</span>
+      </div>
+    </nav>
     <section className={styles.card}>
       {checking?<p role="status">در حال بررسی رسید قبلی این مرورگر…</p>:<>
       <h2>{stages[step-1]}</h2>
