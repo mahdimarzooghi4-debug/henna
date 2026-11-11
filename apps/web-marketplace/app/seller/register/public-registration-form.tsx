@@ -41,8 +41,13 @@ export function PublicSellerRegistrationForm() {
   const [checking,setChecking]=useState(true);
   const [error,setError]=useState("");
   const [receipt,setReceipt]=useState<{trackingCode:string;submittedAtUtc:string}|null>(null);
-  const change=(key:keyof Values,value:string|boolean)=>
+  const change=(key:keyof Values,value:string|boolean)=>{
+    // Human confirmation applies to the exact reviewed fields, not to
+    // values edited later in the wizard.
+    setConfirmed(false);
+    setError("");
     setValues(prev=>({...prev,[key]:value}));
+  };
 
   // Receipt proof is this browser's independent, HttpOnly applicant cookie:
   // never infer success from a network timeout or a buyer authentication.
@@ -104,6 +109,7 @@ export function PublicSellerRegistrationForm() {
   }
   function back(){
     setError("");
+    setConfirmed(false);
     setStep(s=>Math.max(2,s-1));
   }
 
