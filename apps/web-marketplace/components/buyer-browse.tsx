@@ -97,6 +97,12 @@ export function BuyerBrowse({ initialQuery = "", initialCategoryName = "" }: {
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
     const href = buyerBrowseHref(next);
+    // A category landing must never keep an unrelated category in its URL
+    // after the buyer chooses a different taxonomy filter.
+    if (window.location.pathname.startsWith("/categories/")) {
+      window.location.assign(href);
+      return;
+    }
     if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.pushState(window.history.state, "", href);
