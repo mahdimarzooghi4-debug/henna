@@ -7,6 +7,6 @@ export async function GET(
 ) {
   const { id } = await context.params;
   if (!validCatalogId(id))
-    return catalogError(404, "این کالا یا خدمت در کاتالوگ منتشرشده پیدا نشد.");
+    return catalogError(404, "این کالا در کاتالوگ منتشرشده پیدا نشد.");
   return catalogGet("/api/v1/catalog/products/" + id, parseProduct, true);
 }
