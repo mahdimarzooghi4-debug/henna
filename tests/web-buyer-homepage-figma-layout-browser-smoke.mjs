@@ -817,6 +817,9 @@ async function main() {
   assert.equal(new URL(page.url()).pathname,"/categories/local-dairy",
     "Published taxonomy resolution must preserve the category landing route");
   assert.equal(await page.locator("[data-testid=preview-product-add]").count(),0);
+  // Changing filters from a category landing moves to the canonical catalog.
+  await page.getByRole("button",{name:"همه دسته‌ها",exact:true}).click();
+  await page.waitForURL(base+"/products");
   await page.unroute("**/api/catalog/categories");
   await page.unroute("**/api/catalog/products?*");
   await page.goto(base+"/categories/bread-and-pastry");
