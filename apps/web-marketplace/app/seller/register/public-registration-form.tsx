@@ -170,12 +170,42 @@ export function PublicSellerRegistrationForm() {
       <p className={styles.intro}>برای ارسال درخواست همکاری نیازی به ورود یا ساخت حساب خریدار ندارید.
         اطلاعات واردشده صرفاً درخواست بررسی است و فعال‌سازی فروشگاه محسوب نمی‌شود.</p>
 
-      {step===2&&<fieldset className={styles.choices}><legend>نوع متقاضی</legend>
-        <label><input type="radio" name="applicantType" checked={values.applicantType==="NATURAL"}
-          onChange={()=>change("applicantType","NATURAL")}/> شخص حقیقی</label>
-        <label><input type="radio" name="applicantType" checked={values.applicantType==="LEGAL"}
-          onChange={()=>change("applicantType","LEGAL")}/> شخص حقوقی</label>
-      </fieldset>}
+      {step===2&&<div className={styles.applicantChoices} role="group" aria-label="نوع متقاضی">
+        <label className={`${styles.applicantCard} ${values.applicantType==="NATURAL"?styles.applicantCardActive:""}`}>
+          <span className={styles.applicantCardTop}>
+            <span className={styles.applicantIcon} aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-4 2.7-6 6.5-6s6 2 6.5 6"/>
+              </svg>
+            </span>
+            <input aria-label="شخص حقیقی" type="radio" name="applicantType"
+              checked={values.applicantType==="NATURAL"}
+              onChange={()=>change("applicantType","NATURAL")}/>
+          </span>
+          <strong>شخص حقیقی</strong>
+          <span className={styles.applicantDescription}>
+            ثبت‌نام به نام یک فرد با کد ملی شخصی. مناسب برای کسب‌وکارهای خانگی،
+            ارائه‌دهندگان محلی کالا و خدمات، آزادکاران و تولیدکنندگان انفرادی.
+          </span>
+        </label>
+        <label className={`${styles.applicantCard} ${values.applicantType==="LEGAL"?styles.applicantCardActive:""}`}>
+          <span className={styles.applicantCardTop}>
+            <span className={styles.applicantIcon} aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4.5" y="3" width="15" height="18" rx="1.8"/>
+                <path d="M8 7h2m4 0h2M8 11h2m4 0h2M10 21v-5h4v5"/>
+              </svg>
+            </span>
+            <input aria-label="شخص حقوقی" type="radio" name="applicantType"
+              checked={values.applicantType==="LEGAL"}
+              onChange={()=>change("applicantType","LEGAL")}/>
+          </span>
+          <strong>شخص حقوقی</strong>
+          <span className={styles.applicantDescription}>
+            ثبت‌نام به نام یک شخصیت حقوقی یا سازمان.
+          </span>
+        </label>
+      </div>}
       {step===3&&<div className={styles.info}>
         <div className={styles.grid}>
           {field("ownerName","نام و نام خانوادگی مسئول")}
