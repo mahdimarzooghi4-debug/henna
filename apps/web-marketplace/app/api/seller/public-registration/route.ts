@@ -8,6 +8,32 @@ import {
 
 export const runtime = "nodejs";
 
+const MAX_PUBLIC_INTAKE_BYTES = 8192;
+class PublicIntakeBodyTooLargeError extends Error {}
+
+async function readLimitedText(request: NextRequest): Promise<string> {
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder("utf-8", {fatal:true});
+  let bytes = 0;
+  let text = "";
+  try {
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > MAX_PUBLIC_INTAKE_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        throw new PublicIntakeBodyTooLargeError();
+      }
+      text += decoder.decode(value, {stream:true});
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 function fail(message: string, status: number) {
   return NextResponse.json({message}, {status,headers:noStore});
 }
@@ -15,15 +41,19 @@ function cookie(response: NextResponse, secret: string) {
   response.cookies.set(publicIntakeCookie, secret, {
     httpOnly: true, sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
-    path: "/", // Session cookie: no invented business retention window.
+    path: "/api/seller/public-registration", // Only the submit and status BFF routes receive this session cookie.
   });
   return response;
 }
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return fail("درخواست نامعتبر است.",403);
-  if (!request.headers.get("content-type")?.startsWith("application/json"))
+  const mediaType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  if (mediaType !== "application/json")
     return fail("نوع درخواست معتبر نیست.",400);
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_PUBLIC_INTAKE_BYTES)
+    return fail("حجم درخواست بیش از حد مجاز است.",413);
 
   const existing = request.cookies.get(publicIntakeCookie)?.value;
   const secret = existing && publicIntakeTokenPattern.test(existing)
@@ -33,12 +63,15 @@ export async function POST(request: NextRequest) {
 
   let body: string;
   try {
-    body = await request.text();
-    if (body.length > 8192) return fail("حجم درخواست بیش از حد مجاز است.",413);
+    body = await readLimitedText(request);
     const parsed: unknown = JSON.parse(body);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
       return fail("اطلاعات درخواست معتبر نیست.",400);
-  } catch { return fail("اطلاعات درخواست معتبر نیست.",400); }
+  } catch (error) {
+    if (error instanceof PublicIntakeBodyTooLargeError)
+      return fail("حجم درخواست بیش از حد مجاز است.",413);
+    return fail("اطلاعات درخواست معتبر نیست.",400);
+  }
 
   try {
     const upstream = await fetch(target, {
