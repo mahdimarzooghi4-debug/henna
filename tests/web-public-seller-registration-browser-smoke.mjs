@@ -107,6 +107,16 @@ try{
   const submit=page.getByRole("button",{name:"ثبت نهایی درخواست"});
   assert.equal(await submit.isDisabled(),true);
   await page.getByLabel("صحت اطلاعاتی را که خودم وارد کرده‌ام تأیید می‌کنم.").check();
+  assert.equal(await submit.isDisabled(),false);
+  // Revisiting a prior step and changing a field invalidates the old
+  // confirmation; no stale human approval is carried into submission.
+  await page.getByRole("button",{name:"مرحله قبل"}).click();
+  await page.locator('[name="responseHours"]').fill("۱۰ تا ۱۸");
+  await page.getByRole("button",{name:"ادامه"}).click();
+  await page.getByRole("heading",{name:"بازبینی و ثبت"}).waitFor();
+  assert.equal(await submit.isDisabled(),true);
+  assert.equal(await page.getByLabel("صحت اطلاعاتی را که خودم وارد کرده‌ام تأیید می‌کنم.").isChecked(),false);
+  await page.getByLabel("صحت اطلاعاتی را که خودم وارد کرده‌ام تأیید می‌کنم.").check();
   await submit.click();
   await page.getByRole("heading",{name:"درخواست ثبت‌نام دریافت شد"}).waitFor();
   await page.getByText(receipt.trackingCode).waitFor();
