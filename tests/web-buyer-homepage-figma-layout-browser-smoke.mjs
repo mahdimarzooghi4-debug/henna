@@ -771,25 +771,56 @@ async function main() {
   await page.goto(base + "/products");
   await page.evaluate(() => localStorage.removeItem("henna:landing-preview-cart:v1"));
 
-  // An unpublished homepage category never masquerades as a real catalog
-  // filter. Show a clear, same-origin way to reach the Figma overview.
+  // Seven distinct landing-category destinations. Missing taxonomy must
+  // preserve the category identity without showing unrelated sample products.
   await page.goto(base + "/");
-  const bakery = page.locator("#categories").getByRole("link", {
-    name: "نان و شیرینی", exact: true,
-  });
-  assert.ok((await bakery.getAttribute("href"))?.startsWith(
-    "/products?categoryName="));
-  assert.ok(!(await bakery.getAttribute("href")).includes("#"));
-  await bakery.click();
-  await page.waitForURL(url => url.pathname === "/products" &&
-    url.searchParams.has("categoryName"));
-  assert.equal(new URL(page.url()).hash, "");
-  await page.getByText(
-    "برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.",
-  ).waitFor();
-  await page.getByRole("link", {
-    name: "مشاهده صفحه همه کالاها و خدمات", exact: true,
-  }).click();
+  const categoryLinks = [
+    ["نان و شیرینی", "/categories/bread-and-pastry"],
+    ["کنسرو و آماده", "/categories/canned-and-ready"],
+    ["بهداشتی و سلامت", "/categories/health-and-hygiene"],
+    ["میوه و صیفی", "/categories/fruit-and-vegetables"],
+    ["روغن و خواربار", "/categories/oil-and-grocery"],
+    ["نوشیدنی‌ها", "/categories/drinks"],
+    ["لبنیات محلی", "/categories/local-dairy"],
+  ];
+  const homeCategoryLinks = page.locator("#categories").getByRole("link");
+  assert.deepEqual(await homeCategoryLinks.evaluateAll(links => links
+    .filter(a => a.closest("[class*=categoryGrid]"))
+    .map(a => [a.textContent.trim(), a.getAttribute("href")])), categoryLinks,
+    "Every homepage category has a real dedicated route");
+  for(const [label,route] of categoryLinks) {
+    await page.goto(base+route);
+    assert.equal(new URL(page.url()).pathname,route,"Category route remains shareable");
+    await page.getByTestId("landing-category-intro")
+      .getByRole("heading",{name:label,exact:true}).waitFor();
+    await page.getByText("برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.")
+      .waitFor();
+    assert.equal(await page.locator("[data-testid=preview-product-add]").count(),0,
+      "No sample catalog items shown for an unverified landing category");
+  }
+
+  // A confirmed matching published category can load its real results, without
+  // changing the dedicated URL, even when the verified result set is empty.
+  await page.route("**/api/catalog/categories", route => route.fulfill({
+    status:200,contentType:"application/json",body:JSON.stringify({items:[
+      {id:"30000000-0000-4000-8000-000000000002",
+        name:"لبنیات محلی",slug:"local-dairy"},
+    ]}),
+  }));
+  await page.route("**/api/catalog/products?*", route => route.fulfill({
+    status:200,contentType:"application/json",body:JSON.stringify({
+      items:[],page:1,pageSize:20,total:0,
+    }),
+  }));
+  await page.goto(base+"/categories/local-dairy");
+  await page.getByRole("heading",{name:"فعلاً کالایی برای نمایش نداریم"}).waitFor();
+  assert.equal(new URL(page.url()).pathname,"/categories/local-dairy",
+    "Published taxonomy resolution must preserve the category landing route");
+  assert.equal(await page.locator("[data-testid=preview-product-add]").count(),0);
+  await page.unroute("**/api/catalog/categories");
+  await page.unroute("**/api/catalog/products?*");
+  await page.goto(base+"/categories/bread-and-pastry");
+  await page.getByRole("link",{name:"مشاهده همه کالاها و خدمات",exact:true}).click();
   await page.waitForURL(base + "/products");
   await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
 
