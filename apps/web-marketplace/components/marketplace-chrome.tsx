@@ -3,13 +3,14 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import styles from "./marketplace-chrome.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
+import { catalogCollectionHref, type CatalogCollectionSelection } from "../lib/buyer-catalog-collections";
 
 // Keep the catalog chrome in sync with the owner's approved homepage navigation.
 const navItems = [
   ["همه دسته‌ها", "/products"],
-  ["طرح‌های ویژه حنا", "/benefits/special-plans"],
-  ["کالابرگ الکترونیکی", "/benefits/food-credit"],
-  ["تخفیف‌های طلایی", "/discounts"],
+  ["طرح‌های ویژه حنا", catalogCollectionHref("henna")],
+  ["کالابرگ الکترونیکی", catalogCollectionHref("kalabarg")],
+  ["تخفیف‌های طلایی", catalogCollectionHref("golden")],
 ] as const;
 
 const footerColumns = [
@@ -70,8 +71,9 @@ function SocialMark({ basket, label, href, children }: {
     : <span aria-label={label} title={label}>{children}</span>;
 }
 
-export function MarketplaceChrome({ footerOnly = false, initialSearch = "", basket = false }: {
+export function MarketplaceChrome({ footerOnly = false, initialSearch = "", basket = false, activeCollection = null }: {
   footerOnly?: boolean; initialSearch?: string; basket?: boolean;
+  activeCollection?: CatalogCollectionSelection;
 }) {
   if (footerOnly) {
     return (
@@ -150,7 +152,7 @@ export function MarketplaceChrome({ footerOnly = false, initialSearch = "", bask
           </Link>
         </div>
         <nav className={styles.nav} aria-label="دسته‌بندی اصلی" data-testid="marketplace-category-nav">
-          {navItems.map(([label, href]) => <Link key={label} href={href}>{label}</Link>)}
+          {navItems.map(([label, href]) => <Link key={label} href={href} aria-current={activeCollection !== null && activeCollection !== "invalid" && href === catalogCollectionHref(activeCollection) ? "page" : undefined}>{label}</Link>)}
         </nav>
       </header>
     </>
