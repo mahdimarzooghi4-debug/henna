@@ -3,12 +3,13 @@
  * Mocked fetch below is CI-only; no fake SMS or authenticated account ships.
  */
 import assert from "node:assert/strict";
+import { safeAuthReturnTo } from "../apps/web-marketplace/lib/auth-return.ts";
 import { test } from "node:test";
 import {
   emptySellerFields, loadSellerDraft,
 } from "../apps/web-marketplace/lib/seller-draft-preflight.ts";
 import {
-  safeSellerReturnTo, sellerLoginHref, sellerRegistrationPath,
+  safeSellerReturnTo, sellerLoginHref, sellerPanelPath, sellerPanelLoginPath, sellerRegistrationPath,
 } from "../apps/web-marketplace/lib/seller-return.ts";
 
 const fields = {
@@ -54,6 +55,17 @@ test("the only return destination is the exact existing seller registration path
   ]) {
     assert.equal(safeSellerReturnTo(value), null, String(value));
   }
+});
+
+test("seller panel uses an exact, same-origin authenticated return destination", () => {
+  assert.equal(sellerPanelPath, "/seller");
+  assert.equal(sellerPanelLoginPath, "/seller/login");
+  assert.equal(safeAuthReturnTo(sellerPanelPath), sellerPanelPath);
+  for (const target of [
+    "/seller/", "/seller/orders", "/seller/login", "/seller?preview=1",
+    "/seller#anything", "/seller/../admin", "%2Fseller", "//evil.test/seller",
+    "https://evil.test/seller", ["/seller"], {toString:()=>"/seller"},
+  ]) assert.equal(safeAuthReturnTo(target), null, String(target));
 });
 
 test("401 requires login and 404 is the ONLY absence proof", async () => {
