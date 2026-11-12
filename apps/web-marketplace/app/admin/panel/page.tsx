@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./admin-panel.module.css";
 
 const metrics = [
@@ -25,7 +26,7 @@ export const dynamic="force-dynamic";
 export const metadata={title:"داشبورد مدیریت | حنا"};
 export default function AdminPanelPage(){return <main className={styles.shell} dir="rtl">
  <section className={styles.app}>
-  <header className={styles.top}><div className={styles.user}><span className={styles.avatar}>م</span><span><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><button aria-label="اعلان‌ها">♧</button></div><div className={styles.brand}><b>حنا</b><span>پنل مدیریت بازارگاه</span></div></header>
+  <header className={styles.top}><div className={styles.user}><span className={styles.avatar}>م</span><span><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><button aria-label="اعلان‌ها">♧</button></div></header>
   <div className={styles.content}><header className={styles.title}><h1>پیشخوان مدیریت عملیاتی</h1><p>خلاصه‌ای از وضعیت درخواست‌ها، بررسی‌ها و اقدامات نیازمند مداخله · دادهٔ نمونه</p></header>
    <section className={styles.metrics}>{metrics.map(m=><article className={styles.metric} key={m.label}><div><span>{m.label}</span><i className={styles[m.tone]}>{m.icon}</i></div><strong className={styles[m.tone]}>{m.value} <small>مورد نمونه</small></strong></article>)}</section>
    <div className={styles.columns}><div className={styles.left}>
@@ -34,5 +35,5 @@ export default function AdminPanelPage(){return <main className={styles.shell} d
    </div><div className={styles.right}><section className={styles.card}><h2>هشدارهای عملیاتی سیستم</h2><div className={styles.alert}><b>اطلاعات ثبت‌نام نیازمند بررسی است</b><span>اطلاعات یک درخواست فروشندگی نیازمند تکمیل است.</span></div><div className={styles.alert}><b>مورد مالی نیازمند بررسی</b><span>یک مورد مرتبط با وضعیت تسویه نیازمند بررسی است.</span></div></section><section className={styles.card}><h2>اطلاعیه‌های سیستمی حنا</h2><p className={styles.notice}>به‌روزرسانی سامانه با موفقیت انجام شد.</p><p className={styles.notice}>وضعیت سرویس‌های متصل قابل مشاهده است.</p></section></div></div>
   </div>
  </section>
- <aside className={styles.sidebar}><div className={styles.sideBrand}><span className={styles.logo}>ح</span><span><b>مدیریت حنا</b><small>پنل مدیریت بازارگاه</small></span></div><nav>{menu.map(([group,items])=><section key={String(group)}><h2>{String(group)}</h2>{(items as string[][]).map(([label,href,icon])=><Link className={href==='/admin/panel'?styles.active:''} href={href} key={label}><i>{icon}</i>{label}</Link>)}</section>)}</nav></aside>
+ <aside className={styles.sidebar}><div className={styles.sideBrand}><span className={styles.logo}><Image src="/hana-logo.png" alt="حنا" width={48} height={32} priority /></span><span><b>مدیریت حنا</b><small>پنل مدیریت بازارگاه</small></span></div><nav>{menu.map(([group,items])=><section key={String(group)}><h2>{String(group)}</h2>{(items as string[][]).map(([label,href,icon])=><Link className={href==='/admin/panel'?styles.active:''} href={href} key={label}><i>{icon}</i>{label}</Link>)}</section>)}</nav></aside>
  </main>}
