@@ -6,8 +6,8 @@ import "./globals.css";
 import { PublicFooter } from "../components/public-footer";
 
 export const metadata: Metadata = {
-  title: "حنا",
-  description: "سامانه حنا",
+  title: "حنا | حمایت‌های نوآورانه اجتماعی",
+  description: "حنا، سامانه حمایت‌های نوآورانه اجتماعی",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
