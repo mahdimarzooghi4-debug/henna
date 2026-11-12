@@ -665,6 +665,34 @@ async function main() {
   await checkout.getByTestId("preview-pickup-info").getByText("فروشگاه نمونه ۱ (محله رسالت)",{exact:true}).waitFor();
   const pickupTotal=await checkoutTotal.textContent();
   assert.ok(pickupTotal.includes("تومان"));
+  // Payment choices remain blocked unless provider credit and merchant integration
+  // are independently verified; preview credit cards never authorize payment.
+  const bnplOptions = checkout.getByTestId("preview-bnpl-choices");
+  assert.equal(await bnplOptions.getByRole("radio").count(),3);
+  for (const company of ["اسنپ‌پی","دیجی‌پی","تارا"]) {
+    const option=bnplOptions.getByRole("radio",{name:"پرداخت با "+company,exact:true});
+    assert.equal(await option.isDisabled(),true,"Unverified BNPL credit must fail closed for "+company);
+    assert.equal(await option.isChecked(),false);
+  }
+  assert.equal(await checkout.getByRole("radio",{name:"پرداخت با اعتبار حمایتی"}).isDisabled(),true);
+  const discountEntry=checkout.getByTestId("preview-discount-code");
+  const kalabargEntry=checkout.getByTestId("preview-kalabarg-code");
+  await discountEntry.getByRole("textbox",{name:"کد تخفیف"}).fill("AZMAYESHI-001");
+  await discountEntry.getByRole("button",{name:"بررسی کد تخفیف"}).click();
+  await discountEntry.getByRole("status").getByText(/تأیید یا اعمال نشده/).waitFor();
+  assert.equal(await checkoutTotal.textContent(),pickupTotal,"Unverified discount must not alter total");
+  await kalabargEntry.getByRole("textbox",{name:"کد کالابرگ"}).fill("TEST-KALABARG");
+  await kalabargEntry.getByRole("button",{name:"بررسی کد کالابرگ"}).click();
+  await kalabargEntry.getByRole("status").getByText(/تأیید یا اعمال نشده/).waitFor();
+  assert.equal(await checkoutTotal.textContent(),pickupTotal,"Unverified Kalabarg must not alter total");
+  await submitPreview.click();
+  await checkout.getByRole("status").getByText(/کدهای واردشده هنوز قابل تأیید نیستند/).waitFor();
+  assert.equal(new URL(page.url()).pathname,"/buyer/checkout","Preview order with unverified codes must be blocked");
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem("henna:figma-preview-order:v1")),null,
+    "Unverified codes must not create any order snapshot");
+  await discountEntry.getByRole("textbox",{name:"کد تخفیف"}).fill("");
+  await kalabargEntry.getByRole("textbox",{name:"کد کالابرگ"}).fill("");
+
   assert.equal(await submitPreview.isEnabled(),true);
   await courier.check();
   await checkout.getByTestId("preview-courier-fields").waitFor();
