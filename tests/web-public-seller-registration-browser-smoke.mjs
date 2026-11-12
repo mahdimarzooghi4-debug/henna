@@ -70,6 +70,15 @@ try{
   assert.equal(await banner.getByRole("link").count(),1,
     "the header contains only the home-return action");
   assert.equal(await banner.getByRole("link",{name:"بازگشت به صفحه اصلی"}).getAttribute("href"),"/");
+  const backHome = banner.getByRole("link",{name:"بازگشت به صفحه اصلی"});
+  const headerBounds = await banner.locator('[class*="headerContent"]').boundingBox();
+  const backBounds = await backHome.boundingBox();
+  const iconBounds = await backHome.locator("svg").boundingBox();
+  const labelBounds = await backHome.locator("span").boundingBox();
+  assert.ok(headerBounds && backBounds && Math.abs(backBounds.x - headerBounds.x) < 3,
+    "the home-return button is aligned to the left edge of the header");
+  assert.ok(iconBounds && labelBounds && iconBounds.x + iconBounds.width < labelBounds.x,
+    "the return arrow is to the left of the button text");
   assert.equal(await page.getByTestId("landing-footer-top").count(),1);
   assert.equal(await page.getByTestId("landing-footer-bottom").count(),1);
   const startCard=page.locator('[data-testid="seller-register-start"] > div');
@@ -141,6 +150,18 @@ try{
   await mobile.goto(base+"/seller/register");
   await mobile.getByRole("link",{name:"شروع ثبت‌نام جدید"}).waitFor();
   assert.equal(await mobile.getByRole("banner").getByRole("link").count(),1);
+  const mobileHeader=mobile.getByRole("banner");
+  const mobileBack=mobileHeader.getByRole("link",{name:"بازگشت به صفحه اصلی"});
+  const mobileHeaderBounds=await mobileHeader.locator('[class*="headerContent"]').boundingBox();
+  const mobileBackBounds=await mobileBack.boundingBox();
+  const mobileIconBounds=await mobileBack.locator("svg").boundingBox();
+  const mobileLabelBounds=await mobileBack.locator("span").boundingBox();
+  assert.ok(mobileHeaderBounds && mobileBackBounds &&
+    Math.abs(mobileBackBounds.x-mobileHeaderBounds.x)<3,
+    "mobile home-return button is aligned to the left edge");
+  assert.ok(mobileIconBounds && mobileLabelBounds &&
+    mobileIconBounds.x+mobileIconBounds.width<mobileLabelBounds.x,
+    "mobile return arrow is to the left of the button text");
   assert.equal(await mobile.getByTestId("landing-footer-top").count(),1);
   const mobileFooter=await mobile.getByTestId("landing-footer-top").boundingBox();
   assert.ok(mobileFooter && mobileFooter.height>0,"homepage footer remains visible on mobile");

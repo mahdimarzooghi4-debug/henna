@@ -1,7 +1,7 @@
 .layout{background:#faf8f5;color:#1c3f3a;min-height:100vh;font-family:var(--hana-font-family)}
 .header{background:#fff;border-bottom:1px solid #eae6e1}
-.headerContent{width:min(1280px,calc(100% - 44px));min-height:76px;margin:auto;display:flex;align-items:center;justify-content:flex-start;direction:rtl}
-.backHome{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:42px;padding:9px 15px;border:1px solid #eae6e1;border-radius:10px;background:#faf8f5;color:#1c3f3a;text-decoration:none;font-size:14px;font-weight:700}
+.headerContent{width:min(1280px,calc(100% - 44px));min-height:76px;margin:auto;display:flex;align-items:center;justify-content:flex-end;direction:rtl}
+.backHome{display:inline-flex;flex-direction:row-reverse;align-items:center;justify-content:center;gap:9px;min-height:42px;padding:9px 15px;border:1px solid #eae6e1;border-radius:10px;background:#faf8f5;color:#1c3f3a;text-decoration:none;font-size:14px;font-weight:700}
 .backHome:hover{background:#f1ede9;border-color:#d9d1c9}
 .backHome svg{width:18px;height:18px;flex:0 0 18px}
 .main{width:min(1280px,calc(100% - 44px));min-height:620px;margin:0 auto;display:flex;align-items:center;justify-content:center}
