@@ -26,7 +26,7 @@ export const dynamic="force-dynamic";
 export const metadata={title:"داشبورد مدیریت | حنا"};
 export default function AdminPanelPage(){return <main className={styles.shell} dir="rtl">
  <section className={styles.app}>
-  <header className={styles.top}><div className={styles.user}><span className={styles.avatar}>م</span><span><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><button aria-label="اعلان‌ها">♧</button></div></header>
+  <header className={styles.top}><div className={styles.user}><button className={styles.notification} aria-label="اعلان‌ها"><Image src="/admin-assets/list-imgNotifBtn.svg" alt="" width={36} height={36}/></button><span className={styles.divider}/><span className={styles.userInfo}><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><span className={styles.avatar}>م</span></div></header>
   <div className={styles.content}><header className={styles.title}><h1>پیشخوان مدیریت عملیاتی</h1><p>خلاصه‌ای از وضعیت درخواست‌ها، بررسی‌ها و اقدامات نیازمند مداخله · دادهٔ نمونه</p></header>
    <section className={styles.metrics}>{metrics.map(m=><article className={styles.metric} key={m.label}><div><span>{m.label}</span><i className={styles[m.tone]}>{m.icon}</i></div><strong className={styles[m.tone]}>{m.value} <small>مورد نمونه</small></strong></article>)}</section>
    <div className={styles.columns}><div className={styles.left}>
