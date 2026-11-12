@@ -76,6 +76,20 @@ export function reconcilePublishedBuyerPage(
   return { ...location, page: 1 };
 }
 
+/** Validated shareable category UUIDs; each category has its own public catalog request. */
+export function parseBuyerCategorySet(raw: unknown): string[] | null {
+  if (typeof raw !== "string" || raw.length > 800) return null;
+  const ids = raw.split(",").map(item => item.toLowerCase());
+  if (ids.length < 2 || ids.length > 12 || !ids.every(validBuyerProductId) ||
+    new Set(ids).size !== ids.length) return null;
+  return ids;
+}
+export function buyerCategorySetHref(ids: readonly string[], search: string): string {
+  const params = new URLSearchParams({ categoryIds: ids.join(",") });
+  if (search && validBuyerSearch(search)) params.set("search", search);
+  return "/products?" + params.toString();
+}
+
 export function buyerCatalogPath(
   page: number, categoryId: string | null, search: string,
 ): string {

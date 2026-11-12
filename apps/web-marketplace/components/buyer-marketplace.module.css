@@ -85,3 +85,12 @@
 .previewDisclosure{margin:0 0 12px;padding:8px 12px;border-radius:8px;background:#faf8f5;color:#706963;font-size:11px}
 .sortOptions button:disabled{opacity:.45;cursor:not-allowed}
 .figmaFilterGroup input:disabled{opacity:.45;cursor:not-allowed}
+
+/* Accessible multi-select category and feature controls. */
+.checkOption{display:flex;align-items:center;gap:9px;min-height:36px;padding:7px 10px;border:1px solid #eae6e1;border-radius:8px;background:#faf8f5;color:#1c3f3a;font-size:12px;line-height:1.7;cursor:pointer}
+.checkOption:has(input:checked){border-color:#b5523b;background:#fff2eb;color:#a2442f;font-weight:700}
+.checkOption input{appearance:auto;width:16px;height:16px;accent-color:#b5523b;flex:none;cursor:pointer}
+.checkOption:focus-within{outline:2px solid #b5523b;outline-offset:2px}
+.featureLinks .checkOption{display:flex;text-align:right}
+.featureNotice{margin:3px 0 0;color:#8a827b;font-size:10px;line-height:1.8}
+.previewCategoryFilters .checkOption{font-size:12px}

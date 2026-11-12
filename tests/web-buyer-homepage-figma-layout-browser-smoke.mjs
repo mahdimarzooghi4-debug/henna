@@ -286,20 +286,22 @@ async function main() {
   await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
   assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
     "Figma 227:1085 preview shows eight clearly separated sample cards");
-  // The right-hand "Features" section has three real destinations, not
-  // disabled pseudo-checkboxes or invented eligibility/product flags.
-  const featureNav = page.getByRole("navigation", { name: "ویژگی‌های حنا" });
-  assert.deepEqual(await featureNav.getByRole("link").allTextContents(),
-    ["کالابرگ الکترونیکی", "تخفیف‌های طلایی", "طرح‌های ویژه حنا"],
-    "Three owner-approved sidebar feature labels in exact order");
-  assert.deepEqual(await featureNav.getByRole("link").evaluateAll(
-    links => links.map(link => link.getAttribute("href"))),
-    ["/products?collection=kalabarg", "/products?collection=golden", "/products?collection=henna"],
-    "Feature destinations match existing first-party homepage routes");
-  assert.equal(await featureNav.locator('input[type="checkbox"]').count(), 0,
-    "No misleading eligibility checkboxes in the feature area");
-  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
-    "Feature destinations must not misclassify the Figma demo catalog");
+  // Feature selection is multi-valued, while source eligibility remains fail-closed.
+  const featureNav = page.getByRole("group", { name: "ویژگی‌های حنا" });
+  assert.deepEqual(await featureNav.getByRole("checkbox").evaluateAll(
+    nodes => nodes.map(node => node.closest("label").textContent.trim())),
+    ["کالابرگ الکترونیکی", "تخفیف‌های طلایی", "طرح‌های ویژه حنا"]);
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),8);
+  await featureNav.getByRole("checkbox",{name:"کالابرگ الکترونیکی"}).check();
+  await page.getByTestId("catalog-collection-status").getByText(/ویژگی‌های انتخاب‌شده/).waitFor();
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),0,
+    "No verified feature source: never label demo cards eligible");
+  await featureNav.getByRole("checkbox",{name:"تخفیف‌های طلایی"}).check();
+  assert.equal(await featureNav.getByRole("checkbox",{checked:true}).count(),2);
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),0);
+  await featureNav.getByRole("checkbox",{name:"کالابرگ الکترونیکی"}).uncheck();
+  await featureNav.getByRole("checkbox",{name:"تخفیف‌های طلایی"}).uncheck();
+  await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
 
   // Owner's toolbar: four controls only; no left category chips.
   // These demo cards have display prices. Published catalog records do not,
@@ -307,9 +309,9 @@ async function main() {
   const demoCards = page.locator('[aria-label="محصولات فروشگاه"] article');
   const sortBar = page.getByTestId("products-filter-toolbar");
   assert.deepEqual(await sortBar.getByRole("button").allTextContents(),
-    ["ارزان‌ترین", "گران‌ترین", "تخفیف‌دارها", "کالابرگ"]);
-  assert.equal(await sortBar.getByRole("button", { name: "کالابرگ" }).isDisabled(),
-    true, "No verified benefit eligibility means no active kalabarg filter");
+    ["ارزان‌ترین", "گران‌ترین", "تخفیف‌دارها"]);
+  assert.equal(await sortBar.getByRole("button",{name:"کالابرگ"}).count(),0,
+    "Kalabarg is not a sort option");
   for (const removed of ["همه", "لبنیات محلی", "روغن و خواربار"]) {
     assert.equal(await sortBar.getByRole("button", { name: removed, exact: true }).count(),
       0, "Removed left-side toolbar chip: " + removed);
@@ -331,19 +333,26 @@ async function main() {
   await sortBar.getByRole("button", { name: "تخفیف‌دارها" }).click();
   assert.equal(await demoCards.count(), 8, "Re-selecting a sort restores default display");
 
-  const previewCategories = page.locator('[aria-label="فیلتر محصولات نمایشی"]');
-  await previewCategories.getByRole("button", { name: "لبنیات محلی", exact: true }).click();
-  assert.equal(await demoCards.count(), 4, "Right sidebar dairy filter still works");
-  await sortBar.getByRole("button", { name: "ارزان‌ترین" }).click();
+  const previewCategories=page.locator('[aria-label="فیلتر محصولات نمایشی"]');
+  const dairy=previewCategories.getByRole("checkbox",{name:"لبنیات محلی"});
+  const pantry=previewCategories.getByRole("checkbox",{name:"روغن و خواربار"});
+  const honey=previewCategories.getByRole("checkbox",{name:"عسل و خشکبار"});
+  await dairy.check();
+  assert.equal(await demoCards.count(),4,"Dairy category narrows sample cards");
+  await sortBar.getByRole("button",{name:"ارزان‌ترین"}).click();
   assert.equal(await demoCards.first().locator("h3").textContent(),
-    "ماست سون همزده پرچرب", "Price order and sidebar category intersect");
-  await sortBar.getByRole("button", { name: "ارزان‌ترین" }).click();
-  await previewCategories.getByRole("button", { name: "روغن و خواربار", exact: true }).click();
-  assert.equal(await demoCards.count(), 2, "Right sidebar pantry filter still works");
-  await previewCategories.getByRole("button", { name: "عسل و خشکبار", exact: true }).click();
-  assert.equal(await demoCards.count(), 2, "Right sidebar honey filter still works");
-  await previewCategories.getByRole("button", { name: "همه محصولات نمایشی", exact: true }).click();
-  assert.equal(await demoCards.count(), 8, "Right sidebar restores all demo products");
+    "ماست سون همزده پرچرب","Sorting intersects category selections");
+  await sortBar.getByRole("button",{name:"ارزان‌ترین"}).click();
+  await pantry.check();
+  assert.equal(await demoCards.count(),6,"Two sample categories combine as a union");
+  assert.equal(await previewCategories.getByRole("checkbox",{checked:true}).count(),2);
+  await honey.check();
+  assert.equal(await demoCards.count(),8,"Three sample categories can be selected");
+  await dairy.uncheck();
+  assert.equal(await demoCards.count(),4,"Unchecking one preserves the other selections");
+  await previewCategories.getByRole("button",{name:"همه محصولات نمایشی"}).click();
+  assert.equal(await demoCards.count(),8);
+  assert.equal(await previewCategories.getByRole("checkbox",{checked:true}).count(),0);
   assert.equal(new URL(page.url()).searchParams.has("categoryId"), false,
     "Demo filters and sorting must not invent a published catalog category ID");
 

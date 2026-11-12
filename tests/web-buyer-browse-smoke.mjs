@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BUYER_PAGE_SIZE, buyerCatalogPath, parseBuyerCategories,
+  BUYER_PAGE_SIZE, buyerCatalogPath, parseBuyerCategorySet, buyerCategorySetHref, parseBuyerCategories,
   parseBuyerPage, parseBuyerProduct, reconcilePublishedBuyerCategory, validBuyerSearch,
 } from "../apps/web-marketplace/lib/buyer-catalog.ts";
 
@@ -85,4 +85,15 @@ test("only an explicitly confirmed published list can retire a removed category"
   assert.deepEqual(bookmark, {
     categoryId: CATEGORY, search: "چای & خرما", page: 2,
   }, "caller state is not mutated");
+});
+
+test("strict category set parsing and shareable multi-select URL", () => {
+  const other="4ef06bf5-32f3-4b10-a41e-5bd69f6bb442";
+  assert.deepEqual(parseBuyerCategorySet(CATEGORY+","+other),[CATEGORY,other]);
+  assert.equal(parseBuyerCategorySet(CATEGORY+","+CATEGORY),null);
+  assert.equal(parseBuyerCategorySet("invalid,"+other),null);
+  assert.equal(parseBuyerCategorySet(CATEGORY),null);
+  const params=new URL(buyerCategorySetHref([CATEGORY,other],"چای"),"https://h.test").searchParams;
+  assert.equal(params.get("categoryIds"),CATEGORY+","+other);
+  assert.equal(params.get("search"),"چای");
 });
