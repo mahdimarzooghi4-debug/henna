@@ -318,7 +318,10 @@ async function fakeApi(route) {
     }));
   }
   if (path === "/api/seller/access" && req.method() === "GET") {
-    assert.ok(signedIn);
+    if (!signedIn)
+      return route.fulfill(json({
+        message: "برای ورود به پنل فروشنده ابتدا وارد شوید.",
+      }, 401));
     if (!draft?.activatedAtUtc || draft.reviewStatus !== "APPROVED")
       return route.fulfill(json({
         message: "دسترسی فروشندگی برای این حساب فعال نیست.",
@@ -398,6 +401,27 @@ async function main() {
   page.setDefaultTimeout(10000);
   const pageErrors = [];
   page.on("pageerror", err => { pageErrors.push(err.message); });
+
+  // Buyer footer → real seller OTP login, not a preview or account-free registration.
+  await page.goto(base + "/");
+  const sellerPanelLink = page.getByRole("link", {
+    name: "پنل پذیرندگان", exact: true,
+  });
+  assert.equal(await sellerPanelLink.getAttribute("href"), "/seller/login");
+  await sellerPanelLink.click();
+  await page.waitForURL("**/seller/login");
+  await page.getByRole("heading", { name: "ورود به پنل پذیرندگان" }).waitFor();
+  await page.locator("#auth-phone").waitFor();
+  assert.equal(await page.getByRole("link", {
+    name: "ثبت‌نام پذیرنده جدید",
+  }).getAttribute("href"), "/seller/register");
+  assert.equal(writes, 0);
+
+  await page.goto(base + "/seller");
+  await page.waitForURL("**/seller/login");
+  await page.getByRole("heading", { name: "ورود به پنل پذیرندگان" }).waitFor();
+  assert.equal(await page.locator(".seller-panel-denied").count(), 0);
+  assert.equal(writes, 0);
 
   // Signed-out seller must redirect to the EXACT approved web auth flow;
   // it cannot edit a draft, guess revision zero or invent an authenticated UI.
@@ -756,6 +780,12 @@ async function main() {
   });
   assert.equal(await panelButton.isDisabled(), true);
 
+  // Authenticated, unactivated seller must not loop through login.
+  await otherTab.goto(base + "/seller");
+  await otherTab.waitForURL("**/seller/register/status");
+  await otherTab.getByRole("heading", { name: "درخواست در حال بررسی است" }).waitFor();
+  assert.equal(await otherTab.locator(".seller-panel-denied").count(), 0);
+
   await otherTab.reload();
   await otherTab.getByText("کد پیگیری: HNA-A1B2C3D4E5F60718", {
     exact: true,
@@ -792,6 +822,14 @@ async function main() {
   }).count(), 0);
   await otherTab.getByText("دسترسی فروشندگی فعال است.", {
     exact: true,
+  }).waitFor();
+
+  // An already activated seller reaches the guarded operational panel
+  // after the dedicated seller OTP session check.
+  await otherTab.goto(base + "/seller/login");
+  await otherTab.waitForURL("**/seller");
+  await otherTab.getByRole("heading", {
+    name: "پیشخوان مدیریت کسب‌وکار",
   }).waitFor();
 
   assert.deepEqual(pageErrors, []);
