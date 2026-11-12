@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 
-const base = "http://127.0.0.1:3011";
+const base = "http://127.0.0.1:3011/products";
 const categoryA = "2fd59aad-5834-4717-9462-c5e520dd7a31";
 const categoryB = "4ef06bf5-32f3-4b10-a41e-5bd69f6bb442";
 const categories = [
@@ -18,7 +18,7 @@ const goods = Array.from({ length: 21 }, (_, n) => ({
   id: "60000000-0000-4000-8000-" + String(n + 1).padStart(12, "0"),
   categoryId: n === 0 ? categoryA : categoryB,
   name: "عنوان واقعی API در تست " + String(n + 1),
-  kind: n === 0 ? "SERVICE" : "GOOD",
+  kind: "GOOD",
   description: n === 0 ? "توضیح تأییدشدهٔ API" : null,
 }));
 let mode = "empty";
@@ -100,13 +100,17 @@ async function main() {
 
   await page.goto(base);
   await page.getByText("هنوز دسته‌بندی قابل نمایش در حنا ثبت نشده است.").waitFor();
-  await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
-  assert.equal(await page.getByRole("link", { name: "ورود / ثبت‌نام" }).count(), 1);
+  // At the unfiltered empty catalog the current Figma-aligned layout renders
+  // a visual preview, not a fabricated API-backed published product result.
+  await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
+  assert.equal(await page.locator(".buyer-product").count(), 0);
+  assert.equal(await page.getByText("عنوان واقعی API در تست 1").count(), 0);
+  assert.equal(await page.getByRole("banner").getByRole("link", { name: "ورود یا ثبت‌نام" }).count(), 1);
   assert.equal(await page.getByText("عنوان واقعی API در تست 1").count(), 0);
 
   mode = "rich";
   await page.reload();
-  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).waitFor();
+  await page.getByRole("checkbox", { name: "دستهٔ منتشرشدهٔ یک" }).waitFor();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 20);
   assert.equal(await page.getByText("SECRET").count(), 0);
@@ -117,19 +121,32 @@ async function main() {
   assert.equal(await page.locator(".buyer-product").count(), 1);
   assert.equal(calls.at(-1).params.page, "2");
 
-  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).click();
+  await page.getByRole("checkbox", { name: "دستهٔ منتشرشدهٔ یک" }).check();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.page, "1");
   assert.equal(calls.at(-1).params.categoryId, categoryA);
-  assert.equal(await page.getByRole("button", {
+  assert.equal(await page.getByRole("checkbox", {
     name: "دستهٔ منتشرشدهٔ یک",
-  }).getAttribute("aria-pressed"), "true");
+  }).isChecked(), true);
   assert.equal(await page.getByRole("button", { name: "صفحهٔ بعد" }).isDisabled(), true);
+  // Multiple published categories: separate validated public GETs and a shareable URL.
+  await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ دو"}).check();
+  await page.waitForURL(/categoryIds=/);
+  await page.waitForFunction(() => document.querySelectorAll(".buyer-product").length===21);
+  assert.equal(new URL(page.url()).searchParams.get("categoryIds"),categoryA+","+categoryB);
+  assert.equal(await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ یک"}).isChecked(),true);
+  assert.equal(await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ دو"}).isChecked(),true);
+  await page.reload();
+  await page.waitForFunction(() => document.querySelectorAll(".buyer-product").length===21);
+  assert.equal(await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ دو"}).isChecked(),true);
+  await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ دو"}).uncheck();
+  await page.waitForURL(base+"?categoryId="+categoryA);
+  await page.getByRole("heading",{name:"عنوان واقعی API در تست 1",exact:true}).waitFor();
   await page.getByRole("button", { name: "همه دسته‌ها" }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 2", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.categoryId, undefined);
 
-  await page.locator("#buyer-search").fill("عنوان واقعی API در تست 21");
+  await page.locator('input[name="search"]').fill("عنوان واقعی API در تست 21");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 21", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.search, "عنوان واقعی API در تست 21");
@@ -137,7 +154,7 @@ async function main() {
   assert.equal(await page.locator(".buyer-product").count(), 1);
 
   mode = "outage";
-  await page.locator("#buyer-search").fill("قطعی کاتالوگ");
+  await page.locator('input[name="search"]').fill("قطعی کاتالوگ");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "دریافت کالاها تأیید نشد" }).waitFor();
   assert.equal(await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).count(), 0);
@@ -150,7 +167,7 @@ async function main() {
 
   // A bookmarked filter can later become unpublished. Only a CONFIRMED
   // published category list can remove it; 503 must preserve the URL.
-  const oldBookmark = "/?categoryId=" + categoryB +
+  const oldBookmark = "?categoryId=" + categoryB +
     "&search=" + encodeURIComponent("عنوان") + "&page=2";
   mode = "outage";
   publishedCategories = categories;
@@ -169,11 +186,11 @@ async function main() {
   await page.getByText(
     "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
   ).waitFor();
-  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+  await page.waitForURL(base + "?search=" + encodeURIComponent("عنوان"));
   await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 1", exact: true,
   }).waitFor();
-  assert.equal(await page.getByRole("button", {
+  assert.equal(await page.getByRole("checkbox", {
     name: "دستهٔ منتشرشدهٔ دو",
   }).count(), 0);
   assert.equal(await page.getByRole("button", {
@@ -188,7 +205,7 @@ async function main() {
   // Only memory-only CI route fixtures produce these example products.
   mode = "rich";
   publishedCategories = categories;
-  const resumedBookmark = "/?categoryId=" + categoryB +
+  const resumedBookmark = "?categoryId=" + categoryB +
     "&search=" + encodeURIComponent("عنوان");
   await page.goto(base + resumedBookmark);
   await page.getByRole("heading", {
@@ -219,7 +236,7 @@ async function main() {
   await page.getByText(
     "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
   ).waitFor();
-  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+  await page.waitForURL(base + "?search=" + encodeURIComponent("عنوان"));
   await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 1", exact: true,
   }).waitFor();
@@ -230,7 +247,7 @@ async function main() {
   // visibility transition. The same known-publication recovery must work.
   publishedCategories = categories;
   await page.goto(base + resumedBookmark);
-  await page.getByRole("button", {
+  await page.getByRole("checkbox", {
     name: "دستهٔ منتشرشدهٔ دو",
   }).waitFor();
   publishedCategories = [categories[0]];
@@ -240,7 +257,7 @@ async function main() {
   await page.getByText(
     "دسته‌بندی انتخاب‌شده دیگر منتشر نیست؛ همهٔ دسته‌ها نمایش داده می‌شوند.",
   ).waitFor();
-  await page.waitForURL(base + "/?search=" + encodeURIComponent("عنوان"));
+  await page.waitForURL(base + "?search=" + encodeURIComponent("عنوان"));
 
   // Frontend 029: a once-valid saved page two can become out of range
   // after actual published entries are withdrawn. These are ONLY CI-memory
@@ -248,7 +265,7 @@ async function main() {
   mode = "rich";
   publishedCategories = categories;
   visibleGoods = goods.map(item => ({ ...item, categoryId: categoryB }));
-  const savedPage = "/?categoryId=" + categoryB +
+  const savedPage = "?categoryId=" + categoryB +
     "&search=" + encodeURIComponent("عنوان") + "&page=2";
   await page.goto(base + savedPage);
   await page.getByRole("heading", {
@@ -277,7 +294,7 @@ async function main() {
   await page.getByText(
     "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
   ).waitFor();
-  await page.waitForURL(base + "/?categoryId=" + categoryB +
+  await page.waitForURL(base + "?categoryId=" + categoryB +
     "&search=" + encodeURIComponent("عنوان"));
   await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 1", exact: true,
@@ -285,9 +302,9 @@ async function main() {
   assert.equal(await page.getByRole("heading", {
     name: "فعلاً کالایی برای نمایش نداریم",
   }).count(), 0, "the expired page must not masquerade as an empty catalog");
-  assert.equal(await page.getByRole("button", {
+  assert.equal(await page.getByRole("checkbox", {
     name: "دستهٔ منتشرشدهٔ دو",
-  }).getAttribute("aria-pressed"), "true");
+  }).isChecked(), true);
   const lastProductCall = calls.filter(c =>
     c.pathname === "/api/catalog/products").at(-1);
   assert.equal(lastProductCall.params.page, "1");
@@ -311,12 +328,12 @@ async function main() {
   // page-one EMPTY state. Keep the Persian text, do not invent results.
   mode = "rich";
   visibleGoods = goods;
-  await page.goto(base + "/?search=" +
+  await page.goto(base + "?search=" +
     encodeURIComponent("ناموجود") + "&page=2");
   await page.getByText(
     "صفحهٔ ذخیره‌شده دیگر در فهرست منتشرشده موجود نیست؛ صفحهٔ اول نمایش داده می‌شود.",
   ).waitFor();
-  await page.waitForURL(base + "/?search=" + encodeURIComponent("ناموجود"));
+  await page.waitForURL(base + "?search=" + encodeURIComponent("ناموجود"));
   await page.getByRole("heading", {
     name: "فعلاً کالایی برای نمایش نداریم",
   }).waitFor();
@@ -324,7 +341,7 @@ async function main() {
 
   // On the approved 390px design, real content reflows and stays in viewport.
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator("#buyer-search").fill("");
+  await page.locator('input[name="search"]').fill("");
   await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.evaluate(() =>
