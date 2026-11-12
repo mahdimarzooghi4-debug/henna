@@ -45,7 +45,7 @@ export function SellerOrdersReview() {
         <div className={styles.filters} aria-label="فیلتر وضعیت سفارش">{[{ label: "همه", i: -1 }, ...statuses.map((label, i) => ({ label, i }))].map(({ label, i }) => <button key={i} aria-pressed={filter === i} className={`${styles.tab} ${i >= 0 ? styles[`state${i}`] : ""} ${filter === i && i !== -1 ? styles.selected : ""}`} onClick={() => setFilter(i)}>{label}</button>)}</div>
         {notice && <div className={styles.notice} role="status">{notice}<button aria-label="بستن پیام" onClick={() => setNotice("")}>×</button></div>}
         <section className={styles.card} aria-label="سفارش‌ها"><div className={styles.tableScroll}><table className={styles.table}>
-          <colgroup>{[200,120,100,140,120,120,220].map((width,i) => <col key={i} style={{width}} />)}</colgroup>
+          <colgroup>{[200,120,100,140,120,120,220].map((width,i) => <col key={i} style={{width: `${width / 1020 * 100}%`}} />)}</colgroup>
           <thead><tr>{["شماره سفارش", "زمان ثبت", "تعداد اقلام", "مبلغ", "وضعیت", "شیوه تحویل", "عملیات"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
           <tbody>{orders.filter(o => filter === -1 || o.state === filter).map(order => <tr key={order.id}>
             <td><strong><bdi>{order.id}</bdi> نمونه</strong></td><td>{order.time}</td><td>{fa(order.count)} قلم</td><td className={styles.amount}>{fa(order.amount)} تومان</td><td><span className={`${styles.badge} ${styles[`state${order.state}`]}`}>{statuses[order.state]}</span></td><td>{order.delivery}</td><td><button className={styles.action} onClick={() => advance(order)}>{actions[order.state]}</button></td>
