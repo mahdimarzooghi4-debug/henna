@@ -29,7 +29,7 @@ function Icon({ name }: { name: string }) { const base = activeAssetBase; return
       <span className={styles.caption}>پنل فروشندگان</span>
       <span className={styles.divider} />
       <button className={styles.store} onClick={() => setNotice("کسب‌وکار نمونه برای بررسی ظاهر پنل نمایش داده می‌شود.")}><Icon name="imgStore" /> کسب‌وکار نمونه <Icon name="imgChevronDown" /></button>
-      <div className={styles.account}><button className={styles.logout} onClick={logout} disabled={leaving}>{leaving ? "در حال خروج…" : "خروج از حساب کاربری"}</button><button className={styles.bell} aria-label="اعلان‌ها" onClick={() => setNotice("اعلان جدیدی ندارید.")}><Icon name="imgBell" /></button><span className={styles.divider} /><div><strong>مدیریت پنل</strong><small>فروشنده / کسب‌وکار نمونه</small></div><span className={styles.avatar}>م‌ف</span></div>
+      <div className={styles.account}><button className={styles.logout} onClick={logout} disabled={leaving}>{leaving ? "در حال خروج…" : "خروج از حساب کاربری"}</button><Link className={styles.bell} aria-label="اعلان‌ها" href="/seller/panel/notifications"><Icon name="imgBell" /></Link><span className={styles.divider} /><div><strong>مدیریت پنل</strong><small>فروشنده / کسب‌وکار نمونه</small></div><span className={styles.avatar}>م‌ف</span></div>
     </header>
     <div className={styles.body}>
       <aside className={styles.sidebar}><nav aria-label="ناوبری پنل فروشنده">{menu.map((label, i) => <Link key={label} href={i===0 ? "/seller/dashboard" : i===1 ? "/seller/orders" : `/seller/panel/${sections[i]}`} className={i===activeIndex?styles.active:""} aria-current={i===activeIndex?"page":undefined}><Icon name={icons[i]}/><span>{label}</span></Link>)}</nav></aside>
