@@ -75,7 +75,7 @@ export function BuyerCatalogFilterSheet({visible,preview,categories,selectedCate
 }
 const s=StyleSheet.create({
  overlay:{flex:1,justifyContent:"flex-end"},
- backdrop:{...StyleSheet.absoluteFillObject,backgroundColor:"rgba(0,0,0,0.4)"},
+ backdrop:{...StyleSheet.absoluteFill,backgroundColor:"rgba(0,0,0,0.4)"},
  sheet:{height:"82%",minHeight:460,backgroundColor:colors.surface,borderTopLeftRadius:24,borderTopRightRadius:24,paddingHorizontal:20,paddingTop:10},
  handle:{height:4,width:44,backgroundColor:"#EAE6E1",borderRadius:99,alignSelf:"flex-end"},
  header:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:16,marginBottom:12},
