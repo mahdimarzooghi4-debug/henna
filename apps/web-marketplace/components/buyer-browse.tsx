@@ -527,14 +527,19 @@ export function BuyerBrowse({
           <p className="buyer-panel" role="status">{pageRecovery}</p>
         )}
         {invalidMulti || invalidFeatureSelection || initialCollection === "invalid" ? (
-          <div className="buyer-panel buyer-products-status" role="alert">
+          <div className="buyer-panel buyer-products-status" role="alert" data-testid="catalog-collection-status">
             <h3>فیلتر انتخاب‌شده معتبر نیست</h3>
             <p>برای جلوگیری از نمایش نتایج اشتباه، فیلتر نامعتبر اعمال نشد.</p>
-            <Link href="/products">بازگشت به همه کالاها</Link>
+            <Link href="/products">نمایش همه کالاها بدون این فیلتر</Link>
           </div>
         ) : featureSelections.length > 0 || initialCollection !== null ? (
           <div className="buyer-panel buyer-products-status" role="status" data-testid="catalog-collection-status">
-            <h3>ویژگی‌های انتخاب‌شده: {featureSelections.map(key => CATALOG_COLLECTIONS[key].title).join("، ")}</h3>
+            <h3>{initialCollection && initialCollection !== "invalid" && featureSelections.length === 1
+              ? `فیلتر فعال: ${CATALOG_COLLECTIONS[initialCollection].title}`
+              : `ویژگی‌های انتخاب‌شده: ${featureSelections.map(key => CATALOG_COLLECTIONS[key].title).join("، ")}`}</h3>
+            {initialCollection && initialCollection !== "invalid" && featureSelections.length === 1 && (
+              <p>{CATALOG_COLLECTIONS[initialCollection].description}</p>
+            )}
             <p>فهرست تأییدشده کالاهای مشمول این ویژگی‌ها هنوز از منبع معتبر به کاتالوگ متصل نشده است. تا آن زمان، کالای عمومی یا نمونهٔ طراحی را به‌اشتباه مشمول نمایش نمی‌دهیم.</p>
             <button type="button" onClick={() => {
               setFeatureSelections([]);
