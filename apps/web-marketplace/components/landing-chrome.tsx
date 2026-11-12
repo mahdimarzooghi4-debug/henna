@@ -71,7 +71,7 @@ export function LandingFooter({ accountPage = false }: { accountPage?: boolean }
             </address>
           </div>
           <div><h3>همکاری با حنا</h3><Link href="/seller/register">ثبت فروشگاه جدید</Link><Link href="/seller">پنل فروشندگان</Link><Link href="/download">دریافت اپلیکیشن حنا</Link></div>
-          <div><h3>دسترسی سریع</h3><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/about">درباره حنا</Link><Link href="/support">تماس با پشتیبانی</Link></div>
+          <div><h3>دسترسی سریع</h3><Link href="/faq">سوالات متداول</Link><Link href="/terms">قوانین و مقررات</Link><Link href="/about">درباره حنا</Link><Link href="/buyer/support">تماس با پشتیبانی</Link></div>
           <div className={styles.footerBrand} data-testid="footer-brand">
             <Link href="/" aria-label="حنا، بازگشت به صفحه اصلی"><Image src="/hana-logo.png" alt="حنا" width={220} height={124} unoptimized /></Link>
             <p dir="rtl">حنا اولین بازارگاه هوشمند اجتماعی برای خریدهای روزمره در ایران است که اولویت خود را بر توسعه عادلانه و حمایت اجتماعی قرار داده است.</p>
