@@ -60,7 +60,8 @@ try {
   const table = page.getByRole("table", { name: "تراکنش‌های نمونه تسویه" });
   assert.equal(await table.locator("tbody tr").count(), 4);
   await page.getByText("۱٬۸۹۰٬۰۰۰ تومان").waitFor();
-  await page.getByText("۶۴۰٬۰۰۰ تومان").waitFor();
+  await page.getByRole("region", { name: "خلاصه نمونه تسویه" })
+    .getByText("۶۴۰٬۰۰۰ تومان").waitFor();
   await page.getByText("۴ سفارش", { exact: true }).waitFor();
 
   const column = table.getByRole("columnheader", { name: "وضعیت تسویه" });
