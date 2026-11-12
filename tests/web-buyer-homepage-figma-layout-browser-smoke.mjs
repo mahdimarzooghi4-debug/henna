@@ -923,26 +923,25 @@ async function main() {
   assert.deepEqual(svgSizes, Array(3).fill({ width: 20, height: 20 }),
     "Footer social icons render at a consistent 20px square");
 
-  // Figma WEB / 10 Account (227:2250): preserve existing preview routes.
+  // Account overview stays concise; personal and legal details are edited together on the profile page.
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(base + "/buyer/account?mode=preview");
   const account = page.getByTestId("preview-account");
   const accountNav = account.getByRole("complementary", { name: "بخش‌های حساب کاربری" });
-  const accountLegal = account.getByTestId("preview-account-legal");
   const accountSummary = account.getByTestId("preview-account-summary");
   const accountInfo = account.getByTestId("preview-account-info");
   await accountInfo.waitFor();
   const navBox = await accountNav.boundingBox();
-  const legalBox = await accountLegal.boundingBox();
   const summaryBox = await accountSummary.boundingBox();
   const infoBox = await accountInfo.boundingBox();
   assert.equal(navBox.width, 320, "Account nav matches Figma width");
-  assert.ok(navBox.x > legalBox.x, "Account nav is on the right");
-  assert.ok(legalBox.y < summaryBox.y && summaryBox.y < infoBox.y,
-    "Legal, summary and info are separate ordered cards");
+  assert.ok(navBox.x > infoBox.x, "Account nav is on the right");
+  assert.ok(summaryBox.y < infoBox.y, "Account summary precedes account information");
   assert.equal(await accountNav.locator('[aria-current="page"]').textContent(), "اطلاعات حساب");
   const accountRows = accountNav.getByRole("link");
-  assert.equal(await accountRows.locator("svg").count(), 8, "Every remaining account tab has a chevron");
+  assert.equal(await accountRows.count(), 7, "Settings is removed from the account navigation");
+  assert.equal(await accountRows.locator("svg").count(), 7, "Every remaining account tab has a chevron");
+  assert.equal(await accountNav.getByRole("link", { name: "تنظیمات", exact: true }).count(), 0);
   const rowGeometry = await accountRows.evaluateAll(rows => rows.map(row => {
     const label = row.querySelector("span").getBoundingClientRect();
     const arrow = row.querySelector("svg");
@@ -958,24 +957,33 @@ async function main() {
   assert.ok(fieldBoxes[0].width > fieldBoxes[1].width);
   assert.equal(fieldBoxes[1].y, fieldBoxes[2].y);
   assert.equal(await accountInfo.getByRole("link", { name: "ویرایش اطلاعات حساب" }).getAttribute("href"), "/buyer/profile?mode=preview");
-  await accountLegal.getByText("هنوز مشخصات شرکت ثبت نشده است", { exact: true }).waitFor();
+  assert.equal(await account.getByTestId("preview-account-legal").count(), 0,
+    "Legal company details are no longer split onto the account overview");
+
+  const profile = page.getByTestId("preview-profile");
+  await page.goto(base + "/buyer/profile?mode=preview");
+  const personalProfile = profile.getByTestId("preview-personal-profile");
+  const accountLegal = profile.getByTestId("preview-account-legal");
+  await personalProfile.waitFor();
+  await personalProfile.getByRole("heading", { name: "اطلاعات شخص حقیقی", exact: true }).waitFor();
+  await accountLegal.getByRole("heading", { name: "اطلاعات شخص حقوقی", exact: true }).waitFor();
+  await personalProfile.getByLabel("نام و نام خانوادگی").waitFor();
+  await personalProfile.getByLabel("شماره موبایل").waitFor();
+  await accountLegal.getByTestId("preview-company-form").waitFor();
   assert.equal(await accountLegal.getByRole("checkbox").count(), 0,
     "Invoice opt-in belongs to the order, not account company data");
-  assert.equal(await accountLegal.getByRole("button", {
-    name: "ثبت مشخصات شرکت", exact: true,
-  }).count(), 0, "No green company-registration CTA on the account page");
-  await accountLegal.getByTestId("preview-company-form").waitFor();
-  await accountLegal.getByLabel("نام شرکت",{exact:true}).fill("شرکت نمونه CI");
-  await accountLegal.getByLabel("شناسه ملی شرکت",{exact:true}).fill("۱۰۰۰۰۰۰۰۰۰۰");
-  await accountLegal.getByLabel("شماره ثبت",{exact:true}).fill("۱۲۳۴۵");
-  await accountLegal.getByRole("button",{name:"ذخیره مشخصات شرکت",exact:true}).click();
-  await accountLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI",{exact:true}).waitFor();
+  await accountLegal.getByLabel("نام شرکت", { exact: true }).fill("شرکت نمونه CI");
+  await accountLegal.getByLabel("شناسه ملی شرکت", { exact: true }).fill("۱۰۰۰۰۰۰۰۰۰۰");
+  await accountLegal.getByLabel("شماره ثبت", { exact: true }).fill("۱۲۳۴۵");
+  await accountLegal.getByRole("button", { name: "ذخیره مشخصات شرکت", exact: true }).click();
+  await accountLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI", { exact: true }).waitFor();
   await page.reload();
-  await accountLegal.getByRole("button",{name:"مشاهده اطلاعات",exact:true}).click();
-  await accountLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI",{exact:true}).waitFor();
+  const reloadedLegal = page.getByTestId("preview-profile").getByTestId("preview-account-legal");
+  await reloadedLegal.getByRole("button", { name: "مشاهده اطلاعات", exact: true }).click();
+  await reloadedLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI", { exact: true }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
-    "Account layout must not overflow mobile viewport");
+    "Profile page with personal and legal information must not overflow mobile viewport");
 
   // Every account destination shares one canvas, sidebar width and content width.
   const accountCanvasRoutes = [
@@ -987,7 +995,6 @@ async function main() {
     ["credits","preview-credits","/benefits?section=credits"],
     ["social","preview-social","/social"],
     ["support","preview-support","/support"],
-    ["settings","preview-settings","/buyer/settings?mode=preview"],
   ];
   const canvasByWidth = new Map();
   for (const [route, testId, path] of accountCanvasRoutes) {
@@ -1044,6 +1051,10 @@ async function main() {
     await page.goto(base + "/buyer/payments?mode=preview");
     await page.getByTestId("bnpl-provider-cards").waitFor();
     assert.equal(await page.getByTestId("bnpl-provider-card").count(),3);
+    assert.deepEqual(await page.getByTestId("bnpl-step-number").allTextContents(),["۱","۲","۳"],
+      "Payment process step numbers use Persian digits");
+    assert.doesNotMatch(await page.getByTestId("preview-payments").innerText(),/[0-9]/,
+      "No Latin digits are visible anywhere on the payment methods page");
     await page.getByTestId("bnpl-integration-notice").getByText(/متصل نشده/).waitFor();
     for (const [name,href] of [
       ["اسنپ‌پی","https://snapppay.ir/"],
@@ -1088,7 +1099,6 @@ async function main() {
     ["اعتبارهای من","/benefits?section=credits","اعتبارهای من"],
     ["مشارکت اجتماعی","/social","مشارکت اجتماعی"],
     ["پشتیبانی","/support","پشتیبانی حنا"],
-    ["تنظیمات","/buyer/settings?mode=preview","تنظیمات"],
     ["اطلاعات حساب","/buyer/account?mode=preview","حساب من"],
   ]) {
     const nav = page.getByTestId("buyer-account-nav");
@@ -1096,7 +1106,8 @@ async function main() {
     await page.waitForURL(base+route);
     await page.getByRole("heading",{name:heading,exact:true}).waitFor();
     assert.equal(await nav.locator('[aria-current="page"]').textContent(),label);
-    assert.equal(await nav.getByRole("link").count(),8);
+    assert.equal(await nav.getByRole("link").count(),7);
+    assert.equal(await nav.getByRole("link",{name:"تنظیمات",exact:true}).count(),0);
     assert.equal(await nav.getByRole("link",{name:"طرح‌های فعال",exact:true}).count(),0);
     if (label==="مشارکت اجتماعی") {
       await page.getByTestId("buyer-social-report").waitFor();
