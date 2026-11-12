@@ -31,9 +31,9 @@ export function SellerDashboardReview() {
    ].map(([text,badge,icon],i)=><div key={text}><span><Icon name={icon} size={6}/>{text}</span><small className={i===1?styles.warning:styles.danger}>{badge}</small></div>)}</div></section>
    <section className={styles.card}><h2>دسترسی سریع عملیاتی</h2><div className={styles.quick}>
     <Link href="/seller/orders"><Icon name="imgShoppingBag1" size={16}/>مشاهده سفارش‌ها</Link>
-    <button className={styles.quickPrimary} onClick={()=>pending("افزودن کالا")}><Icon name="imgPlus" size={16}/>افزودن کالا</button>
-    <button onClick={()=>pending("مدیریت موجودی")}><Icon name="imgCheckSquare" size={16}/>مدیریت موجودی</button>
-    <button onClick={()=>pending("ویرایش قیمت‌ها")}><Icon name="imgTag" size={16}/>ویرایش قیمت‌ها</button>
+    <Link className={styles.quickPrimary} href="/seller/panel/listing"><Icon name="imgPlus" size={16}/>افزودن کالا</Link>
+    <Link href="/seller/panel/inventory"><Icon name="imgCheckSquare" size={16}/>مدیریت موجودی</Link>
+    <Link href="/seller/panel/pricing"><Icon name="imgTag" size={16}/>ویرایش قیمت‌ها</Link>
    </div></section>
   </div>
   <section className={styles.card}><h2>وضعیت حساب و فروشندگی</h2><div className={styles.accountRows}>
