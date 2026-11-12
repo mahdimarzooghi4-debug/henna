@@ -3,6 +3,7 @@
  * Mocked fetch below is CI-only; no fake SMS or authenticated account ships.
  */
 import assert from "node:assert/strict";
+import { sellerPanelRedirectForStatus } from "../apps/web-marketplace/lib/seller-panel-access-redirect.ts";
 import { test } from "node:test";
 import {
   emptySellerFields, loadSellerDraft,
@@ -53,6 +54,14 @@ test("seller return destination remains exact and same-origin", () => {
     { toString: () => sellerRegistrationPath },
   ]) {
     assert.equal(safeSellerReturnTo(value), null, String(value));
+  }
+});
+
+test("401/403 leave the removed intermediate gate, but outages never redirect", () => {
+  assert.equal(sellerPanelRedirectForStatus(401), "/seller/login");
+  assert.equal(sellerPanelRedirectForStatus(403), "/seller/register/status");
+  for (const status of [0, 200, 204, 302, 400, 404, 409, 429, 500, 502, 503, 504]) {
+    assert.equal(sellerPanelRedirectForStatus(status), null, String(status));
   }
 });
 

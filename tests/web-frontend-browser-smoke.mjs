@@ -298,7 +298,10 @@ async function fakeApi(route) {
     }));
   }
   if (path === "/api/seller/access" && req.method() === "GET") {
-    assert.ok(signedIn);
+    if (!signedIn)
+      return route.fulfill(json({
+        message: "برای ورود به پنل فروشنده ابتدا وارد شوید.",
+      }, 401));
     if (!draft?.activatedAtUtc || draft.reviewStatus !== "APPROVED")
       return route.fulfill(json({
         message: "دسترسی فروشندگی برای این حساب فعال نیست.",
@@ -389,6 +392,13 @@ async function main() {
     name: "ثبت‌نام پذیرنده جدید",
   }).getAttribute("href"), "/seller/register");
   assert.equal(writes, 0, "seller login screen must have no commerce writes");
+
+  // Direct /seller visits cannot reveal the removed 401 access-gate card.
+  await page.goto(base + "/seller");
+  await page.waitForURL("**/seller/login");
+  await page.getByRole("heading", { name: "ورود به پنل پذیرندگان" }).waitFor();
+  assert.equal(await page.locator(".seller-panel-denied").count(), 0);
+  assert.equal(writes, 0);
 
   // Signed-out seller must redirect to the EXACT approved web auth flow;
   // it cannot edit a draft, guess revision zero or invent an authenticated UI.
@@ -717,6 +727,13 @@ async function main() {
   assert.equal(await actualStatus.getByRole("link", {
     name: "ورود به پنل فروشنده",
   }).count(), 0, "under-review accounts must not receive seller panel access");
+
+  // Authenticated users without activated seller access must not be sent
+  // back to login (which would loop); show actual registration status.
+  await otherTab.goto(base + "/seller");
+  await otherTab.waitForURL("**/seller/register/status");
+  await otherTab.locator(".seller-status-actual").waitFor();
+  assert.equal(await otherTab.locator(".seller-panel-denied").count(), 0);
 
   await otherTab.reload();
   const refreshedStatus = otherTab.locator(".seller-status-actual");
