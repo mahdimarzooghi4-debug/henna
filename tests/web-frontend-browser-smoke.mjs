@@ -372,6 +372,24 @@ async function main() {
   const pageErrors = [];
   page.on("pageerror", err => { pageErrors.push(err.message); });
 
+  // The public footer must lead to a dedicated seller login using the real
+  // OTP gateway, not to a Figma-only seller demo or a buyer registration flow.
+  await page.goto(base + "/");
+  const sellerPortalLink = page.getByRole("link", {
+    name: "پنل پذیرندگان", exact: true,
+  });
+  assert.equal(await sellerPortalLink.getAttribute("href"), "/seller/login");
+  await sellerPortalLink.click();
+  await page.waitForURL("**/seller/login");
+  await page.getByRole("heading", {
+    name: "ورود به پنل پذیرندگان",
+  }).waitFor();
+  await page.locator("#auth-phone").waitFor();
+  assert.equal(await page.getByRole("link", {
+    name: "ثبت‌نام پذیرنده جدید",
+  }).getAttribute("href"), "/seller/register");
+  assert.equal(writes, 0, "seller login screen must have no commerce writes");
+
   // Signed-out seller must redirect to the EXACT approved web auth flow;
   // it cannot edit a draft, guess revision zero or invent an authenticated UI.
   await page.goto(base + "/seller/register/account");
@@ -741,6 +759,14 @@ async function main() {
   }).count(), 5);
   await otherTab.getByText("دسترسی فروشندگی فعال است.", {
     exact: true,
+  }).waitFor();
+
+  // An already signed-in, activated seller goes through the dedicated
+  // login gate and reaches the protected operational panel, not a preview.
+  await otherTab.goto(base + "/seller/login");
+  await otherTab.waitForURL("**/seller");
+  await otherTab.getByRole("heading", {
+    name: "پیشخوان مدیریت کسب‌وکار",
   }).waitFor();
 
   assert.deepEqual(pageErrors, []);

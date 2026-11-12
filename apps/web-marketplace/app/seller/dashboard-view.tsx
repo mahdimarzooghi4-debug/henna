@@ -83,6 +83,7 @@ export function SellerDashboardView() {
         <section className="seller-panel-denied">
           <h1>پنل فروشنده</h1>
           <p role="alert">{state.message}</p>
+          <Link className="primary-button" href="/seller/login">ورود به پنل پذیرندگان</Link>
           <Link className="primary-button" href="/seller/register/status">
             مشاهده وضعیت درخواست
           </Link>

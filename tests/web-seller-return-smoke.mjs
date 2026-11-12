@@ -8,7 +8,7 @@ import {
   emptySellerFields, loadSellerDraft,
 } from "../apps/web-marketplace/lib/seller-draft-preflight.ts";
 import {
-  safeAuthReturnTo, safeSellerReturnTo, sellerLoginHref, sellerRegistrationPath,
+  safeAuthReturnTo, safeSellerReturnTo, sellerLoginHref, sellerPanelPath, sellerPanelLoginPath, sellerRegistrationPath,
 } from "../apps/web-marketplace/lib/seller-return.ts";
 
 const fields = {
@@ -54,6 +54,18 @@ test("seller return destination remains exact and same-origin", () => {
   ]) {
     assert.equal(safeSellerReturnTo(value), null, String(value));
   }
+});
+
+test("seller portal entry is distinct and auth may return only to the exact panel path", () => {
+  assert.equal(sellerPanelPath, "/seller");
+  assert.equal(sellerPanelLoginPath, "/seller/login");
+  assert.equal(safeAuthReturnTo(sellerPanelPath), sellerPanelPath);
+  for (const attempt of [
+    "/seller/", "/seller/login", "/seller/orders", "/seller?preview=1",
+    "/seller#anything", "/seller/../admin", "/seller/%2e%2e/admin",
+    "%2Fseller", "//evil.example/seller", "https://evil.example/seller",
+    ["/seller"], { toString: () => "/seller" },
+  ]) assert.equal(safeAuthReturnTo(attempt), null, String(attempt));
 });
 
 test("organization portal auth returns only to known same-origin routes", () => {
