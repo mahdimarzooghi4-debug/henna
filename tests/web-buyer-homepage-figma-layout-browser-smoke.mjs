@@ -442,8 +442,10 @@ async function main() {
   assert.equal(await comparison.getAttribute("href"), "/buyer/compare?mode=preview");
   assert.equal(await cartRows.count(), 3);
   await basket.getByText("این سبد نمونه‌ی نمایشی است؛ مبلغ‌ها تقریبی‌اند و سفارش واقعی ثبت نمی‌شود.").waitFor();
-  assert.equal(await page.getByTestId("marketplace-footer").locator('a[href="/social#instagram"] svg').count(), 1,
+  assert.equal(await page.getByTestId("landing-footer-bottom").locator('a[href="/social#instagram"] svg').count(), 1,
     "Basket keeps its social destination with the corrected vector icon");
+  await page.getByTestId("landing-footer-top").getByText("ارتباط با ما").waitFor();
+  assert.equal(await page.getByTestId("landing-footer-top").getByRole("link",{name:"دریافت اپلیکیشن حنا"}).getAttribute("href"),"/download");
   for (const width of [1440, 1650, 1150, 390]) {
     await page.setViewportSize({ width, height: 900 });
     const g = await page.evaluate(() => {
@@ -463,7 +465,7 @@ async function main() {
         price:rect(price),remove:rect(remove),img:rect(img),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
         nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,
         clientWidth:document.documentElement.clientWidth,
         background:getComputedStyle(document.querySelector('[data-testid="preview-cart-page"]')).backgroundColor,
@@ -519,7 +521,7 @@ async function main() {
   assert.deepEqual(await page.getByTestId("marketplace-category-nav").getByRole("link").allTextContents(),
     ["همه دسته‌ها", "طرح‌های ویژه حنا", "کالابرگ الکترونیکی", "تخفیف‌های طلایی"]);
   assert.equal(await page.getByTestId("marketplace-announcement").count(), 0);
-  assert.equal(await page.getByTestId("marketplace-footer").locator('a[href="/social#instagram"] svg').count(), 1);
+  assert.equal(await page.getByTestId("landing-footer-bottom").locator('a[href="/social#instagram"] svg').count(), 1);
   await comparePage.getByText("فروشگاه‌ها و قیمت‌های این صفحه نمونه‌ی نمایشی فیگما هستند و سفارش واقعی ثبت نمی‌کنند.").waitFor();
   const sortGroup = comparePage.getByRole("group", { name: "مرتب‌سازی فروشگاه‌ها" });
   const order = () => sellerCards.evaluateAll(nodes => nodes.map(node => node.getAttribute("data-seller-id")));
@@ -556,7 +558,7 @@ async function main() {
         price:rect(card.querySelector('[data-testid="preview-seller-price"]')),
         action:rect(card.querySelector('[data-testid="preview-seller-action"]')),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,
         background:getComputedStyle(main).backgroundColor,
       };
@@ -615,7 +617,7 @@ async function main() {
       return {layout:rect(layout),lines:rect(layout.querySelector("section")),summary:rect(layout.querySelector("aside")),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
         nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
     });
     near(g.layout.x,g.header.x,"Review left edge aligns with header at "+width);
@@ -679,7 +681,7 @@ async function main() {
       return {layout:rect(layout),fields:rect(layout.querySelector('[data-testid="preview-checkout-fields"]')),
         summary:rect(layout.querySelector('[data-testid="preview-checkout-summary"]')),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
     });
     near(g.layout.x,g.header.x,"Checkout header alignment at "+width);
@@ -735,7 +737,7 @@ async function main() {
         sidebar:rect(layout.querySelector('[data-testid="preview-tracking-sidebar"]')),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
         nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
     });
     near(g.layout.x,g.header.x,"Tracking header left alignment at "+width);
@@ -1072,6 +1074,7 @@ async function main() {
       "BNPL cards must not overflow viewport at "+width);
     await page.goto(base+"/checkout",{waitUntil:"domcontentloaded"});
     await page.getByTestId("bnpl-checkout-unavailable").waitFor();
+    await page.getByTestId("landing-footer-top").getByText("همکاری با حنا").waitFor();
     assert.equal(await page.getByTestId("bnpl-checkout-unavailable").locator('input').count(),0,
       "Unconnected BNPL providers cannot be selected for checkout");
   }
@@ -1200,8 +1203,8 @@ async function main() {
       assert.equal(await footer.locator(":scope > div").count(),4,
         "Exactly four footer columns on "+path);
       const cooperation = footer.getByText("همکاری با حنا").locator("..");
-      assert.equal(await cooperation.locator("a").count(),2,
-        "Seller collaboration contains only registration and seller panel");
+      assert.equal(await cooperation.locator("a").count(),3,
+        "Seller collaboration contains registration, seller panel and app download");
       assert.equal(await footer.getByText("فرصت‌های شغلی").count(),0);
       assert.equal(await footer.getByText("شرایط همکاری پیک‌ها").count(),0);
       const footerColumns = footer.locator(":scope > div");
@@ -1267,6 +1270,29 @@ async function main() {
     await page.goto(base + "/terms");
     await page.getByText("راهنمای عمومی، نه قرارداد لازم‌الاجرا",{exact:false}).waitFor();
   }
+  // App download is a clearly identified test-only Android preview, never a production release.
+  await page.goto(base + "/download");
+  await page.getByTestId("download-app-page").waitFor();
+  await page.getByRole("heading",{level:1,name:"دریافت اپلیکیشن حنا"}).waitFor();
+  for(const [role,file] of [["buyer","hana-buyer-preview.apk"],["seller","hana-seller-preview.apk"]]){
+    const card=page.getByTestId("app-download-"+role);
+    await card.getByText("نسخه آزمایشی اندروید", {exact:true}).waitFor();
+    const apk=card.locator('a[href$="/'+file+'"]');
+    assert.equal(await apk.count(),1,"Verified download for "+role);
+    assert.equal(await apk.getAttribute("target"),"_blank");
+    assert.ok((await apk.getAttribute("rel")).includes("noopener"),"No opener on APK navigation");
+  }
+  await page.getByText(/مناسب استفاده تجاری واقعی نیستند/).waitFor();
+  assert.equal(await page.getByTestId("download-app-page").locator('a[href*=".ipa"]').count(),0,
+    "No unsupported native iOS download");
+  const sums=page.getByRole("link",{name:"بررسی صحت فایل‌ها"});
+  assert.equal(await sums.getAttribute("href"),
+    "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1/SHA256SUMS.txt");
+  const downloadFooter=page.getByTestId("landing-footer-top");
+  assert.equal(await downloadFooter.getByRole("link",{name:"دریافت اپلیکیشن حنا"}).getAttribute("href"),"/download");
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),
+    "Download page does not overflow on mobile");
+
   assert.deepEqual(errors, []);
   await context.close();
   console.log("Figma 190:4 buyer header/nav/hero/categories: 1440,1650,1100,900,390 Chromium alignment OK");

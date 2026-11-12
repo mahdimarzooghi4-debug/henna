@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import styles from "./marketplace-chrome.module.css";
 import { LandingCartCount } from "./landing-demo-cart";
+import { LandingFooter } from "./landing-chrome";
 import { catalogCollectionHref, type CatalogCollectionSelection } from "../lib/buyer-catalog-collections";
 
 // Keep the catalog chrome in sync with the owner's approved homepage navigation.
@@ -75,6 +76,8 @@ export function MarketplaceChrome({ footerOnly = false, initialSearch = "", bask
   footerOnly?: boolean; initialSearch?: string; basket?: boolean;
   activeCollection?: CatalogCollectionSelection;
 }) {
+  // Basket, comparison, checkout and tracking share the exact homepage footer.
+  if (footerOnly && basket) return <LandingFooter />;
   if (footerOnly) {
     return (
       <footer className={styles.footer} dir="rtl" data-testid="marketplace-footer">
