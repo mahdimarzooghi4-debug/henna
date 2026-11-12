@@ -3,7 +3,7 @@ import { LandingFooter, LandingHeader } from "../../components/landing-chrome";
 import styles from "./auth-page.module.css";
 import { AuthForm } from "./auth-form";
 import { AuthPreviewForm } from "./auth-preview-form";
-import { safeAuthReturnTo } from "../../lib/seller-return";
+import { safeAuthReturnTo } from "../../lib/auth-return";
 
 export const metadata: Metadata = {
   title: "ورود به حنا",
