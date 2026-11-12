@@ -482,7 +482,7 @@ export function BuyerBrowse({
               </label>
             ))}
           </div>
-        )
+        )}
         {categoryRecovery && categories.status === "ok" && (
           <p className="buyer-panel" role="status">{categoryRecovery}</p>
         )}
