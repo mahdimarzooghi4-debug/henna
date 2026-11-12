@@ -1,4 +1,108 @@
 "use client";
-import { ScreenButton, ScreenField, ScreenRow, ScreenValue } from "../screen-controls";
+
+import {
+  demoSettlementRows,
+  demoSettlementStatusLabels,
+  demoSettlementSummary,
+  formatDemoToman,
+} from "../../../../lib/seller-settlements-preview";
 import styles from "./settlements.module.css";
-export function DesignScreen(){return (<div className={styles.n1} data-name="content-area" data-node-id="261:918"><div className={styles.n2} data-name="header-row" data-node-id="261:919"><ScreenButton className={styles.n3} data-name="action-export" data-node-id="261:920" controlId="261:920" actionName="action-export" label="خروجی اکسل تراکنش‌ها"><p className={styles.n4} data-node-id="261:921" dir="auto">خروجی اکسل تراکنش‌ها</p></ScreenButton><div className={styles.n5} data-name="page-title" data-node-id="261:922"><h1 className={styles.n6} data-node-id="261:923" dir="auto">تسویه‌حساب‌ها</h1><p className={styles.n7} data-node-id="261:924" dir="auto">مدیریت وضعیت مبالغ قابل تسویه، در انتظار تسویه، تسویه‌شده و تراکنش‌های کسب‌وکار</p></div></div><div className={styles.n8} data-name="Frame" data-node-id="261:925"><div className={styles.n9} data-name="Frame" data-node-id="261:926"><p className={styles.n10} data-node-id="261:927" dir="auto">سفارش‌های قابل تسویه</p><p className={styles.n11} data-node-id="261:928" dir="auto">—</p><p className={styles.n12} data-node-id="261:929" dir="auto">طبق شرایط قرارداد</p></div><div className={styles.n13} data-name="Frame" data-node-id="261:930"><p className={styles.n14} data-node-id="261:931" dir="auto">در انتظار تسویه</p><p className={styles.n15} data-node-id="261:932" dir="auto">—</p><p className={styles.n16} data-node-id="261:933" dir="auto">طبق شرایط قرارداد</p></div><div className={styles.n17} data-name="Frame" data-node-id="261:934"><p className={styles.n18} data-node-id="261:935" dir="auto">تسویه‌شده</p><p className={styles.n19} data-node-id="261:936" dir="auto">—</p><p className={styles.n20} data-node-id="261:937" dir="auto">طبق شرایط قرارداد</p></div></div><div className={styles.n21} data-name="section-card" data-node-id="261:938"><p className={styles.n22} data-node-id="261:939" dir="auto">تراکنش‌ها و اطلاعات تسویه</p><div className={styles.n23} data-name="Line" data-node-id="261:940"><div className={styles.n24}><img className={styles.n25} src="/seller-panel/screens/settlements/imgLine1.svg" alt="" /></div></div><div className={styles.n26} data-name="Frame" data-node-id="261:941"><div className={styles.n27} data-name="th" data-node-id="261:942"><p className={styles.n28} data-node-id="261:943" dir="auto">وضعیت تسویه</p><p className={styles.n29} data-node-id="261:944" dir="auto">اطلاعات مرتبط</p><p className={styles.n30} data-node-id="261:945" dir="auto">مبلغ</p><p className={styles.n31} data-node-id="261:946" dir="auto">تاریخ ثبت</p><p className={styles.n32} data-node-id="261:947" dir="auto">اطلاعات تسویه</p></div><ScreenRow className={styles.n33} data-name="tr" data-node-id="261:948" rowId="261:948" rowText="— — — — —"><div className={styles.n34} data-name="Frame" data-node-id="261:949"><div className={styles.n35} data-name="Frame" data-node-id="261:950"><p className={styles.n36} data-node-id="261:951" dir="auto">—</p></div></div><p className={styles.n37} data-node-id="261:952" dir="auto">—</p><p className={styles.n38} data-node-id="261:953">—</p><p className={styles.n39} data-node-id="261:954">—</p><p className={styles.n40} data-node-id="261:955">—</p></ScreenRow><ScreenRow className={styles.n41} data-name="tr" data-node-id="261:956" rowId="261:956" rowText="— — — — —"><div className={styles.n42} data-name="Frame" data-node-id="261:957"><div className={styles.n43} data-name="Frame" data-node-id="261:958"><p className={styles.n44} data-node-id="261:959" dir="auto">—</p></div></div><p className={styles.n45} data-node-id="261:960" dir="auto">—</p><p className={styles.n46} data-node-id="261:961">—</p><p className={styles.n47} data-node-id="261:962">—</p><p className={styles.n48} data-node-id="261:963">—</p></ScreenRow><ScreenRow className={styles.n49} data-name="tr" data-node-id="261:964" rowId="261:964" rowText="— — — — —"><div className={styles.n50} data-name="Frame" data-node-id="261:965"><div className={styles.n51} data-name="Frame" data-node-id="261:966"><p className={styles.n52} data-node-id="261:967" dir="auto">—</p></div></div><p className={styles.n53} data-node-id="261:968" dir="auto">—</p><p className={styles.n54} data-node-id="261:969">—</p><p className={styles.n55} data-node-id="261:970">—</p><p className={styles.n56} data-node-id="261:971">—</p></ScreenRow></div></div></div>);}
+
+function exportDemoCsv() {
+  // Only hard-coded preview rows. No API request, banking data or remote export.
+  const columns = ["شناسه نمونه", "تاریخ ثبت", "مبلغ (تومان)", "اطلاعات مرتبط", "وضعیت تسویه"];
+  const rows = demoSettlementRows.map((row) => [
+    row.id, row.date, String(row.amountToman), row.related, demoSettlementStatusLabels[row.status],
+  ]);
+  const csv = [columns, ...rows].map((cells) =>
+    cells.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(","),
+  ).join("\r\n");
+  const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "henna-settlements-demo.csv";
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function DesignScreen() {
+  return (
+    <div className={styles.page} dir="rtl" data-node-id="261:918">
+      <header className={styles.header}>
+        <div className={styles.headings}>
+          <h1>تسویه‌حساب‌ها</h1>
+          <p>وضعیت مبالغ تسویه‌شده، در انتظار و قابل تسویه — داده‌های نمونه نمایشی</p>
+        </div>
+        <button className={styles.export} type="button" onClick={exportDemoCsv}>
+          خروجی CSV نمونه (اکسل)
+        </button>
+      </header>
+
+      <p role="note" className={styles.previewNotice}>
+        <strong>پیش‌نمایش طراحی: </strong>
+        همه مبالغ، وضعیت‌ها و شناسه‌های این صفحه ساختگی هستند؛ نه پرداختی انجام شده،
+        نه تسویه بانکی ثبت شده و نه اطلاعاتی از سرور دریافت یا در آن ذخیره می‌شود.
+      </p>
+
+      <section className={styles.metrics} aria-label="خلاصه نمونه تسویه">
+        <article className={styles.metric}>
+          <span>تسویه‌شده</span>
+          <strong className={styles.settledTotal}>{formatDemoToman(demoSettlementSummary.settledToman)}</strong>
+          <small>مجموع ردیف‌های تسویه‌شده در نمونه</small>
+        </article>
+        <article className={styles.metric}>
+          <span>در انتظار تسویه</span>
+          <strong className={styles.pendingTotal}>{formatDemoToman(demoSettlementSummary.pendingToman)}</strong>
+          <small>مجموع ردیف‌های در انتظار در نمونه</small>
+        </article>
+        <article className={styles.metric}>
+          <span>سفارش‌های قابل تسویه</span>
+          <strong>{new Intl.NumberFormat("fa-IR").format(demoSettlementSummary.eligibleOrders)} سفارش</strong>
+          <small>تعداد سفارش‌های گروه نمونه؛ بدون تعیین شرایط قرارداد</small>
+        </article>
+      </section>
+
+      <section className={styles.card} aria-labelledby="settlements-list-title">
+        <h2 id="settlements-list-title">تراکنش‌ها و اطلاعات تسویه</h2>
+        <div className={styles.scroll}>
+          <table className={styles.table} aria-label="تراکنش‌های نمونه تسویه">
+            <colgroup>
+              <col className={styles.idCol} />
+              <col className={styles.dateCol} />
+              <col className={styles.amountCol} />
+              <col className={styles.relatedCol} />
+              <col className={styles.statusCol} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">اطلاعات تسویه</th>
+                <th scope="col">تاریخ ثبت</th>
+                <th scope="col">مبلغ</th>
+                <th scope="col">اطلاعات مرتبط</th>
+                <th scope="col" className={styles.statusHeader}>وضعیت تسویه</th>
+              </tr>
+            </thead>
+            <tbody>
+              {demoSettlementRows.map((row) => (
+                <tr key={row.id} data-demo-settlement-id={row.id}>
+                  <th scope="row" className={styles.rowId}>{row.id} <small>نمونه</small></th>
+                  <td>{row.date}</td>
+                  <td className={styles.amount}>{formatDemoToman(row.amountToman)}</td>
+                  <td>{row.related}</td>
+                  <td className={styles.statusCell} data-settlement-status={row.status}>
+                    <span className={`${styles.badge} ${styles[row.status.toLowerCase()]}`}>
+                      {demoSettlementStatusLabels[row.status]}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className={styles.hint}>
+          در نمایشگرهای کوچک، جدول به‌صورت افقی حرکت می‌کند. خروجی CSV نیز فقط شامل همین اطلاعات نمونه است.
+        </p>
+      </section>
+    </div>
+  );
+}
