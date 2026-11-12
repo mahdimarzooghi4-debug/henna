@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { toPersianDigits } from "../lib/normalize-digits";
+import { BuyerProductPurchase } from "./buyer-product-purchase";
+import { BuyerServiceListings } from "./buyer-service-listings";
 import { useEffect, useState } from "react";
-import { AddReferenceCartItem } from "./buyer-reference-cart";
 import {
-  BUYER_OFFERS_PAGE_SIZE, parseBuyerOfferPage, parseBuyerProduct,
-  validBuyerProductId, type BuyerOffer, type BuyerOfferPage, type BuyerProduct,
+  parseBuyerProduct, validBuyerProductId, type BuyerProduct,
 } from "../lib/buyer-catalog";
 
 type Detail =
@@ -15,7 +14,7 @@ type Detail =
   | { status: "unavailable"; id: string }
   | { status: "ok"; id: string; product: BuyerProduct };
 
-/** DRAFT Figma 480:2–480:3 adds the published seller-offer read model. */
+/** Owner-approved Figma 480:2–480:7: published / 404 / unavailable. */
 export function BuyerProductDetail({ id, backHref }: {
   id: string; backHref: string;
 }) {
@@ -95,9 +94,9 @@ export function BuyerProductDetail({ id, backHref }: {
   return (
     <main dir="rtl" className="buyer-detail-main">
       <p className="buyer-detail-eyebrow">جزئیات کاتالوگ عمومی حنا</p>
-      <h1>جزئیات کالا</h1>
+      <h1>جزئیات کالا یا خدمت</h1>
       <p className="buyer-detail-intro">
-        فقط اطلاعات منتشرشده از API حنا؛ خرید در این مرحله فعال نیست.
+        مشخصات کالا و پیشنهادهای فروشندگان را بررسی کنید.
       </p>
 
       {current.status === "loading" ? (
@@ -105,7 +104,7 @@ export function BuyerProductDetail({ id, backHref }: {
           role="status">در حال دریافت جزئیات…</div>
       ) : current.status === "missing" ? (
         <div className="buyer-detail-card buyer-detail-card--status">
-          <h2>این کالا پیدا نشد</h2>
+          <h2>این کالا یا خدمت پیدا نشد</h2>
           <p>این شناسه در کاتالوگ منتشرشدهٔ حنا قابل مشاهده نیست.</p>
         </div>
       ) : current.status === "unavailable" ? (
@@ -124,17 +123,19 @@ export function BuyerProductDetail({ id, backHref }: {
           <article className="buyer-detail-card">
             <p className="buyer-detail-card__eyebrow">محتوای منتشرشدهٔ کاتالوگ</p>
             <h2>{current.product.name}</h2>
+            <p className="buyer-detail-kind">نوع: {
+              current.product.kind === "SERVICE" ? "خدمت" : "کالا"
+            }</p>
             <p className="buyer-detail-category">
               شناسهٔ دسته‌بندی: <bdi dir="ltr">{current.product.categoryId}</bdi>
             </p>
             {current.product.description !== null &&
               <p className="buyer-detail-description">{current.product.description}</p>}
           </article>
-          <BuyerOffers productId={current.product.id} reloadToken={retry} />
-          <AddReferenceCartItem product={current.product} />
-          <p className="buyer-detail-disclosure">
-            قیمت و مقدار، دادهٔ پیشنهاد منتشرشدهٔ فروشنده است؛ مقدار اعلام‌شده تضمین موجودی لحظه‌ای نیست و رزرو، ارسال یا خرید در این مرحله انجام نمی‌شود.
-          </p>
+          {current.product.kind === "GOOD"
+            ? <BuyerProductPurchase key={id} productId={id}/>
+            : <BuyerServiceListings key={id} productId={id}/>}
+
         </>
       )}
       <Link href={backHref} className="buyer-detail-button buyer-detail-button--back">
@@ -142,117 +143,4 @@ export function BuyerProductDetail({ id, backHref }: {
       </Link>
     </main>
   );
-}
-
-
-type OffersState =
-  | { status: "loading"; productId: string; page: number; reloadToken: number }
-  | { status: "unavailable"; productId: string; page: number; reloadToken: number }
-  | { status: "ok"; productId: string; page: number; reloadToken: number; data: BuyerOfferPage };
-
-function BuyerOffers({ productId, reloadToken }: {
-  productId: string; reloadToken: number;
-}) {
-  const [page, setPage] = useState(1);
-  const [retry, setRetry] = useState(0);
-  const [state, setState] = useState<OffersState>({
-    status: "loading", productId, page: 1, reloadToken,
-  });
-  const current: OffersState = state.productId === productId &&
-    state.page === page && state.reloadToken === reloadToken
-    ? state : { status: "loading", productId, page, reloadToken };
-
-  useEffect(() => {
-    const abort = new AbortController();
-    let active = true;
-    setState({ status: "loading", productId, page, reloadToken });
-    void (async () => {
-      try {
-        const response = await fetch(
-          "/api/catalog/products/" + encodeURIComponent(productId) +
-            "/offers?page=" + page + "&pageSize=" + BUYER_OFFERS_PAGE_SIZE,
-          {
-            method: "GET", cache: "no-store", credentials: "omit",
-            redirect: "error",
-            headers: { Accept: "application/json", "Cache-Control": "no-store" },
-            signal: abort.signal,
-          },
-        );
-        if (response.status !== 200 ||
-          !response.headers.get("content-type")?.includes("application/json"))
-          throw Error("offers not confirmed");
-        const data = parseBuyerOfferPage(
-          await response.json() as unknown, page, BUYER_OFFERS_PAGE_SIZE,
-        );
-        if (!data) throw Error("offers invalid");
-        if (active) setState({
-          status: "ok", productId, page, reloadToken, data,
-        });
-      } catch {
-        if (active) setState({
-          status: "unavailable", productId, page, reloadToken,
-        });
-      }
-    })();
-    return () => { active = false; abort.abort(); };
-  }, [productId, page, reloadToken, retry]);
-
-  const start = (page - 1) * BUYER_OFFERS_PAGE_SIZE;
-  const pageCount = current.status === "ok"
-    ? Math.max(1, Math.ceil(current.data.total / BUYER_OFFERS_PAGE_SIZE)) : 1;
-  return (
-    <section className="buyer-offers" aria-labelledby="buyer-offers-title">
-      <h2 id="buyer-offers-title">پیشنهادهای منتشرشدهٔ فروشندگان</h2>
-      {current.status === "loading" ? (
-        <p role="status" className="buyer-offers-status">در حال دریافت پیشنهادها…</p>
-      ) : current.status === "unavailable" ? (
-        <div className="buyer-offers-status" role="alert">
-          <p>دریافت پیشنهادها تأیید نشد؛ وضعیت نامشخص به معنای نبود پیشنهاد نیست.</p>
-          <button type="button" onClick={() => setRetry((value) => value + 1)}>
-            تلاش دوباره
-          </button>
-        </div>
-      ) : current.data.total === 0 ? (
-        <p className="buyer-offers-status">در حال حاضر پیشنهاد منتشرشده‌ای برای این کالا ثبت نشده است.</p>
-      ) : (
-        <>
-          <ul className="buyer-offers-list">
-            {current.data.items.map((offer) => (
-              <li className="buyer-offer" key={offer.id}>
-                <strong>{offer.sellerName}</strong>
-                <span>قیمت هر واحد: {formatRials(offer.priceRials)}</span>
-                <span>مقدار اعلام‌شده: {formatQuantity(offer)} {offer.unitName}</span>
-              </li>
-            ))}
-          </ul>
-          {pageCount > 1 && (
-            <nav className="buyer-offers-pagination" aria-label="صفحه‌های پیشنهادها">
-              <button type="button" disabled={page <= 1}
-                onClick={() => setPage((value) => Math.max(1, value - 1))}>
-                قبلی
-              </button>
-              <span>صفحهٔ {toPersianDigits(page)} از {toPersianDigits(pageCount)}</span>
-              <button type="button" disabled={page >= pageCount}
-                onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>
-                بعدی
-              </button>
-            </nav>
-          )}
-          <p className="buyer-offers-count">نمایش {toPersianDigits(start + 1)} تا {toPersianDigits(Math.min(start + current.data.items.length, current.data.total))} از {toPersianDigits(current.data.total)} پیشنهاد</p>
-        </>
-      )}
-    </section>
-  );
-}
-
-function formatRials(value: number): string {
-  return new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 0 })
-    .format(value) + " ریال";
-}
-
-function formatQuantity(offer: BuyerOffer): string {
-  return new Intl.NumberFormat("fa-IR", {
-    minimumFractionDigits: offer.quantityScale,
-    maximumFractionDigits: offer.quantityScale,
-  }).format(offer.sellableQuantity);
 }
