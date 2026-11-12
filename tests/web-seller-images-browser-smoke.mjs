@@ -75,7 +75,7 @@ try {
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4//8/AwAI/AL+KDgZAAAAAElFTkSuQmCC",
     "base64",
   );
-  await page.locator('input[type="file"]').setInputFiles([
+  await page.getByLabel("انتخاب فایل‌های تصویر").setInputFiles([
     { name: "photo.png", mimeType: "image/png", buffer: tinyPng },
     { name: "unsafe.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg/>") },
   ]);
