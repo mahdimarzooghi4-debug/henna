@@ -1,4 +1,206 @@
 "use client";
-import { ScreenButton, ScreenField, ScreenRow, ScreenValue } from "../screen-controls";
+
+import { useState, type FormEvent } from "react";
+import { parsePreviewToman, previewDiscount } from "../../../../lib/seller-pricing-preview";
 import styles from "./pricing.module.css";
-export function DesignScreen(){return (<div className={styles.n1} data-name="content-area" data-node-id="261:520"><div className={styles.n2} data-name="header-row" data-node-id="261:521"><div className={styles.n3} data-name="pricing-meta-info" data-node-id="261:522"><div className={styles.n4} data-name="info-badge" data-node-id="261:523"><p className={styles.n5} data-node-id="261:524" dir="auto">واحد پول: تومان</p></div></div><div className={styles.n6} data-name="page-title" data-node-id="261:525"><h1 className={styles.n7} data-node-id="261:526" dir="auto">قیمت‌گذاری اقلام</h1><p className={styles.n8} data-node-id="261:527" dir="auto">قیمت فعلی کالاهای خود را بررسی و در صورت نیاز ویرایش کنید.</p></div></div><div className={styles.n9} data-name="pricing-table-card" data-node-id="261:528"><div className={styles.n10} data-name="table" data-node-id="261:529"><div className={styles.n11} data-name="th" data-node-id="261:530"><p className={styles.n12} data-node-id="261:531" dir="auto">عملیات قیمت‌گذاری</p><p className={styles.n13} data-node-id="261:532" dir="auto">آخرین تغییر</p><p className={styles.n14} data-node-id="261:534" dir="auto">قیمت فعلی</p><p className={styles.n15} data-node-id="261:535" dir="auto">دسته‌بندی</p><p className={styles.n16} data-node-id="261:536" dir="auto">کالا</p></div><ScreenRow className={styles.n17} data-name="tr" data-node-id="261:537" rowId="261:537" rowText="ویرایش قیمت ۳ روز پیش ۸,۵۰۰ تومان نان و نانوایی نان بربری سنتی سبوس‌دار"><div className={styles.n18} data-name="actions-cell" data-node-id="261:538"><ScreenButton className={styles.n19} data-name="edit-price-btn" data-node-id="261:539" controlId="261:539" actionName="edit-price-btn" label="ویرایش قیمت"><p className={styles.n20} data-node-id="261:540" dir="auto">ویرایش قیمت</p></ScreenButton></div><p className={styles.n21} data-node-id="261:541" dir="auto">۳ روز پیش</p><ScreenValue className={styles.n22} data-node-id="261:543" dir="auto" rowId="261:537">۸,۵۰۰ تومان</ScreenValue><p className={styles.n23} data-node-id="261:544" dir="auto">نان و نانوایی</p><p className={styles.n24} data-node-id="261:545" dir="auto">نان بربری سنتی سبوس‌دار</p></ScreenRow><ScreenRow className={styles.n25} data-name="tr" data-node-id="261:546" rowId="261:546" rowText="ویرایش قیمت ۱ هفته پیش ۹۸,۰۰۰ تومان روغن‌ها روغن آفتابگردان خالص لادن ۱.۵ لیتر"><div className={styles.n26} data-name="actions-cell" data-node-id="261:547"><ScreenButton className={styles.n27} data-name="edit-price-btn" data-node-id="261:548" controlId="261:548" actionName="edit-price-btn" label="ویرایش قیمت"><p className={styles.n28} data-node-id="261:549" dir="auto">ویرایش قیمت</p></ScreenButton></div><p className={styles.n29} data-node-id="261:550" dir="auto">۱ هفته پیش</p><ScreenValue className={styles.n30} data-node-id="261:552" dir="auto" rowId="261:546">۹۸,۰۰۰ تومان</ScreenValue><p className={styles.n31} data-node-id="261:553" dir="auto">روغن‌ها</p><p className={styles.n32} data-node-id="261:554" dir="auto">روغن آفتابگردان خالص لادن ۱.۵ لیتر</p></ScreenRow><ScreenRow className={styles.n33} data-name="tr" data-node-id="261:555" rowId="261:555" rowText="ویرایش قیمت دیروز ۸۸,۰۰۰ تومان لبنیات ماست سون کاله ۹۰۰ گرم"><div className={styles.n34} data-name="actions-cell" data-node-id="261:556"><ScreenButton className={styles.n35} data-name="edit-price-btn" data-node-id="261:557" controlId="261:557" actionName="edit-price-btn" label="ویرایش قیمت"><p className={styles.n36} data-node-id="261:558" dir="auto">ویرایش قیمت</p></ScreenButton></div><p className={styles.n37} data-node-id="261:559" dir="auto">دیروز</p><ScreenValue className={styles.n38} data-node-id="261:561" dir="auto" rowId="261:555">۸۸,۰۰۰ تومان</ScreenValue><p className={styles.n39} data-node-id="261:562" dir="auto">لبنیات</p><p className={styles.n40} data-node-id="261:563" dir="auto">ماست سون کاله ۹۰۰ گرم</p></ScreenRow></div></div></div>);}
+
+type PricingRow = {
+  id: string;
+  name: string;
+  category: string;
+  priceToman: number;
+  lastChange: string;
+  discountedToman: number | null;
+};
+type Dialog = { id: string; kind: "price" | "discount" };
+
+const sampleRows: PricingRow[] = [
+  { id: "bread", name: "نان بربری سنتی سبوس‌دار", category: "نان و نانوایی", priceToman: 8500, lastChange: "۳ روز پیش", discountedToman: null },
+  { id: "oil", name: "روغن آفتابگردان خالص لادن ۱.۵ لیتر", category: "روغن‌ها", priceToman: 98000, lastChange: "۱ هفته پیش", discountedToman: null },
+  { id: "yogurt", name: "ماست سون کاله ۹۰۰ گرم", category: "لبنیات", priceToman: 88000, lastChange: "دیروز", discountedToman: null },
+];
+const formatToman = (amount: number) => new Intl.NumberFormat("fa-IR").format(amount) + " تومان";
+
+export function DesignScreen() {
+  const [rows, setRows] = useState<PricingRow[]>(sampleRows);
+  const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [input, setInput] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const current = dialog ? rows.find((row) => row.id === dialog.id) : null;
+
+  function open(row: PricingRow, kind: Dialog["kind"]) {
+    setDialog({ id: row.id, kind });
+    setInput(String(kind === "price" ? row.priceToman : row.discountedToman ?? ""));
+    setError("");
+    setNotice("");
+  }
+
+  function cancel() {
+    setDialog(null);
+    setError("");
+  }
+
+  function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!dialog || !current) return;
+    const amount = parsePreviewToman(input);
+    if (amount === null) {
+      setError("مبلغ باید عدد صحیح و مثبت به تومان باشد.");
+      return;
+    }
+
+    if (dialog.kind === "discount") {
+      const discount = previewDiscount(current.priceToman, amount);
+      if (!discount) {
+        setError("قیمت با تخفیف باید مثبت و کمتر از قیمت اصلی کالا باشد.");
+        return;
+      }
+      setRows((previous) => previous.map((row) =>
+        row.id === current.id ? {
+          ...row, discountedToman: discount.finalToman, lastChange: "همین نشست (نمایشی)",
+        } : row,
+      ));
+      setNotice("تخفیف برای پیش‌نمایش " + current.name + " اعمال شد؛ قیمت واقعی فروشگاه تغییر نکرده است.");
+    } else {
+      setRows((previous) => previous.map((row) =>
+        row.id === current.id ? {
+          ...row, priceToman: amount, discountedToman: null, lastChange: "همین نشست (نمایشی)",
+        } : row,
+      ));
+      setNotice("قیمت نمایشی تغییر کرد و تخفیف نمایشی قبلی پاک شد؛ اطلاعاتی در سرور ذخیره نشده است.");
+    }
+    cancel();
+  }
+
+  function clearDiscount(row: PricingRow) {
+    setRows((previous) => previous.map((item) =>
+      item.id === row.id ? { ...item, discountedToman: null, lastChange: "همین نشست (نمایشی)" } : item,
+    ));
+    setNotice("تخفیف نمایشی " + row.name + " برداشته شد؛ قیمت اصلی واقعی تغییر نکرده است.");
+  }
+
+  return (
+    <div className={styles.page} dir="rtl">
+      <header className={styles.heading}>
+        <div className={styles.title}>
+          <h1>قیمت‌گذاری اقلام</h1>
+          <p>قیمت کالاهای نمونه را بررسی کنید و تغییر قیمت یا تخفیف را پیش‌نمایش کنید.</p>
+        </div>
+        <span className={styles.currency}>واحد پول نمایشی: تومان</span>
+      </header>
+
+      <div className={styles.previewNotice} role="note">
+        <strong>پیش‌نمایش طراحی</strong>
+        <span>این جدول دادهٔ نمونه دارد. تغییر قیمت و تخفیف فقط در همین صفحه نمایش داده می‌شود و به کالا، سفارش یا سرور منتقل نمی‌شود.</span>
+      </div>
+      {notice && <p className={styles.notice} role="status">{notice}</p>}
+
+      <section className={styles.card} aria-label="فهرست قیمت و تخفیف اقلام">
+        <div className={styles.scroll}>
+          <table className={styles.table}>
+            <colgroup>
+              <col className={styles.productCol} />
+              <col className={styles.categoryCol} />
+              <col className={styles.priceCol} />
+              <col className={styles.changeCol} />
+              <col className={styles.actionCol} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">کالا</th>
+                <th scope="col">دسته‌بندی</th>
+                <th scope="col">قیمت فعلی</th>
+                <th scope="col">آخرین تغییر</th>
+                <th scope="col" className={styles.actionHeader}>عملیات قیمت‌گذاری</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const discount = row.discountedToman === null ? null :
+                  previewDiscount(row.priceToman, row.discountedToman);
+                return (
+                  <tr key={row.id}>
+                    <th scope="row" className={styles.product}>{row.name}</th>
+                    <td className={styles.category}>{row.category}</td>
+                    <td>
+                      <div className={styles.priceCell}>
+                        {discount ? (
+                          <>
+                            <s className={styles.oldPrice}>{formatToman(row.priceToman)}</s>
+                            <strong className={styles.discountedPrice}>{formatToman(discount.finalToman)}</strong>
+                            <span className={styles.discountBadge}>تخفیف {formatToman(discount.savedToman)}</span>
+                          </>
+                        ) : <strong>{formatToman(row.priceToman)}</strong>}
+                      </div>
+                    </td>
+                    <td className={styles.lastChange}>{row.lastChange}</td>
+                    <td className={styles.actionCell}>
+                      <div className={styles.actions}>
+                        <button type="button" onClick={() => open(row, "price")}>ویرایش قیمت</button>
+                        <button type="button" className={styles.discountButton} onClick={() => open(row, "discount")}>
+                          {discount ? "ویرایش تخفیف" : "اعمال تخفیف"}
+                        </button>
+                        {discount && (
+                          <button type="button" className={styles.removeDiscount}
+                            onClick={() => clearDiscount(row)}>حذف تخفیف</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className={styles.tableHint}>برای دیدن همه ستون‌ها در صفحه‌نمایش کوچک، جدول را به چپ و راست حرکت دهید.</p>
+      </section>
+
+      <div className={styles.footerNote}>
+        <strong>تخفیف واقعی چگونه فعال می‌شود؟</strong>
+        <p>ثبت قیمت اصلی و قیمت پس از تخفیف برای سفارش واقعی، به قرارداد مستقل تخفیف در Backend نیاز دارد. این صفحه فعلاً فقط روش کار را نشان می‌دهد.</p>
+      </div>
+
+      {dialog && current && (
+        <div className={styles.overlay} onKeyDown={(event) => {
+          if (event.key === "Escape") cancel();
+        }}>
+          <form role="dialog" aria-modal="true" aria-labelledby="pricing-dialog-title"
+            className={styles.dialog} onSubmit={save}>
+            <div className={styles.dialogHeading}>
+              <h2 id="pricing-dialog-title">{dialog.kind === "price" ? "ویرایش قیمت" : "اعمال تخفیف"}</h2>
+              <button type="button" aria-label="بستن پنجره" onClick={cancel}>×</button>
+            </div>
+            <p className={styles.productName}>{current.name}</p>
+            {dialog.kind === "discount" && (
+              <p className={styles.basePrice}>قیمت اصلی: <strong>{formatToman(current.priceToman)}</strong></p>
+            )}
+            <label className={styles.amountLabel} htmlFor="seller-pricing-amount">
+              {dialog.kind === "price" ? "قیمت جدید (تومان)" : "قیمت فروش با تخفیف (تومان)"}
+            </label>
+            <input id="seller-pricing-amount" autoFocus required inputMode="numeric" type="text"
+              value={input} onChange={(event) => { setInput(event.target.value); setError(""); }}
+              placeholder="مبلغ به تومان" dir="ltr" />
+            {dialog.kind === "discount" && <p className={styles.helper}>مبلغ نهایی فروش را وارد کنید؛ باید کمتر از قیمت اصلی باشد.</p>}
+            {dialog.kind === "discount" && (() => {
+              const amount = parsePreviewToman(input);
+              const discount = amount === null ? null : previewDiscount(current.priceToman, amount);
+              return discount ? <p className={styles.savings}>
+                میزان تخفیف: <strong>{formatToman(discount.savedToman)}</strong>
+              </p> : null;
+            })()}
+            {error && <p className={styles.error} role="alert">{error}</p>}
+            <p className={styles.dialogWarning}>این تغییر فقط در پیش‌نمایش همین صفحه ثبت می‌شود.</p>
+            <div className={styles.dialogButtons}>
+              <button className={styles.submit} type="submit">
+                {dialog.kind === "price" ? "ثبت قیمت نمایشی" : "نمایش تخفیف"}
+              </button>
+              <button type="button" onClick={cancel}>انصراف</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
