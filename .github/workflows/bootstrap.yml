@@ -447,6 +447,10 @@ jobs:
         run: node --experimental-strip-types --test tests/web-seller-images-smoke.mjs
       - name: Browser test seller image library workflow (preview only)
         run: node tests/web-seller-images-browser-smoke.mjs
+      - name: Validate seller pricing preview amount and discount boundaries
+        run: node --experimental-strip-types --test tests/web-seller-pricing-smoke.mjs
+      - name: Browser test seller pricing and discount workspace (preview only)
+        run: node tests/web-seller-pricing-browser-smoke.mjs
       - name: Browser test seller Catalog offer creation and publication
         run: node tests/web-seller-offers-browser-smoke.mjs
       - name: Browser test public Figma seller registration without buyer login
