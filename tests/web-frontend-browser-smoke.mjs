@@ -318,7 +318,10 @@ async function fakeApi(route) {
     }));
   }
   if (path === "/api/seller/access" && req.method() === "GET") {
-    assert.ok(signedIn);
+    if (!signedIn)
+      return route.fulfill(json({
+        message: "برای ورود به پنل فروشنده ابتدا وارد شوید.",
+      }, 401));
     if (!draft?.activatedAtUtc || draft.reviewStatus !== "APPROVED")
       return route.fulfill(json({
         message: "دسترسی فروشندگی برای این حساب فعال نیست.",
@@ -412,6 +415,12 @@ async function main() {
   assert.equal(await page.getByRole("link", {
     name: "ثبت‌نام پذیرنده جدید",
   }).getAttribute("href"), "/seller/register");
+  assert.equal(writes, 0);
+
+  await page.goto(base + "/seller");
+  await page.waitForURL("**/seller/login");
+  await page.getByRole("heading", { name: "ورود به پنل پذیرندگان" }).waitFor();
+  assert.equal(await page.locator(".seller-panel-denied").count(), 0);
   assert.equal(writes, 0);
 
   // Signed-out seller must redirect to the EXACT approved web auth flow;
@@ -770,6 +779,12 @@ async function main() {
     name: "ورود به پنل فروشنده",
   });
   assert.equal(await panelButton.isDisabled(), true);
+
+  // Authenticated, unactivated seller must not loop through login.
+  await otherTab.goto(base + "/seller");
+  await otherTab.waitForURL("**/seller/register/status");
+  await otherTab.getByRole("heading", { name: "درخواست در حال بررسی است" }).waitFor();
+  assert.equal(await otherTab.locator(".seller-panel-denied").count(), 0);
 
   await otherTab.reload();
   await otherTab.getByText("کد پیگیری: HNA-A1B2C3D4E5F60718", {
