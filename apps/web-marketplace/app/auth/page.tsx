@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { SiteHeader } from "../../components/site-header";
+import { LandingFooter, LandingHeader } from "../../components/landing-chrome";
+import styles from "./auth-page.module.css";
 import { AuthForm } from "./auth-form";
-import { safeAuthReturnTo } from "../../lib/auth-return";
+import { AuthPreviewForm } from "./auth-preview-form";
+import { safeAuthReturnTo } from "../../lib/seller-return";
 
 export const metadata: Metadata = {
   title: "ورود به حنا",
@@ -11,20 +13,21 @@ export const metadata: Metadata = {
 export default async function AuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{ returnTo?: string | string[]; mode?: string | string[] }>;
 }) {
   // Resolve and allowlist on the server; do not expose arbitrary redirects.
-  const returnTo = safeAuthReturnTo((await searchParams).returnTo);
+  const params = await searchParams;
+  const returnTo = safeAuthReturnTo(params.returnTo);
+  // Stage-only opt-in, never a session or a protected return destination.
+  const preview = process.env.HANA_AUTH_UI_PREVIEW === "1" &&
+    params.returnTo === undefined && params.mode !== "live";
   return (
     <>
-      <SiteHeader backHref="/" backLabel="بازگشت به فروشگاه" />
-      <main>
-        <div className="page-intro">
-          <h1>ورود به حنا</h1>
-          <p>با شماره موبایل وارد شوید یا حساب جدید بسازید.</p>
-        </div>
-        <AuthForm returnTo={returnTo} />
+      <LandingHeader />
+      <main className={styles.main} dir="rtl">
+        {preview ? <AuthPreviewForm /> : <AuthForm returnTo={returnTo} />}
       </main>
+      <LandingFooter />
     </>
   );
 }

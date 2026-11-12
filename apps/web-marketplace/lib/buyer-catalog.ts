@@ -2,12 +2,27 @@
 export type BuyerCategory = { id: string; name: string; slug: string };
 export type BuyerProduct = {
   id: string; categoryId: string; name: string;
-  kind: "GOOD" | "SERVICE"; description: string | null;
+  kind: "GOOD"; description: string | null;
+  unitName?: string | null; quantityScale?: number | null;
 };
 export type BuyerPage = {
   items: BuyerProduct[]; page: number; pageSize: number; total: number;
 };
 export const BUYER_PAGE_SIZE = 20;
+export const BUYER_OFFERS_PAGE_SIZE = 20;
+export type BuyerOffer = {
+  id: string;
+  sellerPublicId: string;
+  sellerName: string;
+  priceRials: number;
+  sellableQuantity: number;
+  unitName: string;
+  quantityScale: number;
+  updatedAtUtc: string;
+};
+export type BuyerOfferPage = {
+  items: BuyerOffer[]; page: number; pageSize: number; total: number;
+};
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const object = (x: unknown): Record<string, unknown> | null =>
   x !== null && typeof x === "object" && !Array.isArray(x)
@@ -61,6 +76,20 @@ export function reconcilePublishedBuyerPage(
   return { ...location, page: 1 };
 }
 
+/** Validated shareable category UUIDs; each category has its own public catalog request. */
+export function parseBuyerCategorySet(raw: unknown): string[] | null {
+  if (typeof raw !== "string" || raw.length > 800) return null;
+  const ids = raw.split(",").map(item => item.toLowerCase());
+  if (ids.length < 2 || ids.length > 12 || !ids.every(validBuyerProductId) ||
+    new Set(ids).size !== ids.length) return null;
+  return ids;
+}
+export function buyerCategorySetHref(ids: readonly string[], search: string): string {
+  const params = new URLSearchParams({ categoryIds: ids.join(",") });
+  if (search && validBuyerSearch(search)) params.set("search", search);
+  return "/products?" + params.toString();
+}
+
 export function buyerCatalogPath(
   page: number, categoryId: string | null, search: string,
 ): string {
@@ -85,6 +114,35 @@ export function parseBuyerCategories(raw: unknown): BuyerCategory[] | null {
   return items;
 }
 
+function normalizeCategoryLabel(value: string): string {
+  return value.normalize("NFKC").replace(/[يى]/g, "ی").replace(/ك/g, "ک")
+    .replace(/[\s\u200cـ]+/g, "").trim();
+}
+
+/** Resolve the Figma landing label only against the currently published taxonomy. */
+export function findLandingBuyerCategory(
+  categories: BuyerCategory[], label: string,
+): BuyerCategory | null {
+  const normalized = normalizeCategoryLabel(label);
+  const exact = categories.filter((category) =>
+    normalizeCategoryLabel(category.name) === normalized ||
+    normalizeCategoryLabel(category.slug) === normalized);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return null;
+
+  const aliases: Record<string, string[]> = {
+    [normalizeCategoryLabel("میوه و صیفی")]: ["میوه و سبزیجات"],
+    [normalizeCategoryLabel("میوه و سبزیجات")]: ["میوه و صیفی"],
+    [normalizeCategoryLabel("لبنیات محلی")]: ["لبنیات و تخم مرغ", "لبنیات و تخم‌مرغ"],
+    [normalizeCategoryLabel("لبنیات و تخم مرغ")]: ["لبنیات محلی"],
+    [normalizeCategoryLabel("لبنیات و تخم‌مرغ")]: ["لبنیات محلی"],
+  };
+  const names = aliases[normalized] ?? [];
+  const matches = categories.filter((category) =>
+    names.some((name) => normalizeCategoryLabel(name) === normalizeCategoryLabel(category.name)));
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage | null {
   const x = object(raw);
   if (!x || x.page !== requestedPage || x.pageSize !== BUYER_PAGE_SIZE ||
@@ -95,17 +153,63 @@ export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage |
   for (const candidate of x.items) {
     const p = object(candidate);
     if (!p || !id(p.id) || !id(p.categoryId) || !words(p.name, 200) ||
-      (p.kind !== "GOOD" && p.kind !== "SERVICE") ||
+      p.kind !== "GOOD" ||
       (p.description !== null && (typeof p.description !== "string" ||
-        p.description.length > 2000))) return null;
+        p.description.length > 2000)) ||
+      (Object.hasOwn(p, "unitName") && !(p.unitName === null || words(p.unitName, 40))) ||
+      (Object.hasOwn(p, "quantityScale") && !(p.quantityScale === null || integer(p.quantityScale, 0, 6))) ||
+      (Object.hasOwn(p, "unitName") !== Object.hasOwn(p, "quantityScale"))) return null;
     items.push({
       id: p.id, categoryId: p.categoryId, name: p.name,
       kind: p.kind, description: p.description,
+      ...(Object.hasOwn(p, "unitName") ? { unitName: typeof p.unitName === "string" ? p.unitName : null } : {}),
+      ...(Object.hasOwn(p, "quantityScale") ? { quantityScale: typeof p.quantityScale === "number" ? p.quantityScale : null } : {}),
     });
   }
   return {
     items, page: requestedPage, pageSize: BUYER_PAGE_SIZE, total: x.total,
   };
+}
+
+/** Parse only the reviewed public offer fields; ignore no unknown additions. */
+export function parseBuyerOfferPage(
+  raw: unknown, requestedPage: number,
+  requestedSize = BUYER_OFFERS_PAGE_SIZE,
+): BuyerOfferPage | null {
+  const x = object(raw);
+  if (!x || !integer(requestedPage, 1, 10000) ||
+    !integer(requestedSize, 1, 50) || x.page !== requestedPage ||
+    x.pageSize !== requestedSize ||
+    !integer(x.total, 0, Number.MAX_SAFE_INTEGER) ||
+    !Array.isArray(x.items) || x.items.length > requestedSize ||
+    x.items.length > x.total) return null;
+  const items: BuyerOffer[] = [];
+  const allowed = ["id", "sellerPublicId", "sellerName", "priceRials", "sellableQuantity",
+    "unitName", "quantityScale", "updatedAtUtc"].sort().join("|");
+  for (const candidate of x.items) {
+    const offer = object(candidate);
+    if (!offer || Object.keys(offer).sort().join("|") !== allowed ||
+      !id(offer.id) || !id(offer.sellerPublicId) || !words(offer.sellerName, 160) ||
+      !integer(offer.priceRials, 1, Number.MAX_SAFE_INTEGER) ||
+      typeof offer.sellableQuantity !== "number" ||
+      !Number.isFinite(offer.sellableQuantity) ||
+      offer.sellableQuantity <= 0 || offer.sellableQuantity > 1_000_000_000_000 ||
+      !words(offer.unitName, 40) || !integer(offer.quantityScale, 0, 6) ||
+      typeof offer.updatedAtUtc !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?Z$/.test(offer.updatedAtUtc) ||
+      !Number.isFinite(Date.parse(offer.updatedAtUtc))) return null;
+    const quantityFactor = 10 ** offer.quantityScale;
+    if (Math.abs(offer.sellableQuantity * quantityFactor -
+      Math.round(offer.sellableQuantity * quantityFactor)) > 1e-7) return null;
+    items.push({
+      id: offer.id, sellerPublicId: offer.sellerPublicId, sellerName: offer.sellerName,
+      priceRials: offer.priceRials,
+      sellableQuantity: offer.sellableQuantity,
+      unitName: offer.unitName, quantityScale: offer.quantityScale,
+      updatedAtUtc: offer.updatedAtUtc,
+    });
+  }
+  return { items, page: requestedPage, pageSize: requestedSize, total: x.total };
 }
 
 /** A product identity is not a seller offer, price or stock claim. */
@@ -121,14 +225,19 @@ export function parseBuyerProduct(
   if (!validBuyerProductId(requestedId) || !x ||
     !id(x.id) || x.id.toLowerCase() !== requestedId.toLowerCase() ||
     !id(x.categoryId) || !words(x.name, 200) ||
-    (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
+    x.kind !== "GOOD" ||
     (x.description !== null && x.description !== undefined &&
-      (typeof x.description !== "string" || x.description.length > 2000)))
+      (typeof x.description !== "string" || x.description.length > 2000)) ||
+    (Object.hasOwn(x, "unitName") && !(x.unitName === null || words(x.unitName, 40))) ||
+    (Object.hasOwn(x, "quantityScale") && !(x.quantityScale === null || integer(x.quantityScale, 0, 6))) ||
+    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")))
     return null;
   return {
     id: x.id, categoryId: x.categoryId, name: x.name,
     kind: x.kind, description: typeof x.description === "string"
       ? x.description : null,
+    ...(Object.hasOwn(x, "unitName") ? { unitName: typeof x.unitName === "string" ? x.unitName : null } : {}),
+    ...(Object.hasOwn(x, "quantityScale") ? { quantityScale: typeof x.quantityScale === "number" ? x.quantityScale : null } : {}),
   };
 }
 
@@ -176,7 +285,7 @@ export function buyerBrowseQuery(state: BuyerBrowseLocation): string {
 
 export function buyerBrowseHref(state: BuyerBrowseLocation): string {
   const query = buyerBrowseQuery(state);
-  return "/" + (query ? "?" + query : "");
+  return "/products" + (query ? "?" + query : "");
 }
 
 export function buyerDetailHref(

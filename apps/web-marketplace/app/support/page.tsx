@@ -1,11 +1,4 @@
-import type { Metadata } from "next";
-import { SupportCommerceView } from "./support-view";
-
-export const metadata: Metadata = {
-  title: "پنل پشتیبانی حنا",
-  description: "بررسی انسانی گزارش آسیب، کسری و مرجوعی در حنا",
-};
-
-export default function SupportPage() {
-  return <SupportCommerceView />;
-}
+import { LandingFooter, LandingHeader } from "../../components/landing-chrome";
+import { FigmaBuyerServices } from "../../components/figma-buyer-services";
+export const metadata={title:"پشتیبانی حنا"};
+export default function SupportPage(){return <><LandingHeader/><FigmaBuyerServices kind="support"/><LandingFooter accountPage/></>;}
