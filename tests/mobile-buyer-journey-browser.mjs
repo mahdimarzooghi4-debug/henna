@@ -10,6 +10,16 @@ try{
  await page.goto(base);
  await button("ورود").click();await page.getByLabel("شماره موبایل",{exact:true}).fill("09123456789");await button("دریافت کد تأیید").click();await page.getByLabel("کد شش رقمی تأیید",{exact:true}).fill("123456");await button("ورود").click();
  await button("همه پیشنهادها").click();await page.getByTestId("buyer-products-227-8").waitFor();
+ await button("فیلترهای جست‌وجو").click();
+ await page.getByTestId("buyer-catalog-filter-sheet-842-6377").waitFor();
+ await page.getByRole("checkbox",{name:"لبنیات محلی و تخم‌مرغ"}).click();
+ await page.getByLabel("حداقل قیمت (تومان)",{exact:true}).fill("۱۰٬۰۰۰");
+ await button("نمایش کالاها").click();
+ await page.getByText("ماست کم‌چرب پاستوریزه").waitFor();
+ assert.equal(await button("افزودن روغن مایع آفتابگردان").count(),0);
+ await button("فیلتر پیشرفته").click();
+ await button("پاک کردن همه فیلترها").click();
+ await button("نمایش کالاها").click();
  await button("افزودن روغن مایع آفتابگردان").click();
  await button("بازگشت به خانه").click();await button("مشاهده همه").click();await page.getByTestId("buyer-products-227-8").waitFor();
  await button("جزئیات برنج طارم ایرانی").click();await button("افزایش تعداد محصول").click();await button("افزودن برنج طارم ایرانی").click();
