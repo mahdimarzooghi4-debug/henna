@@ -352,8 +352,8 @@ async function main() {
   }).getByRole("link", { name: "همه دسته‌ها", exact: true })
     .getAttribute("href"), "/products");
 
-  // Latest owner decision: the sample card adds one item and opens the cart.
-  // The prior mandatory detail-first experiment is superseded.
+  // Catalog sample products add in place, like homepage offers. Only an explicit
+  // click on the header cart navigates; no real order or payment is created.
   const readDemoCart = () => page.evaluate(() => JSON.parse(
     localStorage.getItem("henna:landing-preview-cart:v1") ?? "[]"));
   await page.evaluate(() => localStorage.removeItem("henna:landing-preview-cart:v1"));
@@ -364,42 +364,47 @@ async function main() {
     expectedPreviewIds, "Each catalog button is bound to its own sample product");
   assert.equal(await demoCards.locator('a[href^="/products/"]').count(), 0,
     "Sample catalog cards no longer require or link to the detail page");
+
   const cartUrl = base + "/buyer/cart?mode=preview";
   const cartTitle = page.getByRole("heading", { name: "اقلام سبد خرید شما" });
+  const catalogCartLink = page.locator('header a[href="/buyer/cart?mode=preview"]');
   const cheeseCard = demoCards.filter({ hasText: "پنیر سفید ایرانی ممتاز" });
-  await cheeseCard.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  const cheeseAdd = cheeseCard.getByTestId("preview-product-add");
+  await cheeseAdd.click();
+  await catalogCartLink.locator("span").filter({ hasText: /^۱$/ }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/products",
+    "Catalog add must not redirect to the cart");
   assert.deepEqual(await readDemoCart(), [{ productId: "cheese", quantity: 1 }],
-    "Catalog add opens cart immediately and adds exactly one correct item");
-  await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز", exact: true }).waitFor();
+    "Catalog adds the selected product exactly once");
+  assert.equal(await cheeseAdd.isEnabled(), true, "Further catalog adds remain possible");
 
-  await page.goto(base + "/products");
   const yogurtCard = demoCards.filter({ hasText: "ماست سون همزده پرچرب" });
   await yogurtCard.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  await catalogCartLink.locator("span").filter({ hasText: /^۲$/ }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/products",
+    "Adding another catalog item must not navigate away");
   assert.deepEqual(await readDemoCart(), [
     { productId: "cheese", quantity: 1 }, { productId: "yogurt", quantity: 1 },
-  ], "Adding a different product preserves prior cart contents");
-  await page.getByRole("heading", { name: "ماست سون همزده پرچرب", exact: true }).waitFor();
+  ], "Catalog preserves existing cart items");
 
-  // A repeat add increments the existing quantity, rather than replacing it.
-  await page.goto(base + "/products");
-  await cheeseCard.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  // Repeated clicks increase the quantity without replacing existing items.
+  await cheeseAdd.click();
+  await catalogCartLink.locator("span").filter({ hasText: /^۳$/ }).waitFor();
   const expected = [
     { productId: "cheese", quantity: 2 }, { productId: "yogurt", quantity: 1 },
   ];
   assert.deepEqual(await readDemoCart(), expected);
+  assert.equal(new URL(page.url()).pathname, "/products");
+  assert.equal(await demoCards.count(), 8, "All catalog cards remain visible after add");
 
-  // Opening the header cart never adds another item.
-  await page.goto(base + "/products");
-  await page.locator('header a[href="/buyer/cart?mode=preview"]').click();
+  // Only an intentional click on the basket link opens the basket.
+  await catalogCartLink.click();
   await page.waitForURL(cartUrl);
   await cartTitle.waitFor();
-  assert.deepEqual(await readDemoCart(), expected);
+  await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "ماست سون همزده پرچرب", exact: true }).waitFor();
+  assert.deepEqual(await readDemoCart(), expected,
+    "Opening the cart does not add another item");
 
   // Homepage add stays on the homepage; only an explicit cart click navigates.
   await page.goto(base + "/");
@@ -891,35 +896,23 @@ async function main() {
       0, removed + " must not appear in product navigation");
   }
 
-  const footer = page.getByTestId("marketplace-footer");
+  const footer = page.getByTestId("landing-footer-top");
   await footer.scrollIntoViewIfNeeded();
-  await footer.getByText("طرح‌های حمایتی", { exact: true }).waitFor();
+  await footer.getByText("ارتباط با ما", { exact: true }).waitFor();
   await footer.getByText("همکاری با حنا", { exact: true }).waitFor();
   await footer.getByText("دسترسی سریع", { exact: true }).waitFor();
-  assert.equal(await footer.locator('[class*="footerColumn"]').count(), 3,
-    "Figma footer has three link columns");
-  assert.equal(await footer.locator('[class*="footerColumn"] a').count(), 12,
-    "Figma footer has four links in each of three columns");
-  assert.equal(await footer.locator('[class*="socialMedia"] span').count(), 3,
-    "Footer social icon group retains three slots");
-  const socialIcons = footer.locator('[class*="socialMedia"] span');
+  assert.equal(await page.getByTestId("marketplace-footer").count(), 0,
+    "Catalog must not use the legacy marketplace footer");
+  assert.equal(await footer.getByRole("link", { name: "دریافت اپلیکیشن حنا" })
+    .getAttribute("href"), "/download",
+    "Catalog footer exposes the same download destination as homepage");
+  const socialIcons = page.getByTestId("landing-footer-bottom")
+    .getByRole("link");
   assert.deepEqual(await socialIcons.evaluateAll(
     nodes => nodes.map(node => node.getAttribute("aria-label"))),
-    ["اینستاگرام", "توییتر", "لینکدین"],
-    "All three footer vector icons have accessible Persian names");
-  assert.equal(await socialIcons.locator("svg").count(), 3,
-    "Footer icons must be vector SVG, never platform-dependent text glyphs");
-  assert.equal(await socialIcons.first().locator("svg rect").count(), 1,
-    "Instagram icon contains a rounded camera frame");
-  assert.equal(await socialIcons.first().locator("svg circle").count(), 2,
-    "Instagram icon contains a lens and flash dot");
-  const svgSizes = await socialIcons.locator("svg").evaluateAll(nodes =>
-    nodes.map(node => ({
-      width: Math.round(node.getBoundingClientRect().width),
-      height: Math.round(node.getBoundingClientRect().height),
-    })));
-  assert.deepEqual(svgSizes, Array(3).fill({ width: 20, height: 20 }),
-    "Footer social icons render at a consistent 20px square");
+    ["اینستاگرام حنا", "توییتر حنا", "لینکدین حنا"],
+    "Catalog uses the homepage social links");
+  assert.equal(await socialIcons.locator("svg").count(), 3);
 
   // Account overview stays concise; personal and legal details are edited together on the profile page.
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -1169,7 +1162,7 @@ async function main() {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(base + "/products", { waitUntil: "domcontentloaded" });
   await page.getByTestId("marketplace-category-nav").waitFor();
-  await page.getByTestId("marketplace-footer").waitFor();
+  await page.getByTestId("landing-footer-top").waitFor();
   const mobileGeometry = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,

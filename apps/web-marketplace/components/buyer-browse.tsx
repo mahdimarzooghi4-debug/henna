@@ -514,7 +514,7 @@ function FigmaCatalogPreview({ filter, sort }: { filter: PreviewFilter; sort: Pr
               <h3>{product.title}</h3><p>{product.detail}</p>
             </div>
             <div className={styles.catalogActions}>
-              <LandingAddButton productId={product.id} messageClassName={styles.catalogNotice} />
+              <LandingAddButton stayOnPage productId={product.id} messageClassName={styles.catalogNotice} />
               <div className={styles.catalogPrice}>
                 {product.oldPrice && <del>{product.oldPrice}</del>}
                 <strong>{product.price} تومان</strong>
