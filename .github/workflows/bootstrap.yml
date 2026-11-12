@@ -443,6 +443,10 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Verify buyer Figma 190:4 header, nav, hero and category alignment
         run: node tests/web-buyer-homepage-figma-layout-browser-smoke.mjs
+      - name: Validate seller image library preview filters and file safety
+        run: node --experimental-strip-types --test tests/web-seller-images-smoke.mjs
+      - name: Browser test seller image library workflow (preview only)
+        run: node tests/web-seller-images-browser-smoke.mjs
       - name: Browser test seller Catalog offer creation and publication
         run: node tests/web-seller-offers-browser-smoke.mjs
       - name: Browser test public Figma seller registration without buyer login
