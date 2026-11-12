@@ -2,7 +2,7 @@
 export type BuyerCategory = { id: string; name: string; slug: string };
 export type BuyerProduct = {
   id: string; categoryId: string; name: string;
-  kind: "GOOD"; description: string | null;
+  kind: "GOOD" | "SERVICE"; description: string | null;
   unitName?: string | null; quantityScale?: number | null;
 };
 export type BuyerPage = {
@@ -153,7 +153,7 @@ export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage |
   for (const candidate of x.items) {
     const p = object(candidate);
     if (!p || !id(p.id) || !id(p.categoryId) || !words(p.name, 200) ||
-      p.kind !== "GOOD" ||
+      (p.kind !== "GOOD" && p.kind !== "SERVICE") ||
       (p.description !== null && (typeof p.description !== "string" ||
         p.description.length > 2000)) ||
       (Object.hasOwn(p, "unitName") && !(p.unitName === null || words(p.unitName, 40))) ||
