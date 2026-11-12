@@ -473,8 +473,7 @@ async function main() {
     });
     near(g.layout.x,g.header.x,"Basket content aligns with header at "+width);
     near(g.layout.right,g.header.right,"Basket content right edge at "+width);
-    near(g.footer.x,g.layout.x,"Basket footer aligns at "+width);
-    near(g.footer.right,g.layout.right,"Basket footer right edge at "+width);
+    near(g.footer.x,width-g.footer.right,"Basket footer centered like homepage at "+width);
     assert.equal(g.background,"rgb(250, 248, 245)");
     assert.ok(g.scrollWidth <= g.clientWidth + 1, "Basket must not overflow at "+width);
     if (width >= 1440) {
@@ -565,7 +564,7 @@ async function main() {
     });
     near(g.content.x,g.header.x,"Comparison header alignment at "+width);
     near(g.content.right,g.header.right,"Comparison right edge at "+width);
-    near(g.footer.x,g.content.x,"Comparison footer alignment at "+width);
+    near(g.footer.x,width-g.footer.right,"Comparison footer centered like homepage at "+width);
     near(g.card.width,g.content.width,"Comparison full-width card at "+width);
     assert.equal(g.background,"rgb(250, 248, 245)");
     assert.ok(g.scrollWidth <= g.clientWidth+1,"Comparison no horizontal overflow at "+width);
@@ -623,8 +622,7 @@ async function main() {
     near(g.layout.x,g.header.x,"Review left edge aligns with header at "+width);
     near(g.layout.right,g.header.right,"Review right edge aligns with header at "+width);
     near(g.layout.x,g.nav.x,"Review nav alignment at "+width);
-    near(g.layout.x,g.footer.x,"Review footer alignment at "+width);
-    near(g.layout.right,g.footer.right,"Review footer right edge at "+width);
+    near(g.footer.x,width-g.footer.right,"Review footer centered like homepage at "+width);
     assert.ok(g.scrollWidth<=g.clientWidth+1,"Review no horizontal overflow at "+width);
     if(width>=1440){
       near(g.layout.width,1280,"Review desktop canvas");
@@ -686,8 +684,7 @@ async function main() {
     });
     near(g.layout.x,g.header.x,"Checkout header alignment at "+width);
     near(g.layout.right,g.header.right,"Checkout right edge at "+width);
-    near(g.footer.x,g.layout.x,"Checkout footer alignment at "+width);
-    near(g.footer.right,g.layout.right,"Checkout footer right edge at "+width);
+    near(g.footer.x,width-g.footer.right,"Checkout footer centered like homepage at "+width);
     assert.ok(g.scrollWidth<=g.clientWidth+1,"Checkout no horizontal overflow at "+width);
     if(width>=1440){
       near(g.layout.width,1280,"Checkout desktop canvas");
@@ -743,8 +740,7 @@ async function main() {
     near(g.layout.x,g.header.x,"Tracking header left alignment at "+width);
     near(g.layout.right,g.header.right,"Tracking header right alignment at "+width);
     near(g.layout.x,g.nav.x,"Tracking navigation alignment at "+width);
-    near(g.layout.x,g.footer.x,"Tracking footer left alignment at "+width);
-    near(g.layout.right,g.footer.right,"Tracking footer right alignment at "+width);
+    near(g.footer.x,width-g.footer.right,"Tracking footer centered like homepage at "+width);
     assert.ok(g.scrollWidth<=g.clientWidth+1,"Tracking no horizontal overflow at "+width);
     if(width>=1440){
       near(g.layout.width,1280,"Tracking desktop canvas");
