@@ -1,26 +1,23 @@
-.page{background:#faf8f5;color:#1c3f3a;padding:54px 0 72px;min-height:480px;font-family:var(--hana-font-family)}
+.page{background:#faf8f5;color:#1c3f3a;padding:50px 0 68px;min-height:510px;font-family:var(--hana-font-family)}
 .container{width:min(1280px,calc(100% - 64px));margin:0 auto}
-.intro{max-width:780px;margin-bottom:26px}
+.intro{text-align:right;max-width:880px;margin:0 0 28px}
 .eyebrow{font-size:12px;color:#b5523b;font-weight:750}
-.intro h1{font-size:30px;line-height:1.6;margin:8px 0 10px}
-.intro p{font-size:14px;line-height:2;color:#706963;margin:0}
-.warning{background:#fff6f1;border:1px solid #e9c8b6;border-radius:14px;padding:18px 22px;margin-bottom:24px}
-.warning strong{color:#a2442f;font-size:14px}
-.warning p{margin:8px 0 0;font-size:13px;line-height:2;color:#735c50}
-.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
-.card{display:flex;flex-direction:column;gap:14px;min-width:0;padding:28px;border:1px solid #eae6e1;border-radius:18px;background:#fff}
-.cardHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.role{background:#eaf2ef;border-radius:8px;padding:5px 11px;font-size:12px;font-weight:750}
-.status{color:#9a5039;border-radius:999px;background:#fbf0e9;padding:5px 11px;font-size:11px;font-weight:650}
-.card h2{font-size:20px;margin:0}
-.card p{margin:0;line-height:2;color:#706963;font-size:13px;flex:1}
-.downloadLink{min-height:46px;display:flex;align-items:center;justify-content:center;padding:10px 18px;border-radius:10px;background:#b5523b;color:#fff;text-decoration:none;font-size:14px;font-weight:750;text-align:center}
-.downloadLink:hover,.downloadLink:focus-visible{background:#9b412c;outline-offset:3px}
-.fileName{font-size:11px;color:#706963;text-align:center}
-.digest{border-top:1px solid #eae6e1;padding-top:12px;display:grid;gap:6px;min-width:0}
-.digest strong{font-size:12px}
-.digest code{direction:ltr;font-size:10px;overflow-wrap:anywhere;white-space:normal;text-align:left;color:#615c56}
-.footnote{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:20px;font-size:12px;line-height:2}
-.footnote p{flex-basis:100%;margin:0;color:#706963}
-.footnote a{color:#a2442f;text-decoration:underline;text-underline-offset:3px;font-weight:750}
-@media(max-width:760px){.page{padding:26px 0 44px}.container{width:calc(100% - 32px)}.intro h1{font-size:24px}.cards{grid-template-columns:1fr;gap:14px}.card{padding:20px}.warning{padding:16px}}
+.intro h1{font-size:28px;line-height:1.6;margin:8px 0}
+.intro p{margin:0;font-size:14px;line-height:2;color:#706963}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.card{display:flex;flex-direction:column;gap:14px;background:#fff;border:1px solid #eae6e1;border-radius:18px;padding:28px;min-width:0}
+.role{display:inline-flex;align-self:flex-start;background:#eaf2ef;border-radius:10px;padding:5px 12px;font-size:12px;font-weight:750}
+.card h2{font-size:19px;margin:0}
+.card>p{margin:0;color:#706963;font-size:13px;line-height:2}
+.card .platformHelp{color:#8a7e73;font-size:11px}
+.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:auto}
+.actions a{display:flex;align-items:center;justify-content:center;min-width:0;min-height:49px;padding:10px 12px;text-align:center;border-radius:10px;text-decoration:none;font-size:13px;font-weight:750}
+.primary{background:#b5523b;color:#fff}
+.primary:hover{background:#983f2d}
+.secondary{border:1px solid #b5523b;color:#a2442f;background:#fff}
+.secondary:hover{background:#fff2eb}
+.note{margin-top:22px;padding:20px 24px;border:1px solid #ead8ca;background:#fff9f4;border-radius:14px}
+.note strong{font-size:14px;color:#1c3f3a}
+.note p{font-size:12px;color:#706963;line-height:2;margin:6px 0}
+.note a{display:inline-block;font-size:12px;color:#a2442f;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:760px){.page{padding:28px 0 44px}.container{width:calc(100% - 32px)}.intro h1{font-size:24px}.cards{grid-template-columns:1fr;gap:14px}.card{padding:20px}.actions{grid-template-columns:1fr}.note{padding:15px}}

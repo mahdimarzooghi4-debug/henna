@@ -1306,28 +1306,58 @@ async function main() {
     await page.goto(base + "/terms");
     await page.getByText("راهنمای عمومی، نه قرارداد لازم‌الاجرا",{exact:false}).waitFor();
   }
-  // App download is a clearly identified test-only Android preview, never a production release.
+  // The download screen has exactly two Android APK actions and two iOS PWA routes.
   await page.goto(base + "/download");
-  await page.getByTestId("download-app-page").waitFor();
-  await page.getByRole("heading",{level:1,name:"دریافت اپلیکیشن حنا"}).waitFor();
-  for(const [role,file] of [["buyer","hana-buyer-preview.apk"],["seller","hana-seller-preview.apk"]]){
-    const card=page.getByTestId("app-download-"+role);
-    await card.getByText("نسخه آزمایشی اندروید", {exact:true}).waitFor();
-    const apk=card.locator('a[href$="/'+file+'"]');
-    assert.equal(await apk.count(),1,"Verified download for "+role);
-    assert.equal(await apk.getAttribute("target"),"_blank");
-    assert.ok((await apk.getAttribute("rel")).includes("noopener"),"No opener on APK navigation");
+  const downloadPage=page.getByTestId("download-app-page");
+  await downloadPage.waitFor();
+  await downloadPage.getByRole("heading",{level:1,name:"دریافت اپلیکیشن حنا"}).waitFor();
+  assert.equal(await downloadPage.locator(".downloadLink").count(),0,
+    "Legacy two-action download layout was removed");
+  for (const [role,apk,manifest,start] of [
+    ["buyer","hana-buyer-preview.apk","/pwa-buyer.webmanifest","/products"],
+    ["seller","hana-seller-preview.apk","/pwa-seller.webmanifest","/seller"]
+  ]) {
+    const card=downloadPage.getByTestId("app-download-"+role);
+    const android=card.getByTestId("download-android-"+role);
+    const ios=card.getByTestId("download-ios-"+role);
+    assert.equal(await android.count(),1);
+    assert.equal(await ios.count(),1);
+    assert.ok((await android.getAttribute("href")).endsWith("/"+apk));
+    assert.equal(await android.getAttribute("target"),"_blank");
+    assert.equal(await ios.getAttribute("href"),"/install/"+role);
+    await ios.click();
+    await page.waitForURL(base+"/install/"+role);
+    const install=page.getByTestId("install-ios-"+role);
+    await install.getByRole("heading",{level:1}).waitFor();
+    await install.getByText("افزودن به صفحه اصلی (Add to Home Screen)",{exact:false}).waitFor();
+    assert.equal(await page.locator('link[rel="manifest"]').getAttribute("href"),manifest);
+    const manifestResponse=await page.request.get(base+manifest);
+    assert.equal(manifestResponse.status(),200);
+    const data=await manifestResponse.json();
+    assert.equal(data.start_url,start);
+    assert.equal(data.display,"standalone");
+    assert.equal(data.scope,"/");
+    assert.equal(data.id,"/pwa/"+role);
+    assert.deepEqual(data.icons.map(x=>x.sizes),["192x192","512x512"]);
+    for(const icon of data.icons){
+      const response=await page.request.get(base+icon.src);
+      assert.equal(response.status(),200,"PWA icon exists");
+      assert.match(response.headers()["content-type"],/image\/png/);
+      const dataBuffer=await response.body();
+      assert.equal(dataBuffer.subarray(0,8).toString("hex"),"89504e470d0a1a0a",
+        "PWA asset is a valid PNG file");
+    }
+    assert.equal(await install.getByRole("link",{name:"ورود به نسخه وب "+(role==="buyer"?"خریدار":"فروشنده")}).getAttribute("href"),start);
+    await page.goto(base+"/download");
   }
-  await page.getByText(/مناسب استفاده تجاری واقعی نیستند/).waitFor();
-  assert.equal(await page.getByTestId("download-app-page").locator('a[href*=".ipa"]').count(),0,
-    "No unsupported native iOS download");
-  const sums=page.getByRole("link",{name:"بررسی صحت فایل‌ها"});
-  assert.equal(await sums.getAttribute("href"),
-    "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1/SHA256SUMS.txt");
-  const downloadFooter=page.getByTestId("landing-footer-top");
-  assert.equal(await downloadFooter.getByRole("link",{name:"دریافت اپلیکیشن حنا"}).getAttribute("href"),"/download");
+  assert.equal(await downloadPage.locator('[data-testid^="download-android-"],[data-testid^="download-ios-"]').count(),4,
+    "Exactly four primary download/install actions are visible");
+  assert.equal(await downloadPage.locator('a[href*=".ipa"]').count(),0,"iOS is a PWA, not a fake native app");
+  assert.doesNotMatch(await downloadPage.innerText(),/آزمایشی/,"Remove the requested wording from the visible download page");
+  assert.equal(await page.getByTestId("landing-footer-top").getByRole("link",{name:"دریافت اپلیکیشن حنا"}).getAttribute("href"),"/download");
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),
-    "Download page does not overflow on mobile");
+    "Download page does not overflow mobile viewport");
+
 
   assert.deepEqual(errors, []);
   await context.close();
