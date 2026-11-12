@@ -1,17 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
 import styles from "./seller-registration-start.module.css";
 
 export function SellerRegistrationStart() {
-  function showReturning() {
-    document.getElementById("seller-returning-actions")?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }
-
   return (
     <section className={styles.grid} data-testid="seller-register-start">
       <div className={styles.panel}>
@@ -29,23 +20,11 @@ export function SellerRegistrationStart() {
         </p>
         <div className={styles.buttons}>
           <Link className={styles.primary} href="/seller/register/new">
-            شروع ثبت‌نام جدید
+            ثبت‌نام
           </Link>
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={showReturning}
-            aria-controls="seller-returning-actions"
-          >
-            قبلاً ثبت‌نام کرده‌ام
-          </button>
-        </div>
-        <div className={styles.returning} id="seller-returning-actions">
-          <h2>پیگیری پرونده قبلی:</h2>
-          <div className={styles.returnButtons}>
-            <Link href="/seller/register/public-status">مشاهده وضعیت درخواست</Link>
-            <Link href="/seller/register/account">ادامه ثبت‌نام</Link>
-          </div>
+          <Link className={styles.secondary} href="/seller/register/public-status">
+            پیگیری ثبت‌نام
+          </Link>
         </div>
       </div>
     </section>

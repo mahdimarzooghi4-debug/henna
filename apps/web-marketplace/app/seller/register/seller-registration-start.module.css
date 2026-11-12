@@ -7,17 +7,10 @@
 .primary,.secondary{width:100%;min-height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
 .primary{background:#b5523b;color:#fff;border:1px solid #b5523b}
 .secondary{background:#fff;color:#1c3f3a;border:1.5px solid #eae6e1}
-.returning{margin-top:32px;border-top:1px solid #eae6e1;padding-top:25px}
-.returning h2{font-size:14px;line-height:1.5;margin:0 0 12px;color:#1c3f3a}
-.returnButtons{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.returnButtons a{font-size:12px;text-align:center;border-radius:9px;border:1px solid #eae6e1;background:#faf8f5;padding:10px 6px;text-decoration:none;color:#1c3f3a}
-.returnButtons a:hover{border-color:#b5523b}
 @media(max-width:700px){
   .grid{padding:24px 0}
   .panel{padding:24px 20px;border-radius:18px}
   .panel h1{font-size:23px}
   .panel>p{font-size:13px}
   .primary,.secondary{min-height:52px;font-size:14px}
-  .returnButtons{gap:8px}
-  .returnButtons a{font-size:11px}
 }
