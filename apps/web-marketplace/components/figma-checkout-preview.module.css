@@ -28,3 +28,10 @@
 .codeRow button:hover{background:#fff2ea}
 .codeFeedback,.codeDisclosure{font-size:12px;line-height:1.9;color:#775c50;margin:0}
 @media(max-width:560px){.bnplGroup,.codeForms{padding:12px}.codeRow{flex-direction:column}.codeRow button{min-height:42px}}
+
+/* External activation handoff; selection stays disabled until verified credit and merchant integration. */
+.providerPaymentRow{display:flex;align-items:stretch;gap:10px;min-width:0}
+.providerPaymentRow .payment{flex:1;min-width:0}
+.providerActivation{display:flex;align-items:center;justify-content:center;flex:none;min-height:42px;padding:0 15px;border:1px solid #b5523b;border-radius:9px;background:#fff;color:#b5523b;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
+.providerActivation:hover,.providerActivation:focus-visible{background:#fff2ea;outline-offset:2px}
+@media(max-width:560px){.providerPaymentRow{flex-wrap:wrap}.providerPaymentRow .payment{flex-basis:100%}.providerActivation{width:100%;min-height:38px}}

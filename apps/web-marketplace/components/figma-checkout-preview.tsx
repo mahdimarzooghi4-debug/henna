@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./figma-checkout-preview.module.css";
 import { readPreviewCompany, type PreviewCompany } from "../lib/preview-company";
-import { BnplCheckoutGate } from "./bnpl-checkout-gate";
 import { bnplCheckoutConnected, bnplProviderDirectory } from "../lib/bnpl-provider-directory";
 import { LANDING_PREVIEW_CART_EVENT, LANDING_PREVIEW_PRODUCTS, readLandingPreviewCart, saveLandingPreviewCart, type LandingPreviewCartItem } from "../lib/landing-preview-products";
 
@@ -186,24 +185,30 @@ export function FigmaCheckoutPreview() {
               اعتبار حمایتی — نیازمند اعتبار قابل‌استفاده و تأیید سفارش
             </label>
             <div className={styles.bnplGroup} data-testid="preview-bnpl-choices">
-              <h3>پرداخت اعتباری BNPL</h3>
+              <h3>پرداخت اعتباری</h3>
               <p className={styles.description} id="bnpl-selection-status">
-                تا زمان تأیید موجودی اعتبار نزد شرکت و اتصال درگاه آن به حنا، امکان انتخاب برای پرداخت وجود ندارد.
+                برای درخواست فعال‌سازی اعتبار به سایت رسمی شرکت بروید. بازکردن سایت شرکت به معنای تأیید اعتبار نیست؛ پرداخت اعتباری در حنا تا تأیید اعتبار و اتصال درگاه غیرفعال می‌ماند.
               </p>
               {bnplProviderDirectory.map(provider => (
-                <label className={styles.payment} key={provider.id}>
-                  <input type="radio" name="payment" value={"bnpl-"+provider.id}
-                    aria-label={"پرداخت با "+provider.name}
-                    disabled={!bnplSelectable}
-                    checked={payment === "bnpl-"+provider.id}
-                    onChange={() => { if (bnplSelectable) setPayment("bnpl-"+provider.id); }}
-                    aria-describedby="bnpl-selection-status" />
-                  {provider.name} — {bnplSelectable ? "اعتبار تأییدشده" : "در انتظار تأیید اعتبار و اتصال درگاه"}
-                </label>
+                <div className={styles.providerPaymentRow} key={provider.id}>
+                  <label className={styles.payment}>
+                    <input type="radio" name="payment" value={"bnpl-"+provider.id}
+                      aria-label={"پرداخت با "+provider.name}
+                      disabled={!bnplSelectable}
+                      checked={payment === "bnpl-"+provider.id}
+                      onChange={() => { if (bnplSelectable) setPayment("bnpl-"+provider.id); }}
+                      aria-describedby="bnpl-selection-status" />
+                    {provider.name} — {bnplSelectable ? "اعتبار تأییدشده" : "در انتظار تأیید اعتبار و اتصال درگاه"}
+                  </label>
+                  <a className={styles.providerActivation} href={provider.website}
+                    target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
+                    aria-label={"فعال‌سازی اعتبار در سایت "+provider.name}>
+                    فعال‌سازی
+                  </a>
+                </div>
               ))}
             </div>
           </div>
-          <BnplCheckoutGate/>
           <div className={styles.codeForms} aria-label="کدهای تخفیف و کالابرگ">
             <div className={styles.codePanel} data-testid="preview-discount-code">
               <label htmlFor="checkout-discount-code">کد تخفیف</label>

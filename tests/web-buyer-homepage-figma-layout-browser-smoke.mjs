@@ -668,12 +668,30 @@ async function main() {
   // Payment choices remain blocked unless provider credit and merchant integration
   // are independently verified; preview credit cards never authorize payment.
   const bnplOptions = checkout.getByTestId("preview-bnpl-choices");
+  await bnplOptions.getByRole("heading",{name:"پرداخت اعتباری",exact:true}).waitFor();
   assert.equal(await bnplOptions.getByRole("radio").count(),3);
-  for (const company of ["اسنپ‌پی","دیجی‌پی","تارا"]) {
+  assert.equal(await checkout.getByTestId("bnpl-checkout-unavailable").count(),0,
+    "The duplicate provider-directory box is absent from step four");
+  assert.equal(await checkout.getByText(/BNPL/i).count(),0,
+    "English BNPL acronym is not shown to the buyer at checkout");
+  const creditProviders=[
+    ["اسنپ‌پی","https://snapppay.ir/"],
+    ["دیجی‌پی","https://www.mydigipay.com/"],
+    ["تارا","https://taracredit.com/"],
+  ];
+  for (const [company,website] of creditProviders) {
     const option=bnplOptions.getByRole("radio",{name:"پرداخت با "+company,exact:true});
-    assert.equal(await option.isDisabled(),true,"Unverified BNPL credit must fail closed for "+company);
+    assert.equal(await option.isDisabled(),true,"Unverified provider credit must fail closed for "+company);
     assert.equal(await option.isChecked(),false);
+    const activation=bnplOptions.getByRole("link",{name:"فعال‌سازی اعتبار در سایت "+company,exact:true});
+    assert.equal(await activation.getAttribute("href"),website,
+      "Activation leads to the provider's official website, not pretend Hana credit activation");
+    assert.equal(await activation.getAttribute("target"),"_blank");
+    const rel=await activation.getAttribute("rel");
+    assert.ok(rel.includes("noopener")&&rel.includes("noreferrer"));
+    assert.equal((await activation.innerText()).trim(),"فعال‌سازی");
   }
+  await bnplOptions.getByText(/بازکردن سایت شرکت به معنای تأیید اعتبار نیست/).waitFor();
   assert.equal(await checkout.getByRole("radio",{name:"پرداخت با اعتبار حمایتی"}).isDisabled(),true);
   const discountEntry=checkout.getByTestId("preview-discount-code");
   const kalabargEntry=checkout.getByTestId("preview-kalabarg-code");
@@ -1102,7 +1120,8 @@ async function main() {
   const legalCheckout=page.getByTestId("preview-checkout-page");
   await legalCheckout.getByRole("checkbox",{name:"خرید حقوقی و دریافت فاکتور رسمی"}).check();
   await legalCheckout.getByTestId("preview-legal-company-note").getByText(/شرکت نمونه CI/).waitFor();
-  await legalCheckout.getByTestId("bnpl-checkout-unavailable").waitFor();
+  assert.equal(await legalCheckout.getByTestId("bnpl-checkout-unavailable").count(),0);
+  assert.equal(await legalCheckout.getByTestId("preview-bnpl-choices").getByRole("link").count(),3);
   assert.equal(await legalCheckout.getByRole("radio",{name:/پرداخت هنگام دریافت حضوری|پرداخت در محل/}).count(),0,
     "Cash on delivery is never offered in preview checkout");
   assert.equal(await legalCheckout.getByLabel("نام شرکت",{exact:true}).count(),0);
