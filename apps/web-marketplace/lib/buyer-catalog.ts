@@ -225,7 +225,7 @@ export function parseBuyerProduct(
   if (!validBuyerProductId(requestedId) || !x ||
     !id(x.id) || x.id.toLowerCase() !== requestedId.toLowerCase() ||
     !id(x.categoryId) || !words(x.name, 200) ||
-    x.kind !== "GOOD" ||
+    (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
     (x.description !== null && x.description !== undefined &&
       (typeof x.description !== "string" || x.description.length > 2000)) ||
     (Object.hasOwn(x, "unitName") && !(x.unitName === null || words(x.unitName, 40))) ||
