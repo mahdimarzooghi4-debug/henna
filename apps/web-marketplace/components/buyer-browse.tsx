@@ -534,10 +534,10 @@ export function BuyerBrowse({
           </div>
         ) : featureSelections.length > 0 || initialCollection !== null ? (
           <div className="buyer-panel buyer-products-status" role="status" data-testid="catalog-collection-status">
-            <h3>{initialCollection && initialCollection !== "invalid" && featureSelections.length === 1
+            <h3>{initialCollection !== null && featureSelections.length === 1
               ? `فیلتر فعال: ${CATALOG_COLLECTIONS[initialCollection].title}`
               : `ویژگی‌های انتخاب‌شده: ${featureSelections.map(key => CATALOG_COLLECTIONS[key].title).join("، ")}`}</h3>
-            {initialCollection && initialCollection !== "invalid" && featureSelections.length === 1 && (
+            {initialCollection !== null && featureSelections.length === 1 && (
               <p>{CATALOG_COLLECTIONS[initialCollection].description}</p>
             )}
             <p>فهرست تأییدشده کالاهای مشمول این ویژگی‌ها هنوز از منبع معتبر به کاتالوگ متصل نشده است. تا آن زمان، کالای عمومی یا نمونهٔ طراحی را به‌اشتباه مشمول نمایش نمی‌دهیم.</p>
