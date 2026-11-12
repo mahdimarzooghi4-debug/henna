@@ -56,7 +56,7 @@ export function BuyerBnplPayments() {
                 ["پرداخت صورتحساب حنا","تنها پس از قرارداد پذیرندگی و اتصال فنی تأییدشده، گزینه شرکت مربوطه در تسویه سفارش قابل انتخاب می‌شود. این قابلیت هنوز فعال نیست."],
               ].map(([title,description],index)=>(
                 <li key={title}>
-                  <span className={styles.stepNumber} data-testid="bnpl-step-number" aria-hidden="true">{toPersianDigits(index+1)}</span>
+                  <div className={styles.stepNumber} data-testid="bnpl-step-number" aria-hidden="true">{toPersianDigits(index+1)}</div>
                   <strong>{title}</strong>
                   <span>{description}</span>
                 </li>
