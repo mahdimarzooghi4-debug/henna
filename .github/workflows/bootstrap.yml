@@ -332,7 +332,8 @@ jobs:
               curl --fail --silent http://127.0.0.1:3000/admin/organization-funding-instructions/123e4567-e89b-42d3-a456-426614174000 -o /tmp/hana-admin-funding-instruction.html
               curl --fail --silent http://127.0.0.1:3000/admin-assets/list-imgLogo.png -o /tmp/hana-admin-logo.png
               grep -q 'ورود به حنا' /tmp/hana-auth.html
-              grep -q 'شروع ثبت‌نام جدید' /tmp/hana-seller.html
+              grep -q 'پیگیری ثبت‌نام' /tmp/hana-seller.html
+              grep -q 'href="/seller/register/public-status"' /tmp/hana-seller.html
               grep -q 'نوع متقاضی' /tmp/hana-seller-new.html
               grep -q 'درخواست‌های ثبت‌نام فروشنده' /tmp/hana-admin-applications.html
               grep -q 'جزئیات درخواست ثبت‌نام فروشنده' /tmp/hana-admin-application.html
