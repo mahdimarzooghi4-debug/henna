@@ -46,7 +46,10 @@ test("status bar icons use dark content against light surfaces",()=>{
 
 const home=readFileSync("apps/mobile-consumer/src/buyer-browse-screen.tsx","utf8");
 test("owner frame 194:4 offline browser sample has source assets and no real purchase",()=>{
- assert.match(home,/Platform\.OS === "web" && previewSession &&[\s\S]*?EXPO_PUBLIC_HANA_DEMO_LOGIN === "true" && !process\.env\.EXPO_PUBLIC_HANA_API_BASE_URL/);
+ assert.match(home,/const designPreview = previewSession && !process\.env\.EXPO_PUBLIC_HANA_API_BASE_URL/);
+ assert.match(home,/Platform\.OS === "web" && process\.env\.EXPO_PUBLIC_HANA_DEMO_LOGIN === "true"/);
+ assert.match(home,/offlineAndroidFigmaPreview\(Platform\.OS/);
+ assert.match(home,/if \(!active \|\| designPreview\) \{ controller\.stop\(\); return; \}/);
  assert.match(home,/پیش‌نمایش طراحی · قیمت‌ها نمونه‌اند؛ خرید واقعی فعال نیست/);
  assert.match(home,/onPress=\{\(\) => changeQuantity\(product.key,1\)\}/);
  assert.match(home,/if \(designPreview\) setPreviewCart/);
