@@ -748,7 +748,7 @@ a { color: inherit; }
   grid-template-columns: 100px 100px 140px 120px 120px 100px 180px 100px;
   align-items: center;
   border-bottom: 1px solid #eae6e1;
-  direction: rtl;
+  direction: ltr;
 }
 .admin-users__row:last-child { border-bottom: 0; }
 .admin-users__row > span { min-width: 0; padding: 8px 10px; color: #2d2d2d; font-size: 13px; text-align: right; direction: rtl; white-space: nowrap; }
