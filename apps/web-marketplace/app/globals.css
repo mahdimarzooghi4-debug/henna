@@ -579,6 +579,8 @@ a { color: inherit; }
   color: #706963;
   font-size: 13px;
 }
+.admin-page-heading--users h1 { line-height: normal; }
+.admin-page-heading--users p { margin-top: 0; }
 .admin-filters { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
 .admin-filter {
   min-height: 41px;
@@ -840,6 +842,10 @@ a { color: inherit; }
   .admin-sidebar { width: 240px; min-width: 240px; }
   .admin-content { padding: 30px 24px; }
   .admin-filters { justify-content: flex-start; }
+}
+@media (min-width: 1101px) and (max-width: 1399px) {
+  .admin-users__table { min-width: 0; }
+  .admin-users__row { grid-template-columns: .95fr .95fr 1.3fr 1.1fr 1.1fr .95fr 1.7fr .95fr; }
 }
 @media (max-width: 760px) {
   .admin-shell { flex-direction: column; }

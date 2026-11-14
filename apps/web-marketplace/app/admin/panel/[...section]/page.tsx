@@ -46,7 +46,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
     <section className={styles.app}>
       <header className={styles.top}><div className={styles.user}><button className={styles.notification} aria-label="اعلان‌ها"><Image src="/admin-assets/list-imgNotifBtn.svg" alt="" width={36} height={36} /></button><span className={styles.divider} /><span className={styles.profile}><span className={styles.userInfo}><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><span className={styles.avatar}>م</span></span></div></header>
       <div className="admin-content">
-        <header className={detail ? "admin-detail-heading" : "admin-page-heading"}>
+        <header className={detail ? "admin-detail-heading" : sectionSlug === "users" ? "admin-page-heading admin-page-heading--users" : "admin-page-heading"}>
           <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : sectionSlug === "users" ? "نمایش و فیلتر حساب‌های کاربری حقیقی و حقوقی در سامانه حنا" : config.description}</p></div>
           {detail && <Link className="admin-back-link" href={`/admin/panel/${sectionSlug}`}>بازگشت به {config.title}</Link>}
         </header>
@@ -75,5 +75,5 @@ export default async function AdminSectionPage({ params }: PageProps) {
 }
 
 function AdminSidebar({ active }: { active: string }) {
-  return <aside className={styles.sidebar}><div className={styles.sideBrand}><span className={styles.logo}><Image src="/admin-assets/henna-admin-logo.png" alt="" width={82} height={48} priority /></span><span><b>مدیریت حنا</b><small>پنل مدیریت بازارگاه</small></span></div><nav>{menu.map(([group, items]) => <section key={group}><h2>{group}</h2>{items.map(([label, href, icon]) => { const iconSize = icon.includes("Frame") ? 20 : icon.startsWith("dashboard-") ? 18 : 16; return <Link className={active === href || (href !== "/admin/panel" && active.startsWith(`${href}/`)) ? "active" : ""} href={href} key={href}><span className="admin-sidebar__icon"><Image src={`/admin-assets/${icon}`} alt="" width={iconSize} height={iconSize} /></span>{label}</Link>; })}</section>)}</nav></aside>;
+  return <aside className={styles.sidebar}><div className={styles.sideBrand}><span className={styles.logo}><Image src="/admin-assets/henna-admin-logo.png" alt="" width={82} height={48} priority /></span><span><b>مدیریت حنا</b><small>پنل مدیریت بازارگاه</small></span></div><nav>{menu.map(([group, items]) => <section key={group}><h2>{group}</h2>{items.map(([label, href, icon]) => { const iconSize = icon.includes("Frame") ? 20 : icon.startsWith("dashboard-") ? 18 : 16; return <Link className={active === href || (href !== "/admin/panel" && active.startsWith(`${href}/`)) ? styles.active : ""} href={href} key={href}><span className="admin-sidebar__icon"><Image src={`/admin-assets/${icon}`} alt="" width={iconSize} height={iconSize} /></span>{label}</Link>; })}</section>)}</nav></aside>;
 }
