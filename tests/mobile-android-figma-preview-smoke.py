@@ -35,12 +35,48 @@ def labels(root):
                     if (v := n.attrib.get(key)))
 
 
+def dismiss_known_emulator_launcher_anr(root):
+    """Close only a known Android emulator launcher ANR, never a Henna error.
+
+    A fresh AOSP emulator may show a launcher system dialog above a healthy
+    installed APK; asserting the app UI without dismissing it is a false negative.
+    """
+    observed = set(v for n in root.iter()
+                   for key in ("text", "content-desc")
+                   if (v := n.attrib.get(key)))
+    known = {"Quickstep isn't responding", "Pixel Launcher isn't responding"}
+    if not (observed & known):
+        return False
+    choice = next(
+        (n for n in root.iter()
+         if n.attrib.get("text") == "Close app" or
+         n.attrib.get("content-desc") == "Close app"), None)
+    if choice is None:
+        choice = next(
+            (n for n in root.iter()
+             if n.attrib.get("text") == "Wait" or
+             n.attrib.get("content-desc") == "Wait"), None)
+    if choice is None:
+        return False
+    coords = list(map(int, re.findall(r"[0-9]+", choice.attrib.get("bounds", ""))))
+    if len(coords) != 4:
+        return False
+    x1,y1,x2,y2 = coords
+    execute("adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2))
+    print("Dismissed known Android emulator launcher ANR (not app under test)",flush=True)
+    time.sleep(2)
+    return True
+
+
 def inspect(*terms, seconds=80):
     end = time.monotonic() + seconds
     last = "<no hierarchy>"
     while time.monotonic() < end:
         try:
-            last = labels(nodes())
+            root = nodes()
+            last = labels(root)
+            if dismiss_known_emulator_launcher_anr(root):
+                continue
             if all(t in last for t in terms):
                 print("Native preview visible: " + " / ".join(terms), flush=True)
                 return
@@ -56,6 +92,8 @@ def tap(name, scroll=True):
         try:
             root = nodes()
             last = labels(root)
+            if dismiss_known_emulator_launcher_anr(root):
+                continue
             node = next((n for n in root.iter()
                          if n.attrib.get("content-desc") == name or n.attrib.get("text") == name), None)
             if node is not None:
