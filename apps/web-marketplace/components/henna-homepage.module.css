@@ -512,3 +512,29 @@
  .chrome .footer .footerContact { grid-column:1; grid-row:4; }
  .chrome .footer .footerBottom { margin-top:22px; }
 }
+
+/* Phone-first corrections for the shared landing chrome and homepage CTA.
+ * Prevent clipped action buttons at 320px without altering desktop Figma frames. */
+@media(max-width:420px){
+ .chrome .announcement{height:auto;min-height:40px;padding:7px 12px;line-height:1.55}
+ .chrome .headerTop{grid-template-columns:minmax(0,1fr) 88px;gap:8px;min-width:0}
+ .chrome .brand{width:88px;min-width:0}
+ .chrome .brand img{width:88px;height:52px}
+ .chrome .actions{min-width:0;width:100%;gap:4px;flex-wrap:nowrap}
+ .chrome .cart,.chrome .login{min-width:0;min-height:42px;height:auto;padding:6px;font-size:10px;line-height:1.3;white-space:normal;text-align:center;justify-content:center;flex:1 1 0}
+ .chrome .cartCount{flex:0 0 18px}
+ .chrome .search{min-width:0}
+ .chrome .search input{min-width:0}
+ .chrome .footer .footerContactText a{overflow-wrap:anywhere;word-break:break-word}
+ .chrome .footer .footerGrid>div>a{white-space:normal;line-height:1.6;min-height:34px}
+}
+@media(max-width:760px){
+ /* The desktop artboard aspect ratio was compressing real CTA text to ~80px. */
+ .page .finalCta{height:auto;min-height:300px;aspect-ratio:auto}
+ .page .ctaOverlay{width:calc(100% - 32px);height:auto;min-height:300px;padding:30px 0}
+ .page .ctaContent{gap:12px}
+ .page .ctaContent h2{font-size:clamp(20px,5vw,26px);line-height:1.5}
+ .page .ctaContent p{font-size:13px;line-height:1.85}
+ .page .ctaButtons{width:100%;flex-wrap:wrap;gap:10px}
+ .page .ctaButtons>a{flex:1 1 180px;text-align:center;min-height:48px}
+}
