@@ -18,9 +18,9 @@ const applications = [
 ];
 const menu = [
  ["نمای کلی", [["داشبورد","/admin/panel","▦"]]],
- ["بازارگاه", [["کاربران و حساب‌ها","#","♙"],["سازمان‌ها","#","♧"],["فروشندگان","/admin/seller-applications","▣"],["درخواست‌های ثبت‌نام فروشنده","/admin/seller-applications","▤"],["کالاها","#","□"],["دسته‌بندی‌ها","#","▤"],["سفارش‌ها","/seller/orders","▣"]]],
- ["عملیات و طرح‌ها", [["طرح‌ها و اعتبارها","#","◇"],["مشارکت اجتماعی","#","♡"],["لجستیک","#","⌖"],["تسویه‌ها و تراکنش‌ها","/admin/organization-funding-instructions","↔"],["پشتیبانی","#","?"],["اعلان‌ها","#","♧"]]],
- ["مدیریت سامانه", [["گزارش‌ها","#","▥"],["محتوا","#","▤"],["کاربران پنل و دسترسی‌ها","#","♧"],["تنظیمات","#","⚙"]]],
+ ["بازارگاه", [["کاربران و حساب‌ها","/admin/panel/users","♙"],["سازمان‌ها","/admin/panel/organizations","♧"],["فروشندگان","/admin/panel/sellers","▣"],["درخواست‌های ثبت‌نام فروشنده","/admin/seller-applications","▤"],["کالاها","/admin/panel/products","□"],["دسته‌بندی‌ها","/admin/panel/categories","▤"],["سفارش‌ها","/admin/panel/orders","▣"]]],
+ ["عملیات و طرح‌ها", [["طرح‌ها و اعتبارها","/admin/panel/programs","◇"],["مشارکت اجتماعی","/admin/panel/social","♡"],["لجستیک","/admin/panel/logistics","⌖"],["تسویه‌ها و تراکنش‌ها","/admin/panel/settlements","↔"],["پشتیبانی","/admin/panel/support","?"],["اعلان‌ها","/admin/panel/notifications","♧"]]],
+ ["مدیریت سامانه", [["گزارش‌ها","/admin/panel/reports","▥"],["محتوا","/admin/panel/content","▤"],["کاربران پنل و دسترسی‌ها","/admin/panel/access","♧"],["تنظیمات","/admin/panel/settings","⚙"]]],
 ];
 export const dynamic="force-dynamic";
 export const metadata={title:"داشبورد مدیریت | حنا"};
