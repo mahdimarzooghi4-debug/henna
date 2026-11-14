@@ -538,3 +538,22 @@
  .page .ctaButtons{width:100%;flex-wrap:wrap;gap:10px}
  .page .ctaButtons>a{flex:1 1 180px;text-align:center;min-height:48px}
 }
+
+/* Figma 190:4 responsive completeness: unlike the desktop seven-column row,
+ * narrow screens must expose all seven category destinations without hiding
+ * later choices behind an undiscoverable horizontal scroller. */
+@media (max-width:760px){
+ .page #categories .categoryGrid{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px 10px;
+  overflow-x:visible;
+  padding-bottom:0;
+  align-items:start;
+ }
+ .page #categories .category{min-width:0;white-space:normal;text-align:center}
+ .page #categories .category strong{max-width:100%;overflow-wrap:break-word;line-height:1.6}
+ .page #categories .category span{flex:0 0 auto}
+}
+@media (max-width:360px){
+ .page #categories .categoryGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 8px}
+}
