@@ -6,6 +6,7 @@ import AdminOrganizationsListing from "../admin-organizations-listing";
 import AdminOrganizationDetail from "../admin-organization-detail";
 import AdminUserDetail from "../admin-user-detail";
 import AdminSellersListing from "../admin-sellers-listing";
+import AdminSellerDetail from "../admin-seller-detail";
 import { adminSections, findAdminSection, type AdminRow } from "../admin-pages";
 
 const menu = [
@@ -50,7 +51,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
     <section className={styles.app}>
       <header className={styles.top}><div className={styles.user}><button className={styles.notification} aria-label="اعلان‌ها"><Image src="/admin-assets/list-imgNotifBtn.svg" alt="" width={36} height={36} /></button><span className={styles.divider} /><span className={styles.profile}><span className={styles.userInfo}><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><span className={styles.avatar}>م</span></span></div></header>
       <div className="admin-content">
-        {detail && sectionSlug === "organizations" && parts.length >= 2 ? <AdminOrganizationDetail slug={parts[1]} name={row?.cells[1] ?? itemName} status={row?.cells[3] ?? "فعال"} organizationType={parts[1] === "sample-org" ? "سازمان حمایتگر" : "سازمان معمولی"} activeTab={parts[2] ? `/${parts[2]}` : ""} /> : detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : <>
+        {detail && sectionSlug === "organizations" && parts.length >= 2 ? <AdminOrganizationDetail slug={parts[1]} name={row?.cells[1] ?? itemName} status={row?.cells[3] ?? "فعال"} organizationType={parts[1] === "sample-org" ? "سازمان حمایتگر" : "سازمان معمولی"} activeTab={parts[2] ? `/${parts[2]}` : ""} /> : detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : detail && sectionSlug === "sellers" ? <AdminSellerDetail name={itemName} slug={parts[1]} /> : <>
         <header className={detail ? "admin-detail-heading" : sectionSlug === "users" ? "admin-page-heading admin-page-heading--users" : "admin-page-heading"}>
           <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : sectionSlug === "users" ? "نمایش و فیلتر حساب‌های کاربری حقیقی و حقوقی در سامانه حنا" : config.description}</p></div>
           {detail && <Link className="admin-back-link" href={`/admin/panel/${sectionSlug}`}>بازگشت به {config.title}</Link>}
