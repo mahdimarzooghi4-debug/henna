@@ -312,6 +312,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Typecheck web
         run: npm run web:typecheck
+      - name: Verify landing APK links and responsive download contracts
+        run: node --experimental-strip-types --test tests/web-landing-app-download-smoke.mjs
       - name: Build web
         run: npm run web:build
       - name: Smoke test Figma routes and exported logo
@@ -441,6 +443,8 @@ jobs:
           set -euo pipefail
           npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.55.1
           npx playwright install --with-deps chromium
+      - name: Verify direct APK links and mobile layout in real Chromium
+        run: node tests/web-download-responsive-browser.mjs
       - name: Verify buyer Figma 190:4 header, nav, hero and category alignment
         run: node tests/web-buyer-homepage-figma-layout-browser-smoke.mjs
       - name: Validate seller image library preview filters and file safety
