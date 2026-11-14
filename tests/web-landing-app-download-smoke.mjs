@@ -9,13 +9,14 @@ const page=readFileSync("apps/web-marketplace/app/download/page.tsx","utf8");
 const footer=readFileSync("apps/web-marketplace/components/landing-chrome.tsx","utf8");
 const downloadCss=readFileSync("apps/web-marketplace/app/download/download.module.css","utf8");
 const chromeCss=readFileSync("apps/web-marketplace/components/henna-homepage.module.css","utf8");
-const expectedBuyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-pr239-1c35e62/hana-buyer-preview.apk";
+const expectedBuyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-032eb3b/hana-buyer-figma-android-preview.apk";
 const expectedSeller="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1/hana-seller-preview.apk";
 test("landing footer routes phone visitors to /download, with separately pinned buyer and seller APKs",()=>{
  assert.match(footer,/<Link href="\/download">دریافت اپلیکیشن حنا<\/Link>/);
  assert.equal(buyerAndroidPreview.apk,expectedBuyer);
  assert.equal(sellerAndroidPreview.apk,expectedSeller);
- assert.equal(buyerAndroidPreview.sha,"1c35e62fc3924a73e1d082e581130698fbce6cc2");
+ assert.equal(buyerAndroidPreview.sha,"032eb3bbfeff03503353197343500590d14bd855");
+ assert.equal(buyerAndroidPreview.digest,"sha256:54842902338d015848ade7781994a1c1dcba2687b19f4b2408cbc3fa85c4129b");
  assert.notEqual(buyerAndroidPreview.apk,sellerAndroidPreview.apk);
  for(const app of [buyerAndroidPreview,sellerAndroidPreview]){
   const parsed=new URL(app.apk);
@@ -36,6 +37,8 @@ test("download APK directly in the current mobile tab, with visible preview warn
  assert.match(page,/href=\{app\.android\} referrerPolicy="no-referrer"/);
  assert.doesNotMatch(page,/href=\{app\.android\}[^>]*target="_blank"/);
  assert.match(page,/Problem parsing package/);
+ assert.match(page,/خانه، کاتالوگ و فیلترهای نمونه/);
+ assert.match(page,/خرید یا پرداخت فعال نیست/);
  assert.match(page,/GitHub Releases/);
  assert.match(page,/className=\{styles\.releaseLinks\}/);
 });
