@@ -410,7 +410,8 @@ jobs:
           grep -q "ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is not allowed" /tmp/hana-proxy-unsafe-switch.log
 
   web:
-    runs-on: ubuntu-latest
+    # Playwright 1.55 has no Chromium dependency support for Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     env:
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
@@ -568,7 +569,8 @@ jobs:
         run: node tests/web-buyer-navigation-browser-smoke.mjs
 
   mobile:
-    runs-on: ubuntu-latest
+    # Keep Expo's Playwright 1.55 Chromium browser smoke on a supported host.
+    runs-on: ubuntu-24.04
     env:
       EXPO_NO_TELEMETRY: '1'
       CI: '1'
@@ -824,7 +826,8 @@ jobs:
         with:
           name: hana-buyer-figma-native-screenshots
           path: tests/.hana-figma-android-*.png
-          if-no-files-found: warn
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 7
       - name: Retain tested buyer APK (CI debug build - not a public release)
         uses: actions/upload-artifact@v4
