@@ -38,7 +38,7 @@ export default function DownloadAppPage() {
           <header className={styles.intro}>
             <span className={styles.eyebrow}>حنا در تلفن همراه</span>
             <h1>دریافت اپلیکیشن حنا</h1>
-            <p>نسخه ویژه خریدار یا فروشنده را برای اندروید دریافت کنید؛ برای آیفون، نسخه وب حنا را به صفحه اصلی اضافه کنید.</p>
+            <p>نسخه آزمایشی خریدار یا فروشنده را مستقیماً برای اندروید دریافت کنید؛ برای آیفون، نسخه وب حنا را به صفحه اصلی اضافه کنید.</p>
           </header>
           <section className={styles.cards} aria-label="انتخاب نسخه اپلیکیشن">
             {entries.map(app => (
@@ -48,31 +48,35 @@ export default function DownloadAppPage() {
                 <p>{app.description}</p>
                 <div className={styles.actions}>
                   <a className={styles.primary} data-testid={"download-android-"+app.role}
-                    href={app.android}
-                    target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
-                    دریافت برای اندروید
+                    aria-label={"دانلود فایل APK اندروید " + app.label}
+                    href={app.android} referrerPolicy="no-referrer">
+                    دانلود مستقیم APK اندروید
                   </a>
                   <a className={styles.secondary} data-testid={"download-ios-"+app.role}
                     href={app.ios}>
                     نصب برای آیفون (PWA)
                   </a>
                 </div>
-                <p className={styles.platformHelp}>اندروید: فایل نصب APK | آیفون: نصب نسخه وب از Safari</p>
+                <p className={styles.platformHelp}>اندروید: فایل APK آزمایشی | آیفون: نصب نسخه وب از Safari</p>
+                {app.role === "buyer" && (
+                  <p className={styles.buyerHint}>نسخه خریدار PR #239 (حدود ۷۹ مگابایت). در صورت نمایش «Problem parsing package»، ابتدا از کامل بودن دانلود مطمئن شوید؛ دانلود مجدد الزاماً مشکل ناسازگاری گوشی را رفع نمی‌کند.</p>
+                )}
               </article>
             ))}
           </section>
           <aside className={styles.note} role="note">
             <strong>وضعیت دسترسی</strong>
-            <p>فایل‌های اندروید نسخه فعلیِ در حال توسعه هستند و برای پرداخت یا فروش واقعی آماده نشده‌اند. نسخه آیفون از نوع PWA است و به اینترنت نیاز دارد؛ نصب آن به معنی فعال‌شدن امکانات مالی یا عملیاتی نیست.</p>
-            <a href={buyerAndroidPreview.details}
-              target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
-              مشخصات نسخه خریدار و اصالت فایل
-            </a>
-            {" · "}
-            <a href={sellerAndroidPreview.details}
-              target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
-              مشخصات نسخه فروشنده و اصالت فایل
-            </a>
+            <p>فایل‌های اندروید نسخه آزمایشی و امضاشده برای بررسی هستند، نه نسخه نهایی بازارگاه. دانلود APK از GitHub Releases انجام می‌شود؛ این فایل روی سرور hennamarket.ir میزبانی نمی‌شود. امکانات پرداخت یا فروش واقعی هنوز آماده نیستند. نسخه آیفون از نوع PWA است و به اینترنت نیاز دارد.</p>
+            <div className={styles.releaseLinks}>
+              <a href={buyerAndroidPreview.details}
+                target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                مشخصات نسخه خریدار و اصالت فایل
+              </a>
+              <a href={sellerAndroidPreview.details}
+                target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                مشخصات نسخه فروشنده و اصالت فایل
+              </a>
+            </div>
           </aside>
         </div>
       </main>
