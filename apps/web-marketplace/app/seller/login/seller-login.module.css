@@ -1,0 +1,29 @@
+.page {
+  min-height: 580px;
+  padding: 48px 16px 64px;
+  background: #faf8f5;
+  color: #1c3f3a;
+  font-family: var(--hana-font-family), sans-serif;
+}
+.container { width: min(100%, 480px); margin-inline: auto; }
+.intro { text-align: center; margin-bottom: 24px; }
+.intro span { font-weight: 700; color: #b5523b; font-size: 13px; }
+.intro h1 { font-size: 25px; line-height: 1.5; margin: 10px 0; }
+.intro p { font-size: 13px; color: #706963; line-height: 2; margin: 0; }
+.container :global(.auth-card) {
+  background: #fff; border: 1px solid #eae6e1; border-radius: 20px;
+  padding: 30px; box-shadow: 0 8px 28px #1c3f3a0a;
+}
+.container :global(.auth-card h2) { font-size: 20px; margin: 0 0 8px; }
+.container :global(.auth-card__hint) { color: #706963; font-size: 13px; line-height: 1.9; }
+.container :global(.auth-card form) { display: grid; gap: 14px; margin-top: 18px; }
+.container :global(.auth-card__code-input) { direction: ltr; text-align: center; }
+.container :global(.auth-legal) { font-size: 12px; line-height: 1.8; color: #706963; margin-top: 22px; }
+.register { text-align: center; padding-top: 18px; font-size: 13px; }
+.register p { display: inline; color: #706963; margin: 0 6px; }
+.register a { color: #b5523b; font-weight: 700; text-decoration: underline; }
+@media (max-width: 600px) {
+  .page { padding: 30px 16px 44px; min-height: 430px; }
+  .intro h1 { font-size: 22px; }
+  .container :global(.auth-card) { padding: 24px 18px; }
+}

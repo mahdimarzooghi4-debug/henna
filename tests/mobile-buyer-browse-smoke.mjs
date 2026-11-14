@@ -18,7 +18,7 @@ const categoryB = { id: B, name: "دستهٔ CI دو", slug: "ci-two" };
 const product = (number, id = B) => ({
   id: "60000000-0000-4000-8000-" + String(number).padStart(12, "0"),
   categoryId: id, name: "کالای CI " + number,
-  kind: number === 1 ? "SERVICE" : "GOOD",
+  kind: "GOOD",
   description: number === 1 ? "توضیح منتشرشده" : null,
 });
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
@@ -83,7 +83,7 @@ test("public Expo browse is initially empty-to-loading and independent of OTP", 
   assert.equal(c.snapshot().products.data.items.length, 20);
   assert.deepEqual(Object.keys(c.snapshot().products.data.items[0]).sort(),
     ["categoryId", "description", "id", "kind", "name"].sort());
-  assert.equal(c.snapshot().products.data.items[0].kind, "SERVICE");
+  assert.equal(c.snapshot().products.data.items[0].kind, "GOOD");
   assert.equal(JSON.stringify(states).includes("SECRET"), false);
   assert.equal(JSON.stringify(states).includes('"price"'), false);
   assert.equal(calls.length, 2);

@@ -18,7 +18,7 @@ const goods = Array.from({ length: 21 }, (_, n) => ({
   id: "60000000-0000-4000-8000-" + String(n + 1).padStart(12, "0"),
   categoryId: n === 0 ? categoryA : categoryB,
   name: "عنوان واقعی API در تست " + String(n + 1),
-  kind: n === 0 ? "SERVICE" : "GOOD",
+  kind: "GOOD",
   description: n === 0 ? "توضیح تأییدشدهٔ API" : null,
 }));
 let mode = "empty";
@@ -110,7 +110,7 @@ async function main() {
 
   mode = "rich";
   await page.reload();
-  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).waitFor();
+  await page.getByRole("checkbox", { name: "دستهٔ منتشرشدهٔ یک" }).waitFor();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 20);
   assert.equal(await page.getByText("SECRET").count(), 0);
@@ -121,14 +121,27 @@ async function main() {
   assert.equal(await page.locator(".buyer-product").count(), 1);
   assert.equal(calls.at(-1).params.page, "2");
 
-  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).click();
+  await page.getByRole("checkbox", { name: "دستهٔ منتشرشدهٔ یک" }).check();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.page, "1");
   assert.equal(calls.at(-1).params.categoryId, categoryA);
-  assert.equal(await page.getByRole("button", {
+  assert.equal(await page.getByRole("checkbox", {
     name: "دستهٔ منتشرشدهٔ یک",
-  }).getAttribute("aria-pressed"), "true");
+  }).isChecked(), true);
   assert.equal(await page.getByRole("button", { name: "صفحهٔ بعد" }).isDisabled(), true);
+  // Multiple published categories: separate validated public GETs and a shareable URL.
+  await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ دو"}).check();
+  await page.waitForURL(/categoryIds=/);
+  await page.waitForFunction(() => document.querySelectorAll(".buyer-product").length===21);
+  assert.equal(new URL(page.url()).searchParams.get("categoryIds"),categoryA+","+categoryB);
+  assert.equal(await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ یک"}).isChecked(),true);
+  assert.equal(await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ دو"}).isChecked(),true);
+  await page.reload();
+  await page.waitForFunction(() => document.querySelectorAll(".buyer-product").length===21);
+  assert.equal(await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ دو"}).isChecked(),true);
+  await page.getByRole("checkbox",{name:"دستهٔ منتشرشدهٔ دو"}).uncheck();
+  await page.waitForURL(base+"?categoryId="+categoryA);
+  await page.getByRole("heading",{name:"عنوان واقعی API در تست 1",exact:true}).waitFor();
   await page.getByRole("button", { name: "همه دسته‌ها" }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 2", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.categoryId, undefined);
@@ -177,7 +190,7 @@ async function main() {
   await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 1", exact: true,
   }).waitFor();
-  assert.equal(await page.getByRole("button", {
+  assert.equal(await page.getByRole("checkbox", {
     name: "دستهٔ منتشرشدهٔ دو",
   }).count(), 0);
   assert.equal(await page.getByRole("button", {
@@ -234,7 +247,7 @@ async function main() {
   // visibility transition. The same known-publication recovery must work.
   publishedCategories = categories;
   await page.goto(base + resumedBookmark);
-  await page.getByRole("button", {
+  await page.getByRole("checkbox", {
     name: "دستهٔ منتشرشدهٔ دو",
   }).waitFor();
   publishedCategories = [categories[0]];
@@ -289,9 +302,9 @@ async function main() {
   assert.equal(await page.getByRole("heading", {
     name: "فعلاً کالایی برای نمایش نداریم",
   }).count(), 0, "the expired page must not masquerade as an empty catalog");
-  assert.equal(await page.getByRole("button", {
+  assert.equal(await page.getByRole("checkbox", {
     name: "دستهٔ منتشرشدهٔ دو",
-  }).getAttribute("aria-pressed"), "true");
+  }).isChecked(), true);
   const lastProductCall = calls.filter(c =>
     c.pathname === "/api/catalog/products").at(-1);
   assert.equal(lastProductCall.params.page, "1");

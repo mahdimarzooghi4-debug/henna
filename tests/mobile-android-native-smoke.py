@@ -46,6 +46,70 @@ def hierarchy():
     )
 
 
+def dismiss_known_emulator_anr():
+    """Dismiss only known emulator-system ANRs, never the Henna app's errors."""
+    try:
+        execute("adb", "shell", "uiautomator", "dump",
+                "/sdcard/hana-system-window.xml", timeout=20)
+        raw = execute("adb", "exec-out", "cat",
+                      "/sdcard/hana-system-window.xml", timeout=20)
+        root = ET.fromstring(raw)
+        values = {
+            value for node in root.iter()
+            for key in ("text", "content-desc")
+            if (value := node.attrib.get(key))
+        }
+        known = {
+            "Pixel Launcher isn't responding",
+            "Quickstep isn't responding",
+            "com.google.android.googlesdksetup isn't responding",
+        }
+        observed = next((title for title in known if title in values), None)
+        if observed is None:
+            return False
+        # If the emulator's own launcher is stuck, close only that
+        # known system process so Android can restart it. Never dismiss
+        # or mask an ANR belonging to the Henna application.
+        preferred_action = (
+            "Close app"
+            if observed in {"Pixel Launcher isn't responding",
+                            "Quickstep isn't responding"}
+            else "Wait"
+        )
+        action = next(
+            (node for node in root.iter()
+             if node.attrib.get("text") == preferred_action or
+             node.attrib.get("content-desc") == preferred_action),
+            None,
+        )
+        if action is None and preferred_action != "Wait":
+            action = next(
+                (node for node in root.iter()
+                 if node.attrib.get("text") == "Wait" or
+                 node.attrib.get("content-desc") == "Wait"),
+                None,
+            )
+        if action is None:
+            return False
+        bounds = action.attrib.get("bounds", "")
+        coords = list(map(int, re.findall(r"\d+", bounds)))
+        if len(coords) != 4:
+            return False
+        x1, y1, x2, y2 = coords
+        execute("adb", "shell", "input", "tap",
+                str((x1 + x2) // 2), str((y1 + y2) // 2))
+        print(
+            f"Handled known emulator system ANR ({observed}) via {preferred_action}; "
+            "continuing strict app UI checks.",
+            flush=True,
+        )
+        time.sleep(2)
+        return True
+    except (subprocess.TimeoutExpired, ET.ParseError, AssertionError,
+            StopIteration):
+        return False
+
+
 def wait_screen(*phrases, timeout=110):
     end = time.monotonic() + timeout
     last = "<no UI hierarchy yet>"
@@ -55,6 +119,11 @@ def wait_screen(*phrases, timeout=110):
             if all(phrase in last for phrase in phrases):
                 print("Observed native UI: " + " / ".join(phrases), flush=True)
                 return last
+            if ("Pixel Launcher isn't responding" in last or
+                    "Quickstep isn't responding" in last or
+                    "com.google.android.googlesdksetup isn't responding" in last):
+                dismiss_known_emulator_anr()
+                continue
         except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
             pass
         time.sleep(2)
@@ -143,42 +212,42 @@ def main():
     # Actual Android app launch from a COLD-start external detail URI.
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(DETAIL, package)
-    ui = wait_screen("جزئیات کالا یا خدمت", "دریافت جزئیات تأیید نشد")
+    ui = wait_screen("جزئیات کالا", "دریافت جزئیات تأیید نشد")
     assert "نشست شما فعال است" not in ui
 
     # Both native and app back behaviors return to public browse with the
     # genuine URI search, even when offline and no products are published.
     execute("adb", "shell", "input", "keyevent", "4")
-    wait_screen("کالاها و خدمات", TERM)
+    wait_screen("کالاها", TERM)
     save_preview()
 
     # A WARM app-link event must replace browse UI with the new detail
     # screen; no app restart, package state or Expo Go test double.
     open_uri("hana://browse?search=" + BROWSE.split("search=", 1)[1], package)
-    wait_screen("کالاها و خدمات", TERM)
+    wait_screen("کالاها", TERM)
     open_uri("hana://products/" + BUYER_ID, package)
-    wait_screen("جزئیات کالا یا خدمت", "دریافت جزئیات تأیید نشد")
+    wait_screen("جزئیات کالا", "دریافت جزئیات تأیید نشد")
 
     # Unapproved auth/admin routes must not steal the current buyer screen.
     open_uri("hana://auth", package)
-    ui = wait_screen("جزئیات کالا یا خدمت")
+    ui = wait_screen("جزئیات کالا")
     assert "ورود به حنا" not in ui
 
     # COLD-start browse URI should restore a real input, not just a
     # parsed-but-unused string in Node-only tests.
     execute("adb", "shell", "am", "force-stop", package)
     open_uri(BROWSE, package)
-    wait_screen("کالاها و خدمات", TERM)
+    wait_screen("کالاها", TERM)
 
     # Capture the Figma catalog with its seeded, reviewable sample products.
     open_uri("hana://browse", package)
-    wait_screen("کالاها و خدمات")
+    wait_screen("کالاها")
     save_preview("henna-android-products-preview.png")
     tap_accessible("برنج طارم ایرانی درجه یک")
     wait_screen("جزئیات محصول", "برنج طارم ایرانی درجه یک")
     save_preview("henna-android-detail-preview.png")
     tap_accessible("بازگشت")
-    wait_screen("کالاها و خدمات")
+    wait_screen("کالاها")
 
     # Add a real catalog-card item and capture the resulting in-app basket.
     # The configured APK exposes buyer routes through VIEW links; the app's

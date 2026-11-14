@@ -24,9 +24,9 @@
 .card small{font-size:11px;line-height:1.75;color:#706963}
 .steps{background:#fff;border:1px solid #eae6e1;border-radius:16px;padding:24px;display:grid;gap:16px}
 .steps h2{margin:0;font-size:17px}
-.steps ol{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:bnpl}
+.steps ol{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 .steps li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:2px 12px;align-items:start}
-.steps li:before{counter-increment:bnpl;content:counter(bnpl);grid-column:1;grid-row:1/3;border-radius:12px;width:32px;height:32px;display:grid;place-items:center;background:#faf0eb;color:#a44731;font-weight:800}
+.stepNumber{grid-column:1;grid-row:1/3;border-radius:12px;width:32px;height:32px;display:grid;place-items:center;background:#faf0eb;color:#a44731;font-weight:800}
 .steps li strong{grid-column:2;grid-row:1;font-size:13px}
 .steps li span{grid-column:2;grid-row:2;font-size:12px;color:#706963;line-height:1.9}
 .checkoutGate{background:#faf8f5;border:1px solid #eae6e1;border-radius:12px;padding:16px;display:grid;gap:10px;color:#1c3f3a}

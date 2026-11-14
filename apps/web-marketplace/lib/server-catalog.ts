@@ -5,7 +5,7 @@ type JsonObject = Record<string, unknown>;
 export type PublicCategory = { id: string; name: string; slug: string };
 export type PublicProduct = {
   id: string; categoryId: string; name: string;
-  kind: "GOOD" | "SERVICE"; description: string | null;
+  kind: "GOOD"; description: string | null;
   unitName?: string | null; quantityScale?: number | null;
 };
 export type PublicProductPage = {
@@ -41,13 +41,12 @@ export function parseProduct(value: unknown): PublicProduct | null {
   const x = record(value);
   if (!x || typeof x.id !== "string" || !validCatalogId(x.id) ||
     typeof x.categoryId !== "string" || !validCatalogId(x.categoryId) ||
-    !text(x.name, 200) || (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
+    !text(x.name, 200) || x.kind !== "GOOD" ||
     (x.description !== null && x.description !== undefined &&
       (typeof x.description !== "string" || x.description.length > 2000)) ||
     (Object.hasOwn(x, "unitName") && !(x.unitName === null || text(x.unitName, 40))) ||
     (Object.hasOwn(x, "quantityScale") && !(x.quantityScale === null || boundedInteger(x.quantityScale, 0, 6))) ||
-    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")) ||
-    (x.kind === "SERVICE" && x.unitName != null))
+    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")))
     return null;
   return {
     id: x.id, categoryId: x.categoryId, name: x.name,
@@ -99,7 +98,7 @@ export async function catalogGet<T>(
       signal: AbortSignal.timeout(8000),
     });
     if (missingIsNotFound && response.status === 404)
-      return catalogError(404, "این کالا یا خدمت در کاتالوگ منتشرشده پیدا نشد.");
+      return catalogError(404, "این کالا در کاتالوگ منتشرشده پیدا نشد.");
     if (response.status !== 200 ||
       !response.headers.get("content-type")?.includes("application/json") ||
       Number(response.headers.get("content-length") ?? "0") > 512_000)

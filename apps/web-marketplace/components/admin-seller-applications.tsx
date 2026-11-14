@@ -69,29 +69,29 @@ const statusLabel: Record<ReviewStatus, string> = {
   REJECTED: "رد شده",
 };
 const nav = [
-  { group: "نمای کلی", items: [{ label: "داشبورد", icon: "imgFrame" }] },
+  { group: "نمای کلی", items: [{ label: "داشبورد", icon: "imgFrame", href: "/admin/panel" }] },
   { group: "بازارگاه", items: [
-    { label: "کاربران و حساب‌ها", icon: "imgUsersIcon" },
-    { label: "سازمان‌ها", icon: "imgUsersIcon" },
-    { label: "فروشندگان و ارائه‌دهندگان", icon: "imgStoreIcon" },
-    { label: "درخواست‌های ثبت‌نام فروشنده", icon: "imgClipboardIcon", active: true },
-    { label: "کالاها و خدمات", icon: "imgFrame1" },
-    { label: "دسته‌بندی‌ها", icon: "imgFolderIcon" },
-    { label: "سفارش‌ها", icon: "imgFrame2" },
+    { label: "کاربران و حساب‌ها", icon: "imgUsersIcon", href: "/admin/panel/users" },
+    { label: "سازمان‌ها", icon: "imgUsersIcon", href: "/admin/panel/organizations" },
+    { label: "فروشندگان", icon: "imgStoreIcon", href: "/admin/panel/sellers" },
+    { label: "درخواست‌های ثبت‌نام فروشنده", icon: "imgClipboardIcon", href: "/admin/seller-applications", active: true },
+    { label: "کالاها", icon: "imgFrame1", href: "/admin/panel/products" },
+    { label: "دسته‌بندی‌ها", icon: "imgFolderIcon", href: "/admin/panel/categories" },
+    { label: "سفارش‌ها", icon: "imgFrame2", href: "/admin/panel/orders" },
   ] },
   { group: "عملیات و طرح‌ها", items: [
-    { label: "طرح‌ها و اعتبارها", icon: "imgFrame3" },
-    { label: "مشارکت اجتماعی", icon: "imgMessageIcon" },
-    { label: "ارسال و ارائه‌دهندگان لجستیک", icon: "imgFrame4" },
-    { label: "تسویه‌ها و تراکنش‌ها", icon: "imgFrame5" },
-    { label: "پشتیبانی", icon: "imgHelpIcon" },
-    { label: "اعلان‌ها", icon: "imgFrame6" },
+    { label: "طرح‌ها و اعتبارها", icon: "imgFrame3", href: "/admin/panel/programs" },
+    { label: "مشارکت اجتماعی", icon: "imgMessageIcon", href: "/admin/panel/social" },
+    { label: "لجستیک", icon: "imgFrame4", href: "/admin/panel/logistics" },
+    { label: "تسویه‌ها و تراکنش‌ها", icon: "imgFrame5", href: "/admin/panel/settlements" },
+    { label: "پشتیبانی", icon: "imgHelpIcon", href: "/admin/panel/support" },
+    { label: "اعلان‌ها", icon: "imgFrame6", href: "/admin/panel/notifications" },
   ] },
   { group: "مدیریت سامانه", items: [
-    { label: "گزارش‌ها", icon: "imgFrame7" },
-    { label: "محتوا", icon: "imgFileIcon" },
-    { label: "کاربران پنل و دسترسی‌ها", icon: "imgShieldIcon" },
-    { label: "تنظیمات", icon: "imgSettingsIcon" },
+    { label: "گزارش‌ها", icon: "imgFrame7", href: "/admin/panel/reports" },
+    { label: "محتوا", icon: "imgFileIcon", href: "/admin/panel/content" },
+    { label: "کاربران پنل و دسترسی‌ها", icon: "imgShieldIcon", href: "/admin/panel/access" },
+    { label: "تنظیمات", icon: "imgSettingsIcon", href: "/admin/panel/settings" },
   ] },
 ];
 
@@ -146,15 +146,16 @@ function AdminShell({ children, assetPrefix }: { children: ReactNode; assetPrefi
         <nav className="admin-sidebar__nav">
           {nav.map((group) => <section className="admin-sidebar__group" key={group.group}>
             <h2>{group.group}</h2>
-            {group.items.map((item) => <div
+            {group.items.map((item) => <a
               className={`admin-sidebar__item${"active" in item && item.active ? " admin-sidebar__item--active" : ""}`}
+              href={item.href}
               key={item.label}
               aria-current={"active" in item && item.active ? "page" : undefined}
               title={item.label}
             >
               <span>{item.label}</span>
               <img src={`/admin-assets/${assetPrefix}-${item.icon}.svg`} alt="" width="20" height="20" />
-            </div>)}
+            </a>)}
           </section>)}
         </nav>
       </aside>
@@ -197,7 +198,7 @@ export function AdminSellerApplicationsList() {
     <main className="admin-content">
       <div className="admin-page-heading">
         <h1>درخواست‌های ثبت‌نام فروشنده</h1>
-        <p>بررسی درخواست‌های ثبت‌نام فروشندگان و ارائه‌دهندگان در بازارگاه حنا</p>
+        <p>بررسی درخواست‌های ثبت‌نام فروشندگان کالا در بازارگاه حنا</p>
       </div>
 
       <div className="admin-filters" role="group" aria-label="فیلتر وضعیت بررسی">
@@ -369,7 +370,7 @@ export function AdminSellerApplicationDetail({ applicationId }: { applicationId:
                   <Field label="نام تجاری کسب‌وکار" value={application.businessName ?? application.storeName} />
                   <Field label="محدوده فعالیت" value={application.city} />
                   <Field label="نشانی فعالیت" value={application.activityAddress} />
-                  <Field label="محدودهٔ ارائهٔ خدمت" value={application.serviceArea} />
+                  <Field label="محدوده فعالیت فروشگاه" value={application.serviceArea} />
                   <Field label="ساعات فعالیت" value={application.activityHours} />
                   <Field label="تحویل توسط فروشنده" value={application.sellerDelivery} />
                   <Field label="تحویل حضوری" value={application.pickup} />

@@ -12,7 +12,7 @@ type Values = {
   city: string; address: string; postalCode: string;
   applicantType: "" | "NATURAL" | "LEGAL";
   businessName: string; businessDescription: string;
-  offeringType: "" | "GOOD" | "SERVICE" | "BOTH";
+  offeringType: "GOOD";
   activityAddress: string; activityHours: string;
   sellerDelivery: boolean; pickup: boolean; serviceArea: string;
   registrationContactName: string; registrationContactRole: string;
@@ -21,7 +21,7 @@ type Values = {
 };
 const empty:Values={
   storeName:"",ownerName:"",phone:"",city:"",address:"",postalCode:"",
-  applicantType:"",businessName:"",businessDescription:"",offeringType:"",
+  applicantType:"",businessName:"",businessDescription:"",offeringType:"GOOD",
   activityAddress:"",activityHours:"",sellerDelivery:false,pickup:false,
   serviceArea:"",registrationContactName:"",registrationContactRole:"",
   backupPhone:"",websiteOrSocial:"",businessEmail:"",responseHours:""
@@ -41,7 +41,7 @@ export function PublicSellerRegistrationForm() {
   const [checking,setChecking]=useState(true);
   const [error,setError]=useState("");
   const [receipt,setReceipt]=useState<{trackingCode:string;submittedAtUtc:string}|null>(null);
-  const change=(key:keyof Values,value:string|boolean)=>{
+  const change=<K extends keyof Values>(key:K,value:Values[K])=>{
     // Human confirmation applies to the exact reviewed fields, not to
     // values edited later in the wizard.
     setConfirmed(false);
@@ -89,8 +89,8 @@ export function PublicSellerRegistrationForm() {
         postalCode:values.postalCode,
       });
       if(result.firstInvalid||!values.businessName.trim()||
-        !values.businessDescription.trim()||!values.offeringType){
-        setError(Object.values(result.errors)[0]??"اطلاعات کسب‌وکار و نوع ارائه را کامل کنید.");
+        !values.businessDescription.trim()||values.offeringType !== "GOOD"){
+        setError(Object.values(result.errors)[0]??"اطلاعات کسب‌وکار و مشخصات فروش کالا را کامل کنید.");
         return;
       }
       setValues(v=>({...v,...result.values}));
@@ -201,7 +201,7 @@ export function PublicSellerRegistrationForm() {
           <strong>شخص حقیقی</strong>
           <span className={styles.applicantDescription}>
             ثبت‌نام به نام یک فرد با کد ملی شخصی. مناسب برای کسب‌وکارهای خانگی،
-            ارائه‌دهندگان محلی کالا و خدمات، آزادکاران و تولیدکنندگان انفرادی.
+            فروشگاه‌های محلی و تولیدکنندگان کالا.
           </span>
         </label>
         <label className={`${styles.applicantCard} ${values.applicantType==="LEGAL"?styles.applicantCardActive:""}`}>
@@ -238,19 +238,14 @@ export function PublicSellerRegistrationForm() {
         {field("address","نشانی فروشگاه")}
         {field("postalCode","کدپستی",true,"text","۱۰ رقم")}
         {field("businessName","نام کسب‌وکار")}
-        {field("businessDescription","توضیح فعالیت و محصولات یا خدمات")}
-        <fieldset className={styles.choices}><legend>نوع ارائه</legend>
-          {([["GOOD","کالا"],["SERVICE","خدمت"],["BOTH","کالا و خدمت"]] as const)
-            .map(([type,label])=><label key={type}>
-            <input type="radio" checked={values.offeringType===type}
-              onChange={()=>change("offeringType",type)}/>{label}</label>)}
-        </fieldset>
+        {field("businessDescription","توضیح کالاها و فعالیت فروشگاه")}
+        <p className={styles.info}>حنا بازارگاه فروش کالا است و ثبت‌نام فروشندگان برای فروش کالا انجام می‌شود.</p>
       </div>}
       {step===5&&<div className={styles.grid}>
         {field("activityAddress","نشانی فعالیت")}
         {field("activityHours","ساعات فعالیت")}
-        {field("serviceArea","محدوده خدمت‌رسانی")}
-        <fieldset className={styles.choices}><legend>روش ارائه یا تحویل</legend>
+        {field("serviceArea","محدوده فروش و فعالیت")}
+        <fieldset className={styles.choices}><legend>روش تحویل کالا</legend>
           <label><input type="checkbox" checked={values.sellerDelivery}
             onChange={e=>change("sellerDelivery",e.target.checked)}/> ارسال توسط فروشگاه</label>
           <label><input type="checkbox" checked={values.pickup}
@@ -271,6 +266,7 @@ export function PublicSellerRegistrationForm() {
         <p><strong>شماره تماس:</strong> <bdi dir="ltr">{values.phone}</bdi></p>
         <p><strong>نوع متقاضی:</strong> {values.applicantType==="NATURAL"?"حقیقی":"حقوقی"}</p>
         <p><strong>کسب‌وکار:</strong> {values.businessName}</p>
+        <p><strong>نوع فعالیت:</strong> فروش کالا</p>
         <p><strong>شهر و منطقه:</strong> {values.city} — {values.serviceArea}</p>
         <p className={styles.info}>این درخواست فقط برای بررسی دریافت می‌شود.
           شماره تماس، هویت، دسته فعالیت و سایر شرایط هنوز تأیید نشده‌اند.</p>

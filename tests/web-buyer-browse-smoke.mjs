@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BUYER_PAGE_SIZE, buyerCatalogPath, parseBuyerCategories,
+  BUYER_PAGE_SIZE, buyerCatalogPath, parseBuyerCategorySet, buyerCategorySetHref, parseBuyerCategories,
   parseBuyerPage, parseBuyerProduct, reconcilePublishedBuyerCategory, validBuyerSearch,
 } from "../apps/web-marketplace/lib/buyer-catalog.ts";
 
@@ -23,12 +23,10 @@ test("empty published response is not a network or schema failure", () => {
   assert.equal(parseBuyerPage({}, 1), null);
 });
 
-test("legacy service rows without new unit metadata remain valid", () => {
+test("service rows are rejected from the goods-only public catalog", () => {
   const service = { ...product, kind: "SERVICE" };
-  assert.deepEqual(parseBuyerProduct(service, PRODUCT), service);
-  assert.deepEqual(parseBuyerPage({ ...listing, items: [service] }, 1), {
-    ...listing, items: [service],
-  });
+  assert.equal(parseBuyerProduct(service, PRODUCT), null);
+  assert.equal(parseBuyerPage({ ...listing, items: [service] }, 1), null);
 });
 
 test("only allowlisted public catalog identity and description enter the UI", () => {
@@ -56,11 +54,11 @@ test("only allowlisted public catalog identity and description enter the UI", ()
 test("only genuine selected UUID and normalized search reach the browse query", () => {
   assert.equal(buyerCatalogPath(1, null, ""),
     "/api/catalog/products?page=1&pageSize=20");
-  const url = new URL(buyerCatalogPath(2, CATEGORY, "کالا & خدمت"),
+  const url = new URL(buyerCatalogPath(2, CATEGORY, "کالا & چای"),
     "https://www.hana.test");
   assert.deepEqual([...url.searchParams],
     [["page", "2"], ["pageSize", "20"], ["categoryId", CATEGORY],
-      ["search", "کالا & خدمت"]]);
+      ["search", "کالا & چای"]]);
   assert.equal(validBuyerSearch("کالا"), true);
   assert.equal(validBuyerSearch("x".repeat(81)), false);
   assert.equal(validBuyerSearch("a\n"), false);
@@ -87,4 +85,15 @@ test("only an explicitly confirmed published list can retire a removed category"
   assert.deepEqual(bookmark, {
     categoryId: CATEGORY, search: "چای & خرما", page: 2,
   }, "caller state is not mutated");
+});
+
+test("strict category set parsing and shareable multi-select URL", () => {
+  const other="4ef06bf5-32f3-4b10-a41e-5bd69f6bb442";
+  assert.deepEqual(parseBuyerCategorySet(CATEGORY+","+other),[CATEGORY,other]);
+  assert.equal(parseBuyerCategorySet(CATEGORY+","+CATEGORY),null);
+  assert.equal(parseBuyerCategorySet("invalid,"+other),null);
+  assert.equal(parseBuyerCategorySet(CATEGORY),null);
+  const params=new URL(buyerCategorySetHref([CATEGORY,other],"چای"),"https://h.test").searchParams;
+  assert.equal(params.get("categoryIds"),CATEGORY+","+other);
+  assert.equal(params.get("search"),"چای");
 });

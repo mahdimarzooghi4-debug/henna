@@ -2,6 +2,7 @@ import { SiteHeader } from "../../../components/site-header";
 import { BuyerReferenceCartPage } from "../../../components/buyer-reference-cart";
 import { LandingDemoCartPage } from "../../../components/landing-demo-cart";
 import { MarketplaceChrome } from "../../../components/marketplace-chrome";
+import { LandingFooter } from "../../../components/landing-chrome";
 
 type BuyerCartRouteProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -13,5 +14,5 @@ export default async function BuyerCartRoute({ searchParams }: BuyerCartRoutePro
   if (mode === "preview") {
     return <><MarketplaceChrome basket /><LandingDemoCartPage /><MarketplaceChrome basket footerOnly /></>;
   }
-  return <><SiteHeader backHref="/" backLabel="بازگشت به فهرست" /><BuyerReferenceCartPage /></>;
+  return <><SiteHeader backHref="/" backLabel="بازگشت به فهرست" /><BuyerReferenceCartPage /><LandingFooter /></>;
 }

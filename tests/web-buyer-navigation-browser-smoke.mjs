@@ -91,9 +91,9 @@ async function main() {
   await page.getByRole("heading", { name: good[20].name, exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 1);
   assert.equal(await page.locator('input[name="search"]').inputValue(), "کالای مرور");
-  assert.equal(await page.getByRole("button", {
+  assert.equal(await page.getByRole("checkbox", {
     name: "دستهٔ یک CI",
-  }).getAttribute("aria-pressed"), "true");
+  }).isChecked(), true, "Published category selection remains in the shared URL");
   assert.equal(new URL(page.url()).search, new URL(shared, base).search);
   assert.equal(calls.find(x => x.path === "/api/catalog/products")
     .search.get("page"), "2");

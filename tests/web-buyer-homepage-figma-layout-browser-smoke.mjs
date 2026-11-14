@@ -247,12 +247,12 @@ async function main() {
     "تخفیف‌های طلایی", "کالابرگ الکترونیکی",
     "طرح‌های ویژه حنا", "همه دسته‌ها",
   ], "Only four approved homepage links remain");
-  assert.equal(await page.getByRole("link", {
+  const sellerSignupLink = page.locator("header").getByRole("link", {
     name: "ثبت‌نام فروشگاه‌ها", exact: true,
-  }).count(), 1, "The header uses the approved short signup label");
-  assert.equal(await page.getByRole("link", {
-    name: "ثبت‌نام فروشگاه‌ها", exact: true,
-  }).getAttribute("href"), "/seller/register",
+  });
+  assert.equal(await sellerSignupLink.count(), 1,
+    "The header uses the approved short signup label");
+  assert.equal(await sellerSignupLink.getAttribute("href"), "/seller/register",
     "Seller signup destination must remain unchanged");
   for (const removed of [
     "نیازمندی‌های محلی", "فروشندگان و ارائه‌دهندگان", "کالاها و خدمات",
@@ -286,20 +286,22 @@ async function main() {
   await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
   assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
     "Figma 227:1085 preview shows eight clearly separated sample cards");
-  // The right-hand "Features" section has three real destinations, not
-  // disabled pseudo-checkboxes or invented eligibility/product flags.
-  const featureNav = page.getByRole("navigation", { name: "ویژگی‌های حنا" });
-  assert.deepEqual(await featureNav.getByRole("link").allTextContents(),
-    ["کالابرگ الکترونیکی", "تخفیف‌های طلایی", "طرح‌های ویژه حنا"],
-    "Three owner-approved sidebar feature labels in exact order");
-  assert.deepEqual(await featureNav.getByRole("link").evaluateAll(
-    links => links.map(link => link.getAttribute("href"))),
-    ["/products?collection=kalabarg", "/products?collection=golden", "/products?collection=henna"],
-    "Feature destinations match existing first-party homepage routes");
-  assert.equal(await featureNav.locator('input[type="checkbox"]').count(), 0,
-    "No misleading eligibility checkboxes in the feature area");
-  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(), 8,
-    "Feature destinations must not misclassify the Figma demo catalog");
+  // Feature selection is multi-valued, while source eligibility remains fail-closed.
+  const featureNav = page.getByRole("group", { name: "ویژگی‌های حنا" });
+  assert.deepEqual(await featureNav.getByRole("checkbox").evaluateAll(
+    nodes => nodes.map(node => node.closest("label").textContent.trim())),
+    ["کالابرگ الکترونیکی", "تخفیف‌های طلایی", "طرح‌های ویژه حنا"]);
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),8);
+  await featureNav.getByRole("checkbox",{name:"کالابرگ الکترونیکی"}).check();
+  await page.getByTestId("catalog-collection-status").getByText(/ویژگی‌های انتخاب‌شده/).waitFor();
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),0,
+    "No verified feature source: never label demo cards eligible");
+  await featureNav.getByRole("checkbox",{name:"تخفیف‌های طلایی"}).check();
+  assert.equal(await featureNav.getByRole("checkbox",{checked:true}).count(),2);
+  assert.equal(await page.locator('[aria-label="محصولات فروشگاه"] article').count(),0);
+  await featureNav.getByRole("checkbox",{name:"کالابرگ الکترونیکی"}).uncheck();
+  await featureNav.getByRole("checkbox",{name:"تخفیف‌های طلایی"}).uncheck();
+  await page.locator('[aria-label="محصولات فروشگاه"]').waitFor();
 
   // Owner's toolbar: four controls only; no left category chips.
   // These demo cards have display prices. Published catalog records do not,
@@ -307,9 +309,9 @@ async function main() {
   const demoCards = page.locator('[aria-label="محصولات فروشگاه"] article');
   const sortBar = page.getByTestId("products-filter-toolbar");
   assert.deepEqual(await sortBar.getByRole("button").allTextContents(),
-    ["ارزان‌ترین", "گران‌ترین", "تخفیف‌دارها", "کالابرگ"]);
-  assert.equal(await sortBar.getByRole("button", { name: "کالابرگ" }).isDisabled(),
-    true, "No verified benefit eligibility means no active kalabarg filter");
+    ["ارزان‌ترین", "گران‌ترین", "تخفیف‌دارها"]);
+  assert.equal(await sortBar.getByRole("button",{name:"کالابرگ"}).count(),0,
+    "Kalabarg is not a sort option");
   for (const removed of ["همه", "لبنیات محلی", "روغن و خواربار"]) {
     assert.equal(await sortBar.getByRole("button", { name: removed, exact: true }).count(),
       0, "Removed left-side toolbar chip: " + removed);
@@ -331,19 +333,26 @@ async function main() {
   await sortBar.getByRole("button", { name: "تخفیف‌دارها" }).click();
   assert.equal(await demoCards.count(), 8, "Re-selecting a sort restores default display");
 
-  const previewCategories = page.locator('[aria-label="فیلتر محصولات نمایشی"]');
-  await previewCategories.getByRole("button", { name: "لبنیات محلی", exact: true }).click();
-  assert.equal(await demoCards.count(), 4, "Right sidebar dairy filter still works");
-  await sortBar.getByRole("button", { name: "ارزان‌ترین" }).click();
+  const previewCategories=page.locator('[aria-label="فیلتر محصولات نمایشی"]');
+  const dairy=previewCategories.getByRole("checkbox",{name:"لبنیات محلی"});
+  const pantry=previewCategories.getByRole("checkbox",{name:"روغن و خواربار"});
+  const honey=previewCategories.getByRole("checkbox",{name:"عسل و خشکبار"});
+  await dairy.check();
+  assert.equal(await demoCards.count(),4,"Dairy category narrows sample cards");
+  await sortBar.getByRole("button",{name:"ارزان‌ترین"}).click();
   assert.equal(await demoCards.first().locator("h3").textContent(),
-    "ماست سون همزده پرچرب", "Price order and sidebar category intersect");
-  await sortBar.getByRole("button", { name: "ارزان‌ترین" }).click();
-  await previewCategories.getByRole("button", { name: "روغن و خواربار", exact: true }).click();
-  assert.equal(await demoCards.count(), 2, "Right sidebar pantry filter still works");
-  await previewCategories.getByRole("button", { name: "عسل و خشکبار", exact: true }).click();
-  assert.equal(await demoCards.count(), 2, "Right sidebar honey filter still works");
-  await previewCategories.getByRole("button", { name: "همه محصولات نمایشی", exact: true }).click();
-  assert.equal(await demoCards.count(), 8, "Right sidebar restores all demo products");
+    "ماست سون همزده پرچرب","Sorting intersects category selections");
+  await sortBar.getByRole("button",{name:"ارزان‌ترین"}).click();
+  await pantry.check();
+  assert.equal(await demoCards.count(),6,"Two sample categories combine as a union");
+  assert.equal(await previewCategories.getByRole("checkbox",{checked:true}).count(),2);
+  await honey.check();
+  assert.equal(await demoCards.count(),8,"Three sample categories can be selected");
+  await dairy.uncheck();
+  assert.equal(await demoCards.count(),4,"Unchecking one preserves the other selections");
+  await previewCategories.getByRole("button",{name:"همه محصولات نمایشی"}).click();
+  assert.equal(await demoCards.count(),8);
+  assert.equal(await previewCategories.getByRole("checkbox",{checked:true}).count(),0);
   assert.equal(new URL(page.url()).searchParams.has("categoryId"), false,
     "Demo filters and sorting must not invent a published catalog category ID");
 
@@ -352,8 +361,8 @@ async function main() {
   }).getByRole("link", { name: "همه دسته‌ها", exact: true })
     .getAttribute("href"), "/products");
 
-  // Latest owner decision: the sample card adds one item and opens the cart.
-  // The prior mandatory detail-first experiment is superseded.
+  // Catalog sample products add in place, like homepage offers. Only an explicit
+  // click on the header cart navigates; no real order or payment is created.
   const readDemoCart = () => page.evaluate(() => JSON.parse(
     localStorage.getItem("henna:landing-preview-cart:v1") ?? "[]"));
   await page.evaluate(() => localStorage.removeItem("henna:landing-preview-cart:v1"));
@@ -364,42 +373,47 @@ async function main() {
     expectedPreviewIds, "Each catalog button is bound to its own sample product");
   assert.equal(await demoCards.locator('a[href^="/products/"]').count(), 0,
     "Sample catalog cards no longer require or link to the detail page");
+
   const cartUrl = base + "/buyer/cart?mode=preview";
   const cartTitle = page.getByRole("heading", { name: "اقلام سبد خرید شما" });
+  const catalogCartLink = page.locator('header a[href="/buyer/cart?mode=preview"]');
   const cheeseCard = demoCards.filter({ hasText: "پنیر سفید ایرانی ممتاز" });
-  await cheeseCard.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  const cheeseAdd = cheeseCard.getByTestId("preview-product-add");
+  await cheeseAdd.click();
+  await catalogCartLink.locator("span").filter({ hasText: /^۱$/ }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/products",
+    "Catalog add must not redirect to the cart");
   assert.deepEqual(await readDemoCart(), [{ productId: "cheese", quantity: 1 }],
-    "Catalog add opens cart immediately and adds exactly one correct item");
-  await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز", exact: true }).waitFor();
+    "Catalog adds the selected product exactly once");
+  assert.equal(await cheeseAdd.isEnabled(), true, "Further catalog adds remain possible");
 
-  await page.goto(base + "/products");
   const yogurtCard = demoCards.filter({ hasText: "ماست سون همزده پرچرب" });
   await yogurtCard.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  await catalogCartLink.locator("span").filter({ hasText: /^۲$/ }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/products",
+    "Adding another catalog item must not navigate away");
   assert.deepEqual(await readDemoCart(), [
     { productId: "cheese", quantity: 1 }, { productId: "yogurt", quantity: 1 },
-  ], "Adding a different product preserves prior cart contents");
-  await page.getByRole("heading", { name: "ماست سون همزده پرچرب", exact: true }).waitFor();
+  ], "Catalog preserves existing cart items");
 
-  // A repeat add increments the existing quantity, rather than replacing it.
-  await page.goto(base + "/products");
-  await cheeseCard.getByTestId("preview-product-add").click();
-  await page.waitForURL(cartUrl);
-  await cartTitle.waitFor();
+  // Repeated clicks increase the quantity without replacing existing items.
+  await cheeseAdd.click();
+  await catalogCartLink.locator("span").filter({ hasText: /^۳$/ }).waitFor();
   const expected = [
     { productId: "cheese", quantity: 2 }, { productId: "yogurt", quantity: 1 },
   ];
   assert.deepEqual(await readDemoCart(), expected);
+  assert.equal(new URL(page.url()).pathname, "/products");
+  assert.equal(await demoCards.count(), 8, "All catalog cards remain visible after add");
 
-  // Opening the header cart never adds another item.
-  await page.goto(base + "/products");
-  await page.locator('header a[href="/buyer/cart?mode=preview"]').click();
+  // Only an intentional click on the basket link opens the basket.
+  await catalogCartLink.click();
   await page.waitForURL(cartUrl);
   await cartTitle.waitFor();
-  assert.deepEqual(await readDemoCart(), expected);
+  await page.getByRole("heading", { name: "پنیر سفید ایرانی ممتاز", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "ماست سون همزده پرچرب", exact: true }).waitFor();
+  assert.deepEqual(await readDemoCart(), expected,
+    "Opening the cart does not add another item");
 
   // Homepage add stays on the homepage; only an explicit cart click navigates.
   await page.goto(base + "/");
@@ -442,8 +456,10 @@ async function main() {
   assert.equal(await comparison.getAttribute("href"), "/buyer/compare?mode=preview");
   assert.equal(await cartRows.count(), 3);
   await basket.getByText("این سبد نمونه‌ی نمایشی است؛ مبلغ‌ها تقریبی‌اند و سفارش واقعی ثبت نمی‌شود.").waitFor();
-  assert.equal(await page.getByTestId("marketplace-footer").locator('a[href="/social#instagram"] svg').count(), 1,
+  assert.equal(await page.getByTestId("landing-footer-bottom").locator('a[href="/social#instagram"] svg').count(), 1,
     "Basket keeps its social destination with the corrected vector icon");
+  await page.getByTestId("landing-footer-top").getByText("ارتباط با ما").waitFor();
+  assert.equal(await page.getByTestId("landing-footer-top").getByRole("link",{name:"دریافت اپلیکیشن حنا"}).getAttribute("href"),"/download");
   for (const width of [1440, 1650, 1150, 390]) {
     await page.setViewportSize({ width, height: 900 });
     const g = await page.evaluate(() => {
@@ -463,7 +479,7 @@ async function main() {
         price:rect(price),remove:rect(remove),img:rect(img),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
         nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,
         clientWidth:document.documentElement.clientWidth,
         background:getComputedStyle(document.querySelector('[data-testid="preview-cart-page"]')).backgroundColor,
@@ -471,8 +487,7 @@ async function main() {
     });
     near(g.layout.x,g.header.x,"Basket content aligns with header at "+width);
     near(g.layout.right,g.header.right,"Basket content right edge at "+width);
-    near(g.footer.x,g.layout.x,"Basket footer aligns at "+width);
-    near(g.footer.right,g.layout.right,"Basket footer right edge at "+width);
+    near(g.footer.x,width-g.footer.right,"Basket footer centered like homepage at "+width);
     assert.equal(g.background,"rgb(250, 248, 245)");
     assert.ok(g.scrollWidth <= g.clientWidth + 1, "Basket must not overflow at "+width);
     if (width >= 1440) {
@@ -519,7 +534,7 @@ async function main() {
   assert.deepEqual(await page.getByTestId("marketplace-category-nav").getByRole("link").allTextContents(),
     ["همه دسته‌ها", "طرح‌های ویژه حنا", "کالابرگ الکترونیکی", "تخفیف‌های طلایی"]);
   assert.equal(await page.getByTestId("marketplace-announcement").count(), 0);
-  assert.equal(await page.getByTestId("marketplace-footer").locator('a[href="/social#instagram"] svg').count(), 1);
+  assert.equal(await page.getByTestId("landing-footer-bottom").locator('a[href="/social#instagram"] svg').count(), 1);
   await comparePage.getByText("فروشگاه‌ها و قیمت‌های این صفحه نمونه‌ی نمایشی فیگما هستند و سفارش واقعی ثبت نمی‌کنند.").waitFor();
   const sortGroup = comparePage.getByRole("group", { name: "مرتب‌سازی فروشگاه‌ها" });
   const order = () => sellerCards.evaluateAll(nodes => nodes.map(node => node.getAttribute("data-seller-id")));
@@ -556,14 +571,14 @@ async function main() {
         price:rect(card.querySelector('[data-testid="preview-seller-price"]')),
         action:rect(card.querySelector('[data-testid="preview-seller-action"]')),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,
         background:getComputedStyle(main).backgroundColor,
       };
     });
     near(g.content.x,g.header.x,"Comparison header alignment at "+width);
     near(g.content.right,g.header.right,"Comparison right edge at "+width);
-    near(g.footer.x,g.content.x,"Comparison footer alignment at "+width);
+    near(g.footer.x,width-g.footer.right,"Comparison footer centered like homepage at "+width);
     near(g.card.width,g.content.width,"Comparison full-width card at "+width);
     assert.equal(g.background,"rgb(250, 248, 245)");
     assert.ok(g.scrollWidth <= g.clientWidth+1,"Comparison no horizontal overflow at "+width);
@@ -615,14 +630,13 @@ async function main() {
       return {layout:rect(layout),lines:rect(layout.querySelector("section")),summary:rect(layout.querySelector("aside")),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
         nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
     });
     near(g.layout.x,g.header.x,"Review left edge aligns with header at "+width);
     near(g.layout.right,g.header.right,"Review right edge aligns with header at "+width);
     near(g.layout.x,g.nav.x,"Review nav alignment at "+width);
-    near(g.layout.x,g.footer.x,"Review footer alignment at "+width);
-    near(g.layout.right,g.footer.right,"Review footer right edge at "+width);
+    near(g.footer.x,width-g.footer.right,"Review footer centered like homepage at "+width);
     assert.ok(g.scrollWidth<=g.clientWidth+1,"Review no horizontal overflow at "+width);
     if(width>=1440){
       near(g.layout.width,1280,"Review desktop canvas");
@@ -660,6 +674,52 @@ async function main() {
   await checkout.getByTestId("preview-pickup-info").getByText("فروشگاه نمونه ۱ (محله رسالت)",{exact:true}).waitFor();
   const pickupTotal=await checkoutTotal.textContent();
   assert.ok(pickupTotal.includes("تومان"));
+  // Payment choices remain blocked unless provider credit and merchant integration
+  // are independently verified; preview credit cards never authorize payment.
+  const bnplOptions = checkout.getByTestId("preview-bnpl-choices");
+  await bnplOptions.getByRole("heading",{name:"پرداخت اعتباری",exact:true}).waitFor();
+  assert.equal(await bnplOptions.getByRole("radio").count(),3);
+  assert.equal(await checkout.getByTestId("bnpl-checkout-unavailable").count(),0,
+    "The duplicate provider-directory box is absent from step four");
+  assert.equal(await checkout.getByText(/BNPL/i).count(),0,
+    "English BNPL acronym is not shown to the buyer at checkout");
+  const creditProviders=[
+    ["اسنپ‌پی","https://snapppay.ir/"],
+    ["دیجی‌پی","https://www.mydigipay.com/"],
+    ["تارا","https://taracredit.com/"],
+  ];
+  for (const [company,website] of creditProviders) {
+    const option=bnplOptions.getByRole("radio",{name:"پرداخت با "+company,exact:true});
+    assert.equal(await option.isDisabled(),true,"Unverified provider credit must fail closed for "+company);
+    assert.equal(await option.isChecked(),false);
+    const activation=bnplOptions.getByRole("link",{name:"فعال‌سازی اعتبار در سایت "+company,exact:true});
+    assert.equal(await activation.getAttribute("href"),website,
+      "Activation leads to the provider's official website, not pretend Hana credit activation");
+    assert.equal(await activation.getAttribute("target"),"_blank");
+    const rel=await activation.getAttribute("rel");
+    assert.ok(rel.includes("noopener")&&rel.includes("noreferrer"));
+    assert.equal((await activation.innerText()).trim(),"فعال‌سازی");
+  }
+  await bnplOptions.getByText(/بازکردن سایت شرکت به معنای تأیید اعتبار نیست/).waitFor();
+  assert.equal(await checkout.getByRole("radio",{name:"پرداخت با اعتبار حمایتی"}).isDisabled(),true);
+  const discountEntry=checkout.getByTestId("preview-discount-code");
+  const kalabargEntry=checkout.getByTestId("preview-kalabarg-code");
+  await discountEntry.getByRole("textbox",{name:"کد تخفیف"}).fill("AZMAYESHI-001");
+  await discountEntry.getByRole("button",{name:"بررسی کد تخفیف"}).click();
+  await discountEntry.getByRole("status").getByText(/تأیید یا اعمال نشده/).waitFor();
+  assert.equal(await checkoutTotal.textContent(),pickupTotal,"Unverified discount must not alter total");
+  await kalabargEntry.getByRole("textbox",{name:"کد کالابرگ"}).fill("TEST-KALABARG");
+  await kalabargEntry.getByRole("button",{name:"بررسی کد کالابرگ"}).click();
+  await kalabargEntry.getByRole("status").getByText(/تأیید یا اعمال نشده/).waitFor();
+  assert.equal(await checkoutTotal.textContent(),pickupTotal,"Unverified Kalabarg must not alter total");
+  await submitPreview.click();
+  await checkout.getByRole("status").getByText(/کدهای واردشده هنوز قابل تأیید نیستند/).waitFor();
+  assert.equal(new URL(page.url()).pathname,"/buyer/checkout","Preview order with unverified codes must be blocked");
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem("henna:figma-preview-order:v1")),null,
+    "Unverified codes must not create any order snapshot");
+  await discountEntry.getByRole("textbox",{name:"کد تخفیف"}).fill("");
+  await kalabargEntry.getByRole("textbox",{name:"کد کالابرگ"}).fill("");
+
   assert.equal(await submitPreview.isEnabled(),true);
   await courier.check();
   await checkout.getByTestId("preview-courier-fields").waitFor();
@@ -679,13 +739,12 @@ async function main() {
       return {layout:rect(layout),fields:rect(layout.querySelector('[data-testid="preview-checkout-fields"]')),
         summary:rect(layout.querySelector('[data-testid="preview-checkout-summary"]')),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
     });
     near(g.layout.x,g.header.x,"Checkout header alignment at "+width);
     near(g.layout.right,g.header.right,"Checkout right edge at "+width);
-    near(g.footer.x,g.layout.x,"Checkout footer alignment at "+width);
-    near(g.footer.right,g.layout.right,"Checkout footer right edge at "+width);
+    near(g.footer.x,width-g.footer.right,"Checkout footer centered like homepage at "+width);
     assert.ok(g.scrollWidth<=g.clientWidth+1,"Checkout no horizontal overflow at "+width);
     if(width>=1440){
       near(g.layout.width,1280,"Checkout desktop canvas");
@@ -735,14 +794,13 @@ async function main() {
         sidebar:rect(layout.querySelector('[data-testid="preview-tracking-sidebar"]')),
         header:rect(document.querySelector('[data-testid="marketplace-header-top"]')),
         nav:rect(document.querySelector('[data-testid="marketplace-category-nav"]')),
-        footer:rect(document.querySelector('[data-testid="marketplace-footer-top"]')),
+        footer:rect(document.querySelector('[data-testid="landing-footer-top"]')),
         scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth};
     });
     near(g.layout.x,g.header.x,"Tracking header left alignment at "+width);
     near(g.layout.right,g.header.right,"Tracking header right alignment at "+width);
     near(g.layout.x,g.nav.x,"Tracking navigation alignment at "+width);
-    near(g.layout.x,g.footer.x,"Tracking footer left alignment at "+width);
-    near(g.layout.right,g.footer.right,"Tracking footer right alignment at "+width);
+    near(g.footer.x,width-g.footer.right,"Tracking footer centered like homepage at "+width);
     assert.ok(g.scrollWidth<=g.clientWidth+1,"Tracking no horizontal overflow at "+width);
     if(width>=1440){
       near(g.layout.width,1280,"Tracking desktop canvas");
@@ -893,56 +951,43 @@ async function main() {
       0, removed + " must not appear in product navigation");
   }
 
-  const footer = page.getByTestId("marketplace-footer");
+  const footer = page.getByTestId("landing-footer-top");
   await footer.scrollIntoViewIfNeeded();
-  await footer.getByText("طرح‌های حمایتی", { exact: true }).waitFor();
+  await footer.getByText("ارتباط با ما", { exact: true }).waitFor();
   await footer.getByText("همکاری با حنا", { exact: true }).waitFor();
   await footer.getByText("دسترسی سریع", { exact: true }).waitFor();
-  assert.equal(await footer.locator('[class*="footerColumn"]').count(), 3,
-    "Figma footer has three link columns");
-  assert.equal(await footer.locator('[class*="footerColumn"] a').count(), 12,
-    "Figma footer has four links in each of three columns");
-  assert.equal(await footer.locator('[class*="socialMedia"] span').count(), 3,
-    "Footer social icon group retains three slots");
-  const socialIcons = footer.locator('[class*="socialMedia"] span');
+  assert.equal(await page.getByTestId("marketplace-footer").count(), 0,
+    "Catalog must not use the legacy marketplace footer");
+  assert.equal(await footer.getByRole("link", { name: "دریافت اپلیکیشن حنا" })
+    .getAttribute("href"), "/download",
+    "Catalog footer exposes the same download destination as homepage");
+  const socialIcons = page.getByTestId("landing-footer-bottom")
+    .getByRole("link");
   assert.deepEqual(await socialIcons.evaluateAll(
     nodes => nodes.map(node => node.getAttribute("aria-label"))),
-    ["اینستاگرام", "توییتر", "لینکدین"],
-    "All three footer vector icons have accessible Persian names");
-  assert.equal(await socialIcons.locator("svg").count(), 3,
-    "Footer icons must be vector SVG, never platform-dependent text glyphs");
-  assert.equal(await socialIcons.first().locator("svg rect").count(), 1,
-    "Instagram icon contains a rounded camera frame");
-  assert.equal(await socialIcons.first().locator("svg circle").count(), 2,
-    "Instagram icon contains a lens and flash dot");
-  const svgSizes = await socialIcons.locator("svg").evaluateAll(nodes =>
-    nodes.map(node => ({
-      width: Math.round(node.getBoundingClientRect().width),
-      height: Math.round(node.getBoundingClientRect().height),
-    })));
-  assert.deepEqual(svgSizes, Array(3).fill({ width: 20, height: 20 }),
-    "Footer social icons render at a consistent 20px square");
+    ["اینستاگرام حنا", "توییتر حنا", "لینکدین حنا"],
+    "Catalog uses the homepage social links");
+  assert.equal(await socialIcons.locator("svg").count(), 3);
 
-  // Figma WEB / 10 Account (227:2250): preserve existing preview routes.
+  // Account overview stays concise; personal and legal details are edited together on the profile page.
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(base + "/buyer/account?mode=preview");
   const account = page.getByTestId("preview-account");
   const accountNav = account.getByRole("complementary", { name: "بخش‌های حساب کاربری" });
-  const accountLegal = account.getByTestId("preview-account-legal");
   const accountSummary = account.getByTestId("preview-account-summary");
   const accountInfo = account.getByTestId("preview-account-info");
   await accountInfo.waitFor();
   const navBox = await accountNav.boundingBox();
-  const legalBox = await accountLegal.boundingBox();
   const summaryBox = await accountSummary.boundingBox();
   const infoBox = await accountInfo.boundingBox();
   assert.equal(navBox.width, 320, "Account nav matches Figma width");
-  assert.ok(navBox.x > legalBox.x, "Account nav is on the right");
-  assert.ok(legalBox.y < summaryBox.y && summaryBox.y < infoBox.y,
-    "Legal, summary and info are separate ordered cards");
+  assert.ok(navBox.x > infoBox.x, "Account nav is on the right");
+  assert.ok(summaryBox.y < infoBox.y, "Account summary precedes account information");
   assert.equal(await accountNav.locator('[aria-current="page"]').textContent(), "اطلاعات حساب");
   const accountRows = accountNav.getByRole("link");
-  assert.equal(await accountRows.locator("svg").count(), 8, "Every remaining account tab has a chevron");
+  assert.equal(await accountRows.count(), 7, "Settings is removed from the account navigation");
+  assert.equal(await accountRows.locator("svg").count(), 7, "Every remaining account tab has a chevron");
+  assert.equal(await accountNav.getByRole("link", { name: "تنظیمات", exact: true }).count(), 0);
   const rowGeometry = await accountRows.evaluateAll(rows => rows.map(row => {
     const label = row.querySelector("span").getBoundingClientRect();
     const arrow = row.querySelector("svg");
@@ -958,24 +1003,33 @@ async function main() {
   assert.ok(fieldBoxes[0].width > fieldBoxes[1].width);
   assert.equal(fieldBoxes[1].y, fieldBoxes[2].y);
   assert.equal(await accountInfo.getByRole("link", { name: "ویرایش اطلاعات حساب" }).getAttribute("href"), "/buyer/profile?mode=preview");
-  await accountLegal.getByText("هنوز مشخصات شرکت ثبت نشده است", { exact: true }).waitFor();
+  assert.equal(await account.getByTestId("preview-account-legal").count(), 0,
+    "Legal company details are no longer split onto the account overview");
+
+  const profile = page.getByTestId("preview-profile");
+  await page.goto(base + "/buyer/profile?mode=preview");
+  const personalProfile = profile.getByTestId("preview-personal-profile");
+  const accountLegal = profile.getByTestId("preview-account-legal");
+  await personalProfile.waitFor();
+  await personalProfile.getByRole("heading", { name: "اطلاعات شخص حقیقی", exact: true }).waitFor();
+  await accountLegal.getByRole("heading", { name: "اطلاعات شخص حقوقی", exact: true }).waitFor();
+  await personalProfile.getByLabel("نام و نام خانوادگی").waitFor();
+  await personalProfile.getByLabel("شماره موبایل").waitFor();
+  await accountLegal.getByTestId("preview-company-form").waitFor();
   assert.equal(await accountLegal.getByRole("checkbox").count(), 0,
     "Invoice opt-in belongs to the order, not account company data");
-  assert.equal(await accountLegal.getByRole("button", {
-    name: "ثبت مشخصات شرکت", exact: true,
-  }).count(), 0, "No green company-registration CTA on the account page");
-  await accountLegal.getByTestId("preview-company-form").waitFor();
-  await accountLegal.getByLabel("نام شرکت",{exact:true}).fill("شرکت نمونه CI");
-  await accountLegal.getByLabel("شناسه ملی شرکت",{exact:true}).fill("۱۰۰۰۰۰۰۰۰۰۰");
-  await accountLegal.getByLabel("شماره ثبت",{exact:true}).fill("۱۲۳۴۵");
-  await accountLegal.getByRole("button",{name:"ذخیره مشخصات شرکت",exact:true}).click();
-  await accountLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI",{exact:true}).waitFor();
+  await accountLegal.getByLabel("نام شرکت", { exact: true }).fill("شرکت نمونه CI");
+  await accountLegal.getByLabel("شناسه ملی شرکت", { exact: true }).fill("۱۰۰۰۰۰۰۰۰۰۰");
+  await accountLegal.getByLabel("شماره ثبت", { exact: true }).fill("۱۲۳۴۵");
+  await accountLegal.getByRole("button", { name: "ذخیره مشخصات شرکت", exact: true }).click();
+  await accountLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI", { exact: true }).waitFor();
   await page.reload();
-  await accountLegal.getByRole("button",{name:"مشاهده اطلاعات",exact:true}).click();
-  await accountLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI",{exact:true}).waitFor();
+  const reloadedLegal = page.getByTestId("preview-profile").getByTestId("preview-account-legal");
+  await reloadedLegal.getByRole("button", { name: "مشاهده اطلاعات", exact: true }).click();
+  await reloadedLegal.getByTestId("preview-company-details").getByText("شرکت نمونه CI", { exact: true }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
-    "Account layout must not overflow mobile viewport");
+    "Profile page with personal and legal information must not overflow mobile viewport");
 
   // Every account destination shares one canvas, sidebar width and content width.
   const accountCanvasRoutes = [
@@ -987,7 +1041,6 @@ async function main() {
     ["credits","preview-credits","/benefits?section=credits"],
     ["social","preview-social","/social"],
     ["support","preview-support","/support"],
-    ["settings","preview-settings","/buyer/settings?mode=preview"],
   ];
   const canvasByWidth = new Map();
   for (const [route, testId, path] of accountCanvasRoutes) {
@@ -1044,6 +1097,10 @@ async function main() {
     await page.goto(base + "/buyer/payments?mode=preview");
     await page.getByTestId("bnpl-provider-cards").waitFor();
     assert.equal(await page.getByTestId("bnpl-provider-card").count(),3);
+    assert.deepEqual(await page.getByTestId("bnpl-step-number").allTextContents(),["۱","۲","۳"],
+      "Payment process step numbers use Persian digits");
+    assert.doesNotMatch(await page.getByTestId("preview-payments").innerText(),/[0-9]/,
+      "No Latin digits are visible anywhere on the payment methods page");
     await page.getByTestId("bnpl-integration-notice").getByText(/متصل نشده/).waitFor();
     for (const [name,href] of [
       ["اسنپ‌پی","https://snapppay.ir/"],
@@ -1061,6 +1118,7 @@ async function main() {
       "BNPL cards must not overflow viewport at "+width);
     await page.goto(base+"/checkout",{waitUntil:"domcontentloaded"});
     await page.getByTestId("bnpl-checkout-unavailable").waitFor();
+    await page.getByTestId("landing-footer-top").getByText("همکاری با حنا").waitFor();
     assert.equal(await page.getByTestId("bnpl-checkout-unavailable").locator('input').count(),0,
       "Unconnected BNPL providers cannot be selected for checkout");
   }
@@ -1071,7 +1129,8 @@ async function main() {
   const legalCheckout=page.getByTestId("preview-checkout-page");
   await legalCheckout.getByRole("checkbox",{name:"خرید حقوقی و دریافت فاکتور رسمی"}).check();
   await legalCheckout.getByTestId("preview-legal-company-note").getByText(/شرکت نمونه CI/).waitFor();
-  await legalCheckout.getByTestId("bnpl-checkout-unavailable").waitFor();
+  assert.equal(await legalCheckout.getByTestId("bnpl-checkout-unavailable").count(),0);
+  assert.equal(await legalCheckout.getByTestId("preview-bnpl-choices").getByRole("link").count(),3);
   assert.equal(await legalCheckout.getByRole("radio",{name:/پرداخت هنگام دریافت حضوری|پرداخت در محل/}).count(),0,
     "Cash on delivery is never offered in preview checkout");
   assert.equal(await legalCheckout.getByLabel("نام شرکت",{exact:true}).count(),0);
@@ -1088,7 +1147,6 @@ async function main() {
     ["اعتبارهای من","/benefits?section=credits","اعتبارهای من"],
     ["مشارکت اجتماعی","/social","مشارکت اجتماعی"],
     ["پشتیبانی","/support","پشتیبانی حنا"],
-    ["تنظیمات","/buyer/settings?mode=preview","تنظیمات"],
     ["اطلاعات حساب","/buyer/account?mode=preview","حساب من"],
   ]) {
     const nav = page.getByTestId("buyer-account-nav");
@@ -1096,7 +1154,8 @@ async function main() {
     await page.waitForURL(base+route);
     await page.getByRole("heading",{name:heading,exact:true}).waitFor();
     assert.equal(await nav.locator('[aria-current="page"]').textContent(),label);
-    assert.equal(await nav.getByRole("link").count(),8);
+    assert.equal(await nav.getByRole("link").count(),7);
+    assert.equal(await nav.getByRole("link",{name:"تنظیمات",exact:true}).count(),0);
     assert.equal(await nav.getByRole("link",{name:"طرح‌های فعال",exact:true}).count(),0);
     if (label==="مشارکت اجتماعی") {
       await page.getByTestId("buyer-social-report").waitFor();
@@ -1159,7 +1218,7 @@ async function main() {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(base + "/products", { waitUntil: "domcontentloaded" });
   await page.getByTestId("marketplace-category-nav").waitFor();
-  await page.getByTestId("marketplace-footer").waitFor();
+  await page.getByTestId("landing-footer-top").waitFor();
   const mobileGeometry = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,
@@ -1189,8 +1248,8 @@ async function main() {
       assert.equal(await footer.locator(":scope > div").count(),4,
         "Exactly four footer columns on "+path);
       const cooperation = footer.getByText("همکاری با حنا").locator("..");
-      assert.equal(await cooperation.locator("a").count(),2,
-        "Seller collaboration contains only registration and seller panel");
+      assert.equal(await cooperation.locator("a").count(),3,
+        "Seller collaboration contains registration, seller panel and app download");
       assert.equal(await footer.getByText("فرصت‌های شغلی").count(),0);
       assert.equal(await footer.getByText("شرایط همکاری پیک‌ها").count(),0);
       const footerColumns = footer.locator(":scope > div");
@@ -1256,6 +1315,59 @@ async function main() {
     await page.goto(base + "/terms");
     await page.getByText("راهنمای عمومی، نه قرارداد لازم‌الاجرا",{exact:false}).waitFor();
   }
+  // The download screen has exactly two Android APK actions and two iOS PWA routes.
+  await page.goto(base + "/download");
+  const downloadPage=page.getByTestId("download-app-page");
+  await downloadPage.waitFor();
+  await downloadPage.getByRole("heading",{level:1,name:"دریافت اپلیکیشن حنا"}).waitFor();
+  assert.equal(await downloadPage.locator(".downloadLink").count(),0,
+    "Legacy two-action download layout was removed");
+  for (const [role,apk,manifest,start] of [
+    ["buyer","hana-buyer-figma-android-preview.apk","/pwa-buyer.webmanifest","/products"],
+    ["seller","hana-seller-preview.apk","/pwa-seller.webmanifest","/seller"]
+  ]) {
+    const card=downloadPage.getByTestId("app-download-"+role);
+    const android=card.getByTestId("download-android-"+role);
+    const ios=card.getByTestId("download-ios-"+role);
+    assert.equal(await android.count(),1);
+    assert.equal(await ios.count(),1);
+    assert.ok((await android.getAttribute("href")).endsWith("/"+apk));
+    assert.equal(await android.getAttribute("target"),null,"Direct APK download uses the current mobile tab");
+    assert.equal(await ios.getAttribute("href"),"/install/"+role);
+    await ios.click();
+    await page.waitForURL(base+"/install/"+role);
+    const install=page.getByTestId("install-ios-"+role);
+    await install.getByRole("heading",{level:1}).waitFor();
+    await install.getByText("افزودن به صفحه اصلی (Add to Home Screen)",{exact:false}).waitFor();
+    assert.equal(await page.locator('link[rel="manifest"]').getAttribute("href"),manifest);
+    const manifestResponse=await page.request.get(base+manifest);
+    assert.equal(manifestResponse.status(),200);
+    const data=await manifestResponse.json();
+    assert.equal(data.start_url,start);
+    assert.equal(data.display,"standalone");
+    assert.equal(data.scope,"/");
+    assert.equal(data.id,"/pwa/"+role);
+    assert.deepEqual(data.icons.map(x=>x.sizes),["192x192","512x512"]);
+    for(const icon of data.icons){
+      const response=await page.request.get(base+icon.src);
+      assert.equal(response.status(),200,"PWA icon exists");
+      assert.match(response.headers()["content-type"],/image\/png/);
+      const dataBuffer=await response.body();
+      assert.equal(dataBuffer.subarray(0,8).toString("hex"),"89504e470d0a1a0a",
+        "PWA asset is a valid PNG file");
+    }
+    assert.equal(await install.getByRole("link",{name:"ورود به نسخه وب "+(role==="buyer"?"خریدار":"فروشنده")}).getAttribute("href"),start);
+    await page.goto(base+"/download");
+  }
+  assert.equal(await downloadPage.locator('[data-testid^="download-android-"],[data-testid^="download-ios-"]').count(),4,
+    "Exactly four primary download/install actions are visible");
+  assert.equal(await downloadPage.locator('a[href*=".ipa"]').count(),0,"iOS is a PWA, not a fake native app");
+  assert.match(await downloadPage.innerText(),/آزمایشی/,"Debug-signed Preview APK must remain labelled as experimental");
+  assert.equal(await page.getByTestId("landing-footer-top").getByRole("link",{name:"دریافت اپلیکیشن حنا"}).getAttribute("href"),"/download");
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),
+    "Download page does not overflow mobile viewport");
+
+
   assert.deepEqual(errors, []);
   await context.close();
   console.log("Figma 190:4 buyer header/nav/hero/categories: 1440,1650,1100,900,390 Chromium alignment OK");

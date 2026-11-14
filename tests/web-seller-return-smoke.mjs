@@ -3,12 +3,13 @@
  * Mocked fetch below is CI-only; no fake SMS or authenticated account ships.
  */
 import assert from "node:assert/strict";
+import { sellerPanelRedirectForStatus } from "../apps/web-marketplace/lib/seller-panel-access-redirect.ts";
 import { test } from "node:test";
 import {
   emptySellerFields, loadSellerDraft,
 } from "../apps/web-marketplace/lib/seller-draft-preflight.ts";
 import {
-  safeAuthReturnTo, safeSellerReturnTo, sellerLoginHref, sellerRegistrationPath,
+  safeAuthReturnTo, safeSellerReturnTo, sellerLoginHref, sellerPanelPath, sellerPanelLoginPath, sellerRegistrationPath,
 } from "../apps/web-marketplace/lib/seller-return.ts";
 
 const fields = {
@@ -54,6 +55,26 @@ test("seller return destination remains exact and same-origin", () => {
   ]) {
     assert.equal(safeSellerReturnTo(value), null, String(value));
   }
+});
+
+test("401/403 leave the removed intermediate gate, but outages never redirect", () => {
+  assert.equal(sellerPanelRedirectForStatus(401), "/seller/login");
+  assert.equal(sellerPanelRedirectForStatus(403), "/seller/register/status");
+  for (const status of [0, 200, 204, 302, 400, 404, 409, 429, 500, 502, 503, 504]) {
+    assert.equal(sellerPanelRedirectForStatus(status), null, String(status));
+  }
+});
+
+test("seller portal entry is distinct and auth may return only to the exact panel path", () => {
+  assert.equal(sellerPanelPath, "/seller");
+  assert.equal(sellerPanelLoginPath, "/seller/login");
+  assert.equal(safeAuthReturnTo(sellerPanelPath), sellerPanelPath);
+  for (const attempt of [
+    "/seller/", "/seller/login", "/seller/orders", "/seller?preview=1",
+    "/seller#anything", "/seller/../admin", "/seller/%2e%2e/admin",
+    "%2Fseller", "//evil.example/seller", "https://evil.example/seller",
+    ["/seller"], { toString: () => "/seller" },
+  ]) assert.equal(safeAuthReturnTo(attempt), null, String(attempt));
 });
 
 test("organization portal auth returns only to known same-origin routes", () => {
