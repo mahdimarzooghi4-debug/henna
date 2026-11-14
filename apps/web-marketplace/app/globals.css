@@ -645,10 +645,11 @@ a { color: inherit; }
 .admin-organization-detail__program-table-scroll { min-width: 0; overflow-x: auto; }
 .admin-organization-detail__program-table { min-width: 800px; display: flex; flex-direction: column; }
 .admin-organization-detail__program-row { min-height: 62px; display: grid; grid-template-columns: 120px 120px 100px 140px 120px minmax(160px, 1fr); align-items: center; padding: 16px; border-bottom: 1px solid #eae6e1; direction: ltr; color: #2d2d2d; font-size: 13px; }
-.admin-organization-detail__program-row > * { min-width: 0; direction: rtl; text-align: left; }
+.admin-organization-detail__program-row > * { min-width: 0; direction: rtl; text-align: center; }
 .admin-organization-detail__program-row > strong { text-align: right; font-weight: 600; }
 .admin-organization-detail__program-row--head { min-height: 44px; padding: 12px; border-bottom: 0; background: #faf8f5; color: #706963; font-size: 12px; font-weight: 700; }
 .admin-organization-detail__program-row--head > :last-child { text-align: right; }
+.admin-organization-detail__program-action { display: flex; justify-content: center; }
 .admin-organization-detail__program-action a { display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid #eae6e1; border-radius: 6px; color: #2d2d2d; font-size: 11px; text-decoration: none; white-space: nowrap; }
 .admin-organization-detail__program-action a:hover { border-color: #1c3f3a; color: #1c3f3a; }
 .admin-organization-detail__program-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; }
