@@ -745,7 +745,7 @@ a { color: inherit; }
 .admin-users__row {
   min-height: 62px;
   display: grid;
-  grid-template-columns: 100px 100px 140px 120px 120px 100px 180px 100px;
+  grid-template-columns: .95fr .95fr 1.3fr 1.1fr 1.1fr .95fr 1.7fr .95fr;
   align-items: center;
   border-bottom: 1px solid #eae6e1;
   direction: ltr;
