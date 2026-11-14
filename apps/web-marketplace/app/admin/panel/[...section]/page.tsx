@@ -3,6 +3,7 @@ import Link from "next/link";
 import styles from "../admin-panel.module.css";
 import AdminUsersListing from "../admin-users-listing";
 import AdminOrganizationsListing from "../admin-organizations-listing";
+import AdminOrganizationDetail from "../admin-organization-detail";
 import AdminUserDetail from "../admin-user-detail";
 import { adminSections, findAdminSection, type AdminRow } from "../admin-pages";
 
@@ -24,7 +25,7 @@ const detailAliases: Record<string, string> = {
   marketplace: "اطلاعات بازارگاه", notifications: "تنظیمات اعلان", dairy: "لبنیات", grocery: "روغن و خواربار", new: "دسته‌بندی جدید",
 };
 const orgTabs = [
-  ["نمای کلی", ""], ["برنامه‌های سازمان", "/programs"], ["منابع داده", "/data-sources"], ["تخصیص و مصرف", "/allocation"],
+  ["جزئیات سازمان", ""], ["طرح‌ها و اعتبارها", "/programs"], ["منابع داده", "/data-sources"], ["تخصیص و استفاده", "/allocation"],
 ] as const;
 function findRow(section: string, pathname: string): AdminRow | undefined {
   const config = findAdminSection(section);
@@ -48,7 +49,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
     <section className={styles.app}>
       <header className={styles.top}><div className={styles.user}><button className={styles.notification} aria-label="اعلان‌ها"><Image src="/admin-assets/list-imgNotifBtn.svg" alt="" width={36} height={36} /></button><span className={styles.divider} /><span className={styles.profile}><span className={styles.userInfo}><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><span className={styles.avatar}>م</span></span></div></header>
       <div className="admin-content">
-        {detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : <>
+        {detail && sectionSlug === "organizations" && parts.length === 2 ? <AdminOrganizationDetail slug={parts[1]} name={row?.cells[1] ?? itemName} status={row?.cells[3] ?? "فعال"} organizationType={parts[1] === "sample-org" ? "سازمان حمایتگر" : "سازمان معمولی"} /> : detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : <>
         <header className={detail ? "admin-detail-heading" : sectionSlug === "users" ? "admin-page-heading admin-page-heading--users" : "admin-page-heading"}>
           <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : sectionSlug === "users" ? "نمایش و فیلتر حساب‌های کاربری حقیقی و حقوقی در سامانه حنا" : config.description}</p></div>
           {detail && <Link className="admin-back-link" href={`/admin/panel/${sectionSlug}`}>بازگشت به {config.title}</Link>}
@@ -61,7 +62,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
             {config.rows.map((item, index) => <div className="admin-table__row" key={item.href} style={{ gridTemplateColumns: `repeat(${config.columns.length - 1}, minmax(120px, 1fr)) minmax(120px, 1fr)` }}>{item.cells.slice(0, -1).map((cell, cellIndex) => <span className={cellIndex === 0 ? "admin-generic-table__primary" : ""} key={`${index}-${cellIndex}`}>{cell}</span>)}<span><Link className="admin-row-link" href={item.href}>{item.cells.at(-1)}</Link></span></div>)}
           </div></div><p className="admin-sample-note">اطلاعات این صفحه نمونه‌ای است و به داده‌های واقعی سامانه متصل نیست.</p></section>
         </> : <>
-          {sectionSlug === "organizations" && <nav className="admin-tabs" aria-label="بخش‌های سازمان">{orgTabs.map(([label, suffix]) => <Link className={parts.length === 2 ? (suffix === "" ? "admin-tab admin-tab--active" : "admin-tab") : pathname.endsWith(suffix) ? "admin-tab admin-tab--active" : "admin-tab"} href={`/admin/panel/organizations/${parts[1]}${suffix}`} key={suffix || "overview"}>{label}</Link>)}<Link className="admin-tab" href="/admin/organization-funding-instructions">بررسی تخصیص</Link></nav>}
+          {sectionSlug === "organizations" && <nav className="admin-tabs" aria-label="بخش‌های سازمان">{orgTabs.map(([label, suffix]) => <Link className={parts.length === 2 ? (suffix === "" ? "admin-tab admin-tab--active" : "admin-tab") : pathname.endsWith(suffix) ? "admin-tab admin-tab--active" : "admin-tab"} href={`/admin/panel/organizations/${parts[1]}${suffix}`} key={suffix || "overview"}>{label}</Link>)}</nav>}
           <section className="admin-detail-grid">
             <article className="admin-detail-card"><h2>اطلاعات اصلی</h2><dl className="admin-detail-list">{(row?.cells.slice(0, -1) ?? [itemName, "دادهٔ نمونه", "ثبت نشده", "فعال"]).map((value, index) => <div className="admin-detail-field" key={index}><dt>{config.columns[index] ?? "وضعیت"}</dt><dd>{value}</dd></div>)}</dl></article>
             <article className="admin-detail-card"><h2>وضعیت و پیگیری</h2><p className="admin-no-documents">این بخش در نسخهٔ نمایشی با دادهٔ نمونه نمایش داده می‌شود. اتصال عملیات واقعی این صفحه در مرحلهٔ بعد انجام می‌شود.</p></article>
