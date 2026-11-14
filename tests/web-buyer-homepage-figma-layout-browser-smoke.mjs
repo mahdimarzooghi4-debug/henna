@@ -1323,7 +1323,7 @@ async function main() {
   assert.equal(await downloadPage.locator(".downloadLink").count(),0,
     "Legacy two-action download layout was removed");
   for (const [role,apk,manifest,start] of [
-    ["buyer","hana-buyer-preview.apk","/pwa-buyer.webmanifest","/products"],
+    ["buyer","hana-buyer-figma-android-preview.apk","/pwa-buyer.webmanifest","/products"],
     ["seller","hana-seller-preview.apk","/pwa-seller.webmanifest","/seller"]
   ]) {
     const card=downloadPage.getByTestId("app-download-"+role);
