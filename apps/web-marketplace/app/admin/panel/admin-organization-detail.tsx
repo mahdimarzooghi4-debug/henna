@@ -15,15 +15,21 @@ const tabs = [
   { label: "تخصیص و استفاده", suffix: "/allocation" },
 ] as const;
 
+const programs = [
+  { name: "طرح نمونه ۱", type: "اعتبار نمونه", status: "فعال", href: "/admin/panel/programs/sample-program" },
+  { name: "طرح نمونه ۲", type: "برنامه نمونه", status: "پیش‌نویس", href: "/admin/panel/programs/sample-credit" },
+] as const;
+
 export default function AdminOrganizationDetail({ slug, name, status, organizationType, activeTab = "" }: Props) {
   const statusClass = status === "فعال" ? "admin-organization-detail__badge--active" : "admin-organization-detail__badge--review";
+  const isProgramsTab = activeTab === "/programs";
 
   return <div className="admin-organization-detail">
     <header className="admin-organization-detail__heading">
       <Link className="admin-organization-detail__back" href="/admin/panel/organizations">بازگشت به لیست</Link>
       <div>
-        <h1>جزئیات سازمان</h1>
-        <p>مشاهده پروفایل، اطلاعات تماس و ساختار تخصیص سازمان در سامانه حنا</p>
+        <h1>{isProgramsTab ? "طرح‌ها و اعتبارهای سازمان" : "جزئیات سازمان"}</h1>
+        <p>{isProgramsTab ? `مشاهده طرح‌های ثبت‌شده متعلق به ${name}` : "مشاهده پروفایل، اطلاعات تماس و ساختار تخصیص سازمان در سامانه حنا"}</p>
       </div>
     </header>
 
@@ -36,7 +42,28 @@ export default function AdminOrganizationDetail({ slug, name, status, organizati
       >{tab.label}</Link>)}
     </nav>
 
-    <section className="admin-organization-detail__grid">
+    {isProgramsTab ? <section className="admin-organization-detail__program-card" aria-label="طرح‌ها و اعتبارهای سازمان">
+      <div className="admin-organization-detail__program-table-scroll">
+        <div className="admin-organization-detail__program-table" role="table" aria-label="فهرست طرح‌ها و اعتبارها">
+          <div className="admin-organization-detail__program-row admin-organization-detail__program-row--head" role="row">
+            <span role="columnheader">عملیات</span>
+            <span role="columnheader">تاریخ ثبت</span>
+            <span role="columnheader">وضعیت</span>
+            <span role="columnheader">روش تخصیص</span>
+            <span role="columnheader">نوع طرح</span>
+            <span role="columnheader">نام طرح</span>
+          </div>
+          {programs.map((program) => <div className="admin-organization-detail__program-row" role="row" key={program.name}>
+            <span className="admin-organization-detail__program-action" role="cell"><Link href={program.href}>{program.status === "فعال" ? "مشاهده جزئیات" : "بررسی"}</Link></span>
+            <span role="cell">تاریخ نمونه</span>
+            <span role="cell"><span className={`admin-organization-detail__program-badge ${program.status === "فعال" ? "admin-organization-detail__program-badge--active" : "admin-organization-detail__program-badge--draft"}`}>{program.status}</span></span>
+            <span role="cell">الگوی تخصیص حنا</span>
+            <span role="cell">{program.type}</span>
+            <strong role="cell">{program.name}</strong>
+          </div>)}
+        </div>
+      </div>
+    </section> : <section className="admin-organization-detail__grid">
       <div className="admin-organization-detail__main">
         <article className="admin-organization-detail__card">
           <h2>اطلاعات سازمان</h2>
@@ -76,6 +103,6 @@ export default function AdminOrganizationDetail({ slug, name, status, organizati
           </div>)}
         </article>
       </aside>
-    </section>
+    </section>}
   </div>;
 }
