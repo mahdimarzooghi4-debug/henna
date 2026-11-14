@@ -13,6 +13,7 @@ import {
   type BuyerBrowseState,
 } from "./buyer-browse-controller.ts";
 import { colors } from "./theme";
+import { offlineAndroidFigmaPreview } from "./buyer-figma-preview-mode.ts";
 import { FigmaIcon } from "./figma-icon";
 import { BuyerCatalogFilterSheet } from "./buyer-catalog-filter-sheet";
 import { BuyerCatalogState } from "./buyer-catalog-state";
@@ -81,8 +82,11 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const [draftSearch, setDraftSearch] = useState(link.route.browse.search);
   const [searchError, setSearchError] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const designPreview = Platform.OS === "web" && previewSession &&
-    process.env.EXPO_PUBLIC_HANA_DEMO_LOGIN === "true" && !process.env.EXPO_PUBLIC_HANA_API_BASE_URL;
+  const designPreview = previewSession && !process.env.EXPO_PUBLIC_HANA_API_BASE_URL &&
+    ((Platform.OS === "web" && process.env.EXPO_PUBLIC_HANA_DEMO_LOGIN === "true") ||
+     offlineAndroidFigmaPreview(Platform.OS,
+       process.env.EXPO_PUBLIC_HANA_FIGMA_ANDROID_PREVIEW,
+       process.env.EXPO_PUBLIC_HANA_API_BASE_URL));
   const [designQuery, setDesignQuery] = useState("");
   const [designCategory, setDesignCategory] = useState<string | null>(null);
   const [designBadge, setDesignBadge] = useState<string | null>(null);
@@ -132,10 +136,12 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const onAccount = isSignedIn ? onLogout : onLogin;
 
   useEffect(() => {
-    if (!active) { controller.stop(); return; }
+    // An offline Figma walkthrough must never call the public catalog API;
+    // mock cards are explicitly visual-only and cannot authorize commerce.
+    if (!active || designPreview) { controller.stop(); return; }
     controller.start();
     return () => controller.stop();
-  }, [active, controller]);
+  }, [active, controller, designPreview]);
 
   useEffect(() => {
     if (lastLink.current === link.token) return;

@@ -410,7 +410,8 @@ jobs:
           grep -q "ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is not allowed" /tmp/hana-proxy-unsafe-switch.log
 
   web:
-    runs-on: ubuntu-latest
+    # Playwright 1.55 has no Chromium dependency support for Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     env:
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
@@ -568,7 +569,8 @@ jobs:
         run: node tests/web-buyer-navigation-browser-smoke.mjs
 
   mobile:
-    runs-on: ubuntu-latest
+    # Keep Expo's Playwright 1.55 Chromium browser smoke on a supported host.
+    runs-on: ubuntu-24.04
     env:
       EXPO_NO_TELEMETRY: '1'
       CI: '1'
@@ -632,6 +634,8 @@ jobs:
         run: node --experimental-strip-types --test tests/mobile-geography-smoke.mjs
       - name: Test explicit foreground address location policy
         run: node --experimental-strip-types --test tests/mobile-device-location.mjs
+      - name: Guard native offline Figma catalog preview isolation
+        run: node --experimental-strip-types --test tests/mobile-buyer-android-figma-preview-gate.mjs
       - name: Bundle consumer app for Android
         run: npm run mobile:export:android
       - name: Exercise isolated buyer preview in Chromium
@@ -714,6 +718,8 @@ jobs:
             printf '\nnetworkTimeout=120000\n' >> "$wrapper"
           fi
       - name: Compile Android APK with embedded production JS (CI-only debug signing)
+        env:
+          EXPO_PUBLIC_HANA_FIGMA_ANDROID_PREVIEW: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'fix/buyer-android-figma-preview-catalog-20261114' && github.event.pull_request.head.repo.full_name == github.repository) }}
         shell: bash
         run: |
           set -euo pipefail
@@ -813,7 +819,16 @@ jobs:
           cores: 4
           ram-size: 4096M
           disable-animations: true
-          script: python3 tests/mobile-android-native-smoke.py && python3 tests/mobile-seller-android-smoke.py
+          script: bash tests/mobile-android-figma-ci-selector.sh
+      - name: Retain offline buyer Figma Android preview screenshots
+        if: always() && ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'fix/buyer-android-figma-preview-catalog-20261114' && github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hana-buyer-figma-native-screenshots
+          path: tests/.hana-figma-android-*.png
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
       - name: Retain tested buyer APK (CI debug build - not a public release)
         uses: actions/upload-artifact@v4
         with:
@@ -878,4 +893,43 @@ jobs:
             --target "$HEAD_SHA" \
             --title "Henna Android Preview ${RUN_NUMBER} (Debug)" \
             --notes "Experimental Android preview APKs built and emulator-tested by CI. Both APKs are CI-only debug-signed and are NOT production/store releases. SHA-256 checksums are attached. Do not use for real commerce or production operations." \
+            --prerelease
+
+  publish-buyer-figma-android-preview:
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'fix/buyer-android-figma-preview-catalog-20261114' && github.event.pull_request.head.repo.full_name == github.repository) }}
+    needs: [backend, web, mobile, android-native-links]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Download exact-head Android buyer preview built and installed in CI
+        uses: actions/download-artifact@v4
+        with:
+          name: hana-buyer-android-ci-debug-apk
+          path: artifacts/buyer
+      - name: Publish isolated debug preview release with SHA-256
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test -s artifacts/buyer/app-release.apk
+          mv artifacts/buyer/app-release.apk artifacts/hana-buyer-figma-android-preview.apk
+          (cd artifacts && sha256sum hana-buyer-figma-android-preview.apk > SHA256SUMS.txt)
+          tag="hana-buyer-figma-android-${HEAD_SHA:0:7}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Preview tag already exists; refusing to overwrite tested artifact" >&2
+            exit 1
+          fi
+          gh release create "$tag" \
+            artifacts/hana-buyer-figma-android-preview.apk \
+            artifacts/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$HEAD_SHA" \
+            --title "Henna Buyer Offline Figma Android Preview ${HEAD_SHA:0:7}" \
+            --notes "Experimental Android preview APK, tested as an installed app in the emulator. Offline Figma sample home, catalog, filters and sample cart are NOT live catalog, inventory, offers, shipping, login, SMS or payments. Owner review only, debug-signed; not a production/store release. No seller APK changes." \
             --prerelease
