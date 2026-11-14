@@ -41,7 +41,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
 
   const detail = parts.length > 1;
   const pathname = `/admin/panel/${parts.join("/")}`;
-  const row = detail ? findRow(sectionSlug, pathname) : undefined;
+  const row = detail ? findRow(sectionSlug, sectionSlug === "organizations" ? `/admin/panel/organizations/${parts[1]}` : pathname) : undefined;
   const itemName = row?.cells[1] ?? detailAliases[parts[1] ?? ""] ?? nice(parts.slice(1).join(" "));
   const title = detail ? (sectionSlug === "products" ? "جزئیات کالا" : sectionSlug === "users" ? "شناسنامه و جزئیات حساب کاربر" : `جزئیات ${config.title.replace(/ها$/, "")}`) : config.title;
   const extraActions = config.actions ?? [];
@@ -49,7 +49,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
     <section className={styles.app}>
       <header className={styles.top}><div className={styles.user}><button className={styles.notification} aria-label="اعلان‌ها"><Image src="/admin-assets/list-imgNotifBtn.svg" alt="" width={36} height={36} /></button><span className={styles.divider} /><span className={styles.profile}><span className={styles.userInfo}><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><span className={styles.avatar}>م</span></span></div></header>
       <div className="admin-content">
-        {detail && sectionSlug === "organizations" && parts.length === 2 ? <AdminOrganizationDetail slug={parts[1]} name={row?.cells[1] ?? itemName} status={row?.cells[3] ?? "فعال"} organizationType={parts[1] === "sample-org" ? "سازمان حمایتگر" : "سازمان معمولی"} /> : detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : <>
+        {detail && sectionSlug === "organizations" && parts.length >= 2 ? <AdminOrganizationDetail slug={parts[1]} name={row?.cells[1] ?? itemName} status={row?.cells[3] ?? "فعال"} organizationType={parts[1] === "sample-org" ? "سازمان حمایتگر" : "سازمان معمولی"} activeTab={parts[2] ? `/${parts[2]}` : ""} /> : detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : <>
         <header className={detail ? "admin-detail-heading" : sectionSlug === "users" ? "admin-page-heading admin-page-heading--users" : "admin-page-heading"}>
           <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : sectionSlug === "users" ? "نمایش و فیلتر حساب‌های کاربری حقیقی و حقوقی در سامانه حنا" : config.description}</p></div>
           {detail && <Link className="admin-back-link" href={`/admin/panel/${sectionSlug}`}>بازگشت به {config.title}</Link>}

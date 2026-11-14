@@ -5,6 +5,7 @@ type Props = {
   name: string;
   status: string;
   organizationType: string;
+  activeTab?: string;
 };
 
 const tabs = [
@@ -14,7 +15,7 @@ const tabs = [
   { label: "تخصیص و استفاده", suffix: "/allocation" },
 ] as const;
 
-export default function AdminOrganizationDetail({ slug, name, status, organizationType }: Props) {
+export default function AdminOrganizationDetail({ slug, name, status, organizationType, activeTab = "" }: Props) {
   const statusClass = status === "فعال" ? "admin-organization-detail__badge--active" : "admin-organization-detail__badge--review";
 
   return <div className="admin-organization-detail">
@@ -28,8 +29,8 @@ export default function AdminOrganizationDetail({ slug, name, status, organizati
 
     <nav className="admin-organization-detail__tabs" aria-label="بخش‌های سازمان">
       {tabs.map((tab) => <Link
-        aria-current={tab.suffix === "" ? "page" : undefined}
-        className={tab.suffix === "" ? "admin-organization-detail__tab admin-organization-detail__tab--active" : "admin-organization-detail__tab"}
+        aria-current={tab.suffix === activeTab ? "page" : undefined}
+        className={tab.suffix === activeTab ? "admin-organization-detail__tab admin-organization-detail__tab--active" : "admin-organization-detail__tab"}
         href={`/admin/panel/organizations/${slug}${tab.suffix}`}
         key={tab.suffix || "details"}
       >{tab.label}</Link>)}

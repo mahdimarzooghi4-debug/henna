@@ -636,7 +636,7 @@ a { color: inherit; }
 .admin-organization-detail__portal { gap: 16px; }
 .admin-organization-detail__portal > div { direction: rtl; font-size: 13px; }
 .admin-organization-detail__activity { gap: 16px; white-space: normal; }
-.admin-organization-detail__activity-item { width: 100%; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid #eae6e1; line-height: 1.5; text-align: right; }
+.admin-organization-detail__activity-item { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid #eae6e1; line-height: 1.5; text-align: right; }
 .admin-organization-detail__activity-item:last-child { padding-bottom: 0; border-bottom: 0; }
 .admin-organization-detail__activity-item strong { color: #1c3f3a; font-size: 13px; }
 .admin-organization-detail__activity-item span { color: #2d2d2d; font-size: 12px; }
