@@ -1332,7 +1332,7 @@ async function main() {
     assert.equal(await android.count(),1);
     assert.equal(await ios.count(),1);
     assert.ok((await android.getAttribute("href")).endsWith("/"+apk));
-    assert.equal(await android.getAttribute("target"),"_blank");
+    assert.equal(await android.getAttribute("target"),null,"Direct APK download uses the current mobile tab");
     assert.equal(await ios.getAttribute("href"),"/install/"+role);
     await ios.click();
     await page.waitForURL(base+"/install/"+role);
@@ -1362,7 +1362,7 @@ async function main() {
   assert.equal(await downloadPage.locator('[data-testid^="download-android-"],[data-testid^="download-ios-"]').count(),4,
     "Exactly four primary download/install actions are visible");
   assert.equal(await downloadPage.locator('a[href*=".ipa"]').count(),0,"iOS is a PWA, not a fake native app");
-  assert.doesNotMatch(await downloadPage.innerText(),/آزمایشی/,"Remove the requested wording from the visible download page");
+  assert.match(await downloadPage.innerText(),/آزمایشی/,"Debug-signed Preview APK must remain labelled as experimental");
   assert.equal(await page.getByTestId("landing-footer-top").getByRole("link",{name:"دریافت اپلیکیشن حنا"}).getAttribute("href"),"/download");
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),
     "Download page does not overflow mobile viewport");
