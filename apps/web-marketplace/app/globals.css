@@ -842,7 +842,7 @@ a { color: inherit; }
 .admin-user-detail__info-list,
 .admin-user-detail__status-list { display: flex; flex-direction: column; gap: 12px; margin: 0; }
 .admin-user-detail__info-list > div,
-.admin-user-detail__status-list > div { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; direction: ltr; }
+.admin-user-detail__status-list > div { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; direction: rtl; }
 .admin-user-detail__info-list dt,
 .admin-user-detail__status-list dt { color: #706963; font-size: 13px; direction: rtl; }
 .admin-user-detail__info-list dd { margin: 0; color: #2d2d2d; font-size: 13px; font-weight: 600; white-space: nowrap; }
