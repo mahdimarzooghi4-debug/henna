@@ -600,6 +600,9 @@ a { color: inherit; }
 .admin-tab { min-height: 40px; display: inline-flex; align-items: center; padding: 8px 16px; border: 1px solid #eae6e1; border-radius: 9px; background: #fff; color: #706963; font-size: 12px; text-decoration: none; }
 .admin-tab--active { border-color: #1c3f3a; background: rgba(28, 63, 58, .06); color: #1c3f3a; font-weight: 700; }
 .admin-generic-table { min-width: 900px; }
+.admin-organizations__table .admin-table__row > span:last-child { display: flex; align-items: center; justify-content: center; }
+.admin-organizations__table .admin-table__head > span:last-child { text-align: center; }
+.admin-organizations__empty { width: 100%; margin: 0; padding: 36px 12px; color: #706963; font-size: 13px; text-align: center; }
 .admin-generic-table__primary { color: #1c3f3a; font-weight: 700; }
 .admin-sample-note { margin: 12px 0 0; color: #9a928d; font-size: 11px; }
 .admin-sidebar__item { text-decoration: none; }

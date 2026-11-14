@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import styles from "../admin-panel.module.css";
 import AdminUsersListing from "../admin-users-listing";
+import AdminOrganizationsListing from "../admin-organizations-listing";
 import AdminUserDetail from "../admin-user-detail";
 import { adminSections, findAdminSection, type AdminRow } from "../admin-pages";
 
@@ -52,7 +53,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
           <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : sectionSlug === "users" ? "نمایش و فیلتر حساب‌های کاربری حقیقی و حقوقی در سامانه حنا" : config.description}</p></div>
           {detail && <Link className="admin-back-link" href={`/admin/panel/${sectionSlug}`}>بازگشت به {config.title}</Link>}
         </header>
-        {!detail && sectionSlug === "users" ? <AdminUsersListing /> : !detail ? <>
+        {!detail && sectionSlug === "users" ? <AdminUsersListing /> : !detail && sectionSlug === "organizations" ? <AdminOrganizationsListing columns={config.columns} rows={config.rows} /> : !detail ? <>
           <div className="admin-filters" aria-label="فیلترهای صفحه"><button className="admin-filter admin-filter--active" type="button">همه</button><button className="admin-filter" type="button">فعال</button><button className="admin-filter" type="button">در انتظار بررسی</button><input className="admin-search" aria-label="جستجو" placeholder={`جستجو در ${config.title}...`} /></div>
           {extraActions.length > 0 && <div className="admin-page-actions">{extraActions.map(action => <Link className="admin-primary-button" href={action.href} key={action.href}>{action.label}</Link>)}</div>}
           <section className="admin-table-card"><div className="admin-table-scroll"><div className="admin-table admin-generic-table">
