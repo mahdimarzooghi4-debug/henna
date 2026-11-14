@@ -73,13 +73,13 @@ async function measure(page,width,label,strict){
   }
  }
  // Force below-the-fold Next/Image assets to load before screenshot.
- await page.evaluate(()=>{for(const img of document.images){if(img.src.includes("/landing/"))img.loading="eager"}});
+ await page.evaluate(()=>{for(const img of document.images){if((img.src.includes("/landing/")||/%2Flanding%2F/i.test(img.src)))img.loading="eager"}});
  try{
   await page.waitForFunction(()=>Array.from(document.images)
-   .filter(img=>img.src.includes("/landing/")).every(img=>img.complete&&img.naturalWidth>0),
+   .filter(img=>(img.src.includes("/landing/")||/%2Flanding%2F/i.test(img.src))).every(img=>img.complete&&img.naturalWidth>0),
    null,{timeout:20000});
  }catch{result.imageLoadTimeout=true;}
- result.images=await page.evaluate(()=>Array.from(document.images).filter(img=>img.src.includes("/landing/"))
+ result.images=await page.evaluate(()=>Array.from(document.images).filter(img=>(img.src.includes("/landing/")||/%2Flanding%2F/i.test(img.src)))
   .map(img=>({src:img.getAttribute("src")?.slice(0,150),ok:img.complete&&img.naturalWidth>0,
    naturalWidth:img.naturalWidth,width:Math.round(img.getBoundingClientRect().width)})));
  if(strict){
