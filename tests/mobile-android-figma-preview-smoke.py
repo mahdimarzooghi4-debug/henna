@@ -59,7 +59,7 @@ def tap(name, scroll=True):
             node = next((n for n in root.iter()
                          if n.attrib.get("content-desc") == name or n.attrib.get("text") == name), None)
             if node is not None:
-                coords = list(map(int, re.findall(r"\\d+", node.attrib.get("bounds", ""))))
+                coords = list(map(int, re.findall(r"[0-9]+", node.attrib.get("bounds", ""))))
                 if len(coords) == 4:
                     x1, y1, x2, y2 = coords
                     execute("adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2))
