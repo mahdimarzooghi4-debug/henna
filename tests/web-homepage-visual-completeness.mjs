@@ -45,7 +45,15 @@ async function measure(page,width,label,strict){
     scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,
     overflowY:css.overflowY,visibility:css.visibility,display:css.display};
   });
-  return {viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,
+  const categoryAnchors=Array.from(document.querySelectorAll('#categories a[href^="/categories/"]'));
+  const categoryGrid=categoryAnchors[0]?.parentElement;
+  const categoryRects=categoryAnchors.map(anchor=>{
+   const r=anchor.getBoundingClientRect();
+   return {x:Math.round(r.left),right:Math.round(r.right),top:Math.round(r.top+scrollY)};
+  });
+  return {categoryRects,categoryScrollWidth:categoryGrid?.scrollWidth,
+   categoryClientWidth:categoryGrid?.clientWidth,
+   viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,
    clientWidth:document.documentElement.clientWidth,documentHeight:document.documentElement.scrollHeight,
    sections:found,categoryCount:document.querySelectorAll('#categories a[href^="/categories/"]').length,
    offerCount:document.querySelectorAll("#offers article").length,
@@ -57,6 +65,15 @@ async function measure(page,width,label,strict){
  if(strict){
   assert.equal(result.scrollWidth<=result.clientWidth+1,true,"horizontal overflow at "+width);
   assert.equal(result.categoryCount,7,"Figma seven categories");
+  if(width<=760){
+   assert.equal(result.categoryScrollWidth<=result.categoryClientWidth+1,true,
+    "Mobile category links should not require hidden sideways scrolling at "+width);
+   for(const cat of result.categoryRects){
+    assert.ok(cat.x>=0&&cat.right<=width+1,"All seven categories must be inside viewport at "+width);
+   }
+   const rows=new Set(result.categoryRects.map(cat=>cat.top));
+   assert.ok(rows.size>=2,"All categories must wrap into visible rows at "+width);
+  }
   assert.equal(result.offerCount,5,"Figma five preview deals");
   assert.equal(result.promoCount,3,"Figma three promotional cards");
   for(const section of result.sections){
