@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 
 const base="http://127.0.0.1:3023";
-const buyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-pr239-1c35e62/hana-buyer-preview.apk";
+const buyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-032eb3b/hana-buyer-figma-android-preview.apk";
 const seller="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1/hana-seller-preview.apk";
 let server, browser, logs="";
 async function startWeb(){
