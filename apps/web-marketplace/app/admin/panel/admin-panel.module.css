@@ -14,9 +14,9 @@
 }
 
 .app {
-  width: calc(100% - 280px);
+  width: min(1160px, calc(100% - 280px));
   min-width: 0;
-  margin-right: 280px;
+  margin-right: max(280px, calc(50vw - 440px));
 }
 
 .top {
@@ -87,7 +87,7 @@
 .notice { position: relative; margin: 12px 0 0; padding-left: 16px; direction: ltr; font-size: 12px; text-align: right; }
 .notice::before { position: absolute; top: 8px; left: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); content: ""; }
 
-.sidebar { position: fixed; z-index: 2; top: 0; right: 0; width: 280px; height: 100dvh; border-right: 1px solid var(--border); background: #fff; }
+.sidebar { position: fixed; z-index: 2; top: 0; right: max(0px, calc(50vw - 720px)); width: 280px; height: 100dvh; border-right: 1px solid var(--border); background: #fff; }
 .sideBrand { box-sizing: border-box; height: 80px; display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 16px 8px; border-bottom: 1px solid var(--border); }
 .sideBrand > span:last-child { display: flex; flex-direction: column; align-items: flex-end; line-height: normal; }
 .sideBrand b { color: var(--ink); font-size: 14px; }
