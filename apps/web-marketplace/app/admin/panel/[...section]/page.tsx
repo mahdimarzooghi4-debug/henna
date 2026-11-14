@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import styles from "../admin-panel.module.css";
 import AdminUsersListing from "../admin-users-listing";
+import AdminUserDetail from "../admin-user-detail";
 import { adminSections, findAdminSection, type AdminRow } from "../admin-pages";
 
 const menu = [
@@ -46,6 +47,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
     <section className={styles.app}>
       <header className={styles.top}><div className={styles.user}><button className={styles.notification} aria-label="اعلان‌ها"><Image src="/admin-assets/list-imgNotifBtn.svg" alt="" width={36} height={36} /></button><span className={styles.divider} /><span className={styles.profile}><span className={styles.userInfo}><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><span className={styles.avatar}>م</span></span></div></header>
       <div className="admin-content">
+        {detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : <>
         <header className={detail ? "admin-detail-heading" : sectionSlug === "users" ? "admin-page-heading admin-page-heading--users" : "admin-page-heading"}>
           <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : sectionSlug === "users" ? "نمایش و فیلتر حساب‌های کاربری حقیقی و حقوقی در سامانه حنا" : config.description}</p></div>
           {detail && <Link className="admin-back-link" href={`/admin/panel/${sectionSlug}`}>بازگشت به {config.title}</Link>}
@@ -67,6 +69,7 @@ export default async function AdminSectionPage({ params }: PageProps) {
             {sectionSlug === "programs" && <article className="admin-detail-card"><h2>اعتبارهای طرح</h2><p className="admin-no-documents">تخصیص اعتبار در این نمونه نمایشی است.</p><Link className="admin-row-link" href="/admin/panel/programs/credit-assignment">مشاهده تخصیص اعتبار</Link></article>}
           </section>
           <p className="admin-sample-note">مقادیر این صفحه برای نمایش چیدمان پنل نمونه‌سازی شده‌اند.</p>
+        </>}
         </>}
       </div>
     </section>

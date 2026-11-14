@@ -810,6 +810,55 @@ a { color: inherit; }
 .admin-detail-field dd { flex: 1 1 52%; min-width: 0; margin: 0; color: #2d2d2d; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
 .admin-detail-list--status .admin-detail-field { align-items: center; }
 .admin-no-documents { margin: 0; padding: 14px; border-radius: 9px; background: #faf8f5; color: #706963; font-size: 13px; }
+.admin-user-detail { min-width: 0; display: flex; flex-direction: column; gap: 32px; }
+.admin-user-detail__title { text-align: right; }
+.admin-user-detail__title h1 { margin: 0; color: #1c3f3a; font-size: 24px; font-weight: 800; line-height: 1.25; }
+.admin-user-detail__title p { margin: 8px 0 0; color: #706963; font-size: 13px; }
+.admin-user-detail__profile,
+.admin-user-detail__card { min-width: 0; border: 1px solid #eae6e1; border-radius: 16px; background: #fff; }
+.admin-user-detail__profile { min-height: 112px; display: flex; align-items: center; padding: 24px; }
+.admin-user-detail__profile-info { width: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 16px; direction: ltr; }
+.admin-user-detail__profile-info > div { text-align: right; direction: rtl; }
+.admin-user-detail__profile-info h2 { margin: 0 0 6px; color: #1c3f3a; font-size: 20px; font-weight: 800; }
+.admin-user-detail__profile-info p { margin: 0; color: #706963; font-size: 13px; }
+.admin-user-detail__avatar { width: 64px; height: 64px; flex: 0 0 64px; display: grid; place-items: center; border-radius: 50%; background: rgba(28, 63, 58, .06); color: #1c3f3a; font-size: 24px; font-weight: 800; direction: rtl; }
+.admin-user-detail__columns { display: grid; grid-template-columns: minmax(0, 1.112fr) minmax(0, 1fr); align-items: start; gap: 24px; direction: ltr; }
+.admin-user-detail__left,
+.admin-user-detail__right { min-width: 0; display: flex; flex-direction: column; gap: 24px; direction: rtl; }
+.admin-user-detail__card { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
+.admin-user-detail__card h2 { margin: 0; color: #1c3f3a; font-size: 16px; font-weight: 800; line-height: 1.5; }
+.admin-user-detail__order { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 8px; background: #faf8f5; direction: ltr; }
+.admin-user-detail__order > a { color: #1c3f3a; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.admin-user-detail__order > a:hover { text-decoration: underline; }
+.admin-user-detail__order-info { min-width: 0; display: flex; align-items: center; gap: 12px; color: #2d2d2d; font-size: 13px; direction: ltr; }
+.admin-user-detail__order-info > span:last-child { direction: rtl; white-space: nowrap; }
+.admin-user-detail__badge { width: fit-content; display: inline-flex; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 400; line-height: 1.5; white-space: nowrap; }
+.admin-user-detail__badge--success { background: #d4edda; color: #155724; }
+.admin-user-detail__badge--neutral { background: rgba(28, 63, 58, .06); color: #1c3f3a; }
+.admin-user-detail__badge--sand { background: rgba(215, 184, 149, .16); color: #d7b895; }
+.admin-user-detail__empty-plan { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; direction: ltr; }
+.admin-user-detail__empty-plan strong { color: #2d2d2d; font-weight: 600; direction: rtl; }
+.admin-user-detail__empty-plan span { flex: 0 0 auto; color: #706963; direction: rtl; }
+.admin-user-detail__info-list,
+.admin-user-detail__status-list { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.admin-user-detail__info-list > div,
+.admin-user-detail__status-list > div { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; direction: ltr; }
+.admin-user-detail__info-list dt,
+.admin-user-detail__status-list dt { color: #706963; font-size: 13px; direction: rtl; }
+.admin-user-detail__info-list dd { margin: 0; color: #2d2d2d; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.admin-user-detail__status-list dd { margin: 0; }
+@media (max-width: 1100px) {
+  .admin-user-detail__columns { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .admin-user-detail { gap: 24px; }
+  .admin-user-detail__title h1 { font-size: 20px; }
+  .admin-user-detail__profile { min-height: 96px; padding: 16px; }
+  .admin-user-detail__avatar { width: 56px; height: 56px; flex-basis: 56px; font-size: 21px; }
+  .admin-user-detail__card { padding: 18px; }
+  .admin-user-detail__order { align-items: flex-start; flex-direction: column; }
+  .admin-user-detail__empty-plan { align-items: flex-start; flex-direction: column; }
+}
 
 .admin-funding-table { min-width: 980px; }
 .admin-funding-table .admin-table__row {
