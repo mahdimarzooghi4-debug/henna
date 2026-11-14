@@ -1,0 +1,80 @@
+name: Publish tested buyer PR239 APK as an isolated preview
+
+on:
+  push:
+    branches:
+      - automation/buyer-pr239-preview-release-20261114
+    paths:
+      - .github/workflows/publish-tested-buyer-pr239-apk.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish-buyer-preview:
+    if: github.repository == 'mahdimarzooghi4-debug/henna'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Confirm exact-source CI passed before distributing APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha=1c35e62fc3924a73e1d082e581130698fbce6cc2
+          source_run=43277165503
+          details="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$source_run")"
+          echo "$details" | jq -e \
+            --arg sha "$expected_sha" \
+            '(.head_sha == $sha) and (.status == "completed") and (.conclusion == "success")'
+          for job in backend web mobile android-native-links; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$source_run/jobs?per_page=100" \
+              | jq -e --arg name "$job" '[.jobs[] | select(.name == $name and .conclusion == "success")] | length == 1'
+          done
+
+      - name: Download only the tested buyer APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/henna-buyer-artifact dist
+          gh run download 43277165503 --repo "$GITHUB_REPOSITORY" \
+            --name hana-buyer-android-ci-debug-apk --dir /tmp/henna-buyer-artifact
+          mapfile -t apks < <(find /tmp/henna-buyer-artifact -type f -name '*.apk' -print)
+          test "${#apks[@]}" -eq 1
+          test -s "${apks[0]}"
+          cp "${apks[0]}" dist/hana-buyer-preview.apk
+          (cd dist && sha256sum hana-buyer-preview.apk > SHA256SUMS.txt)
+          {
+            echo "Henna buyer Android Figma preview (NOT a production release)"
+            echo ""
+            echo "Artifact was built and emulator-tested in successful CI run 43277165503."
+            echo "Exact source commit: 1c35e62fc3924a73e1d082e581130698fbce6cc2"
+            echo "PR #239 remains Draft/Open; this upload does not merge or promote it."
+            echo "This is debug-signed for review; no real commerce, payments or production access."
+            echo ""
+            cat dist/SHA256SUMS.txt
+          } > dist/release-notes.txt
+          ls -lh dist/hana-buyer-preview.apk
+
+      - name: Publish versioned buyer-only prerelease for website download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=hana-buyer-figma-pr239-1c35e62
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to replace or overwrite signed APK."
+            exit 0
+          fi
+          gh release create "$tag" \
+            dist/hana-buyer-preview.apk dist/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 1c35e62fc3924a73e1d082e581130698fbce6cc2 \
+            --title "Henna buyer Android preview PR239 (1c35e62)" \
+            --notes-file dist/release-notes.txt \
+            --prerelease
