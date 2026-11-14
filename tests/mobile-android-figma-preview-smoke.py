@@ -149,6 +149,14 @@ def main():
     tap("فیلتر پیشرفته", scroll=False)
     inspect("فیلتر کالاها", "نمایش کالاها")
     screenshot("filter")
+    # Press the actual footer action above the Android system navigation bar,
+    # not merely the sheet close button. Applying offline sample filters must
+    # dismiss the modal and keep the catalog in the foreground.
+    tap("نمایش کالاها", scroll=False)
+    inspect("کالاها و خدمات")
+    assert "فیلتر کالاها" not in labels(nodes()), "Filter modal did not close after Apply"
+    tap("فیلتر پیشرفته", scroll=False)
+    inspect("فیلتر کالاها", "نمایش کالاها")
     tap("بستن پنل فیلتر", scroll=False)
     inspect("کالاها و خدمات")
 
