@@ -817,13 +817,7 @@ jobs:
           cores: 4
           ram-size: 4096M
           disable-animations: true
-          script: |
-            if [ "${{ github.event.pull_request.head.ref }}" = "fix/buyer-android-figma-preview-catalog-20261114" ] && [ "${{ github.event.pull_request.head.repo.full_name }}" = "${{ github.repository }}" ]; then
-              python3 tests/mobile-android-figma-preview-smoke.py
-            else
-              python3 tests/mobile-android-native-smoke.py
-            fi
-            python3 tests/mobile-seller-android-smoke.py
+          script: bash tests/mobile-android-figma-ci-selector.sh
       - name: Retain offline buyer Figma Android preview screenshots
         if: always() && ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'fix/buyer-android-figma-preview-catalog-20261114' && github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: actions/upload-artifact@v4
