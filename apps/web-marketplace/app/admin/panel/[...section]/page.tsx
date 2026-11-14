@@ -1,13 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import styles from "../admin-panel.module.css";
+import AdminUsersListing from "../admin-users-listing";
 import { adminSections, findAdminSection, type AdminRow } from "../admin-pages";
 
 const menu = [
-  ["نمای کلی", [["داشبورد", "/admin/panel", "▦"]]],
-  ["بازارگاه", [["کاربران و حساب‌ها", "/admin/panel/users", "♙"], ["سازمان‌ها", "/admin/panel/organizations", "♧"], ["فروشندگان", "/admin/panel/sellers", "▣"], ["درخواست‌های ثبت‌نام فروشنده", "/admin/seller-applications", "▤"], ["کالاها", "/admin/panel/products", "□"], ["دسته‌بندی‌ها", "/admin/panel/categories", "▤"], ["سفارش‌ها", "/admin/panel/orders", "▣"]]],
-  ["عملیات و طرح‌ها", [["طرح‌ها و اعتبارها", "/admin/panel/programs", "◇"], ["مشارکت اجتماعی", "/admin/panel/social", "♡"], ["لجستیک", "/admin/panel/logistics", "⌖"], ["تسویه‌ها و تراکنش‌ها", "/admin/panel/settlements", "↔"], ["پشتیبانی", "/admin/panel/support", "?"], ["اعلان‌ها", "/admin/panel/notifications", "♧"]]],
-  ["مدیریت سامانه", [["گزارش‌ها", "/admin/panel/reports", "▥"], ["محتوا", "/admin/panel/content", "▤"], ["کاربران پنل و دسترسی‌ها", "/admin/panel/access", "♧"], ["تنظیمات", "/admin/panel/settings", "⚙"]]],
+  ["نمای کلی", [["داشبورد", "/admin/panel", "list-imgFrame.svg"]]],
+  ["بازارگاه", [["کاربران و حساب‌ها", "/admin/panel/users", "list-imgUsersIcon.svg"], ["سازمان‌ها", "/admin/panel/organizations", "dashboard-imgUsers2.svg"], ["فروشندگان", "/admin/panel/sellers", "list-imgStoreIcon.svg"], ["درخواست‌های ثبت‌نام فروشنده", "/admin/seller-applications", "list-imgClipboardIcon.svg"], ["کالاها", "/admin/panel/products", "list-imgFrame1.svg"], ["دسته‌بندی‌ها", "/admin/panel/categories", "list-imgFolderIcon.svg"], ["سفارش‌ها", "/admin/panel/orders", "list-imgFrame2.svg"]]],
+  ["عملیات و طرح‌ها", [["طرح‌ها و اعتبارها", "/admin/panel/programs", "list-imgFrame3.svg"], ["مشارکت اجتماعی", "/admin/panel/social", "list-imgMessageIcon.svg"], ["لجستیک", "/admin/panel/logistics", "list-imgFrame4.svg"], ["تسویه‌ها و تراکنش‌ها", "/admin/panel/settlements", "list-imgFrame5.svg"], ["پشتیبانی", "/admin/panel/support", "list-imgHelpIcon.svg"], ["اعلان‌ها", "/admin/panel/notifications", "list-imgFrame6.svg"]]],
+  ["مدیریت سامانه", [["گزارش‌ها", "/admin/panel/reports", "list-imgFrame7.svg"], ["محتوا", "/admin/panel/content", "list-imgFileIcon.svg"], ["کاربران پنل و دسترسی‌ها", "/admin/panel/access", "list-imgShieldIcon.svg"], ["تنظیمات", "/admin/panel/settings", "list-imgSettingsIcon.svg"]]],
 ] as const;
 
 type PageProps = { params: Promise<{ section: string[] }> };
@@ -46,10 +47,10 @@ export default async function AdminSectionPage({ params }: PageProps) {
       <header className={styles.top}><div className={styles.user}><button className={styles.notification} aria-label="اعلان‌ها"><Image src="/admin-assets/list-imgNotifBtn.svg" alt="" width={36} height={36} /></button><span className={styles.divider} /><span className={styles.profile}><span className={styles.userInfo}><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><span className={styles.avatar}>م</span></span></div></header>
       <div className="admin-content">
         <header className={detail ? "admin-detail-heading" : "admin-page-heading"}>
-          <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : config.description}</p></div>
+          <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : sectionSlug === "users" ? "نمایش و فیلتر حساب‌های کاربری حقیقی و حقوقی در سامانه حنا" : config.description}</p></div>
           {detail && <Link className="admin-back-link" href={`/admin/panel/${sectionSlug}`}>بازگشت به {config.title}</Link>}
         </header>
-        {!detail ? <>
+        {!detail && sectionSlug === "users" ? <AdminUsersListing /> : !detail ? <>
           <div className="admin-filters" aria-label="فیلترهای صفحه"><button className="admin-filter admin-filter--active" type="button">همه</button><button className="admin-filter" type="button">فعال</button><button className="admin-filter" type="button">در انتظار بررسی</button><input className="admin-search" aria-label="جستجو" placeholder={`جستجو در ${config.title}...`} /></div>
           {extraActions.length > 0 && <div className="admin-page-actions">{extraActions.map(action => <Link className="admin-primary-button" href={action.href} key={action.href}>{action.label}</Link>)}</div>}
           <section className="admin-table-card"><div className="admin-table-scroll"><div className="admin-table admin-generic-table">
@@ -74,5 +75,5 @@ export default async function AdminSectionPage({ params }: PageProps) {
 }
 
 function AdminSidebar({ active }: { active: string }) {
-  return <aside className={styles.sidebar}><div className={styles.sideBrand}><span className={styles.logo}><Image src="/admin-assets/henna-admin-logo.png" alt="" width={82} height={48} priority /></span><span><b>مدیریت حنا</b><small>پنل مدیریت بازارگاه</small></span></div><nav>{menu.map(([group, items]) => <section key={group}><h2>{group}</h2>{items.map(([label, href, icon]) => <Link className={active === href || (href !== "/admin/panel" && active.startsWith(`${href}/`)) ? "active" : ""} href={href} key={href}><i>{icon}</i>{label}</Link>)}</section>)}</nav></aside>;
+  return <aside className={styles.sidebar}><div className={styles.sideBrand}><span className={styles.logo}><Image src="/admin-assets/henna-admin-logo.png" alt="" width={82} height={48} priority /></span><span><b>مدیریت حنا</b><small>پنل مدیریت بازارگاه</small></span></div><nav>{menu.map(([group, items]) => <section key={group}><h2>{group}</h2>{items.map(([label, href, icon]) => { const iconSize = icon.includes("Frame") ? 20 : icon.startsWith("dashboard-") ? 18 : 16; return <Link className={active === href || (href !== "/admin/panel" && active.startsWith(`${href}/`)) ? "active" : ""} href={href} key={href}><span className="admin-sidebar__icon"><Image src={`/admin-assets/${icon}`} alt="" width={iconSize} height={iconSize} /></span>{label}</Link>; })}</section>)}</nav></aside>;
 }
