@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { LandingFooter, LandingHeader } from "../../components/landing-chrome";
 import styles from "./download.module.css";
+import { buyerAndroidPreview, sellerAndroidPreview } from "../../lib/landing-android-preview";
 
-const release = "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1";
 const entries = [
   {
     role: "buyer",
     label: "خریدار",
     title: "اپلیکیشن خریدار حنا",
     description: "دسترسی به بازارگاه و بخش‌های خرید حنا از تلفن همراه.",
-    android: "hana-buyer-preview.apk",
+    android: buyerAndroidPreview.apk,
+    details: buyerAndroidPreview.details,
     ios: "/install/buyer",
   },
   {
@@ -17,7 +18,8 @@ const entries = [
     label: "فروشنده",
     title: "اپلیکیشن فروشنده حنا",
     description: "دسترسی به پیشخوان و امکانات فروشندگی حنا از تلفن همراه.",
-    android: "hana-seller-preview.apk",
+    android: sellerAndroidPreview.apk,
+    details: sellerAndroidPreview.details,
     ios: "/install/seller",
   },
 ] as const;
@@ -46,7 +48,7 @@ export default function DownloadAppPage() {
                 <p>{app.description}</p>
                 <div className={styles.actions}>
                   <a className={styles.primary} data-testid={"download-android-"+app.role}
-                    href={release+"/"+app.android}
+                    href={app.android}
                     target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
                     دریافت برای اندروید
                   </a>
@@ -62,9 +64,14 @@ export default function DownloadAppPage() {
           <aside className={styles.note} role="note">
             <strong>وضعیت دسترسی</strong>
             <p>فایل‌های اندروید نسخه فعلیِ در حال توسعه هستند و برای پرداخت یا فروش واقعی آماده نشده‌اند. نسخه آیفون از نوع PWA است و به اینترنت نیاز دارد؛ نصب آن به معنی فعال‌شدن امکانات مالی یا عملیاتی نیست.</p>
-            <a href="https://github.com/mahdimarzooghi4-debug/henna/releases/tag/hana-mobile-preview-1783-1"
+            <a href={buyerAndroidPreview.details}
               target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
-              مشخصات نسخه اندروید و اصالت فایل‌ها
+              مشخصات نسخه خریدار و اصالت فایل
+            </a>
+            {" · "}
+            <a href={sellerAndroidPreview.details}
+              target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+              مشخصات نسخه فروشنده و اصالت فایل
             </a>
           </aside>
         </div>
