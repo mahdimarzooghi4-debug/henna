@@ -46,6 +46,70 @@ def hierarchy():
     )
 
 
+def dismiss_known_emulator_anr():
+    """Dismiss only known emulator-system ANRs, never the Henna app's errors."""
+    try:
+        execute("adb", "shell", "uiautomator", "dump",
+                "/sdcard/hana-system-window.xml", timeout=20)
+        raw = execute("adb", "exec-out", "cat",
+                      "/sdcard/hana-system-window.xml", timeout=20)
+        root = ET.fromstring(raw)
+        values = {
+            value for node in root.iter()
+            for key in ("text", "content-desc")
+            if (value := node.attrib.get(key))
+        }
+        known = {
+            "Pixel Launcher isn't responding",
+            "Quickstep isn't responding",
+            "com.google.android.googlesdksetup isn't responding",
+        }
+        observed = next((title for title in known if title in values), None)
+        if observed is None:
+            return False
+        # If the emulator's own launcher is stuck, close only that
+        # known system process so Android can restart it. Never dismiss
+        # or mask an ANR belonging to the Henna application.
+        preferred_action = (
+            "Close app"
+            if observed in {"Pixel Launcher isn't responding",
+                            "Quickstep isn't responding"}
+            else "Wait"
+        )
+        action = next(
+            (node for node in root.iter()
+             if node.attrib.get("text") == preferred_action or
+             node.attrib.get("content-desc") == preferred_action),
+            None,
+        )
+        if action is None and preferred_action != "Wait":
+            action = next(
+                (node for node in root.iter()
+                 if node.attrib.get("text") == "Wait" or
+                 node.attrib.get("content-desc") == "Wait"),
+                None,
+            )
+        if action is None:
+            return False
+        bounds = action.attrib.get("bounds", "")
+        coords = list(map(int, re.findall(r"\d+", bounds)))
+        if len(coords) != 4:
+            return False
+        x1, y1, x2, y2 = coords
+        execute("adb", "shell", "input", "tap",
+                str((x1 + x2) // 2), str((y1 + y2) // 2))
+        print(
+            f"Handled known emulator system ANR ({observed}) via {preferred_action}; "
+            "continuing strict app UI checks.",
+            flush=True,
+        )
+        time.sleep(2)
+        return True
+    except (subprocess.TimeoutExpired, ET.ParseError, AssertionError,
+            StopIteration):
+        return False
+
+
 def wait_screen(*phrases, timeout=110):
     end = time.monotonic() + timeout
     last = "<no UI hierarchy yet>"
@@ -55,6 +119,11 @@ def wait_screen(*phrases, timeout=110):
             if all(phrase in last for phrase in phrases):
                 print("Observed native UI: " + " / ".join(phrases), flush=True)
                 return last
+            if ("Pixel Launcher isn't responding" in last or
+                    "Quickstep isn't responding" in last or
+                    "com.google.android.googlesdksetup isn't responding" in last):
+                dismiss_known_emulator_anr()
+                continue
         except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
             pass
         time.sleep(2)
