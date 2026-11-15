@@ -130,3 +130,36 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 .programDescription p{margin:0;color:#4f4b46;font-size:11px;line-height:1.9}
 @media(max-width:1050px){.programDetailGrid{grid-template-columns:1fr}}
 @media(max-width:720px){.programDetailBackRow{align-items:flex-start;flex-direction:column}.programDetailIdentity{align-self:stretch;justify-content:flex-start}.programDetailGrid{gap:12px}}
+
+/* Figma 386:551 organization program creation */
+.programFormPage{width:100%;min-width:0}
+.programFormCard{width:100%;display:grid;gap:20px;padding:28px 32px;border:1px solid var(--sand);border-radius:12px;background:#fff}
+.programFormHeader{display:grid;gap:4px;width:100%;text-align:right}
+.programFormHeader h2{margin:0;color:var(--ink);font-size:18px;font-weight:800;line-height:1.55}
+.programFormHeader p{margin:0;color:#4f4b46;font-size:13px;line-height:1.7}
+.programFormDivider{width:100%;height:1px;background:var(--sand)}
+.programForm{width:100%;display:grid;gap:16px;margin:0}
+.programFormGrid{width:100%;display:grid;gap:18px}
+.programFormRow{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;direction:ltr}
+.programFormField{min-width:0;display:grid;gap:7px;color:var(--ink);font-size:14px;font-weight:600;text-align:right;direction:rtl}
+.programFormField input,.programFormField select,.programFormField textarea{width:100%;min-width:0;min-height:42px;padding:9px 12px;border:1px solid var(--sand);border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-size:13px;font-weight:400;text-align:right;direction:rtl}
+.programFormField select{background-color:var(--cream);cursor:pointer}
+.programFormField input::placeholder,.programFormField textarea::placeholder{color:#726c65;opacity:1}
+.programFormField textarea{height:100px;resize:vertical;line-height:1.8}
+.programFormNote{margin:0;color:var(--muted);font-size:11px;line-height:1.7;text-align:right}
+.programFormActions{display:flex;justify-content:flex-end;gap:10px;direction:ltr}
+.programFormActions .primaryButton,.programFormActions .outlineButton{min-height:40px;padding:8px 20px;border-radius:7px;font-size:13px}
+.programFinanceBoundary{padding:10px 12px;border:1px solid #e8e1d8;border-radius:7px;background:#faf8f5;color:#62594e;font-size:10px;line-height:1.7;text-align:right}
+.programFinanceBoundary b{color:var(--teal)}
+.programFormNotice,.programFormState{margin:0;padding:14px;border:1px solid var(--sand);border-radius:8px;background:var(--cream);color:var(--ink);font-size:13px;text-align:right}
+.programFormMessage{margin:0;color:#a33e30;font-size:12px;text-align:right}
+@media(max-width:720px){
+ .programFormCard{gap:16px;padding:18px}
+ .programFormHeader h2{font-size:15px}
+ .programFormHeader p{font-size:11px}
+ .programFormRow{grid-template-columns:1fr;gap:14px}
+ .programFormField{font-size:12px}
+ .programFormField input,.programFormField select,.programFormField textarea{font-size:12px}
+ .programFormActions{width:100%;justify-content:stretch}
+ .programFormActions>*{flex:1}
+}
