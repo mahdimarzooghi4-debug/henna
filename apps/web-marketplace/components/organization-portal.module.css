@@ -207,3 +207,34 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 .peopleModal dd{margin:0;font-weight:600;text-align:left}
 @media(max-width:1050px){.peopleFilters{grid-template-columns:repeat(3,minmax(130px,1fr))}.peopleSearch{grid-column:span 2}}
 @media(max-width:720px){.peopleDirectory{gap:12px}.peopleBanner{padding:11px 12px;font-size:11px}.peopleFilters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.peopleSearch{grid-column:1/-1}.peopleTable{min-width:950px}.peopleModal{padding:18px}.peopleModal dl>div{font-size:11px}}
+
+/* Figma 386:1024 organization manual recipients intake */
+.peopleIntakePage{width:100%;min-width:0;display:grid;gap:16px}
+.peopleBackRow{width:100%;display:flex;justify-content:flex-start;direction:ltr}
+.peopleBackLink{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--sand);border-radius:7px;background:#fff;color:var(--teal);font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap}
+.peopleBackLink:hover{background:#f7f3ed}
+.peopleFormsGrid{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:18px;direction:ltr}
+.peopleIntakeCard{min-width:0;display:grid;align-content:start;gap:18px;padding:24px;border:1px solid var(--sand);border-radius:11px;background:#fff;direction:rtl}
+.peopleIntakeHeader{display:grid;gap:4px;text-align:right}
+.peopleIntakeHeader h2{margin:0;color:var(--ink);font-size:15px;font-weight:800;line-height:1.6}
+.peopleIntakeHeader p{margin:0;color:#6b665f;font-size:10px;line-height:1.7}
+.peopleIntakeDivider{width:100%;height:1px;background:var(--line)}
+.peopleFileDrop{min-height:116px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px;border:1px dashed var(--sand);border-radius:8px;background:var(--cream);text-align:center;cursor:pointer;transition:border-color .12s,background .12s}
+.peopleFileDropActive,.peopleFileDrop:hover{border-color:var(--teal);background:#f2f7f6}
+.peopleFileDrop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.peopleUploadIcon{width:30px;height:30px;display:grid;place-items:center;color:var(--teal)}
+.peopleUploadIcon svg{width:28px;height:28px}
+.peopleFileDrop strong{max-width:100%;overflow:hidden;color:var(--ink);font-size:11px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.peopleFileDrop small{color:#8a9a6b;font-size:9px;line-height:1.6}
+.peopleBatchActions{display:flex;align-items:center;justify-content:flex-start;gap:8px;direction:ltr}
+.peopleBatchActions .primaryButton,.peopleBatchActions .outlineButton,.peopleSingleActions .primaryButton,.peopleSingleActions .outlineButton{min-height:34px;padding:6px 13px;border-radius:6px;font-size:11px}
+.peopleSingleForm{display:grid;gap:14px}
+.peopleSingleForm>label{display:grid;gap:5px;color:var(--ink);font-size:11px;font-weight:600;text-align:right}
+.peopleSingleForm input,.peopleSingleForm select{width:100%;min-width:0;height:36px;padding:7px 10px;border:1px solid var(--sand);border-radius:7px;background:#fff;color:var(--ink);font:inherit;font-size:11px;font-weight:400;text-align:right;direction:rtl}
+.peopleSingleForm input::placeholder{color:#8a9a6b;opacity:1}
+.peopleSingleForm select{background:var(--cream);cursor:pointer}
+.peopleSingleForm .peoplePhone{direction:ltr;text-align:right}
+.peopleSingleActions{display:flex;justify-content:flex-end;gap:8px;direction:ltr}
+.peopleIntakeMessage{margin:0;padding:8px 10px;border-radius:6px;background:var(--cream);color:var(--teal);font-size:10px;line-height:1.7;text-align:right}
+@media(max-width:900px){.peopleFormsGrid{grid-template-columns:1fr}}
+@media(max-width:720px){.peopleIntakePage{gap:12px}.peopleBackLink{font-size:10px}.peopleFormsGrid{gap:12px}.peopleIntakeCard{gap:14px;padding:17px}.peopleIntakeHeader h2{font-size:13px}.peopleIntakeHeader p{font-size:9px}.peopleFileDrop{min-height:108px;padding:14px}.peopleBatchActions{flex-wrap:wrap}.peopleBatchActions>*{flex:1}}
