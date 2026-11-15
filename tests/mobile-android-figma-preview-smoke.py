@@ -110,6 +110,36 @@ def tap(name, scroll=True):
     raise AssertionError(f"Cannot tap native {name!r}; last={last[-4000:]}")
 
 
+def tap_first_prefix(prefix, scroll=True):
+    """Tap the first visible genuine native accessibility control with this prefix."""
+    last = "<no hierarchy>"
+    for _ in range(9 if scroll else 3):
+        try:
+            root = nodes()
+            if dismiss_known_emulator_launcher_anr(root):
+                continue
+            last = labels(root)
+            for node in root.iter():
+                label = node.attrib.get("content-desc", "")
+                if not label.startswith(prefix):
+                    continue
+                coords = list(map(int, re.findall(r"[0-9]+", node.attrib.get("bounds", ""))))
+                if len(coords) != 4:
+                    continue
+                x1, y1, x2, y2 = coords
+                if x2 <= x1 or y2 <= y1:
+                    continue
+                execute("adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2))
+                print("Native preview touched " + label, flush=True)
+                return
+        except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
+            pass
+        if scroll:
+            execute("adb", "shell", "input", "swipe", "520", "1550", "520", "510", "380")
+        time.sleep(1)
+    raise AssertionError(f"Cannot tap prefix {prefix!r}; last={last[-3200:]}")
+
+
 def screenshot(stage):
     path = ROOT / "tests" / f".hana-figma-android-{stage}.png"
     with open(path, "wb") as f:
@@ -162,7 +192,37 @@ def main():
 
     tap("بازگشت به خانه", scroll=False)
     inspect("به حنا خوش آمدید")
-    print("PASS: real installed offline Android Figma home/catalog/filter navigation; no OTP or API", flush=True)
+
+    # Complete the same native Figma journey beyond the previous dead end.
+    # Absolutely no provider, bank, real wallet, address or order service is used.
+    tap("همه پیشنهادها")
+    inspect("کالاها و خدمات")
+    tap_first_prefix("افزودن ")
+    tap("سبد خرید", scroll=False)
+    inspect("مقایسه فروشگاه‌ها")
+    screenshot("cart")
+    tap("مقایسه فروشگاه‌ها")
+    inspect("تمرین ادامه خرید با فروشگاه نمونه")
+    tap("تمرین ادامه خرید با فروشگاه نمونه")
+    inspect("ادامه ثبت سفارش")
+    tap("ادامه ثبت سفارش")
+    inspect("آدرس نمونه — فقط برای نمایش طراحی")
+    screenshot("checkout")
+
+    # Figma 227:549 has three distinct payment choices, plus a legal invoice toggle.
+    # These are visual-only choices, not payment or credit authorizations.
+    tap("درگاه آنلاین بانکی")
+    tap("اعتبار حمایتی موجود")
+    tap("اعتبار شخصی تأمین‌شده توسط کاربر")
+    screenshot("payments")
+    tap("مشاهده نتیجه سفارش نمونه (بدون پرداخت)")
+    inspect("سفارش نمونه در تمرین ثبت شد.", seconds=80)
+    screenshot("order-success")
+    tap("پیگیری سفارش نمونه")
+    inspect("سفارش نمونه محله")
+    screenshot("order-tracking")
+    assert "شماره موبایل خود را وارد کنید" not in labels(nodes()), "Unexpected OTP"
+    print("PASS: installed offline Android Figma home/catalog/filters/cart/checkout/payment choices/sample success/tracking with no OTP, API or payment", flush=True)
 
 
 if __name__ == "__main__":
