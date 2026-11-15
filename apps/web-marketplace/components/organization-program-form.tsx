@@ -23,6 +23,7 @@ export function OrganizationProgramForm() {
   const [mode, setMode] = useState<AllocationMode>("HENNA_NEEDS_BASED");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
+  const [previewMode, setPreviewMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -32,6 +33,7 @@ export function OrganizationProgramForm() {
     void fetch("/api/organization/profiles", { cache: "no-store", signal: controller.signal }).then(async (response) => {
       const body: unknown = await response.json().catch(() => null);
       if (controller.signal.aborted) return;
+      if (response.status === 401) { setPreviewMode(true); setLoading(false); return; }
       if (!response.ok || !body || typeof body !== "object" || !("profiles" in body) || !Array.isArray(body.profiles)) {
         setLoadError(body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : "اطلاعات عضویت سازمانی در دسترس نیست.");
         setLoading(false); return;
@@ -47,6 +49,7 @@ export function OrganizationProgramForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setMessage("");
+    if (previewMode) { router.push(`/auth?returnTo=${encodeURIComponent("/organization/programs/new")}`); return; }
     if (!canCreate) { setMessage("نقش این حساب اجازه ثبت پیش‌نویس طرح را ندارد."); return; }
     if (!programKind || !source || !name.trim() || name.trim().length > 120 || description.length > 1200 || !allowedModes.includes(mode)) { setMessage("اطلاعات طرح را بررسی کنید."); return; }
     const payload = { organizationId, name: name.trim(), allocationMode: mode, description: description.trim() };
@@ -70,7 +73,7 @@ export function OrganizationProgramForm() {
           <p>مشخصات اولیه، الگوی تخصیص و دامنه افراد مشمول را مشخص نمایید.</p>
         </header>
         <div className={styles.programFormDivider}/>
-        {loading ? <p role="status" className={styles.programFormState}>در حال بررسی عضویت سازمانی…</p> : loadError ? <div className={styles.programFormNotice} role="alert">{loadError}</div> : profiles.length === 0 ? <div className={styles.programFormNotice}>برای این حساب عضویت فعال سازمانی ثبت نشده است.</div> : !canCreate ? <div className={styles.programFormNotice}>نقش فعلی فقط امکان مشاهده دارد؛ برای ساخت پیش‌نویس با مدیر یا نمایندهٔ سازمان تماس بگیرید.</div> : <form className={styles.programForm} onSubmit={submit}>
+        {loading ? <p role="status" className={styles.programFormState}>در حال بررسی عضویت سازمانی…</p> : loadError ? <div className={styles.programFormNotice} role="alert">{loadError}</div> : profiles.length === 0 && !previewMode ? <div className={styles.programFormNotice}>برای این حساب عضویت فعال سازمانی ثبت نشده است.</div> : !canCreate && !previewMode ? <div className={styles.programFormNotice}>نقش فعلی فقط امکان مشاهده دارد؛ برای ساخت پیش‌نویس با مدیر یا نمایندهٔ سازمان تماس بگیرید.</div> : <form className={styles.programForm} onSubmit={submit}>
           <div className={styles.programFormGrid}>
             <div className={styles.programFormRow}>
               <label className={styles.programFormField}>نوع اعتبار / برنامه
@@ -103,7 +106,7 @@ export function OrganizationProgramForm() {
               <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1200} rows={4} placeholder="شرح اهداف، نحوه استفاده و اطلاعات تکمیلی برای مشمولان طرح..."/>
             </label>
           </div>
-          <p className={styles.programFormNote}>در ثبت اولیه، فقط نام طرح، روش تخصیص و توضیحات ذخیره می‌شود؛ نوع برنامه و منبع افراد در مرحله بعد پیکربندی خواهند شد.</p>
+          <p className={styles.programFormNote}>{previewMode ? "پیش‌نمایش طرح؛ برای ثبت پیش‌نویس وارد پنل سازمان شوید. نوع برنامه و منبع افراد در مرحله بعد پیکربندی خواهند شد." : "در ثبت اولیه، فقط نام طرح، روش تخصیص و توضیحات ذخیره می‌شود؛ نوع برنامه و منبع افراد در مرحله بعد پیکربندی خواهند شد."}</p>
           <div className={styles.programFormDivider}/>
           {message && <p className={styles.programFormMessage} role="alert">{message}</p>}
           <div className={styles.programFormActions}>
