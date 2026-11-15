@@ -103,21 +103,18 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
   if (data.error && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail") {
     const needsLogin = data.error.includes("وارد شوید") || data.error.includes("نشست معتبر نیست");
-    const returnTo = screen === "program-detail" && programId
-      ? `/organization/programs/${programId}`
-      : screen === "allocation-detail" && allocationId
-        ? `/organization/allocation/${allocationId}`
-        : screen === "people-new"
-          ? "/organization/people/new"
-          : ({
-              dashboard: "/organization", profile: "/organization/profile",
-              people: "/organization/people", api: "/organization/data-sources",
-              allocation: "/organization/allocation", usage: "/organization/usage",
-              reports: "/organization/reports", notifications: "/organization/notifications",
-              support: "/organization/support", settings: "/organization/settings",
-              "program-detail": "/organization/programs",
-              "allocation-detail": "/organization/allocation",
-            } as const)[screen];
+    const returnTo = screen === "allocation-detail" && allocationId
+      ? `/organization/allocation/${allocationId}`
+      : screen === "people-new"
+        ? "/organization/people/new"
+        : ({
+            dashboard: "/organization", profile: "/organization/profile",
+            people: "/organization/people", api: "/organization/data-sources",
+            allocation: "/organization/allocation", usage: "/organization/usage",
+            reports: "/organization/reports", notifications: "/organization/notifications",
+            support: "/organization/support", settings: "/organization/settings",
+            "allocation-detail": "/organization/allocation",
+          } as const)[screen];
     return <OrganizationPortalShell active={active} title={title}>
       {needsLogin ? <>
         <Notice tone="warning">برای نمایش اطلاعات این بخش باید وارد حساب حنا شوید.</Notice>
