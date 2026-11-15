@@ -31,3 +31,29 @@ test("preview startup skips auth, real catalog fetch and financial flows", () =>
   // The existing commerce route remains a separate authenticated native path.
   assert.match(app,/if \(isPreviewSession\) \{[\s\S]*?ثبت سبد و سفارش به نشست واقعی خریدار نیاز دارد/);
 });
+
+test("all Figma checkout payment choices stay visible but isolated from real payments", () => {
+  const checkout = readFileSync("apps/mobile-consumer/src/buyer-preview-purchase.tsx","utf8");
+  const browse = readFileSync("apps/mobile-consumer/src/buyer-browse-screen.tsx","utf8");
+  for(const text of [
+    "درگاه آنلاین بانکی",
+    "اعتبار حمایتی موجود",
+    "اعتبار شخصی تأمین‌شده توسط کاربر",
+    "خرید حقوقی و دریافت فاکتور رسمی",
+    "مشاهده نتیجه سفارش نمونه (بدون پرداخت)",
+    "سفارش نمونه در تمرین ثبت شد.",
+    "پیگیری سفارش نمونه",
+    "هیچ پرداخت، افزایش اعتبار یا برداشت وجه انجام نمی‌شود.",
+  ]) assert.ok(checkout.includes(text), "Missing offline Figma journey text: "+text);
+  assert.match(checkout,/onSubmit:\(paymentMethod:PreviewPaymentMethod\)=>void/);
+  assert.match(checkout,/disabled=\{count===0\} onPress=\{\(\)=>onSubmit\(paymentMethod\)\}/);
+  assert.match(checkout,/disabled=\{legal\}/);
+  assert.match(checkout,/accessibilityRole="radio"/);
+  assert.match(checkout,/accessibilityRole="checkbox"/);
+  assert.match(checkout,/value="پرداخت نشده؛ تمرین"/);
+  assert.match(browse,/onSubmit=\{\(paymentMethod\)=>\{if\(count===0\)return;/);
+  assert.match(browse,/recipient:address\?\.recipient\?\?"کاربر نمونه \(بدون آدرس\)"/);
+  assert.match(browse,/paymentMethod\};setPreviewOrders\(v=>\[\.\.\.v,next\]\)/);
+  assert.doesNotMatch(checkout,/MobileCommerceClient|\.placeOrder\(|\.createOrder\(|\.startPayment\(|paymentGateway|wallet\.debit|fetch\(/i,
+    "Figma preview screen must not invoke real commerce or payment systems");
+});
