@@ -98,8 +98,10 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
     dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات سازمان", "program-detail": "جزئیات طرح سازمانی", people: "ارجاع خانوارها", "people-new": "ثبت ارجاع خانوارها", api: "منابع داده و API", allocation: "وضعیت تخصیص", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
   };
   const title = titles[screen];
-  if (data.loading) return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
-  if (data.error) {
+  // The dashboard is a public, read-only Figma sample. Keep organization data
+  // and every other portal screen behind the existing authenticated APIs.
+  if (data.loading && screen !== "dashboard") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
+  if (data.error && screen !== "dashboard") {
     const needsLogin = data.error.includes("وارد شوید") || data.error.includes("نشست معتبر نیست");
     const returnTo = screen === "program-detail" && programId
       ? `/organization/programs/${programId}`
