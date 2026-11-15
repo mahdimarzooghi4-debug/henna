@@ -27,6 +27,8 @@ const navigation: { key: PortalKey; label: string; href: string; glyph: string }
 
 function Icon({ name }: { name: string }) {
   const path: Record<string, ReactNode> = {
+    refresh: <><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></>,
+    award: <><circle cx="12" cy="8" r="6"/><path d="m8.2 13-1 8 4.8-2.7 4.8 2.7-1-8"/></>,
     home: <><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/></>,
     package: <><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></>,
     users: <><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
@@ -47,8 +49,15 @@ export function OrganizationPortalShell({ active, title, children }: { active: P
     <aside className={styles.sidebar}>
       <Link href="/organization" className={styles.brand} aria-label="داشبورد پرتال سازمانی"><img src="/hana-logo.png" alt="حنا"/><b>پنل سازمان‌ها</b></Link>
       <nav aria-label="منوی پرتال سازمانی">{navigation.map(item => <Link href={item.href} key={item.key} className={`${styles.navItem}${active === item.key ? ` ${styles.active}` : ""}`} aria-current={active === item.key ? "page" : undefined}><span className={styles.glyph}><Icon name={item.glyph}/></span><span>{item.label}</span></Link>)}</nav>
+      <div className={styles.userFooter}><div><b>حساب کاربری سازمان</b><small>دسترسی پرتال سازمانی</small></div><span className={styles.avatar}>س</span></div>
     </aside>
-    <div className={styles.main}><header className={styles.topbar}><h1>{title}</h1><Link href="/organization/profile" className={styles.profileLink}>پروفایل سازمان</Link></header><div className={styles.content}>{children}</div></div>
+    <div className={styles.main}><header className={styles.topbar}>
+      <h1>{title}</h1>
+      <div className={styles.headerMeta}>
+        <span className={styles.organizationChip}>پرتال سازمانی</span>
+        <span className={styles.syncTime}>آخرین همگام‌سازی ثبت‌شده <Icon name="refresh" /></span>
+      </div>
+    </header><div className={styles.content}>{children}</div></div>
   </main>;
 }
 
@@ -123,28 +132,122 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   const selectedProgram = data.programs.find(program => program.programId === programId);
   if (screen === "dashboard") return <OrganizationPortalShell active="dashboard" title={title}>
-    <Notice>این داشبورد فقط وضعیت ذخیره‌شدهٔ حساب و پیش‌نویس‌های سازمان را نشان می‌دهد. تخصیص مالی، موجودی و مصرف در سرویس فعلی پیاده‌سازی نشده‌اند.</Notice>
-    {data.profiles.length === 0 ? <Card><p>برای این حساب عضویت فعال سازمانی ثبت نشده است.</p></Card> : data.profiles.map(profile => <Card key={profile.membershipId} title={profile.organizationName}><DataRows rows={[["نقش شما", roleNames[profile.memberRole]], ["پیش‌نویس‌های ثبت‌شده", String(data.programs.filter(x => x.organizationId === profile.organizationId).length)]]}/></Card>)}
-    <Card title="طرح‌های ثبت‌شده">{data.programs.length ? <div className={styles.programList}>{data.programs.map(program => <ProgramLinks key={program.programId} program={program}/>)}</div> : <p>هنوز پیش‌نویسی ثبت نشده است. <Link href="/organization/programs/new">ایجاد پیش‌نویس</Link></p>}</Card>
+    <section className={styles.orgBanner}>
+      <strong><Icon name="award" />{data.profiles[0]?.organizationName ?? "سازمان"} | روش تخصیص: الگوی حنا</strong>
+      <p>تخصیص اعتبار بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود.</p>
+    </section>
+    <div className={styles.dashboardGrid}>
+      <div className={styles.stack}>
+        <Card title="وضعیت همگام‌سازی افراد">
+          <div className={styles.rowBetween}><span className={styles.status}>متصل نیست</span><span>دریافت افراد از منبع داده سازمان</span></div>
+          <div className={styles.statSplit}><div><small>تعداد مشمولان فعال</small><b>دریافت نشده</b></div><i/><div><small>آخرین به‌روزرسانی منبع</small><b>ثبت نشده</b></div></div>
+        </Card>
+        <Card title="فعالیت‌های اخیر پرتال">
+          {data.programs.length ? <ul className={styles.activityList}>{data.programs.slice(0,3).map(program=><li key={program.programId}><span>{program.name} — پیش‌نویس طرح ثبت شد</span><span className={styles.dot}/><small>{new Intl.DateTimeFormat("fa-IR",{dateStyle:"short",timeZone:"Asia/Tehran"}).format(new Date(program.createdAtUtc))}</small></li>)}</ul> : <div className={styles.emptyInline}><b>فعالیتی برای نمایش وجود ندارد</b><span>رویدادها پس از ثبت در سرویس سازمان نمایش داده می‌شوند.</span></div>}
+        </Card>
+      </div>
+      <div className={styles.stack}>
+        <Card title="وضعیت آخرین تخصیص">
+          <div className={styles.rowBetween}><span className={styles.status}>ثبت نشده</span><span>وضعیت توزیع</span></div>
+          <DataRows rows={[["روش تخصیص فعال", "الگوی تخصیص حنا"], ["دوره هدف تخصیص", "تعیین نشده"]]}/>
+        </Card>
+        <Card title="طرح‌های فعال و ثبت‌شده">
+          {data.programs.length ? <div className={styles.programMiniList}>{data.programs.slice(0, 3).map(program => <Link href={`/organization/programs/${program.programId}`} key={program.programId}><span><b>{program.name}</b><small>{modeNames[program.allocationMode]}</small></span><span className={styles.status}>پیش‌نویس</span></Link>)}</div> : <p>طرحی برای نمایش ثبت نشده است. <Link href="/organization/programs/new">ایجاد پیش‌نویس</Link></p>}
+        </Card>
+      </div>
+    </div>
   </OrganizationPortalShell>;
 
-  if (screen === "profile") return <OrganizationPortalShell active="profile" title={title}>{data.profiles.length === 0 ? <Notice>برای این حساب پروفایل سازمانی فعال پیدا نشد.</Notice> : data.profiles.map(profile => <Card key={profile.membershipId} title={profile.organizationName}><DataRows rows={[["عنوان سازمان", profile.organizationName], ["نقش دسترسی", roleNames[profile.memberRole]], ["اطلاعات تماس و نماینده", "در سرویس فعلی ثبت نشده است"]]}/></Card>)}</OrganizationPortalShell>;
+  if (screen === "profile") return <OrganizationPortalShell active="profile" title={title}>
+    <div className={styles.profileGrid}>
+      <Card title="شناسه و اطلاعات هویتی سازمان">{data.profiles.length ? data.profiles.map(profile => <DataRows key={profile.membershipId} rows={[["عنوان سازمان", profile.organizationName], ["نوع سازمان", "ثبت نشده"], ["روش تخصیص پیش‌فرض", "در انتظار تعیین در سرویس"], ["وضعیت حساب کاربری", roleNames[profile.memberRole]]]} />) : <p>برای این حساب پروفایل سازمانی فعال پیدا نشد.</p>}</Card>
+      <div className={styles.stack}>
+        <Card title="اطلاعات تماس ثبت‌شده"><DataRows rows={[["تلفن ثبت سازمان", "در سرویس ثبت نشده"], ["پست الکترونیکی رسمی", "در سرویس ثبت نشده"], ["نشانی فیزیکی", "در سرویس ثبت نشده"]]}/></Card>
+        <Card title="اطلاعات نماینده سازمان"><DataRows rows={[["نام و نام خانوادگی نماینده", "در سرویس ثبت نشده"], ["شماره شناسایی کاربری", "در سرویس ثبت نشده"], ["شماره تماس نماینده", "در سرویس ثبت نشده"]]}/></Card>
+      </div>
+    </div>
+  </OrganizationPortalShell>;
 
-  if (screen === "program-detail") return <OrganizationPortalShell active="programs" title={title}>{!selectedProgram ? <Notice tone="warning">طرح پیدا نشد یا در فهرست قابل دسترس این سازمان نیست.</Notice> : <><Card title={selectedProgram.name}><DataRows rows={[["سازمان", selectedProgram.organizationName], ["وضعیت", "پیش‌نویس"], ["روش ثبت‌شده", modeNames[selectedProgram.allocationMode]], ["نسخه", String(selectedProgram.revision)], ["توضیحات", selectedProgram.description || "توضیحی ثبت نشده است"]]}/></Card><Notice>این پیش‌نویس اعتبار، موجودی یا تخصیص ایجاد نمی‌کند. ثبت مرجع تأمین نیز فقط برای بررسی ارسال می‌شود.</Notice><div className={styles.actionCards}><Card title="تأمین برنامه"><p>ثبت یا پیگیری مرجع دستور تأمین مالی. ثبت مرجع به‌تنهایی اثبات وصول وجه یا اختیار تأمین نیست.</p><Link className={styles.primaryButton} href={`/organization/programs/${selectedProgram.programId}/funding-instruction`}>پیگیری دستور تأمین</Link></Card><Card title="ارجاع خانوار"><p>اطلاعات کیفی خانوار را برای بررسی بعدی ثبت کنید. این کار تصمیم استحقاق یا تخصیص نیست.</p><Link className={styles.outlineButton} href={`/organization/programs/${selectedProgram.programId}/household-referrals`}>مشاهده و ثبت ارجاع‌ها</Link></Card></div></>}</OrganizationPortalShell>;
+  if (screen === "program-detail") return <OrganizationPortalShell active="programs" title={title}>
+    <div className={styles.backRow}><Link className={styles.outlineButton} href="/organization/programs">← بازگشت به مدیریت طرح‌ها</Link></div>
+    {!selectedProgram ? <Notice tone="warning">طرح پیدا نشد یا در فهرست قابل دسترس این سازمان نیست.</Notice> : <>
+      <div className={styles.detailTop}><span className={styles.status}>پیش‌نویس</span><span>شناسه طرح: {selectedProgram.programId}</span></div>
+      <Notice>پردازش بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود. نتیجه نهایی تخصیص نیازمند بررسی جداگانه است.</Notice>
+      <div className={styles.detailGrid}>
+        <div className={styles.stack}>
+          <Card title="دامنه افراد و مشمولان"><DataRows rows={[["وضعیت فهرست افراد", "داده‌ای ثبت نشده"], ["منبع داده", "متصل نشده"], ["وضعیت احراز", "قابل نمایش نیست"]]}/></Card>
+          <Card title="وضعیت تخصیص و استفاده"><p>این پیش‌نویس هنوز تخصیص یا مصرف اعتباری ندارد.</p><Link className={styles.outlineButton} href="/organization/usage">مشاهده وضعیت استفاده</Link></Card>
+        </div>
+        <Card title="اطلاعات پایه طرح"><DataRows rows={[["طرح مرتبط", selectedProgram.name], ["روش تخصیص فعال", modeNames[selectedProgram.allocationMode]], ["تعداد دوره‌های ورودی", "ثبت نشده"], ["وضعیت پردازش", "پیش‌نویس"]]}/><div className={styles.descriptionBlock}><b>توضیحات طرح</b><p>{selectedProgram.description || "توضیحی ثبت نشده است."}</p></div></Card>
+      </div>
+      <div className={styles.actionCards}><Card title="تأمین برنامه"><p>ثبت یا پیگیری مرجع دستور تأمین مالی. ثبت مرجع به‌تنهایی اثبات وصول وجه یا اختیار تأمین نیست.</p><Link className={styles.primaryButton} href={`/organization/programs/${selectedProgram.programId}/funding-instruction`}>پیگیری دستور تأمین</Link></Card><Card title="ارجاع خانوار"><p>اطلاعات کیفی خانوار را برای بررسی بعدی ثبت کنید. این کار تصمیم استحقاق یا تخصیص نیست.</p><Link className={styles.outlineButton} href={`/organization/programs/${selectedProgram.programId}/household-referrals`}>مشاهده و ثبت ارجاع‌ها</Link></Card></div>
+    </>}
+  </OrganizationPortalShell>;
 
-  if (screen === "people" || screen === "people-new") return <OrganizationPortalShell active="people" title={title}><Notice>این سامانه در حال حاضر ارجاع خانوار را به‌صورت وابسته به طرح ثبت می‌کند؛ فهرست افراد، حساب حنا یا نتیجهٔ استحقاق از آن استنباط نمی‌شود.</Notice>{data.programs.length === 0 ? <Card><p>برای ثبت ارجاع، ابتدا یک پیش‌نویس طرح ایجاد کنید.</p><Link className={styles.primaryButton} href="/organization/programs/new">ایجاد پیش‌نویس طرح</Link></Card> : <Card title="طرح‌های قابل ارجاع"><div className={styles.programList}>{data.programs.map(program => <ProgramLinks key={program.programId} program={program}/>)}</div></Card>}</OrganizationPortalShell>;
+  if (screen === "people" || screen === "people-new") return <OrganizationPortalShell active="people" title={title}>
+    <Notice>فهرست افراد فقط پس از اتصال و همگام‌سازی منبع داده قابل نمایش است. هیچ وضعیت استحقاق یا عضویتی از این صفحه نتیجه‌گیری نمی‌شود.</Notice>
+    {screen === "people" ? <>
+      <div className={styles.toolbar}><input aria-label="جست‌وجو" placeholder="جست‌وجو بر اساس نام یا شناسه…"/><select aria-label="طرح"><option>همه طرح‌ها</option>{data.programs.map(p=><option key={p.programId}>{p.name}</option>)}</select><select aria-label="وضعیت"><option>همه وضعیت‌ها</option><option>در انتظار بررسی</option><option>ثبت‌شده</option></select><select aria-label="منبع"><option>همه منابع</option><option>ارجاع دستی</option><option>منبع سازمانی</option></select><Link className={styles.primaryButton} href="/organization/people/new">افزودن افراد</Link></div>
+      <Card title="فهرست افراد و مشمولان"><div className={styles.emptyTable}><Icon name="users"/><b>اطلاعاتی برای نمایش وجود ندارد</b><span>پس از اتصال منبع داده یا ثبت ارجاع، رکوردهای مجاز در این فهرست نمایش داده می‌شوند.</span></div></Card>
+    </> : <div className={styles.twoCards}>
+      <Card title="ثبت دستی افراد"><p>ثبت افراد به‌صورت گروهی تا فعال‌شدن API سازمان در دسترس نیست. از فرم ارجاع خانوار در صفحه طرح استفاده کنید.</p><div className={styles.form}><label>انتخاب طرح<select defaultValue=""><option value="" disabled>یک طرح را انتخاب کنید</option>{data.programs.map(p=><option key={p.programId} value={p.programId}>{p.name}</option>)}</select></label><label>شناسه مرجع فرد<input placeholder="پس از اتصال سرویس فعال می‌شود" disabled/></label></div><div className={styles.buttonRow}><button className={styles.primaryButton} type="button" disabled>ثبت افراد</button><Link className={styles.outlineButton} href="/organization/people">بازگشت به فهرست</Link></div></Card>
+      <Card title="بارگذاری فایل اکسل / CSV"><div className={styles.dropZone}>⇧<span>بارگذاری فایل افراد</span><small>بارگذاری تا زمان تأیید قالب و اتصال سرویس غیرفعال است.</small><input type="file" accept=".csv,.xlsx" disabled/></div></Card>
+    </div>}
+  </OrganizationPortalShell>;
 
-  if (screen === "allocation") return <OrganizationPortalShell active="allocation" title={title}><Notice>اجرای تخصیص هنوز سرویس ندارد. این فهرست فقط روش انتخاب‌شده و مسیرهای ثبت‌شده را نشان می‌دهد؛ هیچ مبلغ یا تعداد مشمولی محاسبه نشده است.</Notice>{data.programs.length ? <Card title="پیش‌نویس‌ها"><div className={styles.programList}>{data.programs.map(program => <ProgramLinks key={program.programId} program={program}/>)}</div></Card> : <Card><p>پیش‌نویسی برای نمایش وجود ندارد.</p></Card>}</OrganizationPortalShell>;
+  if (screen === "allocation") return <OrganizationPortalShell active="allocation" title={title}>
+    <div className={styles.toolbar}><select aria-label="نوع سازمان"><option>نوع سازمان: همه</option><option>سازمان حمایتی</option></select><select aria-label="روش تخصیص"><option>روش تخصیص: همه</option><option>الگوی تخصیص حنا</option></select><span className={styles.toolbarCaption}>دوره تخصیص: تعیین نشده</span></div>
+    <Notice>اجرای تخصیص تا آماده‌شدن سرویس مربوط غیرفعال است. این صفحه مبلغ، اعتبار یا تعداد مشمولان را تخمین نمی‌زند.</Notice>
+    <div className={styles.allocationGrid}>
+      <Card title="جمعیت و منبع داده"><DataRows rows={[["افراد ثبت‌شده", "داده‌ای دریافت نشده"], ["منبع سازمانی", "متصل نشده"], ["آخرین همگام‌سازی", "ثبت نشده"]]}/></Card>
+      <Card title="قواعد تخصیص"><DataRows rows={[["روش تخصیص", "الگوی تخصیص حنا"], ["معیارهای بررسی", "در انتظار تنظیم"], ["وضعیت قواعد", "نیازمند پیکربندی"]]}/></Card>
+      <Card title="گردش کار تخصیص"><div className={styles.workflow}><span>ثبت درخواست</span><i/><span>بررسی</span><i/><span>تأیید</span><i/><span>اجرا</span></div><p>درخواست تخصیصی ثبت نشده است.</p></Card>
+      <Card title="تخصیص اعتبار"><p>برای شروع، منبع داده و قواعد باید در سرویس سازمان ثبت و تأیید شوند.</p><button className={styles.primaryButton} disabled type="button">ثبت درخواست تخصیص</button></Card>
+    </div>
+  </OrganizationPortalShell>;
 
-  if (screen === "allocation-detail") return <OrganizationPortalShell active="allocation" title={title}><Notice tone="warning">شناسه «{allocationId ?? ""}» به رکورد تخصیص متصل نیست؛ در سرویس فعلی رکورد یا API اجرای تخصیص وجود ندارد.</Notice><Link className={styles.outlineButton} href="/organization/allocation">بازگشت به وضعیت تخصیص</Link></OrganizationPortalShell>;
+  if (screen === "allocation-detail") return <OrganizationPortalShell active="allocation" title={title}>
+    <div className={styles.backRow}><Link className={styles.outlineButton} href="/organization/allocation">← بازگشت به مدیریت تخصیص‌ها</Link></div>
+    <div className={styles.detailTop}><span className={styles.status}>در انتظار داده</span><span>شناسه تخصیص: {allocationId ?? "—"}</span></div>
+    <Notice>پردازش بر اساس قواعد و الگوی تخصیص ثبت‌شده انجام می‌شود. نتیجه نهایی تخصیص نیازمند بررسی جداگانه است.</Notice>
+    <div className={`${styles.detailGrid} ${styles.allocationDetailGrid}`}><Card title="اطلاعات پایه تخصیص"><DataRows rows={[["طرح مرتبط", "در سرویس ثبت نشده"], ["روش تخصیص فعال", "الگوی تخصیص حنا"], ["تعداد رکوردهای ورودی", "داده‌ای ثبت نشده"], ["وضعیت پردازش", "در انتظار بررسی"]]}/></Card><div className={styles.stack}><Card title="نتیجه نهایی تخصیص"><DataRows rows={[["نتیجه تخصیص", "در انتظار بررسی نهایی"], ["کدهای تخصیص‌یافته", "داده‌ای ثبت نشده"], ["وضعیت تخصیص", "ثبت نشده"]]}/></Card><Card title="موارد نیازمند بررسی"><div className={styles.reviewItem}><b>اطلاعات حساب حنا تطبیق نشده است.</b><small>اطلاعات حساب از سرویس دریافت نشده است.</small></div></Card></div></div>
+  </OrganizationPortalShell>;
 
-  const deferred: Partial<Record<typeof screen, string>> = {
-    api: "اتصال منبع داده، همگام‌سازی و آزمون API هنوز به سرویس سازمان متصل نشده‌اند.",
-    usage: "گزارش مصرف یا تراکنش در دسترس این پنل نیست.",
-    reports: "گزارش تحلیلی تا اتصال سرویس تخصیص و مصرف تولید نمی‌شود.",
-    notifications: "اعلان‌های سازمانی در API فعلی ذخیره نمی‌شوند.",
-    support: "ثبت و پیگیری تیکت پشتیبانی هنوز به سرویس وصل نیست.",
-    settings: "مدیریت کاربران و تنظیمات اعلان هنوز به API وصل نیست.",
-  };
-  return <OrganizationPortalShell active={active} title={title}><Notice>{deferred[screen] ?? "این بخش هنوز به سرویس متصل نشده است."}</Notice><Card><p>پس از آماده‌شدن سرویس مربوط، این صفحه با دادهٔ واقعی پر خواهد شد.</p></Card></OrganizationPortalShell>;
+  if (screen === "api") return <OrganizationPortalShell active="api" title={title}>
+    <Notice>اتصال منبع داده و همگام‌سازی افراد هنوز برای این سازمان پیکربندی نشده است. جزئیات خطا و وضعیت اتصال پس از دریافت از سرویس نمایش داده می‌شود.</Notice>
+    <div className={styles.twoCards}>
+      <Card title="خطاهای همگام‌سازی اخیر"><div className={styles.emptyTable}><Icon name="database"/><b>خطایی ثبت نشده است</b><span>وضعیت همگام‌سازی از سرویس سازمان دریافت نشده.</span></div></Card>
+      <Card title="وضعیت اتصال درگاه سازمان"><div className={styles.connectionState}><span className={styles.status}>پیکربندی نشده</span><DataRows rows={[["نشانی درگاه", "ثبت نشده"], ["آخرین بررسی اتصال", "ثبت نشده"]]}/></div><div className={styles.buttonRow}><button className={styles.primaryButton} disabled type="button">بررسی اتصال</button><button className={styles.outlineButton} disabled type="button">تنظیم منبع داده</button></div></Card>
+    </div>
+  </OrganizationPortalShell>;
+
+  if (screen === "usage") return <OrganizationPortalShell active="usage" title={title}>
+    <div className={styles.statCards}>{[["اعتبار راکد یا استفاده‌نشده","دریافت نشده"],["اعتبار مصرف‌شده","دریافت نشده"],["اعتبار فعال در حال استفاده","دریافت نشده"],["کل اعتبارات تخصیص‌یافته","دریافت نشده"]].map(([label,value])=><Card key={label}><small>{label}</small><b>{value}</b></Card>)}</div>
+    <Card title="لیست وضعیت مصرف مشمولان"><div className={styles.tableWrap}><table><thead><tr><th>نام مشمول</th><th>شناسه مشمول</th><th>وضعیت مصرف</th><th>اعتبار تخصیص‌یافته</th><th>میزان استفاده</th><th>آخرین وضعیت ثبت‌شده</th></tr></thead><tbody><tr><td colSpan={6}><div className={styles.emptyTable}><b>داده‌ای برای نمایش وجود ندارد</b><span>اطلاعات مصرف هنوز از سرویس سازمان دریافت نشده است.</span></div></td></tr></tbody></table></div></Card>
+  </OrganizationPortalShell>;
+
+  if (screen === "reports") return <OrganizationPortalShell active="reports" title={title}>
+    <div className={styles.twoCards}><Card title="وضعیت مصرف طرح‌ها"><DataRows rows={[["بودجه استفاده‌شده", "دریافت نشده"], ["وضعیت استفاده", "داده‌ای ثبت نشده"]]}/><div className={styles.progress}><span style={{width:"0%"}}/></div></Card><Card title="وضعیت تطبیق افراد"><DataRows rows={[["کل مشمولان متصل", "دریافت نشده"], ["وضعیت تطبیق", "داده‌ای ثبت نشده"]]}/><div className={styles.progress}><span className={styles.progressTeal} style={{width:"0%"}}/></div></Card></div>
+    <Card title="روند کلی تخصیص و توزیع طرح"><div className={styles.chartEmpty}><Icon name="chart"/><b>گزارشی برای نمایش وجود ندارد</b><span>نمودار پس از ثبت و دریافت داده‌های تخصیص، اینجا نمایش داده می‌شود.</span></div></Card>
+  </OrganizationPortalShell>;
+
+  if (screen === "notifications") return <OrganizationPortalShell active="notifications" title={title}>
+    <div className={styles.notificationList}>{[["همگام‌سازی منبع داده سازمان","اعلان‌های همگام‌سازی پس از اتصال منبع داده نمایش داده می‌شوند."],["ثبت یک طرح جدید","تغییرهای طرح و وضعیت بررسی آن در این فهرست قرار می‌گیرند."],["تغییر وضعیت طرح","اعلان‌های مربوط به وضعیت طرح پس از اتصال سرویس نمایش داده می‌شوند."]].map(([heading,body])=><article className={`${styles.notification} ${styles.notificationCard}`} key={heading}><div><b>{heading}</b><p>{body}</p></div><small>زمان ثبت نشده</small><span className={styles.dotSand}/></article>)}</div>
+  </OrganizationPortalShell>;
+
+  if (screen === "support") return <OrganizationPortalShell active="support" title={title}>
+    <Card title="جست‌وجو در راهنمای پرتال"><input className={styles.searchInput} placeholder="عبارت مورد نظر خود را تایپ کنید (مثلاً ثبت طرح، الگوی تخصیص)…" aria-label="جست‌وجو در راهنما"/></Card>
+    <div className={styles.supportCards}>{[["منابع داده و API","راهنمای اتصال API، منبع داده سازمان"],["تخصیص و مدل حنا","راهنمای طرح‌های تخصیص در پرتال سازمانی"],["افراد و مشمولان","نحوه مدیریت اطلاعات افراد و ارجاع خانوار"],["طرح‌ها و اعتبارها","راهنمای جامع ایجاد، ویرایش و مدیریت دوره‌های اعتباری سازمان"]].map(([heading,body])=><a key={heading} href="#support-topics"><b>{heading}</b><small>{body}</small></a>)}</div>
+    <Card title="تاریخچه تیکت‌های پشتیبانی سازمان"><div className={styles.emptyTable}><Icon name="help"/><b>تیکتی برای نمایش وجود ندارد</b><span>سوابق واقعی پس از اتصال سرویس پشتیبانی در این بخش قرار می‌گیرند.</span></div></Card>
+  </OrganizationPortalShell>;
+
+  if (screen === "settings") return <OrganizationPortalShell active="settings" title={title}>
+    <Notice>حریم خصوصی و دسترسی اعتباری: این سازمان فقط مجاز به مشاهده و مدیریت داده‌های مربوط به طرح‌های اعتبار و مشمولان تخصیص‌یافته به خود می‌باشد. دسترسی به تراکنش‌های شخصی خارج از چارچوب طرح‌های سازمانی امکان‌پذیر نیست.</Notice>
+    <div className={styles.twoCards}>
+      <Card title="کاربران و دسترسی‌های مجاز سازمان"><div className={styles.emptyInline}><b>فهرست دسترسی‌ها دریافت نشده است</b><span>پس از اتصال سرویس مدیریت کاربران، نقش‌های مجاز در این بخش نمایش داده می‌شوند.</span></div></Card>
+      <Card title="تنظیمات دریافت اعلان‌ها"><div className={styles.emptyInline}><b>تنظیماتی برای نمایش وجود ندارد</b><span>امکان تغییر اعلان‌ها پس از فعال‌شدن سرویس فراهم می‌شود.</span></div></Card>
+    </div>
+  </OrganizationPortalShell>;
+
+  return <OrganizationPortalShell active={active} title={title}><Notice>این بخش هنوز به سرویس سازمان متصل نشده است.</Notice></OrganizationPortalShell>;
 }
