@@ -66,7 +66,7 @@ export default function DownloadAppPage() {
           </section>
           <aside className={styles.note} role="note">
             <strong>وضعیت دسترسی</strong>
-            <p>فایل‌های اندروید نسخه آزمایشی و امضاشده برای بررسی هستند، نه نسخه نهایی بازارگاه. دانلود APK از GitHub Releases انجام می‌شود؛ این فایل روی سرور hennamarket.ir میزبانی نمی‌شود. امکانات پرداخت یا فروش واقعی هنوز آماده نیستند. نسخه آیفون از نوع PWA است و به اینترنت نیاز دارد.</p>
+            <p>فایل‌های اندروید نسخه آزمایشی و امضاشده برای بررسی هستند، نه نسخه نهایی بازارگاه. نسخه خریدار شامل مسیر نمایشی فیگماست و نسخه فروشنده پیش‌نمایش ورود و پنل است؛ هیچ‌کدام برای خرید، پرداخت یا فروش واقعی فعال نیستند. دانلود APK از GitHub Releases انجام می‌شود و نسخه آیفون از نوع PWA است.</p>
             <div className={styles.releaseLinks}>
               <a href={buyerAndroidPreview.details}
                 target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">

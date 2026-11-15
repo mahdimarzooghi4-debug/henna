@@ -4,13 +4,15 @@
  * Buyer and seller must remain independently pinned.
  */
 export const buyerAndroidPreview = {
-  apk: "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-4655ad8/hana-buyer-figma-android-preview.apk",
-  details: "https://github.com/mahdimarzooghi4-debug/henna/releases/tag/hana-buyer-figma-android-4655ad8",
-  sha: "4655ad8173fa8c649dbed0e0346a8844e0e03b45",
-  digest: "sha256:3e52292e2d1541b05db7d0992638abd799c7146cebfdaecf95afa392a93fa40c",
+  apk: "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-8f775b2/hana-buyer-figma-android-preview.apk",
+  details: "https://github.com/mahdimarzooghi4-debug/henna/releases/tag/hana-buyer-figma-android-8f775b2",
+  sha: "8f775b2de780e8d69326cec6f721fa59012a02d3",
+  digest: "sha256:9c2ff139af976f2eddf7fccf0664abf4b18bb9a1ac8c85c20ec2c94130b03429",
 } as const;
 
 export const sellerAndroidPreview = {
-  apk: "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1/hana-seller-preview.apk",
-  details: "https://github.com/mahdimarzooghi4-debug/henna/releases/tag/hana-mobile-preview-1783-1",
+  apk: "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-seller-android-8f775b2/hana-seller-preview.apk",
+  details: "https://github.com/mahdimarzooghi4-debug/henna/releases/tag/hana-seller-android-8f775b2",
+  sha: "8f775b2de780e8d69326cec6f721fa59012a02d3",
+  digest: "sha256:21dd585c1ec45b481ac3b718d6d745636b833641736c16ea212ff73d330c2ba2",
 } as const;

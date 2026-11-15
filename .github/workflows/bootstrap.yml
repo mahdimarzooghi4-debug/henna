@@ -621,3 +621,45 @@ jobs:
           path: henna-android-*-preview.png
           if-no-files-found: warn
           retention-days: 7
+
+  publish-seller-preview-for-download-page:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 248 && github.event.pull_request.head.ref == 'fix/public-buyer-checkout-preview-download-20261115' && github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: [backend, web, mobile, android-native-links]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download exact seller APK from the successful buyer/seller CI run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_RUN: '43713568412'
+          SOURCE_SHA: '8f775b2de780e8d69326cec6f721fa59012a02d3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/seller
+          gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" \
+            --name hana-seller-android-ci-debug-apk --dir artifacts/seller
+          test -s artifacts/seller/app-release.apk
+          mv artifacts/seller/app-release.apk artifacts/hana-seller-preview.apk
+          (cd artifacts && sha256sum hana-seller-preview.apk > SHA256SUMS.txt)
+          echo "Prepared seller APK from verified source commit $SOURCE_SHA"
+      - name: Publish seller preview for the download page
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: '8f775b2de780e8d69326cec6f721fa59012a02d3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="hana-seller-android-${SOURCE_SHA:0:7}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Exact seller preview release already exists; leaving its immutable assets unchanged"
+            exit 0
+          fi
+          gh release create "$tag" \
+            artifacts/hana-seller-preview.apk artifacts/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" \
+            --title "Henna Seller Android Preview ${SOURCE_SHA:0:7}" \
+            --notes "CI debug-signed Android seller preview APK from successful workflow run 43713568412. Built as a preview artifact; not a production/store release and not approved for real seller operations." \
+            --prerelease

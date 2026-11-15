@@ -9,14 +9,16 @@ const page=readFileSync("apps/web-marketplace/app/download/page.tsx","utf8");
 const footer=readFileSync("apps/web-marketplace/components/landing-chrome.tsx","utf8");
 const downloadCss=readFileSync("apps/web-marketplace/app/download/download.module.css","utf8");
 const chromeCss=readFileSync("apps/web-marketplace/components/henna-homepage.module.css","utf8");
-const expectedBuyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-4655ad8/hana-buyer-figma-android-preview.apk";
-const expectedSeller="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1/hana-seller-preview.apk";
+const expectedBuyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-8f775b2/hana-buyer-figma-android-preview.apk";
+const expectedSeller="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-seller-android-8f775b2/hana-seller-preview.apk";
 test("landing footer routes phone visitors to /download, with separately pinned buyer and seller APKs",()=>{
  assert.match(footer,/<Link href="\/download">دریافت اپلیکیشن حنا<\/Link>/);
  assert.equal(buyerAndroidPreview.apk,expectedBuyer);
  assert.equal(sellerAndroidPreview.apk,expectedSeller);
- assert.equal(buyerAndroidPreview.sha,"4655ad8173fa8c649dbed0e0346a8844e0e03b45");
- assert.equal(buyerAndroidPreview.digest,"sha256:3e52292e2d1541b05db7d0992638abd799c7146cebfdaecf95afa392a93fa40c");
+ assert.equal(buyerAndroidPreview.sha,"8f775b2de780e8d69326cec6f721fa59012a02d3");
+ assert.equal(buyerAndroidPreview.digest,"sha256:9c2ff139af976f2eddf7fccf0664abf4b18bb9a1ac8c85c20ec2c94130b03429");
+ assert.equal(sellerAndroidPreview.sha,"8f775b2de780e8d69326cec6f721fa59012a02d3");
+ assert.equal(sellerAndroidPreview.digest,"sha256:21dd585c1ec45b481ac3b718d6d745636b833641736c16ea212ff73d330c2ba2");
  assert.notEqual(buyerAndroidPreview.apk,sellerAndroidPreview.apk);
  for(const app of [buyerAndroidPreview,sellerAndroidPreview]){
   const parsed=new URL(app.apk);
