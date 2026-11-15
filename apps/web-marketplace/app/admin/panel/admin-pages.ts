@@ -22,7 +22,7 @@ const adminColumnWidths: Record<string, number[]> = {
 export function adminGridTemplate(slug: string, columnCount: number): string {
   const widths = adminColumnWidths[slug];
   const tracks = widths?.length === columnCount ? widths : Array.from({ length: columnCount }, () => 1);
-  return tracks.map((width, index) => index === tracks.length - 1 ? `minmax(90px, ${width}fr)` : `minmax(0, ${width}fr)`).join(" ");
+  return tracks.map((width, index) => index === tracks.length - 1 ? `minmax(96px, ${width}fr)` : `minmax(0, ${width}fr)`).join(" ");
 }
 
 export const adminSections: AdminSection[] = [
