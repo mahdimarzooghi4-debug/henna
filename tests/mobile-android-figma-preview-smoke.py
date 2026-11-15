@@ -87,27 +87,52 @@ def inspect(*terms, seconds=80):
 
 
 def tap(name, scroll=True):
+    """Touch only a *visible* target, never the fixed bottom navigation under checkout.
+
+    UiAutomator may report a clipped/barely-visible text row as a node. Earlier
+    generic clicks on checkout's lower radio rows hit the underlying 'سبد'
+    tab and navigated back to cart, without pressing the requested control.
+    This strict geometry gate fails closed if a visible target cannot be found.
+    """
     last = "<no hierarchy>"
-    for i in range(8 if scroll else 3):
+    screen = execute("adb", "shell", "wm", "size")
+    size = re.search(r"([0-9]+)x([0-9]+)", screen)
+    if not size:
+        raise AssertionError("Android display dimensions unavailable: " + screen)
+    width, height = map(int, size.groups())
+    for attempt in range(12 if scroll else 3):
         try:
             root = nodes()
             last = labels(root)
             if dismiss_known_emulator_launcher_anr(root):
                 continue
-            node = next((n for n in root.iter()
-                         if n.attrib.get("content-desc") == name or n.attrib.get("text") == name), None)
-            if node is not None:
+            candidates = [n for n in root.iter()
+                          if n.attrib.get("content-desc") == name or n.attrib.get("text") == name]
+            # Prefer the actual accessibility control rather than a nested text child.
+            candidates.sort(key=lambda n: (n.attrib.get("content-desc") != name,
+                                           n.attrib.get("clickable") != "true"))
+            for node in candidates:
                 coords = list(map(int, re.findall(r"[0-9]+", node.attrib.get("bounds", ""))))
-                if len(coords) == 4:
-                    x1, y1, x2, y2 = coords
-                    execute("adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2))
-                    return
-        except (subprocess.TimeoutExpired, ET.ParseError, AssertionError):
+                if len(coords) != 4:
+                    continue
+                x1,y1,x2,y2 = coords
+                x,y = (x1+x2)//2,(y1+y2)//2
+                # For scrollable checkout/buttons, reserve space for the
+                # 84dp fixed bottom tab bar and OS navigation area.
+                lower = int(height * .84) if scroll else int(height*.98)
+                if not (0 <= x < width and int(height*.07) < y < lower):
+                    print(f"Native control {name!r} outside safe viewport at y={y}/{height}; scrolling", flush=True)
+                    continue
+                print(f"Native preview tapping {name!r} at ({x},{y}) attempt={attempt}", flush=True)
+                execute("adb","shell","input","tap",str(x),str(y))
+                return
+        except (subprocess.TimeoutExpired,ET.ParseError,AssertionError):
             pass
         if scroll:
-            execute("adb", "shell", "input", "swipe", "520", "1550", "520", "510", "380")
+            execute("adb", "shell", "input", "swipe", str(width//2), str(int(height*.72)),
+                    str(width//2), str(int(height*.25)), "450")
         time.sleep(1)
-    raise AssertionError(f"Cannot tap native {name!r}; last={last[-4000:]}")
+    raise AssertionError(f"Cannot safely tap native {name!r}; last={last[-4000:]}")
 
 
 def tap_first_prefix(prefix, scroll=True):
@@ -212,10 +237,14 @@ def main():
     # Figma 227:549 has three distinct payment choices, plus a legal invoice toggle.
     # These are visual-only choices, not payment or credit authorizations.
     tap("درگاه آنلاین بانکی")
+    inspect("ثبت سفارش", seconds=15)
     tap("اعتبار حمایتی موجود")
+    inspect("ثبت سفارش", seconds=15)
     tap("اعتبار شخصی تأمین‌شده توسط کاربر")
+    inspect("ثبت سفارش", seconds=15)
     screenshot("payments")
     tap("مشاهده نتیجه سفارش نمونه (بدون پرداخت)")
+    inspect("ثبت سفارش", seconds=15)
     inspect("سفارش نمونه در تمرین ثبت شد.", seconds=80)
     screenshot("order-success")
     tap("پیگیری سفارش نمونه")
