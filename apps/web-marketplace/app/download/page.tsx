@@ -58,6 +58,7 @@ export default function DownloadAppPage() {
                   </a>
                 </div>
                 <p className={styles.platformHelp}>اندروید: فایل APK آزمایشی | آیفون: نصب نسخه وب از Safari</p>
+                {app.role === "seller" && <a className={styles.previewLink} data-testid="open-seller-app-preview" href="/seller-app-preview">مشاهدهٔ کامل اپ فروشنده</a>}
                 {app.role === "buyer" && (
                   <p className={styles.buyerHint}>نسخه جدید پیش‌نمایش فیگما برای خریدار (حدود ۷۹ مگابایت) شامل خانه، کاتالوگ و فیلترهای نمونه است. این اطلاعات واقعی نیستند و خرید یا پرداخت فعال نیست. اگر نسخه آزمایشی قبلی نصب است و خطای ناسازگاری امضا می‌گیرید، ابتدا همان نسخه قبلی را حذف کنید. در خطای «Problem parsing package»، کامل‌بودن دانلود و نسخه Android دستگاه را بررسی کنید.</p>
                 )}
@@ -66,7 +67,7 @@ export default function DownloadAppPage() {
           </section>
           <aside className={styles.note} role="note">
             <strong>وضعیت دسترسی</strong>
-            <p>فایل‌های اندروید نسخه آزمایشی و امضاشده برای بررسی هستند، نه نسخه نهایی بازارگاه. دانلود APK از GitHub Releases انجام می‌شود؛ این فایل روی سرور hennamarket.ir میزبانی نمی‌شود. امکانات پرداخت یا فروش واقعی هنوز آماده نیستند. نسخه آیفون از نوع PWA است و به اینترنت نیاز دارد.</p>
+            <p>نسخه‌های اندروید برای بررسی هستند، نه نسخه نهایی بازارگاه. فایل فروشنده مستقیماً از hennamarket.ir دانلود می‌شود و پیش‌نمایش تعاملی و کامل آن هم در همین سایت در دسترس است. خرید، پرداخت یا فروش واقعی فعال نیست؛ نسخه آیفون PWA است و به اینترنت نیاز دارد.</p>
             <div className={styles.releaseLinks}>
               <a href={buyerAndroidPreview.details}
                 target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">

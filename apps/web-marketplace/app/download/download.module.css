@@ -58,3 +58,5 @@
  .actions a{padding-inline:8px;font-size:13px}
  .note{padding:14px 12px}
 }
+
+.previewLink{display:inline-flex;align-items:center;min-height:42px;color:#1c3f3a;font-size:13px;font-weight:750;text-decoration:underline;text-underline-offset:4px}.previewLink:focus-visible{outline:3px solid #1c3f3a;outline-offset:3px;border-radius:4px}
