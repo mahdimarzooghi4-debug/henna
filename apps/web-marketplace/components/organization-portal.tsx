@@ -49,7 +49,7 @@ export function OrganizationPortalShell({ active, title, children }: { active: P
     <aside className={styles.sidebar}>
       <Link href="/organization" className={styles.brand} aria-label="داشبورد پرتال سازمانی"><img src="/hana-logo.png" alt="حنا"/><b>پنل سازمان‌ها</b></Link>
       <nav aria-label="منوی پرتال سازمانی">{navigation.map(item => <Link href={item.href} key={item.key} className={`${styles.navItem}${active === item.key ? ` ${styles.active}` : ""}`} aria-current={active === item.key ? "page" : undefined}><span className={styles.glyph}><Icon name={item.glyph}/></span><span>{item.label}</span></Link>)}</nav>
-      <div className={styles.userFooter}><div><b>حساب کاربری سازمان</b><small>دسترسی پرتال سازمانی</small></div><span className={styles.avatar}>س</span></div>
+      <div className={styles.userFooter}><div><b>کد کاربری: ****۹۸۲</b><small>کاربر ارشد پرتال</small></div><span className={styles.avatar}>ن</span></div>
     </aside>
     <div className={styles.main}><header className={styles.topbar}>
       <h1>{title}</h1>
