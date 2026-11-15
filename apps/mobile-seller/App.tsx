@@ -65,6 +65,12 @@ export default function App() {
     const current = ++epoch.current;
     setGate({ kind: "checking" }); // Never show stale private data during revalidation.
     setOrders({ kind: "idle" });
+    // A backend-free browser build is a visual product demo, so open the mock
+    // seller workspace directly instead of getting stuck at an unavailable API state.
+    if (sellerPreviewAllowed && !apiBase && Platform.OS === "web") {
+      setGate({ kind: "preview" });
+      return;
+    }
     if (sellerPreviewAllowed) {
       const flag = await SecureStore.getItemAsync(previewKey, secureOptions).catch(() => null);
       if (current !== epoch.current) return;
