@@ -79,3 +79,36 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 /* Figma 386:161 organization profile sample */
 .profileGrid>.card{padding:24px}
 .profileStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#f7f3ed;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}
+
+/* Figma 386:280 organization programs list */
+.programPage{width:100%;min-width:0}
+.programCard{width:100%;overflow:visible;border:1px solid var(--line);border-radius:12px;background:#fff}
+.programHeader{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.programHeader h2{margin:0;color:#2d2d2d;font-size:16px;font-weight:700;line-height:1.5}
+.programFilter{position:relative;z-index:2}
+.programFilter>button{min-height:38px;display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid rgba(15,91,90,.2);border-radius:8px;background:#fff;color:var(--teal);font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
+.programFilter>button svg{width:14px;height:14px}
+.programFilterMenu{position:absolute;top:calc(100% + 6px);left:0;min-width:150px;display:grid;gap:2px;padding:5px;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 8px 24px rgba(45,45,45,.12)}
+.programFilterMenu button{padding:8px 10px;border:0;border-radius:5px;background:#fff;color:var(--ink);font:inherit;font-size:12px;text-align:right;cursor:pointer}
+.programFilterMenu button:hover,.programFilterMenu button[aria-pressed=true]{background:#eef2f1;color:var(--teal)}
+.programTableWrap{width:100%;overflow-x:auto}
+.programTable{width:100%;min-width:840px;border-collapse:collapse;table-layout:fixed;direction:ltr}
+.programTable col.operationCol{width:120px}.programTable col.dateCol{width:140px}.programTable col.statusCol{width:120px}.programTable col.allocationCol{width:180px}.programTable col.typeCol{width:160px}
+.programTable thead{background:#f7f3ed;color:#2d2d2d}
+.programTable th,.programTable td{height:52px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;font-weight:400;text-align:center;white-space:nowrap;direction:rtl}
+.programTable thead th{height:44px;padding:10px 12px;font-weight:600}
+.programTable thead th:last-child,.programTable tbody th[scope=row]{text-align:right}
+.programTable tbody th[scope=row]{font-weight:600;font-size:14px}
+.programTable tbody tr:last-child td,.programTable tbody tr:last-child th{border-bottom:0}
+.programDetailsLink{padding:0;border:0;background:transparent;color:var(--teal);font:inherit;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer}
+.programDetailsLink:hover{text-decoration:underline}
+.programStatus{display:inline-flex;align-items:center;justify-content:center;min-width:50px;padding:4px 9px;border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;line-height:1.3}
+.status1{background:#d7b895}.status2{background:#d7b895}.status3{background:#f7f3ed}.status4{background:#b5523b;color:#fff}.status5{background:#f7f3ed}
+.programDialogBackdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(25,35,33,.35)}
+.programDialog{position:relative;width:min(480px,100%);padding:26px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 18px 55px rgba(20,30,28,.18)}
+.programDialog h2{margin:0 32px 20px 0;color:var(--teal);font-size:18px}
+.programDialogClose{position:absolute;top:13px;left:14px;width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:20px;line-height:1;cursor:pointer}
+.programDialog dl{display:grid;gap:0;margin:0}
+.programDialog dl>div{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}
+.programDialog dt{color:var(--muted)}.programDialog dd{margin:0;font-weight:600;text-align:left}
+@media(max-width:720px){.programHeader{min-height:58px;padding:11px 13px}.programHeader h2{font-size:13px}.programFilter>button{min-height:34px;padding:6px 9px;font-size:11px}.programTable{min-width:820px}}
