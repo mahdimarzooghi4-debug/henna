@@ -100,6 +100,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
     dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "وضعیت تخصیص", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
   };
   const title = titles[screen];
+  if (screen === "api") return <OrganizationApiDataSources title={title} />;
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
@@ -255,14 +256,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
     <div className={`${styles.detailGrid} ${styles.allocationDetailGrid}`}><Card title="اطلاعات پایه تخصیص"><DataRows rows={[["طرح مرتبط", "در سرویس ثبت نشده"], ["روش تخصیص فعال", "الگوی تخصیص حنا"], ["تعداد رکوردهای ورودی", "داده‌ای ثبت نشده"], ["وضعیت پردازش", "در انتظار بررسی"]]}/></Card><div className={styles.stack}><Card title="نتیجه نهایی تخصیص"><DataRows rows={[["نتیجه تخصیص", "در انتظار بررسی نهایی"], ["کدهای تخصیص‌یافته", "داده‌ای ثبت نشده"], ["وضعیت تخصیص", "ثبت نشده"]]}/></Card><Card title="موارد نیازمند بررسی"><div className={styles.reviewItem}><b>اطلاعات حساب حنا تطبیق نشده است.</b><small>اطلاعات حساب از سرویس دریافت نشده است.</small></div></Card></div></div>
   </OrganizationPortalShell>;
 
-  if (screen === "api") return <OrganizationPortalShell active="api" title={title}>
-    <Notice>اتصال منبع داده و همگام‌سازی افراد هنوز برای این سازمان پیکربندی نشده است. جزئیات خطا و وضعیت اتصال پس از دریافت از سرویس نمایش داده می‌شود.</Notice>
-    <div className={styles.twoCards}>
-      <Card title="خطاهای همگام‌سازی اخیر"><div className={styles.emptyTable}><Icon name="database"/><b>خطایی ثبت نشده است</b><span>وضعیت همگام‌سازی از سرویس سازمان دریافت نشده.</span></div></Card>
-      <Card title="وضعیت اتصال درگاه سازمان"><div className={styles.connectionState}><span className={styles.status}>پیکربندی نشده</span><DataRows rows={[["نشانی درگاه", "ثبت نشده"], ["آخرین بررسی اتصال", "ثبت نشده"]]}/></div><div className={styles.buttonRow}><button className={styles.primaryButton} disabled type="button">بررسی اتصال</button><button className={styles.outlineButton} disabled type="button">تنظیم منبع داده</button></div></Card>
-    </div>
-  </OrganizationPortalShell>;
-
   if (screen === "usage") return <OrganizationPortalShell active="usage" title={title}>
     <div className={styles.statCards}>{[["اعتبار راکد یا استفاده‌نشده","دریافت نشده"],["اعتبار مصرف‌شده","دریافت نشده"],["اعتبار فعال در حال استفاده","دریافت نشده"],["کل اعتبارات تخصیص‌یافته","دریافت نشده"]].map(([label,value])=><Card key={label}><small>{label}</small><b>{value}</b></Card>)}</div>
     <Card title="لیست وضعیت مصرف مشمولان"><div className={styles.tableWrap}><table><thead><tr><th>نام مشمول</th><th>شناسه مشمول</th><th>وضعیت مصرف</th><th>اعتبار تخصیص‌یافته</th><th>میزان استفاده</th><th>آخرین وضعیت ثبت‌شده</th></tr></thead><tbody><tr><td colSpan={6}><div className={styles.emptyTable}><b>داده‌ای برای نمایش وجود ندارد</b><span>اطلاعات مصرف هنوز از سرویس سازمان دریافت نشده است.</span></div></td></tr></tbody></table></div></Card>
@@ -292,4 +285,41 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   </OrganizationPortalShell>;
 
   return <OrganizationPortalShell active={active} title={title}><Notice>این بخش هنوز به سرویس سازمان متصل نشده است.</Notice></OrganizationPortalShell>;
+}
+
+function OrganizationApiDataSources({ title }: { title: string }) {
+  const [message, setMessage] = useState("");
+  return <OrganizationPortalShell active="api" title={title}>
+    <section className={styles.apiInfoBanner}>
+      <strong>اتصال به سامانه مرجع اطلاعات سازمان</strong>
+      <p>اتصال منبع داده سازمان، همگام‌سازی رکوردها و تطبیق با حساب حنا مراحل مجزا هستند. ممکن است منبع متصل باشد اما برخی رکوردهای همگام‌سازی‌شده هنوز نیازمند بررسی باشند.</p>
+      <small>وضعیت‌های این صفحه نمونه‌اند؛ سرویس اتصال هنوز راه‌اندازی نشده و هیچ داده‌ای همگام‌سازی نمی‌شود.</small>
+    </section>
+    <div className={styles.apiGrid}>
+      <Card>
+        <div className={styles.apiCardHeader}>
+          <span className={`${styles.status} ${styles.status_gray}`}>نمونه</span>
+          <h2>وضعیت اتصال درگاه سازمان</h2>
+        </div>
+        <div className={styles.apiDivider}/>
+        <dl className={styles.apiDetails}>
+          <div><dt>منبع داده سازمان</dt><dd>درگاه سازمان حمایتگر (نمونه)</dd></div>
+          <div><dt>آخرین همگام‌سازی موفق</dt><dd>زمان نمونه</dd></div>
+          <div><dt>وضعیت همگام‌سازی</dt><dd><span className={`${styles.status} ${styles.status_gray}`}>نمونه داده</span></dd></div>
+        </dl>
+        <div className={styles.apiDivider}/>
+        <div className={styles.apiActions}>
+          <button className={styles.outlineButton} type="button" onClick={() => setMessage("اتصال واقعی برقرار نشده؛ بررسی اتصال اجرا نشد.")}>بررسی تست اتصال</button>
+          <button className={styles.primaryButton} type="button" onClick={() => setMessage("سرویس همگام‌سازی متصل نیست؛ هیچ داده‌ای ارسال یا دریافت نشد.")}>اجرای همگام‌سازی دستی</button>
+        </div>
+        {message && <p className={styles.apiMessage} role="status">{message}</p>}
+      </Card>
+      <Card title="خطاهای همگام‌سازی اخیر">
+        <div className={styles.apiErrorList}>
+          <article><time>زمان نمونه</time><strong>عدم تطابق ساختار شناسه در رکوردهای ارسالی</strong></article>
+          <article><time>زمان نمونه</time><strong>خطای موقت همگام‌سازی با منبع داده سازمان</strong></article>
+        </div>
+      </Card>
+    </div>
+  </OrganizationPortalShell>;
 }
