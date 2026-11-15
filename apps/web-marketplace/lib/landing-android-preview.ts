@@ -4,10 +4,10 @@
  * Buyer and seller must remain independently pinned.
  */
 export const buyerAndroidPreview = {
-  apk: "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-032eb3b/hana-buyer-figma-android-preview.apk",
-  details: "https://github.com/mahdimarzooghi4-debug/henna/releases/tag/hana-buyer-figma-android-032eb3b",
-  sha: "032eb3bbfeff03503353197343500590d14bd855",
-  digest: "sha256:54842902338d015848ade7781994a1c1dcba2687b19f4b2408cbc3fa85c4129b",
+  apk: "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-4655ad8/hana-buyer-figma-android-preview.apk",
+  details: "https://github.com/mahdimarzooghi4-debug/henna/releases/tag/hana-buyer-figma-android-4655ad8",
+  sha: "4655ad8173fa8c649dbed0e0346a8844e0e03b45",
+  digest: "sha256:3e52292e2d1541b05db7d0992638abd799c7146cebfdaecf95afa392a93fa40c",
 } as const;
 
 export const sellerAndroidPreview = {
