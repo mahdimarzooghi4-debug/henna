@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { OrganizationPortalShell } from "./organization-portal";
 import styles from "./organization-portal.module.css";
 
 type PersonRow = {
@@ -38,7 +37,7 @@ export function OrganizationPeopleDirectory() {
     );
   }, [allocation, source, program, match, query]);
 
-  return <OrganizationPortalShell active="people" title="افراد و مشمولان">
+  return <>
     <section className={styles.peopleDirectory} aria-label="فهرست افراد و مشمولان">
       <div className={styles.peopleBanner}>
         ثبت فرد در منبع داده سازمان به معنای تخصیص اعتبار نیست. در صورت وجود حساب حنا، اطلاعات فرد با همان حساب تطبیق داده می‌شود.
@@ -74,5 +73,5 @@ export function OrganizationPeopleDirectory() {
         <dl><div><dt>نام</dt><dd>{selected.name}</dd></div><div><dt>شناسه</dt><dd>{selected.maskedId}</dd></div><div><dt>وضعیت تطبیق با حنا</dt><dd>{selected.match}</dd></div><div><dt>منبع ثبت</dt><dd>{selected.source}</dd></div><div><dt>طرح مرتبط</dt><dd>{selected.program}</dd></div><div><dt>وضعیت تخصیص</dt><dd>{selected.allocation}</dd></div><div><dt>وضعیت استفاده</dt><dd>{selected.usage}</dd></div></dl>
       </section>
     </div>}
-  </OrganizationPortalShell>;
+  </>;
 }
