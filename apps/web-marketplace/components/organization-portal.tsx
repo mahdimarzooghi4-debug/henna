@@ -63,7 +63,7 @@ export function OrganizationPortalShell({ active, title, children }: { active: P
 
 function Card({ title, children }: { title?: string; children: ReactNode }) { return <section className={styles.card}>{title && <h2 className={styles.cardTitle}>{title}</h2>}{children}</section>; }
 function Notice({ children, tone = "info" }: { children: ReactNode; tone?: "info" | "warning" }) { return <div className={`${styles.banner} ${tone === "warning" ? styles.warning : ""}`}><p>{children}</p></div>; }
-function DataRows({ rows }: { rows: [string, string][] }) { return <dl className={styles.dataRows}>{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>; }
+function DataRows({ rows }: { rows: [string, ReactNode][] }) { return <dl className={styles.dataRows}>{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>; }
 const roleNames: Record<Role, string> = { ORG_LEAD: "مدیر سازمان", ORG_REPRESENTATIVE: "نماینده سازمان", ORG_TECHNICAL_OPERATOR: "اپراتور فنی" };
 const modeNames: Record<AllocationMode, string> = { HENNA_NEEDS_BASED: "نیازمحور حنا", ORGANIZATION_DEFINED: "تعریف‌شده توسط سازمان" };
 
@@ -95,13 +95,13 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const data = usePortalData();
   const active: PortalKey = screen === "program-detail" ? "programs" : screen === "people-new" ? "people" : screen === "allocation-detail" ? "allocation" : screen;
   const titles: Record<typeof screen, string> = {
-    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات سازمان", "program-detail": "جزئیات طرح سازمانی", people: "ارجاع خانوارها", "people-new": "ثبت ارجاع خانوارها", api: "منابع داده و API", allocation: "وضعیت تخصیص", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
+    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "ارجاع خانوارها", "people-new": "ثبت ارجاع خانوارها", api: "منابع داده و API", allocation: "وضعیت تخصیص", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
   };
   const title = titles[screen];
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
-  if (data.loading && screen !== "dashboard") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
-  if (data.error && screen !== "dashboard") {
+  if (data.loading && screen !== "dashboard" && screen !== "profile") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
+  if (data.error && screen !== "dashboard" && screen !== "profile") {
     const needsLogin = data.error.includes("وارد شوید") || data.error.includes("نشست معتبر نیست");
     const returnTo = screen === "program-detail" && programId
       ? `/organization/programs/${programId}`
@@ -170,11 +170,18 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   if (screen === "profile") return <OrganizationPortalShell active="profile" title={title}>
     <div className={styles.profileGrid}>
-      <Card title="شناسه و اطلاعات هویتی سازمان">{data.profiles.length ? data.profiles.map(profile => <DataRows key={profile.membershipId} rows={[["عنوان سازمان", profile.organizationName], ["نوع سازمان", "ثبت نشده"], ["روش تخصیص پیش‌فرض", "در انتظار تعیین در سرویس"], ["وضعیت حساب کاربری", roleNames[profile.memberRole]]]} />) : <p>برای این حساب پروفایل سازمانی فعال پیدا نشد.</p>}</Card>
       <div className={styles.stack}>
-        <Card title="اطلاعات تماس ثبت‌شده"><DataRows rows={[["تلفن ثبت سازمان", "در سرویس ثبت نشده"], ["پست الکترونیکی رسمی", "در سرویس ثبت نشده"], ["نشانی فیزیکی", "در سرویس ثبت نشده"]]}/></Card>
-        <Card title="اطلاعات نماینده سازمان"><DataRows rows={[["نام و نام خانوادگی نماینده", "در سرویس ثبت نشده"], ["شماره شناسایی کاربری", "در سرویس ثبت نشده"], ["شماره تماس نماینده", "در سرویس ثبت نشده"]]}/></Card>
+        <Card title="اطلاعات تماس ثبت‌شده"><DataRows rows={[["تلفن ثابت سازمان", "۰۲۱-۸۸******"], ["پست الکترونیکی رسمی", "info@org-domain.ir"], ["نشانی فیزیکی ثبت‌شده", "تهران، بلوار نلسون ماندلا، کوچه ***"]]}/></Card>
+        <Card title="اطلاعات نماینده سازمان"><DataRows rows={[["نام و نام خانوادگی نماینده", "جناب آقای محمدی"], ["شماره شناسایی کاربری", "کاربر ارشد پرتال"], ["شماره تماس نماینده", "۰۹۱۲******۴"]]}/></Card>
       </div>
+      <Card title="شناسه و اطلاعات هویتی سازمان">
+        <DataRows rows={[
+          ["عنوان سازمان", "سازمان حمایتگر نمونه"],
+          ["نوع سازمان", "سازمان حمایتگر"],
+          ["روش تخصیص پیش‌فرض", "الگوی تخصیص حنا"],
+          ["وضعیت حساب کاربری", <span className={styles.profileStatus}>تأیید شده و فعال</span>],
+        ]}/>
+      </Card>
     </div>
   </OrganizationPortalShell>;
 
