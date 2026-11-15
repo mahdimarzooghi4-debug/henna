@@ -54,7 +54,7 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"dashboard" | "orders">("dashboard");
-  const [previewTab, setPreviewTab] = useState<"dashboard" | "orders" | "products" | "inventory" | "settlements" | "notifications">("dashboard");
+  const [previewTab, setPreviewTab] = useState<"dashboard" | "orders" | "products" | "inventory" | "settlements" | "notifications" | "account">("dashboard");
   const [page, setPage] = useState(1);
   const [reload, setReload] = useState(0);
   const [orders, setOrders] = useState<Orders>({ kind: "idle" });
@@ -216,7 +216,7 @@ export default function App() {
       </View>
       <Text style={styles.heading}>آمار عملیاتی</Text>
       <View style={styles.metrics}>
-        {["سفارش‌های جدید", "در حال انجام", "نیازمند رسیدگی", "کالاها / خدمات"].map(label =>
+        {["سفارش‌های جدید", "در حال انجام", "نیازمند رسیدگی", "کالاها"].map(label =>
           <View key={label} style={styles.metric}>
             <Text style={styles.kicker}>{label}</Text>
             <Text style={styles.metricUnavailable}>—</Text>
@@ -284,69 +284,49 @@ export default function App() {
 
   function previewPage() {
     const demoOrders = [
-      { id: "HN-۱۴۰۵-۲۴۸۱", title: "روغن زیتون فرابکر ۵۰۰ میلی‌لیتر", price: "۴۸۵٬۰۰۰", status: "در حال آماده‌سازی", tone: "#FFF2E7" },
-      { id: "HN-۱۴۰۵-۲۴۷۹", title: "برنج هاشمی درجه یک · ۵ کیلوگرم", price: "۱٬۲۸۰٬۰۰۰", status: "آماده تحویل", tone: "#EAF5EF" },
-      { id: "HN-۱۴۰۵-۲۴۷۴", title: "عسل طبیعی چندگیاه · ۹۰۰ گرم", price: "۶۹۰٬۰۰۰", status: "تحویل‌شده", tone: "#F2EEFA" },
+      { id: "HN-۴۰۹۱", title: "روغن آفتابگردان خالص ۱.۵ لیتری (نمونه)", price: "۱۴۲٬۰۰۰", status: "در حال آماده‌سازی", tone: "#F7ECE9" },
+      { id: "HN-۴۰۹۰", title: "پنیر سفید ایرانی ممتاز ۴۰۰ گرم (نمونه)", price: "۶۴٬۰۰۰", status: "تأیید شده", tone: "#FFF3D4" },
+      { id: "HN-۴۰۸۹", title: "برنج هاشمی درجه یک · ۵ کیلوگرم", price: "۶۸۰٬۰۰۰", status: "تکمیل شده", tone: "#EAF3EC" },
+      { id: "HN-۴۰۸۸", title: "عسل طبیعی چندگیاه · ۹۰۰ گرم", price: "۳۱۰٬۰۰۰", status: "آماده تحویل / ارسال", tone: "#F5F1EB" },
+      { id: "HN-۴۰۸۷", title: "خرمای مضافتی بم · ۷۰۰ گرم", price: "۵۵۰٬۰۰۰", status: "تکمیل شده", tone: "#EAF3EC" },
     ];
     const products = [
-      { title: "روغن زیتون فرابکر", code: "کد کالا: ۱۰۰۲۴", price: "۴۸۵٬۰۰۰", stock: "۲۴ عدد", status: "فعال", tone: "#EAF5EF" },
-      { title: "برنج هاشمی درجه یک", code: "کد کالا: ۱۰۰۱۸", price: "۱٬۲۸۰٬۰۰۰", stock: "۸ عدد", status: "موجودی کم", tone: "#FFF2E7" },
-      { title: "عسل طبیعی چندگیاه", code: "کد کالا: ۱۰۰۳۱", price: "۶۹۰٬۰۰۰", stock: "۱۶ عدد", status: "فعال", tone: "#EAF5EF" },
-      { title: "خرمای مضافتی بم", code: "کد کالا: ۱۰۰۴۰", price: "۳۷۵٬۰۰۰", stock: "۰ عدد", status: "ناموجود", tone: "#FCECE8" },
+      { title: "ماست سون کاله ۹۰۰ گرم", code: "کد کالا: ۱۰۰۲۴", price: "۸۸٬۰۰۰", stock: "۴۵ عدد", status: "فعال", tone: "#EAF3EC" },
+      { title: "پنیر سفید ایرانی ممتاز هزار گرمی", code: "کد کالا: ۱۰۰۱۸", price: "۵۴٬۰۰۰", stock: "۲ عدد", status: "رو به اتمام", tone: "#FFF3D4" },
+      { title: "روغن زیتون فرابکر", code: "کد کالا: ۱۰۰۳۱", price: "۴۸۵٬۰۰۰", stock: "۲۴ عدد", status: "فعال", tone: "#EAF3EC" },
+      { title: "خرمای مضافتی بم", code: "کد کالا: ۱۰۰۴۰", price: "۳۷۵٬۰۰۰", stock: "۰ عدد", status: "ناموجود", tone: "#F7ECE9" },
     ];
-    const nav = (next: typeof previewTab) => setPreviewTab(next);
-    const title = ({ dashboard: "پیشخوان فروشگاه", orders: "مدیریت سفارش‌ها", products: "کالاهای فروشگاه", inventory: "موجودی و قیمت‌گذاری", settlements: "گزارش فروش و تسویه", notifications: "اعلان‌ها" } as const)[previewTab];
+    const nav = (next: typeof previewTab) => { setPreviewTab(next); setNotice(""); };
+    const title = ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی و قیمت‌گذاری", settlements: "گزارش‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده" } as const)[previewTab];
+    const navItems = [["account", "♙", "حساب"], ["notifications", "♧", "اعلان‌ها"], ["products", "⬡", "کالاها"], ["orders", "▣", "سفارش‌ها"], ["dashboard", "⊞", "خانه"]] as const;
     return <>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.previewBody}>
-          <View style={styles.previewTopline}>
-            <Pressable onPress={() => void signOut()}><Text style={styles.previewLogout}>خروج</Text></Pressable>
-            <View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>فروشگاه فعال</Text></View>
-            <Text style={styles.previewDate}>شنبه، ۲۴ آبان ۱۴۰۵</Text>
-          </View>
-          <Text style={styles.previewTitle}>{title}</Text>
-          <Text style={styles.previewSubtitle}>فروشگاه خانهٔ خوراک · داده‌های نمونه برای نمایش اپ</Text>
+        <View style={styles.figmaScreen}>
+          {previewTab !== "dashboard" && <View style={styles.screenIntro}><Text style={styles.screenTitle}>{title}</Text><Text style={styles.screenCaption}>فروشگاه نمونه · اطلاعات نمایشی</Text></View>}
           {previewTab === "dashboard" && <>
-            <View style={styles.revenueCard}>
-              <Text style={styles.revenueLabel}>فروش امروز</Text>
-              <Text style={styles.revenueValue}>۸٬۴۲۵٬۰۰۰ <Text style={styles.revenueUnit}>ریال</Text></Text>
-              <Text style={styles.revenueChange}>↑ ۱۲٪ بیشتر از روز گذشته</Text>
-              <View style={styles.sparkline}>{[24, 34, 29, 46, 39, 55, 49, 68, 57, 79, 65, 92].map((h, i) => <View key={i} style={[styles.sparkBar, { height: h }]} />)}</View>
-            </View>
-            <View style={styles.previewMetrics}>
-              {[["سفارش جدید", "۰۶", "#B5523B"], ["در انتظار آماده‌سازی", "۰۳", "#C98035"], ["کالای فعال", "۲۸", "#407764"], ["موجودی کم", "۰۲", "#A33E30"]].map(([label, value, color]) => <View key={label} style={styles.previewMetric}><Text style={[styles.previewMetricValue, { color }]}>{value}</Text><Text style={styles.previewMetricLabel}>{label}</Text></View>)}
-            </View>
-            <View style={styles.sectionHead}><Text style={styles.sectionAction} onPress={() => nav("orders")}>مشاهده همه</Text><Text style={styles.sectionTitle}>سفارش‌های اخیر</Text></View>
-            {demoOrders.slice(0, 2).map(order => <View key={order.id} style={styles.previewOrder}><View style={styles.previewOrderTop}><Text style={styles.previewOrderPrice}>{order.price} ریال</Text><Text style={styles.previewOrderId}>{order.id}</Text></View><Text style={styles.previewOrderName}>{order.title}</Text><View style={styles.previewOrderBottom}><Text style={[styles.statusPill, { backgroundColor: order.tone }]}>{order.status}</Text><Text style={styles.previewOrderDate}>امروز · ۱۰:۲۵</Text></View></View>)}
-            <View style={styles.quickActions}><Pressable style={styles.quickAction} onPress={() => nav("products")}><Text style={styles.quickActionIcon}>＋</Text><Text style={styles.quickActionText}>افزودن کالا</Text></Pressable><Pressable style={styles.quickAction} onPress={() => nav("inventory")}><Text style={styles.quickActionIcon}>↗</Text><Text style={styles.quickActionText}>به‌روزرسانی موجودی</Text></Pressable></View>
+            <View style={styles.metricGrid}>{[["سفارش‌های جدید", "۴ سفارش نمونه", "▣", "#B94D35"], ["سفارش‌های در حال انجام", "۸ سفارش نمونه", "◷", "#C98543"], ["موارد نیازمند رسیدگی", "۳ مورد نمونه", "△", "#B94D35"], ["کالاهای فعال", "۱۴۲ مورد نمونه", "⬡", "#204B43"]].map(([label, value, icon, color]) => <View key={label} style={styles.metricCard}><View style={styles.metricCaption}><Text style={[styles.metricIcon, { color }]}>{icon}</Text><Text style={styles.metricLabel}>{label}</Text></View><Text style={[styles.metricValue, { color }]}>{value}</Text></View>)}</View>
+            <View style={styles.quickPanel}><Text style={styles.sectionTitle}>دسترسی سریع عملیاتی</Text><View style={styles.quickGrid}><Pressable style={styles.quickTileAccent} onPress={() => nav("products")}><Text style={styles.quickTileAccentText}>＋  افزودن کالا</Text></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><Text style={styles.quickTileText}>☑  مدیریت موجودی</Text></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><Text style={styles.quickTileText}>◇  ویرایش قیمت‌ها</Text></Pressable><Pressable style={styles.quickTile} onPress={() => nav("orders")}><Text style={styles.quickTileText}>▣  مشاهده سفارش‌ها</Text></Pressable></View></View>
+            <Text style={styles.sectionTitle}>هشدارهای موجودی / دسترس‌پذیری</Text>
+            {[["روغن آفتابگردان خالص ۱.۵ لیتری (نمونه)", "اتمام موجودی", "#F7ECE9", "#B94D35"], ["پنیر سفید ایرانی ممتاز ۴۰۰ گرم (نمونه)", "رو به اتمام", "#FFF3D4", "#9B6A12"]].map(([name, status, bg, color]) => <Pressable key={name} onPress={() => nav("inventory")} style={styles.stockAlert}><Text style={[styles.stockStatus, { backgroundColor: bg, color }]}>{status}</Text><Text style={styles.stockName}>{name}</Text></Pressable>)}
           </>}
           {previewTab === "orders" && <>
-            <View style={styles.filterRow}>{["همهٔ سفارش‌ها", "جدید", "در حال انجام"].map((f, i) => <Text key={f} style={i === 0 ? styles.filterActive : styles.filterItem}>{f}</Text>)}</View>
-            {demoOrders.map((order, i) => <View key={order.id} style={styles.previewOrder}><View style={styles.previewOrderTop}><Text style={styles.previewOrderPrice}>{order.price} ریال</Text><Text style={styles.previewOrderId}>{order.id}</Text></View><Text style={styles.previewOrderName}>{order.title}</Text><View style={styles.previewOrderBottom}><Text style={[styles.statusPill, { backgroundColor: order.tone }]}>{order.status}</Text><Text style={styles.previewOrderDate}>{["امروز · ۱۰:۲۵", "امروز · ۰۹:۴۰", "دیروز · ۱۸:۱۰"][i]}</Text></View>{i < 2 && <Pressable style={styles.outlineAction} onPress={() => setNotice("وضعیت سفارش در این پیش‌نمایش نمایشی است.")}><Text style={styles.outlineActionText}>{i === 0 ? "تأیید و آماده‌سازی" : "جزئیات سفارش"}</Text></Pressable>}</View>)}
+            <View style={styles.filterRow}>{["همه", "جدید", "تأیید شده", "در حال آماده‌سازی", "تکمیل شده"].map((f, i) => <Text key={f} style={i === 1 ? styles.filterActive : styles.filterItem}>{f}</Text>)}</View>
+            {demoOrders.map((order, i) => <View key={order.id} style={styles.figmaOrder}><View style={styles.figmaOrderHead}><Text style={[styles.orderState, { backgroundColor: order.tone }]}>{order.status}</Text><Text style={styles.previewOrderId}>شماره سفارش: {order.id}</Text></View><View style={styles.figmaDivider}/><Text style={styles.figmaOrderMeta}>زمان ثبت: امروز · { ["۱۰:۲۵", "۱۰:۰۶", "۰۹:۱۵", "۰۸:۴۰", "۱۴:۱۰"][i] }</Text><Text style={styles.figmaOrderMeta}>تعداد اقلام: {i + 2} قلم</Text><Text style={styles.figmaOrderMeta}>شیوه تحویل / ارسال: تحویل حضوری</Text><View style={styles.figmaOrderFoot}><Text style={styles.figmaOrderTotal}>مبلغ: {order.price} تومان</Text><Pressable style={styles.figmaSmallButton} onPress={() => setNotice("جزئیات سفارش نمونه است و به سامانه متصل نیست.")}><Text style={styles.figmaSmallButtonText}>{i === 0 ? "تأیید سفارش" : "مشاهده"}</Text></Pressable></View></View>)}
           </>}
           {previewTab === "products" && <>
-            <Pressable style={styles.primaryAction} onPress={() => setNotice("فرم افزودن کالا در نسخهٔ نمایشی به سرور متصل نیست.")}><Text style={styles.primaryActionText}>＋  افزودن کالای جدید</Text></Pressable>
-            {products.map(item => <View key={item.code} style={styles.productCard}><View style={styles.productSwatch}><Text style={styles.productEmoji}>▧</Text></View><View style={styles.productInfo}><Text style={styles.productName}>{item.title}</Text><Text style={styles.previewOrderDate}>{item.code} · {item.stock}</Text><Text style={styles.productPrice}>{item.price} ریال</Text></View><Text style={[styles.productStatus, { backgroundColor: item.tone }]}>{item.status}</Text></View>)}
+            <View style={styles.searchBox}><Text style={styles.searchHint}>جستجو در کالاها...</Text><Text style={styles.searchGlyph}>⌕</Text></View>
+            <View style={styles.filterRow}>{["همه موارد", "کالا", "سایر دسته‌بندی‌ها"].map((f, i) => <Text key={f} style={i === 0 ? styles.filterActive : styles.filterItem}>{f}</Text>)}</View>
+            {products.slice(0, 2).map(item => <View key={item.code} style={styles.figmaProduct}><View style={styles.productSwatch}><Text style={styles.productEmoji}>▧</Text></View><View style={styles.productInfo}><View style={styles.productNameRow}><Text style={styles.productName}>{item.title}</Text><Text style={[styles.productStatus, { backgroundColor: item.tone }]}>{item.status}</Text></View><Text style={styles.previewOrderDate}>دسته‌بندی: لبنیات · موجودی: {item.stock}</Text><Text style={styles.productPrice}>{item.price} تومان</Text></View><Pressable style={styles.editProduct} onPress={() => setNotice("ویرایش کالا در پیش‌نمایش نمایشی است.")}><Text style={styles.productName}>✎</Text></Pressable></View>)}
+            <Pressable style={styles.figmaPrimaryButton} onPress={() => setNotice("فرم ثبت کالای جدید در این پیش‌نمایش نمایشی است.")}><Text style={styles.primaryActionText}>＋  افزودن کالای جدید</Text></Pressable>
           </>}
-          {previewTab === "inventory" && <>
-            <View style={styles.infoBanner}><Text style={styles.infoText}>موجودی یا قیمت را انتخاب کنید تا تغییرات نمونه را ببینید.</Text></View>
-            {products.map((item, i) => <View key={item.code} style={styles.inventoryCard}><View style={styles.inventoryHead}><Text style={styles.productStatus}>{item.stock}</Text><Text style={styles.productName}>{item.title}</Text></View><Text style={styles.previewOrderDate}>{item.code} · قیمت فعلی: {item.price} ریال</Text><View style={styles.inventoryActions}><Pressable style={styles.smallAction} onPress={() => setNotice(`ویرایش موجودی «${item.title}» در پیش‌نمایش شبیه‌سازی شد.`)}><Text style={styles.smallActionText}>تغییر موجودی</Text></Pressable><Pressable style={styles.smallAction} onPress={() => setNotice(`ویرایش قیمت «${item.title}» در پیش‌نمایش شبیه‌سازی شد.`)}><Text style={styles.smallActionText}>ویرایش قیمت</Text></Pressable>{i === 1 && <Text style={styles.discountTag}>٪ تخفیف</Text>}</View></View>)}
-          </>}
-          {previewTab === "settlements" && <>
-            <View style={styles.revenueCard}><Text style={styles.revenueLabel}>فروش خالص این ماه</Text><Text style={styles.revenueValue}>۱۲۴٬۸۶۰٬۰۰۰ <Text style={styles.revenueUnit}>ریال</Text></Text><Text style={styles.revenueChange}>در ۲۳ سفارش تکمیل‌شده</Text></View>
-            <Text style={styles.sectionTitle}>خلاصهٔ مالی</Text>
-            {[["در انتظار تسویه", "۱۸٬۴۰۰٬۰۰۰ ریال", "#C98035"], ["تسویه‌شده", "۱۰۶٬۴۶۰٬۰۰۰ ریال", "#407764"], ["سفارش‌های تکمیل‌شده", "۲۳ سفارش", "#1C3F3A"]].map(([label, value, color]) => <View key={label} style={styles.financeRow}><Text style={[styles.financeValue, { color }]}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}
-            <View style={styles.infoBanner}><Text style={styles.infoText}>مبالغ این صفحه نمونه‌اند و برای نمایش رابط کاربری استفاده شده‌اند.</Text></View>
-          </>}
-          {previewTab === "notifications" && <>
-            {[["سفارش جدید دریافت شد", "سفارش HN-۱۴۰۵-۲۴۸۱ ثبت شده و در انتظار تأیید شماست.", "۱۰:۲۵", "#FFF2E7"], ["موجودی کالا رو به اتمام است", "موجودی برنج هاشمی به ۸ عدد رسیده است.", "دیروز · ۱۷:۴۰", "#FCECE8"], ["تسویه با موفقیت انجام شد", "مبلغ ۱۲٬۶۰۰٬۰۰۰ ریال به حساب شما واریز شد.", "دیروز · ۱۲:۱۵", "#EAF5EF"]].map(([heading, body, time, color]) => <View key={heading} style={styles.notificationCard}><View style={[styles.notificationIcon, { backgroundColor: color }]}><Text style={styles.quickActionIcon}>•</Text></View><View style={styles.notificationContent}><Text style={styles.productName}>{heading}</Text><Text style={styles.infoText}>{body}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}
-          </>}
+          {previewTab === "inventory" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>موجودی و قیمت‌گذاری کالاها</Text><Text style={styles.infoText}>مقادیر برای نمایش رابط کاربری نمونه هستند.</Text></View>{products.map(item => <View key={item.code} style={styles.inventoryCard}><View style={styles.inventoryHead}><Text style={styles.productStatus}>{item.stock}</Text><Text style={styles.productName}>{item.title}</Text></View><Text style={styles.previewOrderDate}>{item.code} · قیمت فعلی: {item.price} تومان</Text><View style={styles.inventoryActions}><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر موجودی در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>تغییر موجودی</Text></Pressable><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر قیمت در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>ویرایش قیمت</Text></Pressable></View></View>)}</>}
+          {previewTab === "settlements" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>خلاصهٔ مالی</Text></View>{[["در انتظار تسویه", "۱۸٬۴۰۰٬۰۰۰ تومان"], ["تسویه‌شده", "۱۰۶٬۴۶۰٬۰۰۰ تومان"], ["سفارش‌های تکمیل‌شده", "۲۳ سفارش"]].map(([label, value]) => <View key={label} style={styles.financeRow}><Text style={styles.financeValue}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}</>}
+          {previewTab === "notifications" && <>{[["سفارش جدید دریافت شد", "سفارش HN-۴۰۹۱ ثبت شده و در انتظار تأیید شماست.", "۱۰:۲۵", "#F7ECE9"], ["موجودی کالا رو به اتمام است", "موجودی پنیر سفید به ۲ عدد رسیده است.", "دیروز · ۱۷:۴۰", "#FFF3D4"], ["تسویه با موفقیت انجام شد", "مبلغ ۱۲٬۶۰۰٬۰۰۰ تومان واریز شد.", "دیروز · ۱۲:۱۵", "#EAF3EC"]].map(([heading, body, time, color]) => <View key={heading} style={styles.notificationCard}><View style={[styles.notificationIcon, { backgroundColor: color }]}><Text style={styles.quickActionIcon}>•</Text></View><View style={styles.notificationContent}><Text style={styles.productName}>{heading}</Text><Text style={styles.infoText}>{body}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}</>}
+          {previewTab === "account" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>حساب کسب‌وکار</Text><View style={styles.accountLine}><Text style={styles.accountValue}>خلاصه حساب نمونه</Text><Text style={styles.accountLabel}>فروشنده / ارائه‌دهنده نمونه</Text></View></View><View style={styles.accountCard}><Text style={styles.sectionTitle}>اطلاعات هویتی</Text>{[["نوع حساب", "شخص حقیقی"], ["وضعیت احراز هویت", "تأیید شده"], ["وضعیت فروشندگی", "فعال"], ["وضعیت حمایتی مرتبط", "شناسایی شده"]].map(([l, v]) => <View style={styles.accountLine} key={l}><Text style={styles.accountValue}>{v}</Text><Text style={styles.accountLabel}>{l}</Text></View>)}</View><View style={styles.accountLinks}>{[["اطلاعات کسب‌وکار", "نام، آدرس، صنف"], ["موجودی و دسترس‌پذیری", "وضعیت کالاها"], ["قیمت‌گذاری", "قیمت کالاها"], ["ارسال و محدوده فعالیت", "روش و محدوده ارسال"], ["طرح‌ها و اعتبارها", "طرح‌ها و اعتبارها"], ["تسویه‌حساب‌ها", "اطلاعات تسویه"], ["گزارش‌ها", "فروش و عملکرد"], ["پشتیبانی", "گفتگو و تیکت"], ["تنظیمات", "زبان، اعلان‌ها"]].map(([l, h]) => <Pressable key={l} style={styles.accountLink} onPress={() => nav(l.includes("تسویه") || l.includes("گزارش") ? "settlements" : "inventory")}><Text style={styles.accountChevron}>‹</Text><Text style={styles.accountValue}>{h}</Text><Text style={styles.accountLabel}>{l}</Text></Pressable>)}</View><Pressable style={styles.outlineAction} onPress={() => void signOut()}><Text style={styles.outlineActionText}>خروج از حساب</Text></Pressable></>}
           {notice ? <Pressable onPress={() => setNotice("")} style={styles.noticeBox}><Text style={styles.noticeText}>{notice}  ×</Text></Pressable> : null}
         </View>
       </ScrollView>
-      <View style={styles.bottomNav}>
-        {([["dashboard", "خانه"], ["orders", "سفارش‌ها"], ["products", "کالاها"], ["inventory", "موجودی"], ["settlements", "گزارش"]] as const).map(([key, label]) => <Pressable key={key} onPress={() => { setPreviewTab(key); setNotice(""); }} style={styles.navItem}><Text style={previewTab === key ? styles.navSelected : styles.navLabel}>{label}</Text></Pressable>)}
-      </View>
+      <View style={styles.figmaBottomNav}>{navItems.map(([key, icon, label]) => <Pressable key={key} onPress={() => nav(key)} style={styles.figmaNavItem}><Text style={previewTab === key ? styles.figmaNavIconActive : styles.figmaNavIcon}>{icon}</Text><Text style={previewTab === key ? styles.figmaNavLabelActive : styles.figmaNavLabel}>{label}</Text></Pressable>)}</View>
     </>;
   }
 
@@ -357,9 +337,10 @@ export default function App() {
         <View style={styles.header}>
           <Image source={logo} style={styles.logo} resizeMode="contain" />
           <View style={styles.brand}>
-            <Text style={styles.heading}>پیشخوان فروشنده حنا</Text>
-            <Text style={styles.muted}>{seller?.storeName ?? "ورود امن فروشنده"}</Text>
+            <Text style={styles.heading}>{gate.kind === "preview" ? ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی کالاها", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده" } as const)[previewTab] : "پیشخوان فروشنده حنا"}</Text>
+            <Text style={styles.muted}>{gate.kind === "preview" ? "کسب‌وکار نمونه" : seller?.storeName ?? "ورود امن فروشنده"}</Text>
           </View>
+          {gate.kind === "preview" ? <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>م</Text></View> : null}
         </View>
         {gate.kind === "ready" ? <>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
@@ -574,4 +555,54 @@ const styles = StyleSheet.create({
   notificationContent: { flex: 1, alignItems: "flex-end", gap: 5 },
   noticeBox: { backgroundColor: "#FFF2E7", borderRadius: 10, padding: 10 },
   noticeText: { color: "#815B39", fontFamily: "Vazirmatn_400Regular", fontSize: 11, ...rtl },
+  figmaScreen: { width: "100%", maxWidth: 520, alignSelf: "center", padding: 16, paddingBottom: 26, gap: 12 },
+  profileAvatar: { width: 38, height: 38, borderRadius: 22, backgroundColor: "#F7ECE9", alignItems: "center", justifyContent: "center" },
+  profileAvatarText: { color: "#B94D35", fontFamily: "Vazirmatn_700Bold", fontSize: 15 },
+  screenIntro: { gap: 3, marginBottom: 3 },
+  screenTitle: { fontFamily: "Vazirmatn_700Bold", fontSize: 17, color: "#204B43", ...rtl },
+  screenCaption: { fontFamily: "Vazirmatn_400Regular", fontSize: 11, color: "#817970", ...rtl },
+  metricGrid: { flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "space-between", gap: 10 },
+  metricCard: { width: "48%", minHeight: 98, backgroundColor: "#FFFFFF", borderRadius: 14, borderWidth: 1, borderColor: "#EAE5DF", padding: 11, justifyContent: "space-between", gap: 8 },
+  metricCaption: { flexDirection: "row-reverse", alignItems: "center", gap: 7 },
+  metricIcon: { width: 24, height: 24, borderRadius: 14, backgroundColor: "#F7F0EA", textAlign: "center", textAlignVertical: "center", fontSize: 13, overflow: "hidden" },
+  metricLabel: { flex: 1, fontFamily: "Vazirmatn_400Regular", fontSize: 10, color: "#827970", ...rtl },
+  metricValue: { fontFamily: "Vazirmatn_700Bold", fontSize: 18, ...rtl },
+  quickPanel: { backgroundColor: "#FFFFFF", borderRadius: 17, borderWidth: 1, borderColor: "#EAE5DF", padding: 14, gap: 12 },
+  quickGrid: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
+  quickTile: { width: "49%", height: 44, borderRadius: 11, backgroundColor: "#F8F6F3", alignItems: "center", justifyContent: "center" },
+  quickTileAccent: { width: "49%", height: 44, borderRadius: 11, backgroundColor: "#F8ECE9", alignItems: "center", justifyContent: "center" },
+  quickTileText: { fontFamily: "Vazirmatn_700Bold", color: "#4D4A46", fontSize: 11 },
+  quickTileAccentText: { fontFamily: "Vazirmatn_700Bold", color: "#B94D35", fontSize: 11 },
+  stockAlert: { minHeight: 50, backgroundColor: "#FFFFFF", borderColor: "#EAE5DF", borderWidth: 1, borderRadius: 12, padding: 10, flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+  stockStatus: { overflow: "hidden", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5, fontFamily: "Vazirmatn_700Bold", fontSize: 9 },
+  stockName: { flex: 1, color: "#393632", fontFamily: "Vazirmatn_400Regular", fontSize: 11, ...rtl },
+  figmaBottomNav: { backgroundColor: "#FFFFFF", borderTopWidth: 1, borderTopColor: "#EAE5DF", flexDirection: "row-reverse", justifyContent: "space-around", paddingTop: 8, paddingBottom: 7 },
+  figmaNavItem: { minWidth: 55, alignItems: "center", justifyContent: "center", gap: 2 },
+  figmaNavIcon: { color: "#827A72", fontSize: 19, lineHeight: 23 },
+  figmaNavIconActive: { color: "#BC4E36", fontSize: 19, lineHeight: 23 },
+  figmaNavLabel: { color: "#817970", fontFamily: "Vazirmatn_400Regular", fontSize: 9 },
+  figmaNavLabelActive: { color: "#BC4E36", fontFamily: "Vazirmatn_700Bold", fontSize: 9 },
+  searchBox: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EAE5DF", borderRadius: 11, height: 46, paddingHorizontal: 12, flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+  searchHint: { color: "#827970", fontFamily: "Vazirmatn_400Regular", fontSize: 12, ...rtl },
+  searchGlyph: { fontSize: 22, color: "#766F68" },
+  figmaProduct: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EAE5DF", borderRadius: 15, padding: 11, minHeight: 100, flexDirection: "row-reverse", alignItems: "center", gap: 9 },
+  productNameRow: { flexDirection: "row-reverse", alignItems: "center", flexWrap: "wrap", gap: 5 },
+  editProduct: { width: 30, height: 30, borderRadius: 7, borderWidth: 1, borderColor: "#EAE5DF", alignItems: "center", justifyContent: "center" },
+  figmaPrimaryButton: { backgroundColor: "#B94D35", borderRadius: 28, minHeight: 46, paddingHorizontal: 20, alignSelf: "center", alignItems: "center", justifyContent: "center", marginTop: 5 },
+  figmaOrder: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EAE5DF", borderRadius: 14, padding: 11, gap: 4 },
+  figmaOrderHead: { flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" },
+  orderState: { fontFamily: "Vazirmatn_700Bold", fontSize: 9, color: "#665D55", borderRadius: 5, paddingHorizontal: 7, paddingVertical: 4, overflow: "hidden" },
+  figmaDivider: { height: 1, backgroundColor: "#EEEAE5", marginVertical: 2 },
+  figmaOrderMeta: { fontFamily: "Vazirmatn_400Regular", fontSize: 10, color: "#716A63", ...rtl },
+  figmaOrderFoot: { flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center", marginTop: 3 },
+  figmaOrderTotal: { color: "#383531", fontFamily: "Vazirmatn_700Bold", fontSize: 11, ...rtl },
+  figmaSmallButton: { backgroundColor: "#B94D35", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 7 },
+  figmaSmallButtonText: { color: "#FFFFFF", fontFamily: "Vazirmatn_700Bold", fontSize: 9 },
+  accountCard: { backgroundColor: "#FFFFFF", borderRadius: 15, borderWidth: 1, borderColor: "#EAE5DF", padding: 14, gap: 12 },
+  accountLine: { flexDirection: "row-reverse", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#EEEAE5", paddingTop: 10 },
+  accountValue: { fontFamily: "Vazirmatn_400Regular", fontSize: 10, color: "#746D66", ...rtl },
+  accountLabel: { fontFamily: "Vazirmatn_400Regular", fontSize: 10, color: "#746D66", ...rtl },
+  accountLinks: { borderRadius: 15, overflow: "hidden", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EAE5DF" },
+  accountLink: { minHeight: 48, flexDirection: "row-reverse", alignItems: "center", gap: 9, paddingHorizontal: 11, borderBottomWidth: 1, borderBottomColor: "#EEEAE5" },
+  accountChevron: { color: "#777069", fontSize: 20 },
 });
