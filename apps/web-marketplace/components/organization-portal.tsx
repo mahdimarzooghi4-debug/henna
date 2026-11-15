@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import styles from "./organization-portal.module.css";
 import { OrganizationPeopleDirectory } from "./organization-people-directory";
+import { OrganizationPeopleIntake } from "./organization-people-intake";
 
 type PortalKey = "dashboard" | "programs" | "people" | "allocation" | "usage" | "api" | "reports" | "notifications" | "profile" | "support" | "settings";
 type AllocationMode = "HENNA_NEEDS_BASED" | "ORGANIZATION_DEFINED";
@@ -96,13 +97,13 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const data = usePortalData();
   const active: PortalKey = screen === "program-detail" ? "programs" : screen === "people-new" ? "people" : screen === "allocation-detail" ? "allocation" : screen;
   const titles: Record<typeof screen, string> = {
-    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت ارجاع خانوارها", api: "منابع داده و API", allocation: "وضعیت تخصیص", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
+    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "وضعیت تخصیص", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
   };
   const title = titles[screen];
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
-  if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
-  if (data.error && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people") {
+  if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
+  if (data.error && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") {
     const needsLogin = data.error.includes("وارد شوید") || data.error.includes("نشست معتبر نیست");
     const returnTo = screen === "allocation-detail" && allocationId
       ? `/organization/allocation/${allocationId}`
@@ -236,13 +237,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   if (screen === "people") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleDirectory/></OrganizationPortalShell>;
 
-  if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}>
-    <Notice>ثبت افراد به‌صورت گروهی تا فعال‌شدن API سازمان در دسترس نیست. از فرم ارجاع خانوار در صفحه طرح استفاده کنید.</Notice>
-    <div className={styles.twoCards}>
-      <Card title="ثبت دستی افراد"><div className={styles.form}><label>انتخاب طرح<select defaultValue=""><option value="" disabled>یک طرح را انتخاب کنید</option>{data.programs.map(p=><option key={p.programId} value={p.programId}>{p.name}</option>)}</select></label><label>شناسه مرجع فرد<input placeholder="پس از اتصال سرویس فعال می‌شود" disabled/></label></div><div className={styles.buttonRow}><button className={styles.primaryButton} type="button" disabled>ثبت افراد</button><Link className={styles.outlineButton} href="/organization/people">بازگشت به فهرست</Link></div></Card>
-      <Card title="بارگذاری فایل اکسل / CSV"><div className={styles.dropZone}>⇧<span>بارگذاری فایل افراد</span><small>بارگذاری تا زمان تأیید قالب و اتصال سرویس غیرفعال است.</small><input type="file" accept=".csv,.xlsx" disabled/></div></Card>
-    </div>
-  </OrganizationPortalShell>;
+  if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
 
   if (screen === "allocation") return <OrganizationPortalShell active="allocation" title={title}>
     <div className={styles.toolbar}><select aria-label="نوع سازمان"><option>نوع سازمان: همه</option><option>سازمان حمایتی</option></select><select aria-label="روش تخصیص"><option>روش تخصیص: همه</option><option>الگوی تخصیص حنا</option></select><span className={styles.toolbarCaption}>دوره تخصیص: تعیین نشده</span></div>
