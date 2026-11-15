@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { OrganizationPortalShell } from "./organization-portal";
+import styles from "./organization-portal.module.css";
 
 type Role = "ORG_LEAD" | "ORG_REPRESENTATIVE" | "ORG_TECHNICAL_OPERATOR";
 type Profile = { organizationId: string; organizationName: string; memberRole: Role; membershipId: string };
@@ -17,6 +18,8 @@ export function OrganizationProgramForm() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [organizationId, setOrganizationId] = useState("");
   const [name, setName] = useState("");
+  const [programKind, setProgramKind] = useState("");
+  const [source, setSource] = useState("");
   const [mode, setMode] = useState<AllocationMode>("HENNA_NEEDS_BASED");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
@@ -45,7 +48,7 @@ export function OrganizationProgramForm() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setMessage("");
     if (!canCreate) { setMessage("نقش این حساب اجازه ثبت پیش‌نویس طرح را ندارد."); return; }
-    if (!name.trim() || name.trim().length > 120 || description.length > 1200 || !allowedModes.includes(mode)) { setMessage("اطلاعات طرح را بررسی کنید."); return; }
+    if (!programKind || !source || !name.trim() || name.trim().length > 120 || description.length > 1200 || !allowedModes.includes(mode)) { setMessage("اطلاعات طرح را بررسی کنید."); return; }
     const payload = { organizationId, name: name.trim(), allocationMode: mode, description: description.trim() };
     const fingerprint = JSON.stringify(payload);
     if (!idempotency.current || idempotency.current.fingerprint !== fingerprint) idempotency.current = { fingerprint, key: crypto.randomUUID() };
@@ -59,21 +62,58 @@ export function OrganizationProgramForm() {
     finally { setBusy(false); }
   }
 
-  return <OrganizationPortalShell active="programs" title="ثبت طرح سازمانی">
-      <section className="organization-program-form-area">
-        <div className="organization-form-card"><h2>فرم ثبت پیش‌نویس طرح</h2><p className="organization-form-intro">فقط نام، روش ثبت‌شده و توضیحات در این مرحله ذخیره می‌شوند.</p>
-          {loading ? <p role="status">در حال بررسی عضویت سازمانی…</p> : loadError ? <div className="organization-notice">{loadError}</div> : profiles.length === 0 ? <div className="organization-notice">برای این حساب عضویت فعال سازمانی ثبت نشده است.</div> : !canCreate ? <div className="organization-notice">نقش فعلی فقط امکان مشاهده دارد؛ برای ساخت پیش‌نویس با مدیر یا نمایندهٔ سازمان تماس بگیرید.</div> : <form onSubmit={submit}>
-            {profiles.length > 1 && <label className="organization-field">سازمان<select value={organizationId} onChange={(event) => setOrganizationId(event.target.value)}>{profiles.map((profile) => <option key={profile.membershipId} value={profile.organizationId}>{profile.organizationName}</option>)}</select></label>}
-            <div className="organization-form-grid">
-              <label className="organization-field">نام طرح<input aria-label="نام طرح" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required placeholder="مثال: طرح تغذیه خانوار" /></label>
-              <label className="organization-field">روش ثبت‌شده<select aria-label="روش ثبت‌شده" value={mode} onChange={(event) => setMode(event.target.value as AllocationMode)}><option value="HENNA_NEEDS_BASED">نیازمحور حنا</option><option value="ORGANIZATION_DEFINED">تعریف‌شده توسط سازمان</option></select></label>
+  return <OrganizationPortalShell active="programs" title="ثبت طرح سازمانی جدید">
+    <section className={styles.programFormPage}>
+      <div className={styles.programFormCard}>
+        <header className={styles.programFormHeader}>
+          <h2>فرم راه‌اندازی و پیکربندی طرح اعتباری</h2>
+          <p>مشخصات اولیه، الگوی تخصیص و دامنه افراد مشمول را مشخص نمایید.</p>
+        </header>
+        <div className={styles.programFormDivider}/>
+        {loading ? <p role="status" className={styles.programFormState}>در حال بررسی عضویت سازمانی…</p> : loadError ? <div className={styles.programFormNotice} role="alert">{loadError}</div> : profiles.length === 0 ? <div className={styles.programFormNotice}>برای این حساب عضویت فعال سازمانی ثبت نشده است.</div> : !canCreate ? <div className={styles.programFormNotice}>نقش فعلی فقط امکان مشاهده دارد؛ برای ساخت پیش‌نویس با مدیر یا نمایندهٔ سازمان تماس بگیرید.</div> : <form className={styles.programForm} onSubmit={submit}>
+          <div className={styles.programFormGrid}>
+            <div className={styles.programFormRow}>
+              <label className={styles.programFormField}>نوع اعتبار / برنامه
+                <select value={programKind} onChange={(event) => setProgramKind(event.target.value)} required>
+                  <option value="" disabled>انتخاب نوع اعتبار / برنامه</option>
+                  <option value="credit">اعتبار نمونه</option>
+                  <option value="program">برنامه حمایتی نمونه</option>
+                </select>
+              </label>
+              <label className={styles.programFormField}>نام طرح حمایتی
+                <input aria-label="نام طرح حمایتی" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required placeholder="مثال: طرح نمونه ۱"/>
+              </label>
             </div>
-            <label className="organization-field">توضیحات و اهداف طرح<textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1200} rows={5} placeholder="توضیحات طرح را وارد کنید" /></label>
-            <div className="organization-finance-boundary"><strong>این مرحله فقط پیش‌نویس می‌سازد</strong><p>انتخاب روش به‌تنهایی اجازهٔ تخصیص نیست. پیش‌نویس منبع مالی، مبلغ، کیف پول یا اعتبار ایجاد نمی‌کند. صندوق نیکوکاری حنا فقط با روش نیازمحور حنا کار می‌کند؛ منبع و اختیار آن باید جداگانه بررسی شود.</p></div>
-            {message && <p className="organization-form-message" role="alert">{message}</p>}
-            <div className="organization-form-actions"><Link className="organization-outline-button" href="/organization/programs">انصراف</Link><button className="organization-primary-button" type="submit" disabled={busy}>{busy ? "در حال ثبت…" : "ثبت اولیه طرح سازمانی"}</button></div>
-          </form>}
-        </div>
-      </section>
+            <div className={styles.programFormRow}>
+              <label className={styles.programFormField}>منبع افراد و مشمولان
+                <select value={source} onChange={(event) => setSource(event.target.value)} required>
+                  <option value="" disabled>انتخاب ورود دستی یا API / منبع داده سازمان</option>
+                  <option value="manual">ورود دستی</option>
+                  <option value="organization-api">API / منبع داده سازمان</option>
+                </select>
+              </label>
+              <label className={styles.programFormField}>روش تخصیص طرح
+                <select value={mode} onChange={(event) => setMode(event.target.value as AllocationMode)}>
+                  <option value="HENNA_NEEDS_BASED">روش تخصیص: الگوی حنا</option>
+                  <option value="ORGANIZATION_DEFINED">تعریف‌شده توسط سازمان</option>
+                </select>
+              </label>
+            </div>
+            <label className={styles.programFormField}>توضیحات و اهداف طرح
+              <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1200} rows={4} placeholder="شرح اهداف، نحوه استفاده و اطلاعات تکمیلی برای مشمولان طرح..."/>
+            </label>
+          </div>
+          <p className={styles.programFormNote}>در ثبت اولیه، فقط نام طرح، روش تخصیص و توضیحات ذخیره می‌شود؛ نوع برنامه و منبع افراد در مرحله بعد پیکربندی خواهند شد.</p>
+          <div className={styles.programFormDivider}/>
+          {message && <p className={styles.programFormMessage} role="alert">{message}</p>}
+          <div className={styles.programFormActions}>
+            <Link className={styles.outlineButton} href="/organization/programs">انصراف</Link>
+            <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "در حال ثبت…" : "ثبت اولیه طرح سازمانی"}</button>
+          </div>
+          <div className={styles.programFinanceBoundary}><b>ثبت اولیه طرح فقط یک پیش‌نویس می‌سازد.</b> این مرحله منبع مالی، مبلغ، کیف پول یا اعتبار ایجاد نمی‌کند.</div>
+        </form>}
+      </div>
+    </section>
   </OrganizationPortalShell>;
+}
 }
