@@ -186,11 +186,11 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   if (screen === "program-detail") {
     const sampleDetails = {
-      "sample-plan-1": { name: "طرح نمونه ۱", status: "فعال", publicId: "PRG-***91" },
-      "sample-plan-2": { name: "طرح نمونه ۲", status: "ثبت‌شده", publicId: "PRG-***92" },
-      "sample-plan-3": { name: "برنامه حمایتی نمونه", status: "پیش‌نویس", publicId: "PRG-***93" },
-      "sample-plan-4": { name: "طرح نمونه ۱", status: "متوقف", publicId: "PRG-***94" },
-      "sample-plan-5": { name: "طرح نمونه ۲", status: "پایان‌یافته", publicId: "PRG-***95" },
+      "sample-plan-1": { name: "طرح نمونه ۱", status: "فعال", publicId: "PRG-***91", organizationName: "سازمان حمایتگر", allocation: "الگوی تخصیص حنا" },
+      "sample-plan-2": { name: "طرح نمونه ۲", status: "ثبت‌شده", publicId: "PRG-***92", organizationName: "سازمان حمایتگر", allocation: "الگوی تخصیص حنا" },
+      "sample-plan-3": { name: "برنامه حمایتی نمونه", status: "پیش‌نویس", publicId: "PRG-***93", organizationName: "سازمان حمایتگر", allocation: "الگوی تخصیص حنا" },
+      "sample-plan-4": { name: "طرح نمونه ۱", status: "متوقف", publicId: "PRG-***94", organizationName: "سازمان حمایتگر", allocation: "الگوی تخصیص حنا" },
+      "sample-plan-5": { name: "طرح نمونه ۲", status: "پایان‌یافته", publicId: "PRG-***95", organizationName: "سازمان حمایتگر", allocation: "الگوی تخصیص حنا" },
     };
     const demoProgram = sampleDetails[programId as keyof typeof sampleDetails] ?? sampleDetails["sample-plan-1"];
     return <OrganizationPortalShell active="programs" title={title}>
@@ -208,7 +208,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
               ["نام کامل طرح سازمانی", demoProgram.name],
               ["سازمان ثبت‌کننده", demoProgram.organizationName],
               ["روش تخصیص پیش‌فرض", demoProgram.allocation],
-              ["وضعیت کنونی طرح", <span className={styles.programDetailStatus}>فعال</span>],
+              ["وضعیت کنونی طرح", <span className={styles.programDetailStatus}>{demoProgram.status}</span>],
             ]}/>
             <div className={styles.programDescription}>
               <b>توضیحات طرح حمایتی</b>
