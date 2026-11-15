@@ -326,7 +326,7 @@ export default function App() {
           {notice ? <Pressable onPress={() => setNotice("")} style={styles.noticeBox}><Text style={styles.noticeText}>{notice}  ×</Text></Pressable> : null}
         </View>
       </ScrollView>
-      <View style={styles.figmaBottomNav}>{navItems.map(([key, icon, label]) => <Pressable key={key} onPress={() => nav(key)} style={styles.figmaNavItem}><Text style={previewTab === key ? styles.figmaNavIconActive : styles.figmaNavIcon}>{icon}</Text><Text style={previewTab === key ? styles.figmaNavLabelActive : styles.figmaNavLabel}>{label}</Text></Pressable>)}</View>
+      <View style={styles.figmaBottomNav}>{navItems.map(([key, icon, label]) => <Pressable key={key} onPress={() => nav(key)} style={styles.figmaNavItem}><Text style={previewTab === key ? styles.figmaNavIconActive : styles.figmaNavIcon}>{icon}</Text><Text style={previewTab === key ? styles.figmaNavLabelActive : styles.figmaNavLabel}>{label}</Text></Pressable>)}<View style={styles.gesturePill}/></View>
     </>;
   }
 
@@ -432,7 +432,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FAF8F5" },
+  root: { flex: 1, width: "100%", maxWidth: 390, alignSelf: "center", backgroundColor: "#FAF8F5", borderLeftWidth: 1, borderRightWidth: 1, borderColor: "#EEE9E3" },
   flex: { flex: 1 },
   header: {
     backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#EAE6E1",
@@ -576,7 +576,8 @@ const styles = StyleSheet.create({
   stockAlert: { minHeight: 50, backgroundColor: "#FFFFFF", borderColor: "#EAE5DF", borderWidth: 1, borderRadius: 12, padding: 10, flexDirection: "row-reverse", alignItems: "center", gap: 8 },
   stockStatus: { overflow: "hidden", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5, fontFamily: "Vazirmatn_700Bold", fontSize: 9 },
   stockName: { flex: 1, color: "#393632", fontFamily: "Vazirmatn_400Regular", fontSize: 11, ...rtl },
-  figmaBottomNav: { backgroundColor: "#FFFFFF", borderTopWidth: 1, borderTopColor: "#EAE5DF", flexDirection: "row-reverse", justifyContent: "space-around", paddingTop: 8, paddingBottom: 7 },
+  figmaBottomNav: { backgroundColor: "#FFFFFF", borderTopWidth: 1, borderTopColor: "#EAE5DF", flexDirection: "row", justifyContent: "space-around", paddingTop: 8, paddingBottom: 18, position: "relative" },
+  gesturePill: { position: "absolute", bottom: 3, alignSelf: "center", width: 108, height: 4, borderRadius: 4, backgroundColor: "#292929" },
   figmaNavItem: { minWidth: 55, alignItems: "center", justifyContent: "center", gap: 2 },
   figmaNavIcon: { color: "#827A72", fontSize: 19, lineHeight: 23 },
   figmaNavIconActive: { color: "#BC4E36", fontSize: 19, lineHeight: 23 },
