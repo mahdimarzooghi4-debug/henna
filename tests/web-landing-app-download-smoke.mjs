@@ -38,7 +38,9 @@ test("download APK directly in the current mobile tab, with visible preview warn
  assert.doesNotMatch(page,/href=\{app\.android\}[^>]*target="_blank"/);
  assert.match(page,/Problem parsing package/);
  assert.match(page,/خانه، کاتالوگ و فیلترهای نمونه/);
- assert.match(page,/هیچ سفارش، فاکتور، اعتبار یا پرداخت واقعی ایجاد نمی‌شود/);\n assert.match(page,/سه روش پرداخت نمایشی/);\n assert.match(page,/صفحه نتیجه و پیگیری نمونه/);
+ assert.match(page,/هیچ سفارش، فاکتور، اعتبار یا پرداخت واقعی ایجاد نمی‌شود/);
+ assert.match(page,/سه روش پرداخت نمایشی/);
+ assert.match(page,/صفحه نتیجه و پیگیری نمونه/);
  assert.match(page,/GitHub Releases/);
  assert.match(page,/className=\{styles\.releaseLinks\}/);
 });
