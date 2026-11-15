@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { AdminRow } from "./admin-pages";
+import { adminGridTemplate, type AdminRow } from "./admin-pages";
 
 type Props = { columns: string[]; rows: AdminRow[] };
 type StatusFilter = "all" | "active" | "review";
@@ -17,13 +17,13 @@ export default function AdminOrganizationsListing({ columns, rows }: Props) {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [query, setQuery] = useState("");
   const filteredRows = useMemo(() => rows.filter((item) => {
-    const statusValue = item.cells.at(-2) ?? "";
+    const statusValue = item.cells[3] ?? "";
     const matchesStatus = status === "all"
       || (status === "active" && statusValue === "فعال")
       || (status === "review" && statusValue.includes("انتظار بررسی"));
     return matchesStatus && item.cells.join(" ").toLocaleLowerCase("fa-IR").includes(query.trim().toLocaleLowerCase("fa-IR"));
   }), [query, rows, status]);
-  const gridTemplateColumns = `repeat(${columns.length - 1}, minmax(120px, 1fr)) minmax(120px, 1fr)`;
+  const gridTemplateColumns = adminGridTemplate("organizations", columns.length);
 
   return <>
     <div className="admin-filters" aria-label="فیلترهای سازمان‌ها">

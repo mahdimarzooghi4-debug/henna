@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import AdminSidebar from "../app/admin/panel/admin-sidebar";
 
 type ReviewStatus = "UNDER_REVIEW" | "NEEDS_INFORMATION" | "APPROVED" | "REJECTED";
 type ReviewAction = "NEEDS_INFORMATION" | "APPROVED" | "REJECTED";
@@ -68,32 +69,6 @@ const statusLabel: Record<ReviewStatus, string> = {
   APPROVED: "تأیید شده",
   REJECTED: "رد شده",
 };
-const nav = [
-  { group: "نمای کلی", items: [{ label: "داشبورد", icon: "imgFrame", href: "/admin/panel" }] },
-  { group: "بازارگاه", items: [
-    { label: "کاربران و حساب‌ها", icon: "imgUsersIcon", href: "/admin/panel/users" },
-    { label: "سازمان‌ها", icon: "imgUsersIcon", href: "/admin/panel/organizations" },
-    { label: "فروشندگان", icon: "imgStoreIcon", href: "/admin/panel/sellers" },
-    { label: "درخواست‌های ثبت‌نام فروشنده", icon: "imgClipboardIcon", href: "/admin/seller-applications", active: true },
-    { label: "کالاها", icon: "imgFrame1", href: "/admin/panel/products" },
-    { label: "دسته‌بندی‌ها", icon: "imgFolderIcon", href: "/admin/panel/categories" },
-    { label: "سفارش‌ها", icon: "imgFrame2", href: "/admin/panel/orders" },
-  ] },
-  { group: "عملیات و طرح‌ها", items: [
-    { label: "طرح‌ها و اعتبارها", icon: "imgFrame3", href: "/admin/panel/programs" },
-    { label: "مشارکت اجتماعی", icon: "imgMessageIcon", href: "/admin/panel/social" },
-    { label: "لجستیک", icon: "imgFrame4", href: "/admin/panel/logistics" },
-    { label: "تسویه‌ها و تراکنش‌ها", icon: "imgFrame5", href: "/admin/panel/settlements" },
-    { label: "پشتیبانی", icon: "imgHelpIcon", href: "/admin/panel/support" },
-    { label: "اعلان‌ها", icon: "imgFrame6", href: "/admin/panel/notifications" },
-  ] },
-  { group: "مدیریت سامانه", items: [
-    { label: "گزارش‌ها", icon: "imgFrame7", href: "/admin/panel/reports" },
-    { label: "محتوا", icon: "imgFileIcon", href: "/admin/panel/content" },
-    { label: "کاربران پنل و دسترسی‌ها", icon: "imgShieldIcon", href: "/admin/panel/access" },
-    { label: "تنظیمات", icon: "imgSettingsIcon", href: "/admin/panel/settings" },
-  ] },
-];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "ثبت نشده";
@@ -123,44 +98,20 @@ async function responseMessage(response: Response) {
       : "دریافت اطلاعات انجام نشد؛ دوباره تلاش کنید.";
 }
 
-function AdminShell({ children, assetPrefix }: { children: ReactNode; assetPrefix: "list" | "detail" }) {
-  return (
-    <div className="admin-shell" dir="ltr">
-      <div className="admin-main" dir="rtl">
-        <header className="admin-topbar">
-          <div className="admin-topbar__account">
-            <span className="admin-topbar__role">پنل مدیریت</span>
-            <span className="admin-topbar__divider" aria-hidden="true" />
-            <span className="admin-topbar__notification" aria-label="اعلان‌ها">
-              <img src={`/admin-assets/${assetPrefix}-imgNotifBtn.svg`} alt="" width="36" height="36" />
-            </span>
-          </div>
-        </header>
-        {children}
-      </div>
-      <aside className="admin-sidebar" dir="rtl" aria-label="منوی مدیریت">
-        <div className="admin-sidebar__brand">
-          <img src={`/admin-assets/${assetPrefix}-imgLogo.png`} alt="نشان حنا" width="48" height="48" />
-          <div><strong>مدیریت حنا</strong><span>پنل مدیریت بازارگاه</span></div>
-        </div>
-        <nav className="admin-sidebar__nav">
-          {nav.map((group) => <section className="admin-sidebar__group" key={group.group}>
-            <h2>{group.group}</h2>
-            {group.items.map((item) => <a
-              className={`admin-sidebar__item${"active" in item && item.active ? " admin-sidebar__item--active" : ""}`}
-              href={item.href}
-              key={item.label}
-              aria-current={"active" in item && item.active ? "page" : undefined}
-              title={item.label}
-            >
-              <span>{item.label}</span>
-              <img src={`/admin-assets/${assetPrefix}-${item.icon}.svg`} alt="" width="20" height="20" />
-            </a>)}
-          </section>)}
-        </nav>
-      </aside>
+function AdminShell({ children, active }: { children: ReactNode; active: string }) {
+  return <div className="admin-shell" dir="rtl">
+    <div className="admin-main" dir="rtl">
+      <header className="admin-topbar"><div className="admin-topbar__account">
+        <span className="admin-topbar__role">پنل مدیریت</span>
+        <span className="admin-topbar__divider" aria-hidden="true" />
+        <span className="admin-topbar__notification" aria-label="اعلان‌ها">
+          <img src="/admin-assets/list-imgNotifBtn.svg" alt="" width="36" height="36" />
+        </span>
+      </div></header>
+      {children}
     </div>
-  );
+    <AdminSidebar active={active} />
+  </div>;
 }
 
 function Notice({ tone = "error", children }: { tone?: "error" | "success" | "info"; children: ReactNode }) {
@@ -194,7 +145,7 @@ export function AdminSellerApplicationsList() {
 
   const pageCount = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
-  return <AdminShell assetPrefix="list">
+  return <AdminShell active="/admin/seller-applications">
     <main className="admin-content">
       <div className="admin-page-heading">
         <h1>درخواست‌های ثبت‌نام فروشنده</h1>
@@ -215,7 +166,7 @@ export function AdminSellerApplicationsList() {
         {error ? <div className="admin-empty"><Notice>{error}</Notice><button className="admin-secondary-button" type="button" onClick={() => setRefresh((x) => x + 1)}>تلاش دوباره</button></div>
           : loading ? <div className="admin-empty" role="status">در حال دریافت فهرست…</div>
             : data?.items.length === 0 ? <div className="admin-empty">در این وضعیت درخواستی ثبت نشده است.</div>
-              : <div className="admin-table-scroll"><div className="admin-table" role="table" aria-label="درخواست‌های ثبت‌نام فروشنده">
+              : <div className="admin-table-scroll"><div className="admin-table admin-applications-table" role="table" aria-label="درخواست‌های ثبت‌نام فروشنده">
                 <div className="admin-table__row admin-table__head" role="row">
                   <span role="columnheader">متقاضی</span><span role="columnheader">حقیقی / حقوقی</span>
                   <span role="columnheader">کسب‌وکار</span><span role="columnheader">وضعیت هویتی</span>
@@ -312,7 +263,7 @@ export function AdminSellerApplicationDetail({ applicationId }: { applicationId:
     } finally { setSubmitting(false); }
   }
 
-  return <AdminShell assetPrefix="detail">
+  return <AdminShell active="/admin/seller-applications">
     <main className="admin-content admin-content--detail">
       <div className="admin-detail-heading">
         <div className="admin-detail-heading__copy">

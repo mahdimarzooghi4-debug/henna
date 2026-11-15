@@ -1,20 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import styles from "../admin-panel.module.css";
+import AdminSidebar from "../admin-sidebar";
 import AdminUsersListing from "../admin-users-listing";
 import AdminOrganizationsListing from "../admin-organizations-listing";
 import AdminOrganizationDetail from "../admin-organization-detail";
 import AdminUserDetail from "../admin-user-detail";
 import AdminSellersListing from "../admin-sellers-listing";
 import AdminSellerDetail from "../admin-seller-detail";
-import { adminSections, findAdminSection, type AdminRow } from "../admin-pages";
-
-const menu = [
-  ["نمای کلی", [["داشبورد", "/admin/panel", "list-imgFrame.svg"]]],
-  ["بازارگاه", [["کاربران و حساب‌ها", "/admin/panel/users", "list-imgUsersIcon.svg"], ["سازمان‌ها", "/admin/panel/organizations", "dashboard-imgUsers2.svg"], ["فروشندگان", "/admin/panel/sellers", "list-imgStoreIcon.svg"], ["درخواست‌های ثبت‌نام فروشنده", "/admin/seller-applications", "list-imgClipboardIcon.svg"], ["کالاها", "/admin/panel/products", "list-imgFrame1.svg"], ["دسته‌بندی‌ها", "/admin/panel/categories", "list-imgFolderIcon.svg"], ["سفارش‌ها", "/admin/panel/orders", "list-imgFrame2.svg"]]],
-  ["عملیات و طرح‌ها", [["طرح‌ها و اعتبارها", "/admin/panel/programs", "list-imgFrame3.svg"], ["مشارکت اجتماعی", "/admin/panel/social", "list-imgMessageIcon.svg"], ["لجستیک", "/admin/panel/logistics", "list-imgFrame4.svg"], ["تسویه‌ها و تراکنش‌ها", "/admin/panel/settlements", "list-imgFrame5.svg"], ["پشتیبانی", "/admin/panel/support", "list-imgHelpIcon.svg"], ["اعلان‌ها", "/admin/panel/notifications", "list-imgFrame6.svg"]]],
-  ["مدیریت سامانه", [["گزارش‌ها", "/admin/panel/reports", "list-imgFrame7.svg"], ["محتوا", "/admin/panel/content", "list-imgFileIcon.svg"], ["کاربران پنل و دسترسی‌ها", "/admin/panel/access", "list-imgShieldIcon.svg"], ["تنظیمات", "/admin/panel/settings", "list-imgSettingsIcon.svg"]]],
-] as const;
+import { adminGridTemplate, adminSections, findAdminSection, type AdminRow } from "../admin-pages";
 
 type PageProps = { params: Promise<{ section: string[] }> };
 const detailAliases: Record<string, string> = {
@@ -44,14 +38,15 @@ export default async function AdminSectionPage({ params }: PageProps) {
   const detail = parts.length > 1;
   const pathname = `/admin/panel/${parts.join("/")}`;
   const row = detail ? findRow(sectionSlug, sectionSlug === "organizations" ? `/admin/panel/organizations/${parts[1]}` : pathname) : undefined;
-  const itemName = row?.cells[1] ?? detailAliases[parts[1] ?? ""] ?? nice(parts.slice(1).join(" "));
+  const itemName = row?.cells[sectionSlug === "users" ? 1 : 0] ?? detailAliases[parts[1] ?? ""] ?? nice(parts.slice(1).join(" "));
   const title = detail ? (sectionSlug === "products" ? "جزئیات کالا" : sectionSlug === "users" ? "شناسنامه و جزئیات حساب کاربر" : `جزئیات ${config.title.replace(/ها$/, "")}`) : config.title;
   const extraActions = config.actions ?? [];
+  const hasRowActions = config.columns.at(-1) === "عملیات";
   return <main className={styles.shell} dir="rtl">
     <section className={styles.app}>
       <header className={styles.top}><div className={styles.user}><button className={styles.notification} aria-label="اعلان‌ها"><Image src="/admin-assets/list-imgNotifBtn.svg" alt="" width={36} height={36} /></button><span className={styles.divider} /><span className={styles.profile}><span className={styles.userInfo}><b>کاربر پنل</b><small>دسترسی مدیریت</small></span><span className={styles.avatar}>م</span></span></div></header>
       <div className="admin-content">
-        {detail && sectionSlug === "organizations" && parts.length >= 2 ? <AdminOrganizationDetail slug={parts[1]} name={row?.cells[1] ?? itemName} status={row?.cells[3] ?? "فعال"} organizationType={parts[1] === "sample-org" ? "سازمان حمایتگر" : "سازمان معمولی"} activeTab={parts[2] ? `/${parts[2]}` : ""} /> : detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : detail && sectionSlug === "sellers" ? <AdminSellerDetail name={itemName} slug={parts[1]} /> : <>
+        {detail && sectionSlug === "organizations" && parts.length >= 2 ? <AdminOrganizationDetail slug={parts[1]} name={row?.cells[0] ?? itemName} status={row?.cells[3] ?? "فعال"} organizationType={row?.cells[1] ?? (parts[1] === "sample-org" ? "سازمان حمایتگر" : "سازمان معمولی")} activeTab={parts[2] ? `/${parts[2]}` : ""} /> : detail && sectionSlug === "users" && parts[1] === "sample-account" ? <AdminUserDetail /> : detail && sectionSlug === "sellers" ? <AdminSellerDetail name={itemName} slug={parts[1]} /> : <>
         <header className={detail ? "admin-detail-heading" : sectionSlug === "users" ? "admin-page-heading admin-page-heading--users" : "admin-page-heading"}>
           <div className="admin-detail-heading__copy"><h1>{title}</h1><p>{detail ? `${itemName} · اطلاعات نمونه برای نمایش ساختار پنل` : sectionSlug === "users" ? "نمایش و فیلتر حساب‌های کاربری حقیقی و حقوقی در سامانه حنا" : config.description}</p></div>
           {detail && <Link className="admin-back-link" href={`/admin/panel/${sectionSlug}`}>بازگشت به {config.title}</Link>}
@@ -60,8 +55,13 @@ export default async function AdminSectionPage({ params }: PageProps) {
           <div className="admin-filters" aria-label="فیلترهای صفحه"><button className="admin-filter admin-filter--active" type="button">همه</button><button className="admin-filter" type="button">فعال</button><button className="admin-filter" type="button">در انتظار بررسی</button><input className="admin-search" aria-label="جستجو" placeholder={`جستجو در ${config.title}...`} /></div>
           {extraActions.length > 0 && <div className="admin-page-actions">{extraActions.map(action => <Link className="admin-primary-button" href={action.href} key={action.href}>{action.label}</Link>)}</div>}
           <section className="admin-table-card"><div className="admin-table-scroll"><div className="admin-table admin-generic-table">
-            <div className="admin-table__row admin-table__head" style={{ gridTemplateColumns: `repeat(${config.columns.length - 1}, minmax(120px, 1fr)) minmax(120px, 1fr)` }}>{config.columns.map(column => <span key={column}>{column}</span>)}</div>
-            {config.rows.map((item, index) => <div className="admin-table__row" key={item.href} style={{ gridTemplateColumns: `repeat(${config.columns.length - 1}, minmax(120px, 1fr)) minmax(120px, 1fr)` }}>{item.cells.slice(0, -1).map((cell, cellIndex) => <span className={cellIndex === 0 ? "admin-generic-table__primary" : ""} key={`${index}-${cellIndex}`}>{cell}</span>)}<span><Link className="admin-row-link" href={item.href}>{item.cells.at(-1)}</Link></span></div>)}
+            <div className="admin-table__row admin-table__head" style={{ gridTemplateColumns: adminGridTemplate(sectionSlug, config.columns.length) }}>{config.columns.map(column => <span key={column}>{column}</span>)}</div>
+            {config.rows.map((item, index) => <div className="admin-table__row" key={item.href} style={{ gridTemplateColumns: adminGridTemplate(sectionSlug, config.columns.length) }}>
+              {item.cells.slice(0, hasRowActions ? -1 : undefined).map((cell, cellIndex) => <span className={cellIndex === 0 ? "admin-generic-table__primary" : ""} key={`${index}-${cellIndex}`}>
+                {!hasRowActions && cellIndex === 0 ? <Link className="admin-row-link" href={item.href}>{cell}</Link> : cell}
+              </span>)}
+              {hasRowActions && <span><Link className="admin-row-link" href={item.href}>{item.cells.at(-1)}</Link></span>}
+            </div>)}
           </div></div><p className="admin-sample-note">اطلاعات این صفحه نمونه‌ای است و به داده‌های واقعی سامانه متصل نیست.</p></section>
         </> : <>
           {sectionSlug === "organizations" && <nav className="admin-tabs" aria-label="بخش‌های سازمان">{orgTabs.map(([label, suffix]) => <Link className={parts.length === 2 ? (suffix === "" ? "admin-tab admin-tab--active" : "admin-tab") : pathname.endsWith(suffix) ? "admin-tab admin-tab--active" : "admin-tab"} href={`/admin/panel/organizations/${parts[1]}${suffix}`} key={suffix || "overview"}>{label}</Link>)}</nav>}
@@ -79,8 +79,4 @@ export default async function AdminSectionPage({ params }: PageProps) {
     </section>
     <AdminSidebar active={`/admin/panel/${sectionSlug}`} />
   </main>;
-}
-
-function AdminSidebar({ active }: { active: string }) {
-  return <aside className={styles.sidebar}><div className={styles.sideBrand}><span className={styles.logo}><Image src="/admin-assets/henna-admin-logo.png" alt="" width={82} height={48} priority /></span><span><b>مدیریت حنا</b><small>پنل مدیریت بازارگاه</small></span></div><nav>{menu.map(([group, items]) => <section key={group}><h2>{group}</h2>{items.map(([label, href, icon]) => { const iconSize = icon.includes("Frame") ? 20 : icon.startsWith("dashboard-") ? 18 : 16; return <Link className={active === href || (href !== "/admin/panel" && active.startsWith(`${href}/`)) ? styles.active : ""} href={href} key={href}><span className="admin-sidebar__icon"><Image src={`/admin-assets/${icon}`} alt="" width={iconSize} height={iconSize} /></span>{label}</Link>; })}</section>)}</nav></aside>;
 }

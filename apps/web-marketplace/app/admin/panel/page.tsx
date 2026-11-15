@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import styles from "./admin-panel.module.css";
+import AdminSidebar from "./admin-sidebar";
 
 const metrics = [
   {label:"سفارش‌های نیازمند بررسی نمونه", icon:"dashboard-imgIconWrap.svg", tone:"red", fullIcon:true},
@@ -16,12 +17,6 @@ const applications = [
   ["کسب‌وکار نمونه (شخص حقوقی)","در حال بررسی"],
   ["کسب‌وکار نمونه (شخص حقیقی)","اطلاعات ناقص"],
 ];
-const menu = [
- ["نمای کلی", [["داشبورد","/admin/panel","imgFrame"]]],
- ["بازارگاه", [["کاربران و حساب‌ها","/admin/panel/users","imgUsersIcon"],["سازمان‌ها","/admin/panel/organizations","imgUsersIcon"],["فروشندگان","/admin/panel/sellers","imgStoreIcon"],["درخواست‌های ثبت‌نام فروشنده","/admin/seller-applications","imgClipboardIcon"],["کالاها","/admin/panel/products","imgFrame1"],["دسته‌بندی‌ها","/admin/panel/categories","imgFolderIcon"],["سفارش‌ها","/admin/panel/orders","imgFrame2"]]],
- ["عملیات و طرح‌ها", [["طرح‌ها و اعتبارها","/admin/panel/programs","imgFrame3"],["مشارکت اجتماعی","/admin/panel/social","imgMessageIcon"],["لجستیک","/admin/panel/logistics","imgFrame4"],["تسویه‌ها و تراکنش‌ها","/admin/panel/settlements","imgFrame5"],["پشتیبانی","/admin/panel/support","imgHelpIcon"],["اعلان‌ها","/admin/panel/notifications","imgFrame6"]]],
- ["مدیریت سامانه", [["گزارش‌ها","/admin/panel/reports","imgFrame7"],["محتوا","/admin/panel/content","imgFileIcon"],["کاربران پنل و دسترسی‌ها","/admin/panel/access","imgShieldIcon"],["تنظیمات","/admin/panel/settings","imgSettingsIcon"]]],
-];
 export const dynamic="force-dynamic";
 export const metadata={title:"داشبورد مدیریت | حنا"};
 export default function AdminPanelPage(){return <main className={styles.shell} dir="rtl">
@@ -35,5 +30,5 @@ export default function AdminPanelPage(){return <main className={styles.shell} d
    </div><div className={styles.right}><section className={styles.card}><h2>هشدارهای عملیاتی سیستم</h2><div className={`${styles.alert} ${styles.urgent}`}><b>اطلاعات ثبت‌نام نیازمند بررسی است</b><span>اطلاعات یک درخواست فروشندگی نیازمند تکمیل است.</span></div><div className={`${styles.alert} ${styles.finance}`}><b>مورد مالی نیازمند بررسی</b><span>یک مورد مرتبط با وضعیت تسویه نیازمند بررسی است.</span></div></section><section className={styles.card}><h2>اطلاعیه‌های سیستمی حنا</h2><p className={styles.notice}>به‌روزرسانی سامانه با موفقیت انجام شد.</p><p className={styles.notice}>وضعیت سرویس‌های متصل قابل مشاهده است.</p></section></div></div>
   </div>
  </section>
- <aside className={styles.sidebar}><div className={styles.sideBrand}><span className={styles.logo}><Image src="/admin-assets/henna-admin-logo.png" alt="" width={82} height={48} priority /></span><span><b>مدیریت حنا</b><small>پنل مدیریت بازارگاه</small></span></div><nav>{menu.map(([group,items])=><section key={String(group)}><h2>{String(group)}</h2>{(items as string[][]).map(([label,href,icon])=><Link className={href==='/admin/panel'?styles.active:''} href={href} key={label}><Image src={`/admin-assets/list-${icon}.svg`} alt="" width={20} height={20}/>{label}</Link>)}</section>)}</nav></aside>
+ <AdminSidebar active="/admin/panel" />
  </main>}

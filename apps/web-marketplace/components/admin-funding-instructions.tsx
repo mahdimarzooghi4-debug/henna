@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import AdminSidebar from "../app/admin/panel/admin-sidebar";
 
 type FundingState = "PENDING_VERIFICATION" | "VERIFIED" | "REJECTED";
 type FundingDecision = "VERIFIED" | "REJECTED";
@@ -51,33 +52,6 @@ const eventLabels: Record<FundingEvent["decision"], string> = {
   REJECTED: "درخواست اصلاح مرجع",
   RESUBMITTED: "ارسال مجدد مرجع",
 };
-const nav = [
-  { group: "نمای کلی", items: [{ label: "داشبورد", icon: "imgFrame", href: "/admin/panel" }] },
-  { group: "بازارگاه", items: [
-    { label: "کاربران و حساب‌ها", icon: "imgUsersIcon", href: "/admin/panel/users" },
-    { label: "سازمان‌ها", icon: "imgUsersIcon", href: "/admin/panel/organizations" },
-    { label: "فروشندگان", icon: "imgStoreIcon", href: "/admin/panel/sellers" },
-    { label: "درخواست‌های ثبت‌نام فروشنده", icon: "imgClipboardIcon", href: "/admin/seller-applications" },
-    { label: "کالاها", icon: "imgFrame1", href: "/admin/panel/products" },
-    { label: "دسته‌بندی‌ها", icon: "imgFolderIcon", href: "/admin/panel/categories" },
-    { label: "سفارش‌ها", icon: "imgFrame2", href: "/admin/panel/orders" },
-  ] },
-  { group: "عملیات و طرح‌ها", items: [
-    { label: "طرح‌ها و اعتبارها", icon: "imgFrame3", href: "/admin/panel/programs" },
-    { label: "مشارکت اجتماعی", icon: "imgMessageIcon", href: "/admin/panel/social" },
-    { label: "لجستیک", icon: "imgFrame4", href: "/admin/panel/logistics" },
-    { label: "تسویه‌ها و تراکنش‌ها", icon: "imgFrame5", href: "/admin/panel/settlements" },
-    { label: "بررسی تخصیص سازمان", icon: "imgFrame5", href: "/admin/organization-funding-instructions", active: true },
-    { label: "پشتیبانی", icon: "imgHelpIcon", href: "/admin/panel/support" },
-    { label: "اعلان‌ها", icon: "imgFrame6", href: "/admin/panel/notifications" },
-  ] },
-  { group: "مدیریت سامانه", items: [
-    { label: "گزارش‌ها", icon: "imgFrame7", href: "/admin/panel/reports" },
-    { label: "محتوا", icon: "imgFileIcon", href: "/admin/panel/content" },
-    { label: "کاربران پنل و دسترسی‌ها", icon: "imgShieldIcon", href: "/admin/panel/access" },
-    { label: "تنظیمات", icon: "imgSettingsIcon", href: "/admin/panel/settings" },
-  ] },
-];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "ثبت نشده";
@@ -103,36 +77,19 @@ async function responseMessage(response: Response) {
       : "دریافت اطلاعات انجام نشد؛ دوباره تلاش کنید.";
 }
 
-function AdminShell({ children, assetPrefix }: { children: ReactNode; assetPrefix: "list" | "detail" }) {
-  return <div className="admin-shell" dir="ltr">
+function AdminShell({ children, active }: { children: ReactNode; active: string }) {
+  return <div className="admin-shell" dir="rtl">
     <div className="admin-main" dir="rtl">
       <header className="admin-topbar"><div className="admin-topbar__account">
         <span className="admin-topbar__role">پنل مدیریت</span>
         <span className="admin-topbar__divider" aria-hidden="true" />
         <span className="admin-topbar__notification" aria-label="اعلان‌ها">
-          <img src={`/admin-assets/${assetPrefix}-imgNotifBtn.svg`} alt="" width="36" height="36" />
+          <img src="/admin-assets/list-imgNotifBtn.svg" alt="" width="36" height="36" />
         </span>
       </div></header>
       {children}
     </div>
-    <aside className="admin-sidebar" dir="rtl" aria-label="منوی مدیریت">
-      <div className="admin-sidebar__brand">
-        <img src={`/admin-assets/${assetPrefix}-imgLogo.png`} alt="نشان حنا" width="48" height="48" />
-        <div><strong>مدیریت حنا</strong><span>پنل مدیریت بازارگاه</span></div>
-      </div>
-      <nav className="admin-sidebar__nav">
-        {nav.map(group => <section className="admin-sidebar__group" key={group.group}>
-          <h2>{group.group}</h2>
-          {group.items.map(item => <a
-            className={`admin-sidebar__item${"active" in item && item.active ? " admin-sidebar__item--active" : ""}`}
-            href={item.href}
-            key={item.label}
-            aria-current={"active" in item && item.active ? "page" : undefined}
-            title={item.label}
-          ><span>{item.label}</span><img src={`/admin-assets/${assetPrefix}-${item.icon}.svg`} alt="" width="20" height="20" /></a>)}
-        </section>)}
-      </nav>
-    </aside>
+    <AdminSidebar active={active} />
   </div>;
 }
 
@@ -170,7 +127,7 @@ export function AdminFundingInstructionsList() {
   }, [filter, page, refresh]);
 
   const pageCount = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
-  return <AdminShell assetPrefix="list"><main className="admin-content">
+  return <AdminShell active="/admin/organization-funding-instructions"><main className="admin-content">
     <div className="admin-page-heading">
       <h1>بررسی دستور منبع سازمان</h1>
       <p>صف مرجع‌های ثبت‌شده برای بررسی دستی؛ ثبت نتیجه، دریافت یا تخصیص وجه را تأیید نمی‌کند.</p>
@@ -269,7 +226,7 @@ export function AdminFundingInstructionDetail({ instructionId }: { instructionId
     } finally { setSubmitting(false); }
   }
 
-  return <AdminShell assetPrefix="detail"><main className="admin-content admin-content--detail">
+  return <AdminShell active="/admin/organization-funding-instructions"><main className="admin-content admin-content--detail">
     <div className="admin-detail-heading">
       <div className="admin-detail-heading__copy">
         <h1>بررسی دستور منبع سازمان</h1>
