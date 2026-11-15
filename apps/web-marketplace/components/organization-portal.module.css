@@ -75,3 +75,7 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 @media(max-width:1050px){.allocationGrid{grid-template-columns:1fr}.toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.profileGrid,.detailGrid{grid-template-columns:1fr}}
 @media(max-width:720px){.sidebar{width:100%;min-height:unset;padding:9px 12px;border:0;border-bottom:1px solid var(--line)}.brand{height:38px;margin:0 4px 8px}.sidebar nav{gap:5px}.navItem{min-height:34px}.active:after{top:5px;bottom:5px;right:-1px}.userFooter{display:none}.topbar{gap:8px;padding:9px 14px}.headerMeta{gap:7px;white-space:normal}.syncTime{font-size:9px}.organizationChip{font-size:9px}.content{gap:12px;padding:14px}.orgBanner{padding:14px}.orgBanner strong{font-size:12px}.orgBanner p{font-size:11px}}
 @media(max-width:720px){.toolbar{grid-template-columns:1fr 1fr;padding:9px}.toolbar .primaryButton{grid-column:1/-1}.allocationGrid{gap:12px}.profileGrid,.detailGrid{grid-template-columns:1fr}.workflow{font-size:9px!important}.detailTop{flex-wrap:wrap}.statCards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+
+/* Figma 386:161 organization profile sample */
+.profileGrid>.card{padding:24px}
+.profileStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#f7f3ed;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}
