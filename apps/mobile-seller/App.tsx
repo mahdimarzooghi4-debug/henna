@@ -4,6 +4,7 @@ import {
   StyleSheet, StatusBar, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SvgXml } from "react-native-svg";
 import { useFonts } from "expo-font";
 import { Vazirmatn_400Regular, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
 import * as SecureStore from "expo-secure-store";
@@ -12,6 +13,7 @@ import { normalizeIranianMobile } from "../mobile-consumer/src/phone.ts";
 import { validateOtpEntry } from "../mobile-consumer/src/otp-form-input.ts";
 import { SellerAccessClient, type SellerIdentity } from "./src/seller-access.ts";
 import { SellerOrdersClient, type SellerOrdersResult } from "./src/seller-orders.ts";
+import { figmaIcons } from "./src/figma-icons";
 
 const tokenKey = "hana.seller.session.v1";
 const previewKey = "hana.seller.preview.v1";
@@ -41,6 +43,11 @@ const stateLabel: Record<string, string> = {
 };
 const faNumber = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 const rtl = { writingDirection: "rtl" as const, textAlign: "right" as const };
+type FigmaIconName = keyof typeof figmaIcons;
+function FigmaIcon({ name, size = 20, color = "#706963" }: { name: FigmaIconName; size?: number; color?: string }) {
+  const xml = figmaIcons[name].replace(/stroke="[^"]+"/g, `stroke="${color}"`);
+  return <SvgXml xml={xml} width={size} height={size} />;
+}
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -291,21 +298,21 @@ export default function App() {
       { id: "HN-۴۰۸۷", title: "خرمای مضافتی بم · ۷۰۰ گرم", price: "۵۵۰٬۰۰۰", status: "تکمیل شده", tone: "#EAF3EC" },
     ];
     const products = [
-      { title: "ماست سون کاله ۹۰۰ گرم", code: "کد کالا: ۱۰۰۲۴", price: "۸۸٬۰۰۰", stock: "۴۵ عدد", status: "فعال", tone: "#EAF3EC" },
-      { title: "پنیر سفید ایرانی ممتاز هزار گرمی", code: "کد کالا: ۱۰۰۱۸", price: "۵۴٬۰۰۰", stock: "۲ عدد", status: "رو به اتمام", tone: "#FFF3D4" },
-      { title: "روغن زیتون فرابکر", code: "کد کالا: ۱۰۰۳۱", price: "۴۸۵٬۰۰۰", stock: "۲۴ عدد", status: "فعال", tone: "#EAF3EC" },
-      { title: "خرمای مضافتی بم", code: "کد کالا: ۱۰۰۴۰", price: "۳۷۵٬۰۰۰", stock: "۰ عدد", status: "ناموجود", tone: "#F7ECE9" },
+      { title: "ماست سون کاله ۹۰۰ گرم", code: "کد کالا: ۱۰۰۲۴", price: "۸۸٬۰۰۰", stock: "۴۵ عدد", status: "فعال", tone: "#EAF3EC", image: require("./assets/figma-261-3/imgRectangle.jpg") },
+      { title: "پنیر سفید ایرانی ممتاز هزار گرمی", code: "کد کالا: ۱۰۰۱۸", price: "۵۴٬۰۰۰", stock: "۲ عدد", status: "رو به اتمام", tone: "#FFF3D4", image: require("./assets/figma-261-3/imgRectangle1.jpg") },
+      { title: "روغن زیتون فرابکر", code: "کد کالا: ۱۰۰۳۱", price: "۴۸۵٬۰۰۰", stock: "۲۴ عدد", status: "فعال", tone: "#EAF3EC", image: require("./assets/figma-261-3/imgRectangle.jpg") },
+      { title: "خرمای مضافتی بم", code: "کد کالا: ۱۰۰۴۰", price: "۳۷۵٬۰۰۰", stock: "۰ عدد", status: "ناموجود", tone: "#F7ECE9", image: require("./assets/figma-261-3/imgRectangle1.jpg") },
     ];
     const nav = (next: typeof previewTab) => { setPreviewTab(next); setNotice(""); };
     const title = ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی و قیمت‌گذاری", settlements: "گزارش‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده" } as const)[previewTab];
-    const navItems = [["account", "♙", "حساب"], ["notifications", "♧", "اعلان‌ها"], ["products", "⬡", "کالاها"], ["orders", "▣", "سفارش‌ها"], ["dashboard", "⊞", "خانه"]] as const;
+    const navItems = [["account", "tabAccount", "حساب"], ["notifications", "tabNotifications", "اعلان‌ها"], ["products", "tabProducts", "کالاها"], ["orders", "tabOrders", "سفارش‌ها"], ["dashboard", "tabHome", "خانه"]] as const;
     return <>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={styles.figmaScreen}>
           {previewTab !== "dashboard" && <View style={styles.screenIntro}><Text style={styles.screenTitle}>{title}</Text><Text style={styles.screenCaption}>فروشگاه نمونه · اطلاعات نمایشی</Text></View>}
           {previewTab === "dashboard" && <>
-            <View style={styles.metricGrid}>{[["سفارش‌های جدید", "۴ سفارش نمونه", "▣", "#B94D35"], ["سفارش‌های در حال انجام", "۸ سفارش نمونه", "◷", "#C98543"], ["موارد نیازمند رسیدگی", "۳ مورد نمونه", "△", "#B94D35"], ["کالاهای فعال", "۱۴۲ مورد نمونه", "⬡", "#204B43"]].map(([label, value, icon, color]) => <View key={label} style={styles.metricCard}><View style={styles.metricCaption}><Text style={[styles.metricIcon, { color }]}>{icon}</Text><Text style={styles.metricLabel}>{label}</Text></View><Text style={[styles.metricValue, { color }]}>{value}</Text></View>)}</View>
-            <View style={styles.quickPanel}><Text style={styles.sectionTitle}>دسترسی سریع عملیاتی</Text><View style={styles.quickGrid}><Pressable style={styles.quickTileAccent} onPress={() => nav("products")}><Text style={styles.quickTileAccentText}>＋  افزودن کالا</Text></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><Text style={styles.quickTileText}>☑  مدیریت موجودی</Text></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><Text style={styles.quickTileText}>◇  ویرایش قیمت‌ها</Text></Pressable><Pressable style={styles.quickTile} onPress={() => nav("orders")}><Text style={styles.quickTileText}>▣  مشاهده سفارش‌ها</Text></Pressable></View></View>
+            <View style={styles.metricGrid}>{[["سفارش‌های جدید", "۴ سفارش نمونه", "dashboardOrders", "#B94D35"], ["سفارش‌های در حال انجام", "۸ سفارش نمونه", "dashboardProgress", "#C98543"], ["موارد نیازمند رسیدگی", "۳ مورد نمونه", "dashboardAlert", "#B94D35"], ["کالاهای فعال", "۱۴۲ مورد نمونه", "dashboardProducts", "#204B43"]].map(([label, value, icon, color]) => <View key={label} style={styles.metricCard}><View style={styles.metricCaption}><View style={[styles.metricIcon, { backgroundColor: `${color}18` }]}><FigmaIcon name={icon as FigmaIconName} size={13} color={color} /></View><Text style={styles.metricLabel}>{label}</Text></View><Text style={[styles.metricValue, { color }]}>{value}</Text></View>)}</View>
+            <View style={styles.quickPanel}><Text style={styles.sectionTitle}>دسترسی سریع عملیاتی</Text><View style={styles.quickGrid}><Pressable style={styles.quickTileAccent} onPress={() => nav("products")}><View style={styles.quickTileContent}><FigmaIcon name="plus" size={14} color="#B5523B"/><Text style={styles.quickTileAccentText}>افزودن کالا</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><View style={styles.quickTileContent}><FigmaIcon name="quickInventory" size={14}/><Text style={styles.quickTileText}>مدیریت موجودی</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><View style={styles.quickTileContent}><FigmaIcon name="price" size={14}/><Text style={styles.quickTileText}>ویرایش قیمت‌ها</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("orders")}><View style={styles.quickTileContent}><FigmaIcon name="orderAction" size={14}/><Text style={styles.quickTileText}>مشاهده سفارش‌ها</Text></View></Pressable></View></View>
             <Text style={styles.sectionTitle}>هشدارهای موجودی / دسترس‌پذیری</Text>
             {[["روغن آفتابگردان خالص ۱.۵ لیتری (نمونه)", "اتمام موجودی", "#F7ECE9", "#B94D35"], ["پنیر سفید ایرانی ممتاز ۴۰۰ گرم (نمونه)", "رو به اتمام", "#FFF3D4", "#9B6A12"]].map(([name, status, bg, color]) => <Pressable key={name} onPress={() => nav("inventory")} style={styles.stockAlert}><Text style={[styles.stockStatus, { backgroundColor: bg, color }]}>{status}</Text><Text style={styles.stockName}>{name}</Text></Pressable>)}
           </>}
@@ -314,19 +321,19 @@ export default function App() {
             {demoOrders.map((order, i) => <View key={order.id} style={styles.figmaOrder}><View style={styles.figmaOrderHead}><Text style={[styles.orderState, { backgroundColor: order.tone }]}>{order.status}</Text><Text style={styles.previewOrderId}>شماره سفارش: {order.id}</Text></View><View style={styles.figmaDivider}/><Text style={styles.figmaOrderMeta}>زمان ثبت: امروز · { ["۱۰:۲۵", "۱۰:۰۶", "۰۹:۱۵", "۰۸:۴۰", "۱۴:۱۰"][i] }</Text><Text style={styles.figmaOrderMeta}>تعداد اقلام: {faNumber(i + 2)} قلم</Text><Text style={styles.figmaOrderMeta}>شیوه تحویل / ارسال: تحویل حضوری</Text><View style={styles.figmaOrderFoot}><Text style={styles.figmaOrderTotal}>مبلغ: {order.price} تومان</Text><Pressable style={styles.figmaSmallButton} onPress={() => setNotice("جزئیات سفارش نمونه است و به سامانه متصل نیست.")}><Text style={styles.figmaSmallButtonText}>{i === 0 ? "تأیید سفارش" : "مشاهده"}</Text></Pressable></View></View>)}
           </>}
           {previewTab === "products" && <>
-            <View style={styles.searchBox}><Text style={styles.searchHint}>جستجو در کالاها...</Text><Text style={styles.searchGlyph}>⌕</Text></View>
+            <View style={styles.searchBox}><Text style={styles.searchHint}>جستجو در کالاها...</Text><FigmaIcon name="search" size={18}/></View>
             <View style={styles.filterRow}>{["همه موارد", "کالا", "سایر دسته‌بندی‌ها"].map((f, i) => <Text key={f} style={i === 0 ? styles.filterActive : styles.filterItem}>{f}</Text>)}</View>
-            {products.slice(0, 2).map(item => <View key={item.code} style={styles.figmaProduct}><View style={styles.productSwatch}><Text style={styles.productEmoji}>▧</Text></View><View style={styles.productInfo}><View style={styles.productNameRow}><Text style={styles.productName}>{item.title}</Text><Text style={[styles.productStatus, { backgroundColor: item.tone }]}>{item.status}</Text></View><Text style={styles.previewOrderDate}>دسته‌بندی: لبنیات · موجودی: {item.stock}</Text><Text style={styles.productPrice}>{item.price} تومان</Text></View><Pressable style={styles.editProduct} onPress={() => setNotice("ویرایش کالا در پیش‌نمایش نمایشی است.")}><Text style={styles.productName}>✎</Text></Pressable></View>)}
+            {products.slice(0, 2).map(item => <View key={item.code} style={styles.figmaProduct}><Image source={item.image} style={styles.figmaProductImage} resizeMode="cover"/><View style={styles.productInfo}><View style={styles.productNameRow}><Text style={styles.productName}>{item.title}</Text><Text style={[styles.productStatus, { backgroundColor: item.tone }]}>{item.status}</Text></View><Text style={styles.previewOrderDate}>دسته‌بندی: لبنیات · موجودی: {item.stock}</Text><Text style={styles.productPrice}>{item.price} تومان</Text></View><Pressable style={styles.editProduct} onPress={() => setNotice("ویرایش کالا در پیش‌نمایش نمایشی است.")}><FigmaIcon name="edit" size={15} color="#2D2D2D"/></Pressable></View>)}
             <Pressable style={styles.figmaPrimaryButton} onPress={() => setNotice("فرم ثبت کالای جدید در این پیش‌نمایش نمایشی است.")}><Text style={styles.primaryActionText}>＋  افزودن کالای جدید</Text></Pressable>
           </>}
           {previewTab === "inventory" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>موجودی و قیمت‌گذاری کالاها</Text><Text style={styles.infoText}>مقادیر برای نمایش رابط کاربری نمونه هستند.</Text></View>{products.map(item => <View key={item.code} style={styles.inventoryCard}><View style={styles.inventoryHead}><Text style={styles.productStatus}>{item.stock}</Text><Text style={styles.productName}>{item.title}</Text></View><Text style={styles.previewOrderDate}>{item.code} · قیمت فعلی: {item.price} تومان</Text><View style={styles.inventoryActions}><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر موجودی در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>تغییر موجودی</Text></Pressable><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر قیمت در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>ویرایش قیمت</Text></Pressable></View></View>)}</>}
           {previewTab === "settlements" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>خلاصهٔ مالی</Text></View>{[["در انتظار تسویه", "۱۸٬۴۰۰٬۰۰۰ تومان"], ["تسویه‌شده", "۱۰۶٬۴۶۰٬۰۰۰ تومان"], ["سفارش‌های تکمیل‌شده", "۲۳ سفارش"]].map(([label, value]) => <View key={label} style={styles.financeRow}><Text style={styles.financeValue}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}</>}
           {previewTab === "notifications" && <>{[["سفارش جدید دریافت شد", "سفارش HN-۴۰۹۱ ثبت شده و در انتظار تأیید شماست.", "۱۰:۲۵", "#F7ECE9"], ["موجودی کالا رو به اتمام است", "موجودی پنیر سفید به ۲ عدد رسیده است.", "دیروز · ۱۷:۴۰", "#FFF3D4"], ["تسویه با موفقیت انجام شد", "مبلغ ۱۲٬۶۰۰٬۰۰۰ تومان واریز شد.", "دیروز · ۱۲:۱۵", "#EAF3EC"]].map(([heading, body, time, color]) => <View key={heading} style={styles.notificationCard}><View style={[styles.notificationIcon, { backgroundColor: color }]}><Text style={styles.quickActionIcon}>•</Text></View><View style={styles.notificationContent}><Text style={styles.productName}>{heading}</Text><Text style={styles.infoText}>{body}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}</>}
-          {previewTab === "account" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>حساب کسب‌وکار</Text><View style={styles.accountLine}><Text style={styles.accountValue}>خلاصه حساب نمونه</Text><Text style={styles.accountLabel}>فروشنده / ارائه‌دهنده نمونه</Text></View></View><View style={styles.accountCard}><Text style={styles.sectionTitle}>اطلاعات هویتی</Text>{[["نوع حساب", "شخص حقیقی"], ["وضعیت احراز هویت", "تأیید شده"], ["وضعیت فروشندگی", "فعال"], ["وضعیت حمایتی مرتبط", "شناسایی شده"]].map(([l, v]) => <View style={styles.accountLine} key={l}><Text style={styles.accountValue}>{v}</Text><Text style={styles.accountLabel}>{l}</Text></View>)}</View><View style={styles.accountLinks}>{[["اطلاعات کسب‌وکار", "نام، آدرس، صنف"], ["موجودی و دسترس‌پذیری", "وضعیت کالاها"], ["قیمت‌گذاری", "قیمت کالاها"], ["ارسال و محدوده فعالیت", "روش و محدوده ارسال"], ["طرح‌ها و اعتبارها", "طرح‌ها و اعتبارها"], ["تسویه‌حساب‌ها", "اطلاعات تسویه"], ["گزارش‌ها", "فروش و عملکرد"], ["پشتیبانی", "گفتگو و تیکت"], ["تنظیمات", "زبان، اعلان‌ها"]].map(([l, h]) => <Pressable key={l} style={styles.accountLink} onPress={() => nav(l.includes("تسویه") || l.includes("گزارش") ? "settlements" : "inventory")}><Text style={styles.accountChevron}>‹</Text><Text style={styles.accountValue}>{h}</Text><Text style={styles.accountLabel}>{l}</Text></Pressable>)}</View><Pressable style={styles.outlineAction} onPress={() => void signOut()}><Text style={styles.outlineActionText}>خروج از حساب</Text></Pressable></>}
+          {previewTab === "account" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>حساب کسب‌وکار</Text><View style={styles.accountLine}><Text style={styles.accountValue}>خلاصه حساب نمونه</Text><Text style={styles.accountLabel}>فروشنده نمونه</Text></View></View><View style={styles.accountCard}><Text style={styles.sectionTitle}>اطلاعات هویتی</Text>{[["نوع حساب", "شخص حقیقی"], ["وضعیت احراز هویت", "تأیید شده"], ["وضعیت فروشندگی", "فعال"], ["وضعیت حمایتی مرتبط", "شناسایی شده"]].map(([l, v]) => <View style={styles.accountLine} key={l}><Text style={styles.accountValue}>{v}</Text><Text style={styles.accountLabel}>{l}</Text></View>)}</View><View style={styles.accountLinks}>{[["اطلاعات کسب‌وکار", "نام، آدرس، صنف"], ["موجودی و دسترس‌پذیری", "وضعیت کالاها"], ["قیمت‌گذاری", "قیمت کالاها"], ["ارسال و محدوده فعالیت", "روش و محدوده ارسال"], ["طرح‌ها و اعتبارها", "طرح‌ها و اعتبارها"], ["تسویه‌حساب‌ها", "اطلاعات تسویه"], ["گزارش‌ها", "فروش و عملکرد"], ["پشتیبانی", "گفتگو و تیکت"], ["تنظیمات", "زبان، اعلان‌ها"]].map(([l, h]) => <Pressable key={l} style={styles.accountLink} onPress={() => nav(l.includes("تسویه") || l.includes("گزارش") ? "settlements" : "inventory")}><Text style={styles.accountChevron}>‹</Text><Text style={styles.accountValue}>{h}</Text><Text style={styles.accountLabel}>{l}</Text></Pressable>)}</View><Pressable style={styles.outlineAction} onPress={() => void signOut()}><Text style={styles.outlineActionText}>خروج از حساب</Text></Pressable></>}
           {notice ? <Pressable onPress={() => setNotice("")} style={styles.noticeBox}><Text style={styles.noticeText}>{notice}  ×</Text></Pressable> : null}
         </View>
       </ScrollView>
-      <View style={styles.figmaBottomNav}>{navItems.map(([key, icon, label]) => <Pressable key={key} onPress={() => nav(key)} style={styles.figmaNavItem}><Text style={previewTab === key ? styles.figmaNavIconActive : styles.figmaNavIcon}>{icon}</Text><Text style={previewTab === key ? styles.figmaNavLabelActive : styles.figmaNavLabel}>{label}</Text></Pressable>)}<View style={styles.gesturePill}/></View>
+      <View style={styles.figmaBottomNav}>{navItems.map(([key, icon, label]) => <Pressable key={key} onPress={() => nav(key)} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: previewTab === key }} style={styles.figmaNavItem}><FigmaIcon name={icon as FigmaIconName} size={20} color={previewTab === key ? "#B5523B" : "#706963"}/><Text style={previewTab === key ? styles.figmaNavLabelActive : styles.figmaNavLabel}>{label}</Text></Pressable>)}<View style={styles.gesturePill}/></View>
     </>;
   }
 
@@ -564,7 +571,7 @@ const styles = StyleSheet.create({
   metricGrid: { flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "space-between", gap: 10 },
   metricCard: { width: "48%", minHeight: 98, backgroundColor: "#FFFFFF", borderRadius: 14, borderWidth: 1, borderColor: "#EAE5DF", padding: 11, justifyContent: "space-between", gap: 8 },
   metricCaption: { flexDirection: "row-reverse", alignItems: "center", gap: 7 },
-  metricIcon: { width: 24, height: 24, borderRadius: 14, backgroundColor: "#F7F0EA", textAlign: "center", textAlignVertical: "center", fontSize: 13, overflow: "hidden" },
+  metricIcon: { width: 24, height: 24, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   metricLabel: { flex: 1, fontFamily: "Vazirmatn_400Regular", fontSize: 10, color: "#827970", ...rtl },
   metricValue: { fontFamily: "Vazirmatn_700Bold", fontSize: 18, ...rtl },
   quickPanel: { backgroundColor: "#FFFFFF", borderRadius: 17, borderWidth: 1, borderColor: "#EAE5DF", padding: 14, gap: 12 },
@@ -573,6 +580,7 @@ const styles = StyleSheet.create({
   quickTileAccent: { width: "48%", height: 44, borderRadius: 11, backgroundColor: "#F8ECE9", alignItems: "center", justifyContent: "center" },
   quickTileText: { fontFamily: "Vazirmatn_700Bold", color: "#4D4A46", fontSize: 11 },
   quickTileAccentText: { fontFamily: "Vazirmatn_700Bold", color: "#B94D35", fontSize: 11 },
+  quickTileContent: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
   stockAlert: { minHeight: 50, backgroundColor: "#FFFFFF", borderColor: "#EAE5DF", borderWidth: 1, borderRadius: 12, padding: 10, flexDirection: "row-reverse", alignItems: "center", gap: 8 },
   stockStatus: { overflow: "hidden", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5, fontFamily: "Vazirmatn_700Bold", fontSize: 9 },
   stockName: { flex: 1, color: "#393632", fontFamily: "Vazirmatn_400Regular", fontSize: 11, ...rtl },
@@ -587,6 +595,7 @@ const styles = StyleSheet.create({
   searchHint: { color: "#827970", fontFamily: "Vazirmatn_400Regular", fontSize: 12, ...rtl },
   searchGlyph: { fontSize: 22, color: "#766F68" },
   figmaProduct: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EAE5DF", borderRadius: 15, padding: 11, minHeight: 100, flexDirection: "row-reverse", alignItems: "center", gap: 9 },
+  figmaProductImage: { width: 64, height: 64, borderRadius: 12, backgroundColor: "#F4F0EB" },
   productNameRow: { flexDirection: "row-reverse", alignItems: "center", flexWrap: "wrap", gap: 5 },
   editProduct: { width: 30, height: 30, borderRadius: 7, borderWidth: 1, borderColor: "#EAE5DF", alignItems: "center", justifyContent: "center" },
   figmaPrimaryButton: { backgroundColor: "#B94D35", borderRadius: 28, minHeight: 46, paddingHorizontal: 20, alignSelf: "center", alignItems: "center", justifyContent: "center", marginTop: 5 },
