@@ -54,7 +54,7 @@ export function OrganizationPortalShell({ active, title, children }: { active: P
     <div className={styles.main}><header className={styles.topbar}>
       <h1>{title}</h1>
       <div className={styles.headerMeta}>
-        <span className={styles.organizationChip}>پرتال سازمانی</span>
+        <span className={styles.organizationChip}>سازمان حمایتگر</span>
         <span className={styles.syncTime}>آخرین همگام‌سازی ثبت‌شده <Icon name="refresh" /></span>
       </div>
     </header><div className={styles.content}>{children}</div></div>
@@ -133,13 +133,13 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const selectedProgram = data.programs.find(program => program.programId === programId);
   if (screen === "dashboard") return <OrganizationPortalShell active="dashboard" title={title}>
     <section className={styles.orgBanner}>
-      <strong><Icon name="award" />{data.profiles[0]?.organizationName ?? "سازمان"} | روش تخصیص: الگوی حنا</strong>
+      <strong><Icon name="award" />{data.profiles[0]?.organizationName ?? "سازمان حمایتگر"} | روش تخصیص: الگوی حنا</strong>
       <p>تخصیص اعتبار بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود.</p>
     </section>
     <div className={styles.dashboardGrid}>
       <div className={styles.stack}>
         <Card title="وضعیت همگام‌سازی افراد">
-          <div className={styles.rowBetween}><span className={styles.status}>متصل نیست</span><span>دریافت افراد از منبع داده سازمان</span></div>
+          <div className={styles.rowBetween}><span>دریافت افراد از منبع داده سازمان</span><span className={styles.status}>متصل نیست</span></div>
           <div className={styles.statSplit}><div><small>تعداد مشمولان فعال</small><b>دریافت نشده</b></div><i/><div><small>آخرین به‌روزرسانی منبع</small><b>ثبت نشده</b></div></div>
         </Card>
         <Card title="فعالیت‌های اخیر پرتال">
@@ -148,7 +148,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
       </div>
       <div className={styles.stack}>
         <Card title="وضعیت آخرین تخصیص">
-          <div className={styles.rowBetween}><span className={styles.status}>ثبت نشده</span><span>وضعیت توزیع</span></div>
+          <div className={styles.rowBetween}><span>وضعیت توزیع</span><span className={styles.status}>ثبت نشده</span></div>
           <DataRows rows={[["روش تخصیص فعال", "الگوی تخصیص حنا"], ["دوره هدف تخصیص", "تعیین نشده"]]}/>
         </Card>
         <Card title="طرح‌های فعال و ثبت‌شده">
