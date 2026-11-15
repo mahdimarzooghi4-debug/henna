@@ -9,14 +9,14 @@ const page=readFileSync("apps/web-marketplace/app/download/page.tsx","utf8");
 const footer=readFileSync("apps/web-marketplace/components/landing-chrome.tsx","utf8");
 const downloadCss=readFileSync("apps/web-marketplace/app/download/download.module.css","utf8");
 const chromeCss=readFileSync("apps/web-marketplace/components/henna-homepage.module.css","utf8");
-const expectedBuyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-032eb3b/hana-buyer-figma-android-preview.apk";
+const expectedBuyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-f0230c6/hana-buyer-figma-android-preview.apk";
 const expectedSeller="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1/hana-seller-preview.apk";
 test("landing footer routes phone visitors to /download, with separately pinned buyer and seller APKs",()=>{
  assert.match(footer,/<Link href="\/download">دریافت اپلیکیشن حنا<\/Link>/);
  assert.equal(buyerAndroidPreview.apk,expectedBuyer);
  assert.equal(sellerAndroidPreview.apk,expectedSeller);
- assert.equal(buyerAndroidPreview.sha,"032eb3bbfeff03503353197343500590d14bd855");
- assert.equal(buyerAndroidPreview.digest,"sha256:54842902338d015848ade7781994a1c1dcba2687b19f4b2408cbc3fa85c4129b");
+ assert.equal(buyerAndroidPreview.sha,"f0230c6aab993c44be3f079d0093e4986b00a2ad");
+ assert.equal(buyerAndroidPreview.digest,"sha256:6786bda798c54109b864062192edb90588638edb950acd272f100972f50d0a61d");
  assert.notEqual(buyerAndroidPreview.apk,sellerAndroidPreview.apk);
  for(const app of [buyerAndroidPreview,sellerAndroidPreview]){
   const parsed=new URL(app.apk);
