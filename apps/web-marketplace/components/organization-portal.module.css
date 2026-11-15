@@ -163,3 +163,47 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
  .programFormActions{width:100%;justify-content:stretch}
  .programFormActions>*{flex:1}
 }
+
+/* Figma 386:867 organization people and recipients */
+.peopleDirectory{width:100%;min-width:0;display:grid;gap:16px}
+.peopleBanner{width:100%;padding:12px 16px;border:1px solid var(--teal);border-radius:9px;background:var(--cream);color:var(--ink);font-size:12px;line-height:1.8;text-align:right}
+.peopleFilters{width:100%;display:grid;grid-template-columns:minmax(130px,180px) minmax(130px,180px) minmax(140px,200px) minmax(130px,180px) minmax(190px,1fr);align-items:end;gap:14px;padding:16px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.peopleFilters label{min-width:0;display:grid;gap:5px;color:#8a9a6b;font-size:11px;text-align:right}
+.peopleFilters select,.peopleFilters input{width:100%;min-width:0;height:36px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font:inherit;font-size:11px;text-align:right;direction:rtl}
+.peopleFilters input::placeholder{color:#8a9a6b;opacity:1}
+.peopleTableCard{width:100%;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#fff}
+.peopleTableWrap{width:100%;overflow-x:auto}
+.peopleTable{width:100%;min-width:990px;border-collapse:collapse;table-layout:fixed;direction:rtl;text-align:right}
+.peopleTable th,.peopleTable td{height:59px;padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink);font-size:11px;font-weight:400;text-align:center;vertical-align:middle}
+.peopleTable th{height:42px;background:var(--cream);color:#8a9a6b;font-size:11px;font-weight:600;white-space:nowrap}
+.peopleTable th:first-child,.peopleTable td:first-child{width:180px;text-align:right}
+.peopleTable th:nth-child(2),.peopleTable td:nth-child(2){width:180px}
+.peopleTable th:nth-child(3),.peopleTable td:nth-child(3){width:120px}
+.peopleTable th:nth-child(4),.peopleTable td:nth-child(4){width:140px}
+.peopleTable th:nth-child(5),.peopleTable td:nth-child(5){width:120px}
+.peopleTable th:nth-child(6),.peopleTable td:nth-child(6){width:120px}
+.peopleTable th:last-child,.peopleTable td:last-child{width:100px}
+.peopleTable tbody tr:last-child td{border-bottom:0}
+.peopleTable td:first-child strong,.peopleTable td:first-child small{display:block}
+.peopleTable td:first-child strong{font-size:12px;font-weight:700}
+.peopleTable td:first-child small{margin-top:2px;color:#6b665f;font-size:10px}
+.peopleBadge{display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap}
+.peopleBadgeTeal{border:1px solid var(--teal);background:var(--cream);color:var(--teal)}
+.peopleBadgeSand{background:var(--sand);color:var(--ink)}
+.peopleBadgeMuted{border:1px solid var(--line);background:var(--cream);color:#8a9a6b}
+.peopleTealText{color:var(--teal)!important}
+.peoplePending{color:var(--terracotta,#b5523b)!important}
+.peopleMutedText{color:#8a847c!important}
+.peopleView{padding:4px 9px;border:0;background:transparent;color:var(--teal);font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.peopleView:hover{text-decoration:underline}
+.peopleEmpty{padding:28px;text-align:center;color:var(--muted);font-size:12px}
+.peopleModalBackdrop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(25,35,33,.35)}
+.peopleModal{position:relative;width:min(500px,100%);padding:24px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 18px 55px rgba(20,30,28,.18)}
+.peopleModal h2{margin:0 36px 16px 0;color:var(--teal);font-size:17px}
+.peopleModalClose{position:absolute;top:12px;left:12px;width:32px;height:32px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font-size:20px;line-height:1;cursor:pointer}
+.peopleModal dl{display:grid;gap:0;margin:0}
+.peopleModal dl>div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:12px}
+.peopleModal dt{color:var(--muted)}
+.peopleModal dd{margin:0;font-weight:600;text-align:left}
+@media(max-width:1050px){.peopleFilters{grid-template-columns:repeat(3,minmax(130px,1fr))}.peopleSearch{grid-column:span 2}}
+@media(max-width:720px){.peopleDirectory{gap:12px}.peopleBanner{padding:11px 12px;font-size:11px}.peopleFilters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.peopleSearch{grid-column:1/-1}.peopleTable{min-width:950px}.peopleModal{padding:18px}.peopleModal dl>div{font-size:11px}}
