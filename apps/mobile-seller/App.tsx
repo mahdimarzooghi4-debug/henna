@@ -62,6 +62,9 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"dashboard" | "orders">("dashboard");
   const [previewTab, setPreviewTab] = useState<"dashboard" | "orders" | "products" | "inventory" | "settlements" | "notifications" | "account">("dashboard");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("همه");
+  const [productCategoryFilter, setProductCategoryFilter] = useState("همه موارد");
+  const [productSearch, setProductSearch] = useState("");
   const [page, setPage] = useState(1);
   const [reload, setReload] = useState(0);
   const [orders, setOrders] = useState<Orders>({ kind: "idle" });
@@ -291,25 +294,34 @@ export default function App() {
 
   function previewPage() {
     const demoOrders = [
-      { id: "HN-۴۰۹۱", title: "روغن آفتابگردان خالص ۱.۵ لیتری (نمونه)", price: "۱۴۲٬۰۰۰", status: "در حال آماده‌سازی", tone: "#F7ECE9" },
-      { id: "HN-۴۰۹۰", title: "پنیر سفید ایرانی ممتاز ۴۰۰ گرم (نمونه)", price: "۶۴٬۰۰۰", status: "تأیید شده", tone: "#FFF3D4" },
-      { id: "HN-۴۰۸۹", title: "برنج هاشمی درجه یک · ۵ کیلوگرم", price: "۶۸۰٬۰۰۰", status: "تکمیل شده", tone: "#EAF3EC" },
-      { id: "HN-۴۰۸۸", title: "عسل طبیعی چندگیاه · ۹۰۰ گرم", price: "۳۱۰٬۰۰۰", status: "آماده تحویل / ارسال", tone: "#F5F1EB" },
-      { id: "HN-۴۰۸۷", title: "خرمای مضافتی بم · ۷۰۰ گرم", price: "۵۵۰٬۰۰۰", status: "تکمیل شده", tone: "#EAF3EC" },
+      { id: "HN-۴۰۹۱", title: "روغن آفتابگردان خالص ۱.۵ لیتری (نمونه)", price: "۱۴۲٬۰۰۰", status: "جدید", tone: "#F7ECE9" },
+      { id: "HN-۴۰۹۰", title: "پنیر سفید ایرانی ممتاز ۴۰۰ گرم (نمونه)", price: "۴۶۰٬۰۰۰", status: "در حال آماده‌سازی", tone: "#F5F1EB" },
+      { id: "HN-۴۰۸۹", title: "برنج هاشمی درجه یک · ۵ کیلوگرم", price: "۸۹٬۰۰۰", status: "تأیید شده", tone: "#F7ECE9" },
+      { id: "HN-۴۰۸۸", title: "عسل طبیعی چندگیاه · ۹۰۰ گرم", price: "۳۱۰٬۰۰۰", status: "آماده تحویل / ارسال", tone: "#EAF3EC" },
+      { id: "HN-۴۰۸۷", title: "خرمای مضافتی بم · ۷۰۰ گرم", price: "۵۵٬۰۰۰", status: "تکمیل شده", tone: "#EAF3EC" },
+      { id: "HN-۴۰۸۶", title: "روغن زیتون فرابکر (نمونه)", price: "۹۸٬۰۰۰", status: "لغو شده", tone: "#F2ECE8" },
     ];
     const products = [
-      { title: "ماست سون کاله ۹۰۰ گرم", code: "کد کالا: ۱۰۰۲۴", price: "۸۸٬۰۰۰", stock: "۴۵ عدد", status: "فعال", tone: "#EAF3EC", image: require("./assets/figma-261-3/imgRectangle.jpg") },
-      { title: "پنیر سفید ایرانی ممتاز هزار گرمی", code: "کد کالا: ۱۰۰۱۸", price: "۵۴٬۰۰۰", stock: "۲ عدد", status: "رو به اتمام", tone: "#FFF3D4", image: require("./assets/figma-261-3/imgRectangle1.jpg") },
-      { title: "روغن زیتون فرابکر", code: "کد کالا: ۱۰۰۳۱", price: "۴۸۵٬۰۰۰", stock: "۲۴ عدد", status: "فعال", tone: "#EAF3EC", image: require("./assets/figma-261-3/imgRectangle.jpg") },
-      { title: "خرمای مضافتی بم", code: "کد کالا: ۱۰۰۴۰", price: "۳۷۵٬۰۰۰", stock: "۰ عدد", status: "ناموجود", tone: "#F7ECE9", image: require("./assets/figma-261-3/imgRectangle1.jpg") },
+      { title: "ماست سون کاله ۹۰۰ گرم", code: "کد کالا: ۱۰۰۲۴", category: "لبنیات", price: "۸۸٬۰۰۰", stock: "۴۵ عدد", status: "فعال", tone: "#EAF3EC", image: require("./assets/figma-261-3/imgRectangle.jpg") },
+      { title: "پنیر سفید ایرانی ممتاز هزار گرمی", code: "کد کالا: ۱۰۰۱۸", category: "لبنیات", price: "۵۴٬۰۰۰", stock: "۲ عدد", status: "رو به اتمام", tone: "#FFF3D4", image: require("./assets/figma-261-3/imgRectangle1.jpg") },
+      { title: "روغن زیتون فرابکر", code: "کد کالا: ۱۰۰۳۱", category: "روغن و خواربار", price: "۴۸۵٬۰۰۰", stock: "۲۴ عدد", status: "فعال", tone: "#EAF3EC", image: require("./assets/figma-261-3/imgRectangle.jpg") },
+      { title: "خرمای مضافتی بم", code: "کد کالا: ۱۰۰۴۰", category: "خشکبار", price: "۳۷۵٬۰۰۰", stock: "۰ عدد", status: "ناموجود", tone: "#F7ECE9", image: require("./assets/figma-261-3/imgRectangle1.jpg") },
     ];
+    const orderFilters = ["همه", "جدید", "تأیید شده", "در حال آماده‌سازی", "آماده تحویل / ارسال", "تکمیل شده", "لغو شده"];
+    const visibleOrders = orderStatusFilter === "همه"
+      ? demoOrders
+      : demoOrders.filter(order => order.status === orderStatusFilter);
+    const productFilters = ["همه موارد", "لبنیات", "سایر دسته‌بندی‌ها"];
+    const visibleProducts = products.filter(item => {
+      const matchesCategory = productCategoryFilter === "همه موارد"
+        || (productCategoryFilter === "لبنیات" ? item.category === "لبنیات" : item.category !== "لبنیات");
+      return matchesCategory && item.title.includes(productSearch.trim());
+    });
     const nav = (next: typeof previewTab) => { setPreviewTab(next); setNotice(""); };
-    const title = ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی و قیمت‌گذاری", settlements: "گزارش‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده" } as const)[previewTab];
     const navItems = [["account", "tabAccount", "حساب"], ["notifications", "tabNotifications", "اعلان‌ها"], ["products", "tabProducts", "کالاها"], ["orders", "tabOrders", "سفارش‌ها"], ["dashboard", "tabHome", "خانه"]] as const;
     return <>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={styles.figmaScreen}>
-          {previewTab !== "dashboard" && <View style={styles.screenIntro}><Text style={styles.screenTitle}>{title}</Text><Text style={styles.screenCaption}>فروشگاه نمونه · اطلاعات نمایشی</Text></View>}
           {previewTab === "dashboard" && <>
             <View style={styles.metricGrid}>{[["سفارش‌های جدید", "۴ سفارش نمونه", "dashboardOrders", "#B94D35"], ["سفارش‌های در حال انجام", "۸ سفارش نمونه", "dashboardProgress", "#C98543"], ["موارد نیازمند رسیدگی", "۳ مورد نمونه", "dashboardAlert", "#B94D35"], ["کالاهای فعال", "۱۴۲ مورد نمونه", "dashboardProducts", "#204B43"]].map(([label, value, icon, color]) => <View key={label} style={styles.metricCard}><View style={styles.metricCaption}><View style={[styles.metricIcon, { backgroundColor: `${color}18` }]}><FigmaIcon name={icon as FigmaIconName} size={13} color={color} /></View><Text style={styles.metricLabel}>{label}</Text></View><Text style={[styles.metricValue, { color }]}>{value}</Text></View>)}</View>
             <View style={styles.quickPanel}><Text style={styles.sectionTitle}>دسترسی سریع عملیاتی</Text><View style={styles.quickGrid}><Pressable style={styles.quickTileAccent} onPress={() => nav("products")}><View style={styles.quickTileContent}><FigmaIcon name="plus" size={14} color="#B5523B"/><Text style={styles.quickTileAccentText}>افزودن کالا</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><View style={styles.quickTileContent}><FigmaIcon name="quickInventory" size={14}/><Text style={styles.quickTileText}>مدیریت موجودی</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><View style={styles.quickTileContent}><FigmaIcon name="price" size={14}/><Text style={styles.quickTileText}>ویرایش قیمت‌ها</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("orders")}><View style={styles.quickTileContent}><FigmaIcon name="orderAction" size={14}/><Text style={styles.quickTileText}>مشاهده سفارش‌ها</Text></View></Pressable></View></View>
@@ -317,13 +329,13 @@ export default function App() {
             {[["روغن آفتابگردان خالص ۱.۵ لیتری (نمونه)", "اتمام موجودی", "#F7ECE9", "#B94D35"], ["پنیر سفید ایرانی ممتاز ۴۰۰ گرم (نمونه)", "رو به اتمام", "#FFF3D4", "#9B6A12"]].map(([name, status, bg, color]) => <Pressable key={name} onPress={() => nav("inventory")} style={styles.stockAlert}><Text style={[styles.stockStatus, { backgroundColor: bg, color }]}>{status}</Text><Text style={styles.stockName}>{name}</Text></Pressable>)}
           </>}
           {previewTab === "orders" && <>
-            <View style={styles.filterRow}>{["همه", "جدید", "تأیید شده", "در حال آماده‌سازی", "تکمیل شده"].map((f, i) => <Text key={f} style={i === 1 ? styles.filterActive : styles.filterItem}>{f}</Text>)}</View>
-            {demoOrders.map((order, i) => <View key={order.id} style={styles.figmaOrder}><View style={styles.figmaOrderHead}><Text style={[styles.orderState, { backgroundColor: order.tone }]}>{order.status}</Text><Text style={styles.previewOrderId}>شماره سفارش: {order.id}</Text></View><View style={styles.figmaDivider}/><Text style={styles.figmaOrderMeta}>زمان ثبت: امروز · { ["۱۰:۲۵", "۱۰:۰۶", "۰۹:۱۵", "۰۸:۴۰", "۱۴:۱۰"][i] }</Text><Text style={styles.figmaOrderMeta}>تعداد اقلام: {faNumber(i + 2)} قلم</Text><Text style={styles.figmaOrderMeta}>شیوه تحویل / ارسال: تحویل حضوری</Text><View style={styles.figmaOrderFoot}><Text style={styles.figmaOrderTotal}>مبلغ: {order.price} تومان</Text><Pressable style={styles.figmaSmallButton} onPress={() => setNotice("جزئیات سفارش نمونه است و به سامانه متصل نیست.")}><Text style={styles.figmaSmallButtonText}>{i === 0 ? "تأیید سفارش" : "مشاهده"}</Text></Pressable></View></View>)}
+            <View style={styles.filterRow} accessibilityRole="tablist">{orderFilters.map(filter => <Pressable key={filter} onPress={() => setOrderStatusFilter(filter)} accessibilityRole="tab" accessibilityState={{ selected: orderStatusFilter === filter }} style={orderStatusFilter === filter ? styles.filterActive : styles.filterItem}><Text style={orderStatusFilter === filter ? styles.filterActiveText : styles.filterText}>{filter}</Text></Pressable>)}</View>
+            {visibleOrders.map(order => <View key={order.id} style={styles.figmaOrder}><View style={styles.figmaOrderHead}><Text style={[styles.orderState, { backgroundColor: order.tone }]}>{order.status}</Text><Text style={styles.previewOrderId}>شماره سفارش: {order.id}</Text></View><View style={styles.figmaDivider}/><Text style={styles.figmaOrderMeta}>زمان ثبت: امروز · {order.id === "HN-۴۰۹۱" ? "۱۰:۲۵" : order.id === "HN-۴۰۹۰" ? "۱۰:۰۶" : "۰۹:۱۵"}</Text><Text style={styles.figmaOrderMeta}>تعداد اقلام: {faNumber(2)} قلم</Text><Text style={styles.figmaOrderMeta}>شیوه تحویل / ارسال: تحویل حضوری</Text><View style={styles.figmaOrderFoot}><Text style={styles.figmaOrderTotal}>مبلغ: {order.price} تومان</Text><Pressable style={styles.figmaSmallButton} onPress={() => setNotice("جزئیات سفارش نمونه است و به سامانه متصل نیست.")}><Text style={styles.figmaSmallButtonText}>{order.status === "در حال آماده‌سازی" ? "تأیید سفارش" : "مشاهده"}</Text></Pressable></View></View>)}
           </>}
           {previewTab === "products" && <>
-            <View style={styles.searchBox}><Text style={styles.searchHint}>جستجو در کالاها...</Text><FigmaIcon name="search" size={18}/></View>
-            <View style={styles.filterRow}>{["همه موارد", "کالا", "سایر دسته‌بندی‌ها"].map((f, i) => <Text key={f} style={i === 0 ? styles.filterActive : styles.filterItem}>{f}</Text>)}</View>
-            {products.slice(0, 2).map(item => <View key={item.code} style={styles.figmaProduct}><Image source={item.image} style={styles.figmaProductImage} resizeMode="cover"/><View style={styles.productInfo}><View style={styles.productNameRow}><Text style={styles.productName}>{item.title}</Text><Text style={[styles.productStatus, { backgroundColor: item.tone }]}>{item.status}</Text></View><Text style={styles.previewOrderDate}>دسته‌بندی: لبنیات · موجودی: {item.stock}</Text><Text style={styles.productPrice}>{item.price} تومان</Text></View><Pressable style={styles.editProduct} onPress={() => setNotice("ویرایش کالا در پیش‌نمایش نمایشی است.")}><FigmaIcon name="edit" size={15} color="#2D2D2D"/></Pressable></View>)}
+            <View style={styles.searchBox}><TextInput value={productSearch} onChangeText={setProductSearch} placeholder="جستجو در کالاها..." placeholderTextColor="#827970" style={styles.productSearchInput}/><FigmaIcon name="search" size={18}/></View>
+            <View style={styles.filterRow} accessibilityRole="tablist">{productFilters.map(filter => <Pressable key={filter} onPress={() => setProductCategoryFilter(filter)} accessibilityRole="tab" accessibilityState={{ selected: productCategoryFilter === filter }} style={productCategoryFilter === filter ? styles.filterActive : styles.filterItem}><Text style={productCategoryFilter === filter ? styles.filterActiveText : styles.filterText}>{filter}</Text></Pressable>)}</View>
+            {visibleProducts.map(item => <View key={item.code} style={styles.figmaProduct}><Image source={item.image} style={styles.figmaProductImage} resizeMode="cover"/><View style={styles.productInfo}><View style={styles.productNameRow}><Text style={styles.productName}>{item.title}</Text><Text style={[styles.productStatus, { backgroundColor: item.tone }]}>{item.status}</Text></View><Text style={styles.previewOrderDate}>دسته‌بندی: {item.category} · موجودی: {item.stock}</Text><Text style={styles.productPrice}>{item.price} تومان</Text></View><Pressable style={styles.editProduct} onPress={() => setNotice("ویرایش کالا در پیش‌نمایش نمایشی است.")}><FigmaIcon name="edit" size={15} color="#2D2D2D"/></Pressable></View>)}
             <Pressable style={styles.figmaPrimaryButton} onPress={() => setNotice("فرم ثبت کالای جدید در این پیش‌نمایش نمایشی است.")}><Text style={styles.primaryActionText}>＋  افزودن کالای جدید</Text></Pressable>
           </>}
           {previewTab === "inventory" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>موجودی و قیمت‌گذاری کالاها</Text><Text style={styles.infoText}>مقادیر برای نمایش رابط کاربری نمونه هستند.</Text></View>{products.map(item => <View key={item.code} style={styles.inventoryCard}><View style={styles.inventoryHead}><Text style={styles.productStatus}>{item.stock}</Text><Text style={styles.productName}>{item.title}</Text></View><Text style={styles.previewOrderDate}>{item.code} · قیمت فعلی: {item.price} تومان</Text><View style={styles.inventoryActions}><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر موجودی در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>تغییر موجودی</Text></Pressable><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر قیمت در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>ویرایش قیمت</Text></Pressable></View></View>)}</>}
@@ -345,7 +357,7 @@ export default function App() {
           <Image source={logo} style={styles.logo} resizeMode="contain" />
           <View style={styles.brand}>
             <Text style={styles.heading}>{gate.kind === "preview" ? ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی کالاها", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده" } as const)[previewTab] : "پیشخوان فروشنده حنا"}</Text>
-            <Text style={styles.muted}>{gate.kind === "preview" ? "کسب‌وکار نمونه" : seller?.storeName ?? "ورود امن فروشنده"}</Text>
+            <Text style={styles.muted}>{gate.kind === "preview" ? ({ dashboard: "کسب‌وکار نمونه", orders: "پیگیری و مدیریت سفارش‌های روزانه", products: "مدیریت کالاها و دسترس‌پذیری کسب‌وکار", inventory: "مدیریت موجودی و قیمت کالاها", settlements: "گزارش فروش و تسویهٔ فروشگاه", notifications: "پیام‌ها و رویدادهای فروشگاه", account: "اطلاعات حساب و ابزارهای مدیریت فروشندگی" } as const)[previewTab] : seller?.storeName ?? "ورود امن فروشنده"}</Text>
           </View>
           {gate.kind === "preview" ? <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>م</Text></View> : null}
         </View>
@@ -533,9 +545,11 @@ const styles = StyleSheet.create({
   quickAction: { flex: 1, minHeight: 68, borderRadius: 13, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EEE9E3", alignItems: "center", justifyContent: "center", gap: 4 },
   quickActionIcon: { color: "#B5523B", fontFamily: "Vazirmatn_700Bold", fontSize: 21, lineHeight: 25 },
   quickActionText: { color: "#554F48", fontFamily: "Vazirmatn_700Bold", fontSize: 10 },
-  filterRow: { flexDirection: "row-reverse", gap: 8, marginVertical: 2 },
-  filterActive: { overflow: "hidden", backgroundColor: "#1C3F3A", color: "#FFFFFF", borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, fontFamily: "Vazirmatn_700Bold", fontSize: 10 },
-  filterItem: { overflow: "hidden", backgroundColor: "#FFFFFF", color: "#706963", borderColor: "#EAE6E1", borderWidth: 1, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, fontFamily: "Vazirmatn_400Regular", fontSize: 10 },
+  filterRow: { flexDirection: "row-reverse", flexWrap: "wrap", alignItems: "flex-start", gap: 7, marginVertical: 2 },
+  filterActive: { backgroundColor: "#1C3F3A", borderColor: "#1C3F3A", borderWidth: 1, borderRadius: 18, paddingHorizontal: 11, paddingVertical: 6 },
+  filterItem: { backgroundColor: "#FFFFFF", borderColor: "#EAE6E1", borderWidth: 1, borderRadius: 18, paddingHorizontal: 11, paddingVertical: 6 },
+  filterActiveText: { color: "#FFFFFF", fontFamily: "Vazirmatn_700Bold", fontSize: 10, ...rtl },
+  filterText: { color: "#706963", fontFamily: "Vazirmatn_400Regular", fontSize: 10, ...rtl },
   outlineAction: { borderWidth: 1, borderColor: "#B5523B", borderRadius: 9, paddingVertical: 8, alignItems: "center" },
   outlineActionText: { color: "#B5523B", fontFamily: "Vazirmatn_700Bold", fontSize: 11 },
   primaryAction: { backgroundColor: "#B5523B", borderRadius: 11, paddingVertical: 12, alignItems: "center" },
@@ -565,9 +579,6 @@ const styles = StyleSheet.create({
   figmaScreen: { width: "100%", maxWidth: 520, alignSelf: "center", padding: 16, paddingBottom: 26, gap: 12 },
   profileAvatar: { width: 38, height: 38, borderRadius: 22, backgroundColor: "#F7ECE9", alignItems: "center", justifyContent: "center" },
   profileAvatarText: { color: "#B94D35", fontFamily: "Vazirmatn_700Bold", fontSize: 15 },
-  screenIntro: { gap: 3, marginBottom: 3 },
-  screenTitle: { fontFamily: "Vazirmatn_700Bold", fontSize: 17, color: "#204B43", ...rtl },
-  screenCaption: { fontFamily: "Vazirmatn_400Regular", fontSize: 11, color: "#817970", ...rtl },
   metricGrid: { flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "space-between", gap: 10 },
   metricCard: { width: "48%", minHeight: 98, backgroundColor: "#FFFFFF", borderRadius: 14, borderWidth: 1, borderColor: "#EAE5DF", padding: 11, justifyContent: "space-between", gap: 8 },
   metricCaption: { flexDirection: "row-reverse", alignItems: "center", gap: 7 },
@@ -593,6 +604,7 @@ const styles = StyleSheet.create({
   figmaNavLabelActive: { color: "#BC4E36", fontFamily: "Vazirmatn_700Bold", fontSize: 9 },
   searchBox: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EAE5DF", borderRadius: 11, height: 46, paddingHorizontal: 12, flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
   searchHint: { color: "#827970", fontFamily: "Vazirmatn_400Regular", fontSize: 12, ...rtl },
+  productSearchInput: { flex: 1, height: "100%", color: "#2D2D2D", fontFamily: "Vazirmatn_400Regular", fontSize: 12, textAlign: "right", writingDirection: "rtl" },
   searchGlyph: { fontSize: 22, color: "#766F68" },
   figmaProduct: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EAE5DF", borderRadius: 15, padding: 11, minHeight: 100, flexDirection: "row-reverse", alignItems: "center", gap: 9 },
   figmaProductImage: { width: 64, height: 64, borderRadius: 12, backgroundColor: "#F4F0EB" },
