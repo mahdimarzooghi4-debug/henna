@@ -10,13 +10,14 @@ export function OrganizationPeopleIntake() {
   const [mobile, setMobile] = useState("");
   const [program, setProgram] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [message, setMessage] = useState("");
+  const [batchMessage, setBatchMessage] = useState("");
+  const [personMessage, setPersonMessage] = useState("");
   const [dragging, setDragging] = useState(false);
 
   function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const next = event.target.files?.[0] ?? null;
     setFile(next);
-    setMessage(next ? "فایل فقط در این صفحه انتخاب شده و هنوز ارسال نشده است." : "");
+    setBatchMessage(next ? "فایل فقط در این صفحه انتخاب شده و هنوز ارسال نشده است." : "");
   }
   function dropFile(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
@@ -24,11 +25,11 @@ export function OrganizationPeopleIntake() {
     const next = event.dataTransfer.files?.[0] ?? null;
     if (!next) return;
     if (!/\.(csv|xlsx)$/i.test(next.name)) {
-      setMessage("فقط فایل CSV یا Excel انتخاب کنید.");
+      setBatchMessage("فقط فایل CSV یا Excel انتخاب کنید.");
       return;
     }
     setFile(next);
-    setMessage("فایل فقط در این صفحه انتخاب شده و هنوز ارسال نشده است.");
+    setBatchMessage("فایل فقط در این صفحه انتخاب شده و هنوز ارسال نشده است.");
   }
   function downloadTemplate() {
     const blob = new Blob(["نام,شناسه موردنیاز,شماره همراه در صورت نیاز\n"], { type: "text/csv;charset=utf-8" });
@@ -40,17 +41,17 @@ export function OrganizationPeopleIntake() {
     URL.revokeObjectURL(url);
   }
   function addBatch() {
-    setMessage(file
+    setBatchMessage(file
       ? "فایل انتخاب شده است؛ ثبت گروهی پس از تعریف قواعد رکوردهای تکراری و ناقص و اتصال سرویس انجام می‌شود. فایلی ارسال نشد."
       : "ابتدا فایل CSV یا Excel را انتخاب کنید.");
   }
   function addPerson(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!name.trim() || !organizationIdentifier.trim() || !program) {
-      setMessage("نام، شناسه موردنیاز و طرح حمایتی را تکمیل کنید.");
+      setPersonMessage("نام، شناسه موردنیاز و طرح حمایتی را تکمیل کنید.");
       return;
     }
-    setMessage("اطلاعات واردشده ارسال یا ذخیره نشد؛ اتصال سرویس ثبت افراد هنوز آماده نیست.");
+    setPersonMessage("اطلاعات واردشده ارسال یا ذخیره نشد؛ اتصال سرویس ثبت افراد هنوز آماده نیست.");
   }
 
   return <section className={styles.peopleIntakePage} aria-label="ثبت و افزودن دستی مشمولان">
@@ -79,7 +80,7 @@ export function OrganizationPeopleIntake() {
           <button className={styles.outlineButton} type="button" onClick={downloadTemplate}>دانلود نمونه قالب فایل</button>
           <button className={styles.primaryButton} type="button" onClick={addBatch}>افزودن گروهی</button>
         </div>
-        {message && <p className={styles.peopleIntakeMessage} role="status">{message}</p>}
+        {batchMessage && <p className={styles.peopleIntakeMessage} role="status">{batchMessage}</p>}
       </section>
 
       <section className={styles.peopleIntakeCard}>
@@ -94,7 +95,7 @@ export function OrganizationPeopleIntake() {
           <label>شماره تلفن همراه (جهت تطبیق حساب کاربری)<input className={styles.peoplePhone} type="tel" inputMode="tel" value={mobile} onChange={event => setMobile(event.target.value)} placeholder="۰۹۱۲******"/></label>
           <label>انتخاب طرح حمایتی هدف<select value={program} onChange={event => setProgram(event.target.value)}><option value="">انتخاب طرح حمایتی فعال</option><option value="طرح نمونه ۱">طرح نمونه ۱</option><option value="طرح نمونه ۲">طرح نمونه ۲</option><option value="اعتبار نمونه">اعتبار نمونه</option></select></label>
           <div className={styles.peopleIntakeDivider}/>
-          {message && <p className={styles.peopleIntakeMessage} role="alert">{message}</p>}
+          {personMessage && <p className={styles.peopleIntakeMessage} role="alert">{personMessage}</p>}
           <div className={styles.peopleSingleActions}>
             <Link className={styles.outlineButton} href="/organization/people">انصراف</Link>
             <button className={styles.primaryButton} type="submit">افزودن فرد</button>
