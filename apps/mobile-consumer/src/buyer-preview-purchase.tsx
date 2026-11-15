@@ -4,6 +4,7 @@ import { colors } from "./theme";
 import { FigmaIcon } from "./figma-icon";
 import { previewPrices, previewCartTotal, previewCartCount, type PreviewCart, type PreviewProductKey } from "./preview-cart";
 import { type PreviewAccountState } from "./buyer-preview-account";
+import { BuyerBnplCheckoutGate } from "./buyer-bnpl-checkout-gate";
 export type PreviewPurchasePage="review"|"checkout"|"success"|"tracking";
 export type PreviewPaymentMethod="ONLINE"|"SUPPORT"|"PERSONAL";
 export const previewPaymentMethodLabels:Record<PreviewPaymentMethod,string>={
@@ -43,8 +44,9 @@ export function BuyerPreviewPurchase({page,cart,items,account,orders,selectedOrd
   <Card><Text style={s.title}>شیوه و زمان ارسال</Text><View style={s.info}><Text style={s.tealTitle}>فروشنده انتخاب‌شده: فروشگاه نمونه ۱</Text></View><Text style={s.muted}>ارسال و زمان تحویل واقعی در این تمرین تعیین نمی‌شود.</Text></Card>
   <Card><Text style={s.title}>روش پرداخت</Text>
    <PaymentChoice method="ONLINE" selected={paymentMethod==="ONLINE"} onPress={()=>setPaymentMethod("ONLINE")} detail="پرداخت امن با کارت‌های شتاب در طراحی؛ در این نسخه هیچ درگاه بانکی متصل نیست."/>
-   <PaymentChoice method="SUPPORT" selected={paymentMethod==="SUPPORT"} disabled={legal} onPress={()=>setPaymentMethod("SUPPORT")} detail={legal?"اعتبار حمایتی برای خرید حقوقی قابل انتخاب نیست.":"امکان و مانده اعتبار حمایتی فقط پس از استعلام و مجوز واقعی مشخص می‌شود."}/>
+   <PaymentChoice method="SUPPORT" selected={paymentMethod==="SUPPORT"} disabled={legal} onPress={()=>setPaymentMethod("SUPPORT")} detail={legal?"اعتبار حمایتی برای خرید حقوقی قابل انتخاب نیست.":"در مسیر واقعی، اعتبار منقضی یا نامرتبط با دستهٔ کالا قابل انتخاب نیست و مبلغ آن از جمع سفارش کم می‌شود؛ این پیش‌نمایش استعلام واقعی ندارد."}/>
    <PaymentChoice method="PERSONAL" selected={paymentMethod==="PERSONAL"} onPress={()=>setPaymentMethod("PERSONAL")} detail="اعتبار شخصی به مانده معتبر حساب نیاز دارد؛ در نسخه نمایشی هیچ اعتباری برداشت نمی‌شود."/>
+   <BuyerBnplCheckoutGate/>
    <Pressable accessibilityRole="checkbox" accessibilityLabel="خرید حقوقی و دریافت فاکتور رسمی" accessibilityState={{checked:legal}} onPress={()=>{setLegal(!legal);if(!legal&&paymentMethod==="SUPPORT")setPaymentMethod("ONLINE");}} style={s.legalChoice}>
     <View style={[s.toggle,legal&&s.toggleOn]}><View style={[s.knob,legal&&s.knobOn]}/></View>
     <View style={s.grow}><Text style={s.title}>خرید حقوقی و دریافت فاکتور رسمی</Text><Text style={s.muted}>صدور فاکتور واقعی منوط به اطلاعات و تأیید شرکت در سامانه عملیاتی است.</Text></View>
