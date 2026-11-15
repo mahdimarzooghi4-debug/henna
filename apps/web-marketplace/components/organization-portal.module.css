@@ -112,3 +112,21 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 .programDialog dl>div{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}
 .programDialog dt{color:var(--muted)}.programDialog dd{margin:0;font-weight:600;text-align:left}
 @media(max-width:720px){.programHeader{min-height:58px;padding:11px 13px}.programHeader h2{font-size:13px}.programFilter>button{min-height:34px;padding:6px 9px;font-size:11px}.programTable{min-width:820px}}
+
+/* Figma 386:419 organization program detail */
+.programDetailsLink{display:inline-flex;color:var(--teal);text-decoration:none}
+.programDetailsLink:hover{text-decoration:underline}
+.programDetailPage{width:100%;display:grid;gap:24px}
+.programDetailBackRow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;direction:rtl}
+.programDetailIdentity{display:flex;align-items:center;gap:8px;color:#2d2d2d;font-size:13px}
+.programDetailStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#d7b895;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}
+.programDetailBackLink{display:inline-flex;align-items:center;gap:8px;direction:ltr;border:1px solid var(--teal);background:#fff;color:var(--teal);font-size:13px;font-weight:600}
+.programDetailBackLink span{direction:rtl}
+.programDetailGrid{display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:24px;direction:rtl}
+.programDetailGrid>*{min-width:0;direction:rtl}
+.programDetailGrid>.card{padding:24px}
+.programDescription{width:100%;padding-top:16px;border-top:1px solid var(--line)}
+.programDescription b{display:block;margin-bottom:7px;color:#2d2d2d;font-size:13px}
+.programDescription p{margin:0;color:#4f4b46;font-size:11px;line-height:1.9}
+@media(max-width:1050px){.programDetailGrid{grid-template-columns:1fr}}
+@media(max-width:720px){.programDetailBackRow{align-items:flex-start;flex-direction:column}.programDetailIdentity{align-self:stretch;justify-content:flex-start}.programDetailGrid{gap:12px}}
