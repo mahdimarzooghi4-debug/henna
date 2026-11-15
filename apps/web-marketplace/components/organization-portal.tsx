@@ -185,21 +185,22 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   </OrganizationPortalShell>;
 
   if (screen === "program-detail") {
-    const demoProgram = {
-      name: programId === "sample-plan-1" ? "طرح نمونه ۱" : "طرح نمونه ۲",
-      status: "فعال",
-      publicId: "PRG-***91",
-      organizationName: "سازمان حمایتگر",
-      allocation: "الگوی تخصیص حنا",
+    const sampleDetails = {
+      "sample-plan-1": { name: "طرح نمونه ۱", status: "فعال", publicId: "PRG-***91" },
+      "sample-plan-2": { name: "طرح نمونه ۲", status: "ثبت‌شده", publicId: "PRG-***92" },
+      "sample-plan-3": { name: "برنامه حمایتی نمونه", status: "پیش‌نویس", publicId: "PRG-***93" },
+      "sample-plan-4": { name: "طرح نمونه ۱", status: "متوقف", publicId: "PRG-***94" },
+      "sample-plan-5": { name: "طرح نمونه ۲", status: "پایان‌یافته", publicId: "PRG-***95" },
     };
+    const demoProgram = sampleDetails[programId as keyof typeof sampleDetails] ?? sampleDetails["sample-plan-1"];
     return <OrganizationPortalShell active="programs" title={title}>
       <section className={styles.programDetailPage}>
         <div className={styles.programDetailBackRow}>
           <div className={styles.programDetailIdentity}>
-            <span className={styles.programDetailStatus}>فعال</span>
+            <span className={styles.programDetailStatus}>{demoProgram.status}</span>
             <span>شناسه طرح: {demoProgram.publicId}</span>
           </div>
-          <Link className={styles.outlineButton} href="/organization/programs"><span className={styles.backArrow} aria-hidden="true">←</span>بازگشت به طرح‌ها</Link>
+          <Link className={`${styles.outlineButton} ${styles.programDetailBackLink}`} href="/organization/programs"><span aria-hidden="true">←</span><span>بازگشت به طرح‌ها</span></Link>
         </div>
         <div className={styles.programDetailGrid}>
           <Card title="اطلاعات پایه طرح">
