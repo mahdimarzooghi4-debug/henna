@@ -100,8 +100,8 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const title = titles[screen];
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
-  if (data.loading && screen !== "dashboard" && screen !== "profile") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
-  if (data.error && screen !== "dashboard" && screen !== "profile") {
+  if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
+  if (data.error && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail") {
     const needsLogin = data.error.includes("وارد شوید") || data.error.includes("نشست معتبر نیست");
     const returnTo = screen === "program-detail" && programId
       ? `/organization/programs/${programId}`
@@ -132,7 +132,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
     </OrganizationPortalShell>;
   }
 
-  const selectedProgram = data.programs.find(program => program.programId === programId);
   if (screen === "dashboard") return <OrganizationPortalShell active="dashboard" title={title}>
     <section className={styles.orgBanner}>
       <strong><Icon name="award" />{data.profiles[0]?.organizationName ?? "سازمان حمایتگر"} | روش تخصیص: الگوی حنا</strong>
@@ -185,21 +184,56 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
     </div>
   </OrganizationPortalShell>;
 
-  if (screen === "program-detail") return <OrganizationPortalShell active="programs" title={title}>
-    <div className={styles.backRow}><Link className={styles.outlineButton} href="/organization/programs">← بازگشت به مدیریت طرح‌ها</Link></div>
-    {!selectedProgram ? <Notice tone="warning">طرح پیدا نشد یا در فهرست قابل دسترس این سازمان نیست.</Notice> : <>
-      <div className={styles.detailTop}><span className={styles.status}>پیش‌نویس</span><span>شناسه طرح: {selectedProgram.programId}</span></div>
-      <Notice>پردازش بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود. نتیجه نهایی تخصیص نیازمند بررسی جداگانه است.</Notice>
-      <div className={styles.detailGrid}>
-        <div className={styles.stack}>
-          <Card title="دامنه افراد و مشمولان"><DataRows rows={[["وضعیت فهرست افراد", "داده‌ای ثبت نشده"], ["منبع داده", "متصل نشده"], ["وضعیت احراز", "قابل نمایش نیست"]]}/></Card>
-          <Card title="وضعیت تخصیص و استفاده"><p>این پیش‌نویس هنوز تخصیص یا مصرف اعتباری ندارد.</p><Link className={styles.outlineButton} href="/organization/usage">مشاهده وضعیت استفاده</Link></Card>
+  if (screen === "program-detail") {
+    const demoProgram = {
+      name: programId === "sample-plan-1" ? "طرح نمونه ۱" : "طرح نمونه ۲",
+      status: "فعال",
+      publicId: "PRG-***91",
+      organizationName: "سازمان حمایتگر",
+      allocation: "الگوی تخصیص حنا",
+    };
+    return <OrganizationPortalShell active="programs" title={title}>
+      <section className={styles.programDetailPage}>
+        <div className={styles.programDetailBackRow}>
+          <div className={styles.programDetailIdentity}>
+            <span className={styles.programDetailStatus}>فعال</span>
+            <span>شناسه طرح: {demoProgram.publicId}</span>
+          </div>
+          <Link className={styles.outlineButton} href="/organization/programs"><span className={styles.backArrow} aria-hidden="true">←</span>بازگشت به طرح‌ها</Link>
         </div>
-        <Card title="اطلاعات پایه طرح"><DataRows rows={[["طرح مرتبط", selectedProgram.name], ["روش تخصیص فعال", modeNames[selectedProgram.allocationMode]], ["تعداد دوره‌های ورودی", "ثبت نشده"], ["وضعیت پردازش", "پیش‌نویس"]]}/><div className={styles.descriptionBlock}><b>توضیحات طرح</b><p>{selectedProgram.description || "توضیحی ثبت نشده است."}</p></div></Card>
-      </div>
-      <div className={styles.actionCards}><Card title="تأمین برنامه"><p>ثبت یا پیگیری مرجع دستور تأمین مالی. ثبت مرجع به‌تنهایی اثبات وصول وجه یا اختیار تأمین نیست.</p><Link className={styles.primaryButton} href={`/organization/programs/${selectedProgram.programId}/funding-instruction`}>پیگیری دستور تأمین</Link></Card><Card title="ارجاع خانوار"><p>اطلاعات کیفی خانوار را برای بررسی بعدی ثبت کنید. این کار تصمیم استحقاق یا تخصیص نیست.</p><Link className={styles.outlineButton} href={`/organization/programs/${selectedProgram.programId}/household-referrals`}>مشاهده و ثبت ارجاع‌ها</Link></Card></div>
-    </>}
-  </OrganizationPortalShell>;
+        <div className={styles.programDetailGrid}>
+          <Card title="اطلاعات پایه طرح">
+            <DataRows rows={[
+              ["نام کامل طرح سازمانی", demoProgram.name],
+              ["سازمان ثبت‌کننده", demoProgram.organizationName],
+              ["روش تخصیص پیش‌فرض", demoProgram.allocation],
+              ["وضعیت کنونی طرح", <span className={styles.programDetailStatus}>فعال</span>],
+            ]}/>
+            <div className={styles.programDescription}>
+              <b>توضیحات طرح حمایتی</b>
+              <p>تخصیص اعتبار بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود. جزئیات قواعد داخلی تخصیص در این پنل نمایش داده نمی‌شود.</p>
+            </div>
+          </Card>
+          <div className={styles.stack}>
+            <Card title="دامنه افراد و مشمولان">
+              <DataRows rows={[
+                ["منبع دریافت اطلاعات", "API / منبع داده سازمان"],
+                ["جامعه هدف تعریف شده", "افراد ثبت‌شده در منبع داده سازمان"],
+                ["تعداد تخصیص‌گیرندگان نهایی", "جمعیت ثبت‌شده: داده نمونه"],
+              ]}/>
+            </Card>
+            <Card title="وضعیت تخصیص و استفاده">
+              <DataRows rows={[
+                ["وضعیت کلی توزیع اعتبار", "وضعیت استفاده مرتبط با طرح ثبت‌شده"],
+                ["آخرین به‌روزرسانی ثبت‌شده", "زمان نمونه"],
+                ["وضعیت همگام‌سازی اطلاعات", "وضعیت: تکمیل‌شده"],
+              ]}/>
+            </Card>
+          </div>
+        </div>
+      </section>
+    </OrganizationPortalShell>;
+  }
 
   if (screen === "people" || screen === "people-new") return <OrganizationPortalShell active="people" title={title}>
     <Notice>فهرست افراد فقط پس از اتصال و همگام‌سازی منبع داده قابل نمایش است. هیچ وضعیت استحقاق یا عضویتی از این صفحه نتیجه‌گیری نمی‌شود.</Notice>
