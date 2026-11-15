@@ -122,6 +122,9 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     .filter(item => passesPreviewCatalogFilters({priceToman:previewPrices[item.key],badge:item.badge},appliedPreviewFilters));
   const displayedCatalogProducts = catalogSort ? [...catalogProducts].sort((a,b)=>previewPrices[a.key]-previewPrices[b.key]) : catalogProducts;
   const scroll = useRef<ScrollView>(null);
+  // Reset the offline walkthrough scroll on each new Figma screen so a short
+  // order-success page never opens at the scrolled position of checkout.
+  useEffect(() => { if(designPreview && previewPage) scroll.current?.scrollTo({y:0,animated:false}); },[designPreview,previewPage]);
   const scrollToSuggestions = () => scroll.current?.scrollTo({ y: suggestionsY.current, animated: true });
   const resetFilters = () => { setDesignBadge(null); setDesignCategory(null); setDesignQuery(""); setDraftSearch(""); setSearchError(""); setAppliedPreviewFilters(EMPTY_PREVIEW_CATALOG_FILTERS); };
 
@@ -199,7 +202,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     const back = () => {if(accountReturn && (previewPage==="company"||previewPage==="addresses")){setAccountReturn(null);setPreviewPage("checkout");return;}setPreviewPage(previewPage==="comparison"?"cart":previewPage==="review"?"comparison":previewPage==="checkout"?"review":previewPage==="tracking"?"orders":previewPage==="success"?"orders":previewPage==="profile"||previewPage==="company"||previewPage==="addresses"||previewPage==="wallet"||previewPage==="plans"||previewPage==="social"||previewPage==="support"||previewPage==="payments"||previewPage==="settings"||previewPage==="incidents"?"account":null);};
     return <SafeAreaView style={styles.safeArea} edges={["top","bottom"]}>
       <View style={styles.journeyHeader}><Pressable accessibilityRole="button" accessibilityLabel="بازگشت" onPress={back} style={styles.bellButton}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text style={styles.journeyTitle}>{title}</Text><Image source={logo} resizeMode="contain" style={styles.journeyLogo}/></View>
-      <ScrollView style={styles.fill} contentContainerStyle={styles.previewBody}>
+      <ScrollView ref={scroll} style={styles.fill} contentContainerStyle={styles.previewBody}>
         <Text style={styles.designNotice}>نسخه آزمایشی · هیچ سفارش یا پرداخت واقعی ثبت نمی‌شود.</Text>
         {previewPage === "cart" ? <>
           {count === 0 ? <View style={styles.previewPanel}><Text style={styles.emptyTitle}>سبد خرید شما خالی است</Text><Text style={styles.emptyText}>از صفحه اصلی محصولات نمونه را انتخاب کنید.</Text></View> :
