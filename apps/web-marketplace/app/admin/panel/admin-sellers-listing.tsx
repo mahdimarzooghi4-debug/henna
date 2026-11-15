@@ -36,11 +36,6 @@ export default function AdminSellersListing() {
   }, [category, status, area, query]);
 
   return <div className={styles.page}>
-    <header className={styles.heading}>
-      <h1>فروشندگان</h1>
-      <p>نمایش و بررسی اطلاعات فروشگاه‌های فعال در بازارگاه حنا</p>
-    </header>
-
     <div className={styles.filters} aria-label="فیلترهای فروشندگان">
       <label className={styles.select}><span className={styles.srOnly}>دسته‌بندی</span><select value={category} onChange={event => setCategory(event.target.value)}><option value="همه">دسته‌بندی: همه</option><option>پوشاک و هنر سنتی</option><option>مواد غذایی</option></select></label>
       <label className={styles.select}><span className={styles.srOnly}>وضعیت حساب</span><select value={status} onChange={event => setStatus(event.target.value)}><option value="همه">وضعیت حساب: همه</option><option>فعال</option><option>غیرفعال</option></select></label>
