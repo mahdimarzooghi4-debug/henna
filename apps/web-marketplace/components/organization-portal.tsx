@@ -170,10 +170,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   if (screen === "profile") return <OrganizationPortalShell active="profile" title={title}>
     <div className={styles.profileGrid}>
-      <div className={styles.stack}>
-        <Card title="اطلاعات تماس ثبت‌شده"><DataRows rows={[["تلفن ثابت سازمان", "۰۲۱-۸۸******"], ["پست الکترونیکی رسمی", "info@org-domain.ir"], ["نشانی فیزیکی ثبت‌شده", "تهران، بلوار نلسون ماندلا، کوچه ***"]]}/></Card>
-        <Card title="اطلاعات نماینده سازمان"><DataRows rows={[["نام و نام خانوادگی نماینده", "جناب آقای محمدی"], ["شماره شناسایی کاربری", "کاربر ارشد پرتال"], ["شماره تماس نماینده", "۰۹۱۲******۴"]]}/></Card>
-      </div>
       <Card title="شناسه و اطلاعات هویتی سازمان">
         <DataRows rows={[
           ["عنوان سازمان", "سازمان حمایتگر نمونه"],
@@ -182,6 +178,10 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
           ["وضعیت حساب کاربری", <span className={styles.profileStatus}>تأیید شده و فعال</span>],
         ]}/>
       </Card>
+      <div className={styles.stack}>
+        <Card title="اطلاعات تماس ثبت‌شده"><DataRows rows={[["تلفن ثابت سازمان", "۰۲۱-۸۸******"], ["پست الکترونیکی رسمی", "info@org-domain.ir"], ["نشانی فیزیکی ثبت‌شده", "تهران، بلوار نلسون ماندلا، کوچه ***"]]}/></Card>
+        <Card title="اطلاعات نماینده سازمان"><DataRows rows={[["نام و نام خانوادگی نماینده", "جناب آقای محمدی"], ["شماره شناسایی کاربری", "کاربر ارشد پرتال"], ["شماره تماس نماینده", "۰۹۱۲******۴"]]}/></Card>
+      </div>
     </div>
   </OrganizationPortalShell>;
 
