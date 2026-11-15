@@ -101,6 +101,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   };
   const title = titles[screen];
   if (screen === "api") return <OrganizationApiDataSources title={title} />;
+  if (screen === "allocation") return <OrganizationAllocationPreview title={title} />;
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
@@ -238,17 +239,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
 
-  if (screen === "allocation") return <OrganizationPortalShell active="allocation" title={title}>
-    <div className={styles.toolbar}><select aria-label="نوع سازمان"><option>نوع سازمان: همه</option><option>سازمان حمایتی</option></select><select aria-label="روش تخصیص"><option>روش تخصیص: همه</option><option>الگوی تخصیص حنا</option></select><span className={styles.toolbarCaption}>دوره تخصیص: تعیین نشده</span></div>
-    <Notice>اجرای تخصیص تا آماده‌شدن سرویس مربوط غیرفعال است. این صفحه مبلغ، اعتبار یا تعداد مشمولان را تخمین نمی‌زند.</Notice>
-    <div className={styles.allocationGrid}>
-      <Card title="جمعیت و منبع داده"><DataRows rows={[["افراد ثبت‌شده", "داده‌ای دریافت نشده"], ["منبع سازمانی", "متصل نشده"], ["آخرین همگام‌سازی", "ثبت نشده"]]}/></Card>
-      <Card title="قواعد تخصیص"><DataRows rows={[["روش تخصیص", "الگوی تخصیص حنا"], ["معیارهای بررسی", "در انتظار تنظیم"], ["وضعیت قواعد", "نیازمند پیکربندی"]]}/></Card>
-      <Card title="گردش کار تخصیص"><div className={styles.workflow}><span>ثبت درخواست</span><i/><span>بررسی</span><i/><span>تأیید</span><i/><span>اجرا</span></div><p>درخواست تخصیصی ثبت نشده است.</p></Card>
-      <Card title="تخصیص اعتبار"><p>برای شروع، منبع داده و قواعد باید در سرویس سازمان ثبت و تأیید شوند.</p><button className={styles.primaryButton} disabled type="button">ثبت درخواست تخصیص</button></Card>
-    </div>
-  </OrganizationPortalShell>;
-
   if (screen === "allocation-detail") return <OrganizationPortalShell active="allocation" title={title}>
     <div className={styles.backRow}><Link className={styles.outlineButton} href="/organization/allocation">← بازگشت به مدیریت تخصیص‌ها</Link></div>
     <div className={styles.detailTop}><span className={styles.status}>در انتظار داده</span><span>شناسه تخصیص: {allocationId ?? "—"}</span></div>
@@ -320,6 +310,49 @@ function OrganizationApiDataSources({ title }: { title: string }) {
           <article><time>زمان نمونه</time><strong>خطای موقت همگام‌سازی با منبع داده سازمان</strong></article>
         </div>
       </Card>
+    </div>
+  </OrganizationPortalShell>;
+}
+
+function OrganizationAllocationPreview({ title }: { title: string }) {
+  const [message, setMessage] = useState("");
+  return <OrganizationPortalShell active="allocation" title={title}>
+    <section className={styles.allocationContext}>
+      <span className={styles.allocationContextBadge}>روش تخصیص سازمان معمولی: انتخاب توسط سازمان</span>
+      <strong>نوع سازمان فعال: سازمان حمایتگر | روش تخصیص: الگوی حنا</strong>
+    </section>
+    <div className={styles.allocationPreviewBoard}>
+      <div className={styles.allocationPreviewColumn}>
+        <Card title="قوانین و الگوهای فعال تخصیص">
+          <div className={styles.allocationRule}><strong>الگوی تخصیص حنا</strong><span>تخصیص اعتبار بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود.</span></div>
+          <div className={styles.allocationRule}><strong>دوره فعال هدف</strong><span>بازه نمونه</span></div>
+        </Card>
+        <section className={styles.allocationControl}>
+          <h2>تخصیص بر اساس الگوی حنا</h2>
+          <p>تخصیص اعتبار بر اساس قواعد ثبت‌شده و الگوی تخصیص حنا انجام می‌شود. جزئیات قواعد داخلی تخصیص در این پنل نمایش داده نمی‌شود.</p>
+          <div className={styles.allocationControlDivider}/>
+          <div className={styles.allocationControlActions}>
+            <button className={styles.outlineButton} type="button" onClick={() => setMessage("پیش‌نمایش فقط داده‌های نمونه را نشان می‌دهد؛ محاسبه تخصیص انجام نشد.")}>مرور ورودی و وضعیت تخصیص</button>
+            <button className={styles.primaryButton} type="button" onClick={() => setMessage("فرایند تخصیص اجرا نشد؛ اتصال سرویس و تأیید انسانی لازم است.")}>شروع فرایند تخصیص</button>
+          </div>
+          {message && <p className={styles.allocationMessage} role="status">{message}</p>}
+        </section>
+      </div>
+      <div className={styles.allocationPreviewColumn}>
+        <Card title="جمعیت ثبت‌شده و منبع افراد">
+          <div className={styles.allocationPopulation}>
+            <div><strong>جمعیت ثبت‌شده: داده نمونه</strong><span>اطلاعات دریافت‌شده از منبع داده سازمان</span></div>
+            <div><strong>رکوردهای آماده: داده نمونه</strong><span>رکوردهای آماده برای بررسی تخصیص</span></div>
+            <div><strong>نیازمند بررسی: داده نمونه</strong><span>نیازمند بررسی یا تطبیق اطلاعات</span></div>
+          </div>
+        </Card>
+        <Card title="وضعیت آخرین فرآیندهای تخصیص">
+          <div className={styles.allocationHistory}>
+            <div><span className={`${styles.status} ${styles.status_sand}`}>توزیع شده</span><span>تاریخ نمونه — طرح نمونه ۱</span></div>
+            <div><span className={`${styles.status} ${styles.status_sand}`}>در حال پردازش</span><span>تاریخ نمونه — طرح نمونه ۲</span></div>
+          </div>
+        </Card>
+      </div>
     </div>
   </OrganizationPortalShell>;
 }
