@@ -139,20 +139,28 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
     <div className={styles.dashboardGrid}>
       <div className={styles.stack}>
         <Card title="وضعیت همگام‌سازی افراد">
-          <div className={styles.rowBetween}><span>دریافت افراد از منبع داده سازمان</span><span className={styles.status}>متصل نیست</span></div>
-          <div className={styles.statSplit}><div><small>تعداد مشمولان فعال</small><b>دریافت نشده</b></div><i/><div><small>آخرین به‌روزرسانی منبع</small><b>ثبت نشده</b></div></div>
+          <div className={styles.rowBetween}><span>دریافت افراد از منبع داده سازمان</span><span className={styles.status}>فعال و متصل</span></div>
+          <div className={styles.statSplit}><div><small>تعداد مشمولان فعال</small><b>تعداد افراد: داده نمونه</b></div><i/><div><small>آخرین به‌روزرسانی منبع</small><b>زمان نمونه</b></div></div>
         </Card>
         <Card title="فعالیت‌های اخیر پرتال">
-          {data.programs.length ? <ul className={styles.activityList}>{data.programs.slice(0,3).map(program=><li key={program.programId}><span>{program.name} — پیش‌نویس طرح ثبت شد</span><span className={styles.dot}/><small>{new Intl.DateTimeFormat("fa-IR",{dateStyle:"short",timeZone:"Asia/Tehran"}).format(new Date(program.createdAtUtc))}</small></li>)}</ul> : <div className={styles.emptyInline}><b>فعالیتی برای نمایش وجود ندارد</b><span>رویدادها پس از ثبت در سرویس سازمان نمایش داده می‌شوند.</span></div>}
+          <ul className={styles.activityList}>
+            <li><span>تعریف طرح اعتباری جدید برای بررسی مشمولان</span><span className={styles.dot}/><small>زمان نمونه</small></li>
+            <li><span>وضعیت یک طرح ثبت‌شده تغییر کرده است.</span><span className={styles.dot}/><small>زمان نمونه</small></li>
+            <li><span>همگام‌سازی دوره‌ای لیست افراد از سامانه مرجع سازمان</span><span className={styles.dot}/><small>زمان نمونه</small></li>
+          </ul>
         </Card>
       </div>
       <div className={styles.stack}>
         <Card title="وضعیت آخرین تخصیص">
-          <div className={styles.rowBetween}><span>وضعیت توزیع</span><span className={styles.status}>ثبت نشده</span></div>
-          <DataRows rows={[["روش تخصیص فعال", "الگوی تخصیص حنا"], ["دوره هدف تخصیص", "تعیین نشده"]]}/>
+          <div className={styles.rowBetween}><span>وضعیت توزیع</span><span className={styles.status}>فعال</span></div>
+          <DataRows rows={[["روش تخصیص فعال", "الگوی تخصیص حنا"], ["دوره هدف تخصیص", "بازه نمونه"]]}/>
         </Card>
         <Card title="طرح‌های فعال و ثبت‌شده">
-          {data.programs.length ? <div className={styles.programMiniList}>{data.programs.slice(0, 3).map(program => <Link href={`/organization/programs/${program.programId}`} key={program.programId}><span><b>{program.name}</b><small>{modeNames[program.allocationMode]}</small></span><span className={styles.status}>پیش‌نویس</span></Link>)}</div> : <p>طرحی برای نمایش ثبت نشده است. <Link href="/organization/programs/new">ایجاد پیش‌نویس</Link></p>}
+          <div className={styles.programMiniList}>
+            <div><span><b>طرح نمونه ۱</b><small>تخصیص عمومی</small></span><span className={styles.status}>فعال</span></div>
+            <div><span><b>برنامه ارتقای سلامت پرسنل</b><small>تخصیص هدفمند</small></span><span className={styles.status}>ثبت‌نشده</span></div>
+            <div><span><b>اعتبار نمونه</b><small>الگوی حنا</small></span><span className={styles.status}>پیش‌نویس</span></div>
+          </div>
         </Card>
       </div>
     </div>
