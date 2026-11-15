@@ -432,7 +432,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, width: "100%", maxWidth: 390, alignSelf: "center", backgroundColor: "#FAF8F5", borderLeftWidth: 1, borderRightWidth: 1, borderColor: "#EEE9E3" },
+  root: { flex: 1, width: "100%", maxWidth: 390, maxHeight: 880, alignSelf: "center", backgroundColor: "#FAF8F5", borderLeftWidth: 1, borderRightWidth: 1, borderColor: "#EEE9E3" },
   flex: { flex: 1 },
   header: {
     backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#EAE6E1",
@@ -569,8 +569,8 @@ const styles = StyleSheet.create({
   metricValue: { fontFamily: "Vazirmatn_700Bold", fontSize: 18, ...rtl },
   quickPanel: { backgroundColor: "#FFFFFF", borderRadius: 17, borderWidth: 1, borderColor: "#EAE5DF", padding: 14, gap: 12 },
   quickGrid: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
-  quickTile: { width: "49%", height: 44, borderRadius: 11, backgroundColor: "#F8F6F3", alignItems: "center", justifyContent: "center" },
-  quickTileAccent: { width: "49%", height: 44, borderRadius: 11, backgroundColor: "#F8ECE9", alignItems: "center", justifyContent: "center" },
+  quickTile: { width: "48%", height: 44, borderRadius: 11, backgroundColor: "#F8F6F3", alignItems: "center", justifyContent: "center" },
+  quickTileAccent: { width: "48%", height: 44, borderRadius: 11, backgroundColor: "#F8ECE9", alignItems: "center", justifyContent: "center" },
   quickTileText: { fontFamily: "Vazirmatn_700Bold", color: "#4D4A46", fontSize: 11 },
   quickTileAccentText: { fontFamily: "Vazirmatn_700Bold", color: "#B94D35", fontSize: 11 },
   stockAlert: { minHeight: 50, backgroundColor: "#FFFFFF", borderColor: "#EAE5DF", borderWidth: 1, borderRadius: 12, padding: 10, flexDirection: "row-reverse", alignItems: "center", gap: 8 },
