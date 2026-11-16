@@ -127,6 +127,18 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 @media(max-width:1050px){.reportsGrid{gap:14px}.reportsGrid>.card{padding:18px}.reportMetricRow{white-space:normal}.reportMetricRow>span,.reportMetricRow>strong{font-size:12px}}
 @media(max-width:720px){.reportsPage{gap:14px}.reportsGrid{grid-template-columns:1fr;gap:12px}.reportsGrid>.card,.reportsPage>.card{padding:16px}.reportsGrid .cardTitle,.reportsPage>.card .cardTitle{font-size:13px}.reportBarChart{gap:clamp(14px,5vw,32px);height:180px;overflow-x:auto;justify-content:flex-start;padding:20px 10px 0}.reportBar{width:38px}.reportBarLabel{font-size:10px}}
 
+/* Figma 386:1798 organization notifications */
+.portalNotifications{width:100%;min-width:0;display:grid;align-content:start;gap:16px}
+.portalNotificationItem{width:100%;min-height:84px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px;border:1px solid #d7b895;border-radius:12px;background:#fff;direction:ltr}
+.portalNotificationItem time{flex:0 0 auto;color:#2d2d2d;font-size:12px;line-height:1.6;direction:rtl}
+.portalNotificationMain{min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:12px;direction:ltr}
+.portalNotificationCopy{min-width:0;display:grid;gap:4px;text-align:right;direction:rtl}
+.portalNotificationCopy strong{color:#0f5b5a;font-size:14px;font-weight:700;line-height:1.5}
+.portalNotificationCopy p{margin:0;color:#2d2d2d;font-size:13px;line-height:1.5}
+.portalNotificationDot{width:8px;height:8px;flex:0 0 8px;border-radius:4px}
+.portalNotificationDot_teal{background:#0f5b5a}.portalNotificationDot_sand{background:#d7b895}
+@media(max-width:720px){.portalNotifications{gap:12px}.portalNotificationItem{min-height:76px;align-items:flex-start;gap:12px;padding:14px}.portalNotificationItem time{font-size:10px}.portalNotificationMain{gap:9px}.portalNotificationCopy strong{font-size:12px}.portalNotificationCopy p{font-size:11px}}
+
 /* Figma 386:161 organization profile sample */
 .profileGrid>.card{padding:24px}
 .profileStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#f7f3ed;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}

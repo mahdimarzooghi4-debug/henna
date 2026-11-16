@@ -97,7 +97,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const data = usePortalData();
   const active: PortalKey = screen === "program-detail" ? "programs" : screen === "people-new" ? "people" : screen === "allocation-detail" ? "allocation" : screen;
   const titles: Record<typeof screen, string> = {
-    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها و تحلیل طرح‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
+    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها و تحلیل طرح‌ها", notifications: "اعلان‌های پرتال سازمانی", support: "پشتیبانی", settings: "تنظیمات سازمان",
   };
   const title = titles[screen];
   if (screen === "api") return <OrganizationApiDataSources title={title} />;
@@ -105,6 +105,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   if (screen === "allocation-detail") return <OrganizationAllocationDetailPreview title={title} />;
   if (screen === "usage") return <OrganizationUsagePreview title={title} />;
   if (screen === "reports") return <OrganizationReportsPreview title={title} />;
+  if (screen === "notifications") return <OrganizationNotificationsPreview title={title} />;
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
@@ -239,10 +240,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   if (screen === "people") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleDirectory/></OrganizationPortalShell>;
 
   if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
-
-  if (screen === "notifications") return <OrganizationPortalShell active="notifications" title={title}>
-    <div className={styles.notificationList}>{[["همگام‌سازی منبع داده سازمان","اعلان‌های همگام‌سازی پس از اتصال منبع داده نمایش داده می‌شوند."],["ثبت یک طرح جدید","تغییرهای طرح و وضعیت بررسی آن در این فهرست قرار می‌گیرند."],["تغییر وضعیت طرح","اعلان‌های مربوط به وضعیت طرح پس از اتصال سرویس نمایش داده می‌شوند."]].map(([heading,body])=><article className={`${styles.notification} ${styles.notificationCard}`} key={heading}><div><b>{heading}</b><p>{body}</p></div><small>زمان ثبت نشده</small><span className={styles.dotSand}/></article>)}</div>
-  </OrganizationPortalShell>;
 
   if (screen === "support") return <OrganizationPortalShell active="support" title={title}>
     <Card title="جست‌وجو در راهنمای پرتال"><input className={styles.searchInput} placeholder="عبارت مورد نظر خود را تایپ کنید (مثلاً ثبت طرح، الگوی تخصیص)…" aria-label="جست‌وجو در راهنما"/></Card>
@@ -425,6 +422,29 @@ function OrganizationReportsPreview({ title }: { title: string }) {
         </div>
       </Card>
     </div>
+  </OrganizationPortalShell>;
+}
+
+function OrganizationNotificationsPreview({ title }: { title: string }) {
+  const notifications = [
+    { heading: "همگام‌سازی منبع داده سازمان", body: "اطلاعات منبع داده سازمان همگام‌سازی شد.", tone: "teal" },
+    { heading: "ثبت یک طرح نمونه", body: "یک طرح نمونه در پرتال ثبت شد.", tone: "teal" },
+    { heading: "وضعیت یک طرح ثبت‌شده تغییر کرده است.", body: "جزئیات وضعیت در صفحه همان طرح قابل مشاهده است.", tone: "sand" },
+  ] as const;
+
+  return <OrganizationPortalShell active="notifications" title={title}>
+    <section className={styles.portalNotifications} aria-label="فهرست اعلان‌های پرتال">
+      {notifications.map((notification) => <article className={styles.portalNotificationItem} key={notification.heading}>
+        <time>زمان نمونه</time>
+        <div className={styles.portalNotificationMain}>
+          <div className={styles.portalNotificationCopy}>
+            <strong>{notification.heading}</strong>
+            <p>{notification.body}</p>
+          </div>
+          <span className={`${styles.portalNotificationDot} ${styles[`portalNotificationDot_${notification.tone}`]}`} aria-hidden="true" />
+        </div>
+      </article>)}
+    </section>
   </OrganizationPortalShell>;
 }
 
