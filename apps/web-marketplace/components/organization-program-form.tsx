@@ -51,7 +51,7 @@ export function OrganizationProgramForm() {
     event.preventDefault(); setMessage("");
     if (previewMode) { router.push(`/auth?returnTo=${encodeURIComponent("/organization/programs/new")}`); return; }
     if (!canCreate) { setMessage("نقش این حساب اجازه ثبت پیش‌نویس طرح را ندارد."); return; }
-    if (!programKind || !source || !name.trim() || name.trim().length > 120 || description.length > 1200 || !allowedModes.includes(mode)) { setMessage("اطلاعات طرح را بررسی کنید."); return; }
+    if (!name.trim() || name.trim().length > 120 || description.length > 1200 || !allowedModes.includes(mode)) { setMessage("اطلاعات طرح را بررسی کنید."); return; }
     const payload = { organizationId, name: name.trim(), allocationMode: mode, description: description.trim() };
     const fingerprint = JSON.stringify(payload);
     if (!idempotency.current || idempotency.current.fingerprint !== fingerprint) idempotency.current = { fingerprint, key: crypto.randomUUID() };
@@ -77,7 +77,7 @@ export function OrganizationProgramForm() {
           <div className={styles.programFormGrid}>
             <div className={styles.programFormRow}>
               <label className={styles.programFormField}>نوع اعتبار / برنامه
-                <select value={programKind} onChange={(event) => setProgramKind(event.target.value)} required>
+                <select value={programKind} onChange={(event) => setProgramKind(event.target.value)}>
                   <option value="" disabled>انتخاب نوع اعتبار / برنامه</option>
                   <option value="credit">اعتبار نمونه</option>
                   <option value="program">برنامه حمایتی نمونه</option>
@@ -89,7 +89,7 @@ export function OrganizationProgramForm() {
             </div>
             <div className={styles.programFormRow}>
               <label className={styles.programFormField}>منبع افراد و مشمولان
-                <select value={source} onChange={(event) => setSource(event.target.value)} required>
+                <select value={source} onChange={(event) => setSource(event.target.value)}>
                   <option value="" disabled>انتخاب ورود دستی یا API / منبع داده سازمان</option>
                   <option value="manual">ورود دستی</option>
                   <option value="organization-api">API / منبع داده سازمان</option>
