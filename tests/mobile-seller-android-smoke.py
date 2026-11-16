@@ -228,8 +228,8 @@ def main():
     execute("adb", "shell", "monkey", "-p", seller_package, "1", timeout=60)
     wait_screen("پیشخوان مدیریت حنا", "کسب‌وکار نمونه")
     tap_text("حساب")
-    wait_screen("حساب فروشنده", "خلاصه حساب نمونه")
-    assert "فروشگاه واقعی" not in ui
+    account_ui = wait_screen("حساب فروشنده", "حساب کسب‌وکار", "فروشگاه نمونه")
+    assert "فروشگاه واقعی" not in account_ui
 
     print(
         "PASS: separate seller APK installed, preview entry without OTP, "
