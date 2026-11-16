@@ -76,6 +76,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<SellerTab>("dashboard");
   const [previewTab, setPreviewTab] = useState<SellerTab>("dashboard");
+  const [previewAction, setPreviewAction] = useState<string | null>(null);
+  const [previewActionValue, setPreviewActionValue] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("همه");
   const [productCategoryFilter, setProductCategoryFilter] = useState("همه موارد");
   const [productSearch, setProductSearch] = useState("");
@@ -406,41 +408,76 @@ export default function App() {
       return matchesCategory && item.title.includes(productSearch.trim());
     });
     const nav = (next: typeof previewTab) => { setPreviewTab(next); setNotice(""); };
+    const openAction = (action: string, value = "") => {
+      setPreviewAction(action);
+      setPreviewActionValue(value);
+      setNotice("");
+    };
+    const selectedOrder = previewAction?.startsWith("order:")
+      ? demoOrders.find(order => order.id === previewAction.slice(6)) : undefined;
+    const selectedProduct = previewAction?.startsWith("product:") || previewAction?.startsWith("stock:") || previewAction?.startsWith("price:")
+      ? products.find(item => item.code === previewAction.slice(previewAction.indexOf(":") + 1)) : undefined;
+    const actionTitle = previewAction === "add" ? "افزودن کالای جدید"
+      : previewAction?.startsWith("order:") ? `سفارش ${selectedOrder?.id ?? ""}`
+      : previewAction?.startsWith("product:") ? `ویرایش کالا · ${selectedProduct?.title ?? ""}`
+      : previewAction?.startsWith("stock:") ? `تغییر موجودی · ${selectedProduct?.title ?? ""}`
+      : previewAction?.startsWith("price:") ? `ویرایش قیمت · ${selectedProduct?.title ?? ""}` : "";
     const accountSelected = ["account", "reports", "business", "activity", "support"].includes(previewTab);
     const navItems = [["account", "tabAccount", "حساب"], ["notifications", "tabNotifications", "اعلان‌ها"], ["products", "tabProducts", "کالاها"], ["orders", "tabOrders", "سفارش‌ها"], ["dashboard", "tabHome", "خانه"]] as const;
     return <>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={styles.figmaScreen}>
-          {previewTab === "dashboard" && <>
+          {previewAction ? <View style={styles.previewActionPage}>
+            <Pressable style={styles.smallAction} onPress={() => setPreviewAction(null)}><Text style={styles.smallActionText}>‹  بازگشت</Text></Pressable>
+            <View style={styles.accountCard}>
+              <Text style={styles.sectionTitle}>{actionTitle}</Text>
+              {selectedOrder ? <>
+                <Text style={styles.accountValue}>وضعیت: {selectedOrder.status}</Text>
+                <Text style={styles.accountValue}>مبلغ: {selectedOrder.price} تومان</Text>
+                <Text style={styles.accountValue}>اقلام: ۲ کالا · تحویل حضوری</Text>
+                <Text style={styles.infoText}>این سفارش اطلاعات نمونهٔ پیش‌نمایش است.</Text>
+              </> : <>
+                <Text style={styles.infoText}>{selectedProduct ? `${selectedProduct.code} · ${selectedProduct.category}` : "اطلاعات را وارد کنید؛ این فرم در حالت پیش‌نمایش محلی کار می‌کند."}</Text>
+                {previewAction !== "add" && selectedProduct ? <Text style={styles.accountValue}>مقدار فعلی: {previewAction.startsWith("stock:") ? selectedProduct.stock : `${selectedProduct.price} تومان`}</Text> : null}
+                <TextInput value={previewActionValue} onChangeText={setPreviewActionValue} placeholder={previewAction?.startsWith("stock:") ? "موجودی جدید" : previewAction?.startsWith("price:") ? "قیمت جدید (تومان)" : previewAction === "add" ? "نام کالا" : "نام کالا یا مقدار جدید"} placeholderTextColor="#827970" style={styles.previewActionInput} />
+                {previewAction === "add" ? <TextInput placeholder="قیمت (تومان)" placeholderTextColor="#827970" style={styles.previewActionInput} /> : null}
+              </>}
+              <Pressable style={styles.figmaPrimaryButton} onPress={() => {
+                setPreviewAction(null);
+                setNotice(selectedOrder?.status === "در حال آماده‌سازی" ? "سفارش نمونه برای آماده‌سازی تأیید شد." : selectedOrder ? "جزئیات سفارش نمونه نمایش داده شد." : previewAction === "add" ? "کالای نمونه به فهرست پیش‌نمایش افزوده شد." : "تغییر نمونه در پیش‌نمایش ثبت شد.");
+              }}><Text style={styles.primaryActionText}>{selectedOrder?.status === "در حال آماده‌سازی" ? "تأیید سفارش" : selectedOrder ? "بستن جزئیات" : "ثبت در پیش‌نمایش"}</Text></Pressable>
+            </View>
+          </View> : null}
+          {!previewAction && previewTab === "dashboard" && <>
             <View style={styles.metricGrid}>{[["سفارش‌های جدید", "۴ سفارش نمونه", "dashboardOrders", "#B94D35"], ["سفارش‌های در حال انجام", "۸ سفارش نمونه", "dashboardProgress", "#C98543"], ["موارد نیازمند رسیدگی", "۳ مورد نمونه", "dashboardAlert", "#B94D35"], ["کالاهای فعال", "۱۴۲ مورد نمونه", "dashboardProducts", "#204B43"]].map(([label, value, icon, color]) => <View key={label} style={styles.metricCard}><View style={styles.metricCaption}><View style={[styles.metricIcon, { backgroundColor: `${color}18` }]}><FigmaIcon name={icon as FigmaIconName} size={13} color={color} /></View><Text style={styles.metricLabel}>{label}</Text></View><Text style={[styles.metricValue, { color }]}>{value}</Text></View>)}</View>
-            <View style={styles.quickPanel}><Text style={styles.sectionTitle}>دسترسی سریع عملیاتی</Text><View style={styles.quickGrid}><Pressable style={styles.quickTileAccent} onPress={() => nav("products")}><View style={styles.quickTileContent}><FigmaIcon name="plus" size={14} color="#B5523B"/><Text style={styles.quickTileAccentText}>افزودن کالا</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><View style={styles.quickTileContent}><FigmaIcon name="quickInventory" size={14}/><Text style={styles.quickTileText}>مدیریت موجودی</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><View style={styles.quickTileContent}><FigmaIcon name="price" size={14}/><Text style={styles.quickTileText}>ویرایش قیمت‌ها</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("orders")}><View style={styles.quickTileContent}><FigmaIcon name="orderAction" size={14}/><Text style={styles.quickTileText}>مشاهده سفارش‌ها</Text></View></Pressable></View></View>
+            <View style={styles.quickPanel}><Text style={styles.sectionTitle}>دسترسی سریع عملیاتی</Text><View style={styles.quickGrid}><Pressable style={styles.quickTileAccent} onPress={() => openAction("add")}><View style={styles.quickTileContent}><FigmaIcon name="plus" size={14} color="#B5523B"/><Text style={styles.quickTileAccentText}>افزودن کالا</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><View style={styles.quickTileContent}><FigmaIcon name="quickInventory" size={14}/><Text style={styles.quickTileText}>مدیریت موجودی</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("inventory")}><View style={styles.quickTileContent}><FigmaIcon name="price" size={14}/><Text style={styles.quickTileText}>ویرایش قیمت‌ها</Text></View></Pressable><Pressable style={styles.quickTile} onPress={() => nav("orders")}><View style={styles.quickTileContent}><FigmaIcon name="orderAction" size={14}/><Text style={styles.quickTileText}>مشاهده سفارش‌ها</Text></View></Pressable></View></View>
             <Text style={styles.sectionTitle}>هشدارهای موجودی / دسترس‌پذیری</Text>
             {[["روغن آفتابگردان خالص ۱.۵ لیتری (نمونه)", "اتمام موجودی", "#F7ECE9", "#B94D35"], ["پنیر سفید ایرانی ممتاز ۴۰۰ گرم (نمونه)", "رو به اتمام", "#FFF3D4", "#9B6A12"]].map(([name, status, bg, color]) => <Pressable key={name} onPress={() => nav("inventory")} style={styles.stockAlert}><Text style={[styles.stockStatus, { backgroundColor: bg, color }]}>{status}</Text><Text style={styles.stockName}>{name}</Text></Pressable>)}
           </>}
-          {previewTab === "orders" && <>
+          {!previewAction && previewTab === "orders" && <>
             <View style={styles.filterRow} accessibilityRole="tablist">{orderFilters.map(filter => <Pressable key={filter} onPress={() => setOrderStatusFilter(filter)} accessibilityRole="tab" accessibilityState={{ selected: orderStatusFilter === filter }} style={orderStatusFilter === filter ? styles.filterActive : styles.filterItem}><Text style={orderStatusFilter === filter ? styles.filterActiveText : styles.filterText}>{filter}</Text></Pressable>)}</View>
-            {visibleOrders.map(order => <View key={order.id} style={styles.figmaOrder}><View style={styles.figmaOrderHead}><Text style={[styles.orderState, { backgroundColor: order.tone }]}>{order.status}</Text><Text style={styles.previewOrderId}>شماره سفارش: {order.id}</Text></View><View style={styles.figmaDivider}/><Text style={styles.figmaOrderMeta}>زمان ثبت: امروز · {order.id === "HN-۴۰۹۱" ? "۱۰:۲۵" : order.id === "HN-۴۰۹۰" ? "۱۰:۰۶" : "۰۹:۱۵"}</Text><Text style={styles.figmaOrderMeta}>تعداد اقلام: {faNumber(2)} قلم</Text><Text style={styles.figmaOrderMeta}>شیوه تحویل / ارسال: تحویل حضوری</Text><View style={styles.figmaOrderFoot}><Text style={styles.figmaOrderTotal}>مبلغ: {order.price} تومان</Text><Pressable style={styles.figmaSmallButton} onPress={() => setNotice("جزئیات سفارش نمونه است و به سامانه متصل نیست.")}><Text style={styles.figmaSmallButtonText}>{order.status === "در حال آماده‌سازی" ? "تأیید سفارش" : "مشاهده"}</Text></Pressable></View></View>)}
+            {visibleOrders.map(order => <View key={order.id} style={styles.figmaOrder}><View style={styles.figmaOrderHead}><Text style={[styles.orderState, { backgroundColor: order.tone }]}>{order.status}</Text><Text style={styles.previewOrderId}>شماره سفارش: {order.id}</Text></View><View style={styles.figmaDivider}/><Text style={styles.figmaOrderMeta}>زمان ثبت: امروز · {order.id === "HN-۴۰۹۱" ? "۱۰:۲۵" : order.id === "HN-۴۰۹۰" ? "۱۰:۰۶" : "۰۹:۱۵"}</Text><Text style={styles.figmaOrderMeta}>تعداد اقلام: {faNumber(2)} قلم</Text><Text style={styles.figmaOrderMeta}>شیوه تحویل / ارسال: تحویل حضوری</Text><View style={styles.figmaOrderFoot}><Text style={styles.figmaOrderTotal}>مبلغ: {order.price} تومان</Text><Pressable style={styles.figmaSmallButton} onPress={() => openAction(`order:${order.id}`)}><Text style={styles.figmaSmallButtonText}>{order.status === "در حال آماده‌سازی" ? "تأیید سفارش" : "مشاهده"}</Text></Pressable></View></View>)}
           </>}
-          {previewTab === "products" && <>
+          {!previewAction && previewTab === "products" && <>
             <View style={styles.searchBox}><TextInput value={productSearch} onChangeText={setProductSearch} placeholder="جستجو در کالاها..." placeholderTextColor="#827970" style={styles.productSearchInput}/><FigmaIcon name="search" size={18}/></View>
             <View style={styles.filterRow} accessibilityRole="tablist">{productFilters.map(filter => <Pressable key={filter} onPress={() => setProductCategoryFilter(filter)} accessibilityRole="tab" accessibilityState={{ selected: productCategoryFilter === filter }} style={productCategoryFilter === filter ? styles.filterActive : styles.filterItem}><Text style={productCategoryFilter === filter ? styles.filterActiveText : styles.filterText}>{filter}</Text></Pressable>)}</View>
-            {visibleProducts.map(item => <View key={item.code} style={styles.figmaProduct}><Image source={item.image} style={styles.figmaProductImage} resizeMode="cover"/><View style={styles.productInfo}><View style={styles.productNameRow}><Text style={styles.productName}>{item.title}</Text><Text style={[styles.productStatus, { backgroundColor: item.tone }]}>{item.status}</Text></View><Text style={styles.previewOrderDate}>دسته‌بندی: {item.category} · موجودی: {item.stock}</Text><Text style={styles.productPrice}>{item.price} تومان</Text></View><Pressable style={styles.editProduct} onPress={() => setNotice("ویرایش کالا در پیش‌نمایش نمایشی است.")}><FigmaIcon name="edit" size={15} color="#2D2D2D"/></Pressable></View>)}
-            <Pressable style={styles.figmaPrimaryButton} onPress={() => setNotice("فرم ثبت کالای جدید در این پیش‌نمایش نمایشی است.")}><Text style={styles.primaryActionText}>＋  افزودن کالای جدید</Text></Pressable>
+            {visibleProducts.map(item => <View key={item.code} style={styles.figmaProduct}><Image source={item.image} style={styles.figmaProductImage} resizeMode="cover"/><View style={styles.productInfo}><View style={styles.productNameRow}><Text style={styles.productName}>{item.title}</Text><Text style={[styles.productStatus, { backgroundColor: item.tone }]}>{item.status}</Text></View><Text style={styles.previewOrderDate}>دسته‌بندی: {item.category} · موجودی: {item.stock}</Text><Text style={styles.productPrice}>{item.price} تومان</Text></View><Pressable style={styles.editProduct} onPress={() => openAction(`product:${item.code}`, item.title)}><FigmaIcon name="edit" size={15} color="#2D2D2D"/></Pressable></View>)}
+            <Pressable style={styles.figmaPrimaryButton} onPress={() => openAction("add")}><Text style={styles.primaryActionText}>＋  افزودن کالای جدید</Text></Pressable>
           </>}
-          {previewTab === "inventory" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>موجودی و قیمت‌گذاری کالاها</Text><Text style={styles.infoText}>مقادیر برای نمایش رابط کاربری نمونه هستند.</Text></View>{products.map(item => <View key={item.code} style={styles.inventoryCard}><View style={styles.inventoryHead}><Text style={styles.productStatus}>{item.stock}</Text><Text style={styles.productName}>{item.title}</Text></View><Text style={styles.previewOrderDate}>{item.code} · قیمت فعلی: {item.price} تومان</Text><View style={styles.inventoryActions}><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر موجودی در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>تغییر موجودی</Text></Pressable><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر قیمت در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>ویرایش قیمت</Text></Pressable></View></View>)}</>}
-          {previewTab === "settlements" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>خلاصهٔ مالی</Text></View>{[["در انتظار تسویه", "۱۸٬۴۰۰٬۰۰۰ تومان"], ["تسویه‌شده", "۱۰۶٬۴۶۰٬۰۰۰ تومان"], ["سفارش‌های تکمیل‌شده", "۲۳ سفارش"]].map(([label, value]) => <View key={label} style={styles.financeRow}><Text style={styles.financeValue}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}</>}
-          {previewTab === "notifications" && <>{[["سفارش جدید دریافت شد", "سفارش HN-۴۰۹۱ ثبت شده و در انتظار تأیید شماست.", "۱۰:۲۵", "#F7ECE9"], ["موجودی کالا رو به اتمام است", "موجودی پنیر سفید به ۲ عدد رسیده است.", "دیروز · ۱۷:۴۰", "#FFF3D4"], ["تسویه با موفقیت انجام شد", "مبلغ ۱۲٬۶۰۰٬۰۰۰ تومان واریز شد.", "دیروز · ۱۲:۱۵", "#EAF3EC"]].map(([heading, body, time, color]) => <View key={heading} style={styles.notificationCard}><View style={[styles.notificationIcon, { backgroundColor: color }]}><Text style={styles.quickActionIcon}>•</Text></View><View style={styles.notificationContent}><Text style={styles.productName}>{heading}</Text><Text style={styles.infoText}>{body}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}</>}
-          {previewTab === "reports" && <>
+          {!previewAction && previewTab === "inventory" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>موجودی و قیمت‌گذاری کالاها</Text><Text style={styles.infoText}>مقادیر برای نمایش رابط کاربری نمونه هستند.</Text></View>{products.map(item => <View key={item.code} style={styles.inventoryCard}><View style={styles.inventoryHead}><Text style={styles.productStatus}>{item.stock}</Text><Text style={styles.productName}>{item.title}</Text></View><Text style={styles.previewOrderDate}>{item.code} · قیمت فعلی: {item.price} تومان</Text><View style={styles.inventoryActions}><Pressable style={styles.smallAction} onPress={() => openAction(`stock:${item.code}`, item.stock.replace(/[^۰-۹]/g, ""))}><Text style={styles.smallActionText}>تغییر موجودی</Text></Pressable><Pressable style={styles.smallAction} onPress={() => openAction(`price:${item.code}`, item.price)}><Text style={styles.smallActionText}>ویرایش قیمت</Text></Pressable></View></View>)}</>}
+          {!previewAction && previewTab === "settlements" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>خلاصهٔ مالی</Text></View>{[["در انتظار تسویه", "۱۸٬۴۰۰٬۰۰۰ تومان"], ["تسویه‌شده", "۱۰۶٬۴۶۰٬۰۰۰ تومان"], ["سفارش‌های تکمیل‌شده", "۲۳ سفارش"]].map(([label, value]) => <View key={label} style={styles.financeRow}><Text style={styles.financeValue}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}</>}
+          {!previewAction && previewTab === "notifications" && <>{[["سفارش جدید دریافت شد", "سفارش HN-۴۰۹۱ ثبت شده و در انتظار تأیید شماست.", "۱۰:۲۵", "#F7ECE9"], ["موجودی کالا رو به اتمام است", "موجودی پنیر سفید به ۲ عدد رسیده است.", "دیروز · ۱۷:۴۰", "#FFF3D4"], ["تسویه با موفقیت انجام شد", "مبلغ ۱۲٬۶۰۰٬۰۰۰ تومان واریز شد.", "دیروز · ۱۲:۱۵", "#EAF3EC"]].map(([heading, body, time, color]) => <View key={heading} style={styles.notificationCard}><View style={[styles.notificationIcon, { backgroundColor: color }]}><Text style={styles.quickActionIcon}>•</Text></View><View style={styles.notificationContent}><Text style={styles.productName}>{heading}</Text><Text style={styles.infoText}>{body}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}</>}
+          {!previewAction && previewTab === "reports" && <>
             <View style={styles.accountCard}><Text style={styles.sectionTitle}>گزارش عملیاتی فروشگاه</Text><Text style={styles.infoText}>ارقام زیر فقط برای نمایش پیش‌نمایش هستند.</Text></View>
             {[["سفارش‌های تکمیل‌شده", "۲۳ سفارش"], ["فروش ناخالص نمونه", "۱۲۴٬۸۶۰٬۰۰۰ تومان"], ["میانگین مبلغ سفارش", "۵۴۲٬۰۰۰ تومان"]].map(([label, value]) => <View key={label} style={styles.financeRow}><Text style={styles.financeValue}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}
           </>}
-          {previewTab === "business" && <View style={styles.accountCard}><Text style={styles.sectionTitle}>اطلاعات کسب‌وکار</Text><Text style={styles.accountValue}>نام فروشگاه: فروشگاه نمونه</Text><Text style={styles.accountValue}>نام کسب‌وکار: کسب‌وکار نمونه</Text><Text style={styles.accountValue}>وضعیت ثبت: نمونه</Text><Text style={styles.infoText}>اطلاعات هویتی واقعی در این پیش‌نمایش نمایش داده نمی‌شود.</Text></View>}
-          {previewTab === "activity" && <View style={styles.accountCard}><Text style={styles.sectionTitle}>محدوده فعالیت</Text><Text style={styles.accountValue}>شهر: تهران (نمونه)</Text><Text style={styles.accountValue}>محدوده ارسال: محدوده نمونه</Text><Text style={styles.infoText}>جزئیات محدوده در این پیش‌نمایش فقط نمونه است.</Text></View>}
-          {previewTab === "support" && <>
+          {!previewAction && previewTab === "business" && <View style={styles.accountCard}><Text style={styles.sectionTitle}>اطلاعات کسب‌وکار</Text><Text style={styles.accountValue}>نام فروشگاه: فروشگاه نمونه</Text><Text style={styles.accountValue}>نام کسب‌وکار: کسب‌وکار نمونه</Text><Text style={styles.accountValue}>وضعیت ثبت: نمونه</Text><Text style={styles.infoText}>اطلاعات هویتی واقعی در این پیش‌نمایش نمایش داده نمی‌شود.</Text></View>}
+          {!previewAction && previewTab === "activity" && <View style={styles.accountCard}><Text style={styles.sectionTitle}>محدوده فعالیت</Text><Text style={styles.accountValue}>شهر: تهران (نمونه)</Text><Text style={styles.accountValue}>محدوده ارسال: محدوده نمونه</Text><Text style={styles.infoText}>جزئیات محدوده در این پیش‌نمایش فقط نمونه است.</Text></View>}
+          {!previewAction && previewTab === "support" && <>
             <View style={styles.accountCard}><Text style={styles.sectionTitle}>گفتگو و تیکت پشتیبانی</Text><Text style={styles.infoText}>فهرست زیر نمونه است و به تیکت واقعی دسترسی ندارد.</Text></View>
             {[["پیگیری سفارش HN-۴۰۹۱", "در حال بررسی", "امروز · ۱۰:۳۰"], ["اصلاح اطلاعات کالا", "پاسخ داده شد", "دیروز · ۱۵:۲۰"]].map(([title, status, time]) => <View key={title} style={styles.notificationCard}><View style={styles.notificationContent}><Text style={styles.productName}>{title}</Text><Text style={styles.infoText}>{status}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}
           </>}
-          {previewTab === "account" && accountPage(true)}
+          {!previewAction && previewTab === "account" && accountPage(true)}
           {notice ? <Pressable onPress={() => setNotice("")} style={styles.noticeBox}><Text style={styles.noticeText}>{notice}  ×</Text></Pressable> : null}
         </View>
       </ScrollView>
@@ -561,7 +598,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, flexDirection: "row-reverse",
     alignItems: "center", gap: 8,
   },
-  logo: { width: 45, height: 36 },
+  logo: { width: 54, height: 43 },
+  previewActionPage: { padding: 16, gap: 12 },
+  previewActionInput: { minHeight: 44, borderWidth: 1, borderColor: "#EAE5DF", borderRadius: 10, backgroundColor: "#FFFFFF", paddingHorizontal: 12, marginTop: 10, ...rtl },
   brand: { flex: 1, alignItems: "flex-end" },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 24 },
