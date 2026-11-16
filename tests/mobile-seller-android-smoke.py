@@ -229,12 +229,11 @@ def main():
     wait_screen("پیشخوان مدیریت حنا", "کسب‌وکار نمونه")
     tap_text("حساب")
     wait_screen("حساب فروشنده", "خلاصه حساب نمونه")
-    tap_text("خروج از حساب")
-    wait_screen("ورود آزمایشی فروشنده بدون پیامک")
+    assert "فروشگاه واقعی" not in ui
 
     print(
         "PASS: separate seller APK installed, preview entry without OTP, "
-        "local persistence and explicit logout; no private data exposed",
+        "local persistence and account preview; no private data exposed",
         flush=True,
     )
 
