@@ -69,7 +69,7 @@ export function OrganizationProgramForm() {
     <section className={styles.programFormPage} dir="rtl">
       <div className={styles.programFormCard}>
         <header className={styles.programFormHeader}>
-          <h2>فرم راه‌اندازی و پیکربندی طرح اعتباری</h2>
+          <h2>ثبت طرح سازمانی</h2>
           <p>مشخصات اولیه، الگوی تخصیص و دامنه افراد مشمول را مشخص نمایید.</p>
         </header>
         <div className={styles.programFormDivider}/>
@@ -83,8 +83,8 @@ export function OrganizationProgramForm() {
                   <option value="program">برنامه حمایتی نمونه</option>
                 </select>
               </label>
-              <label className={styles.programFormField}>نام طرح حمایتی
-                <input aria-label="نام طرح حمایتی" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required placeholder="مثال: طرح نمونه ۱"/>
+              <label className={styles.programFormField}>نام طرح
+                <input value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required placeholder="مثال: طرح نمونه ۱"/>
               </label>
             </div>
             <div className={styles.programFormRow}>
@@ -95,7 +95,7 @@ export function OrganizationProgramForm() {
                   <option value="organization-api">API / منبع داده سازمان</option>
                 </select>
               </label>
-              <label className={styles.programFormField}>روش تخصیص طرح
+              <label className={styles.programFormField}>روش ثبت‌شده
                 <select value={mode} onChange={(event) => setMode(event.target.value as AllocationMode)}>
                   <option value="HENNA_NEEDS_BASED">روش تخصیص: الگوی حنا</option>
                   <option value="ORGANIZATION_DEFINED">تعریف‌شده توسط سازمان</option>
