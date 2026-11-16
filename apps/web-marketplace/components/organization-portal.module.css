@@ -139,6 +139,33 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 .portalNotificationDot_teal{background:#0f5b5a}.portalNotificationDot_sand{background:#d7b895}
 @media(max-width:720px){.portalNotifications{gap:12px}.portalNotificationItem{min-height:76px;align-items:flex-start;gap:12px;padding:14px}.portalNotificationItem time{font-size:10px}.portalNotificationMain{gap:9px}.portalNotificationCopy strong{font-size:12px}.portalNotificationCopy p{font-size:11px}}
 
+/* Figma 386:1892 organization support and portal guide */
+.supportPage{width:100%;min-width:0;display:grid;align-content:start;gap:16px}
+.supportSearchCard,.supportHistory{width:100%;min-width:0;padding:20px 24px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.supportSearchCard{display:grid;gap:14px;justify-items:stretch}
+.supportSearchCard h2,.supportHistory h2{margin:0;color:var(--teal);font-size:15px;font-weight:800;line-height:1.6;text-align:right}
+.supportSearchCard input{width:100%;min-width:0;height:36px;padding:8px 12px;border:1px solid var(--line);border-radius:7px;background:var(--cream);color:var(--ink);font:inherit;font-size:11px;text-align:right;direction:rtl;outline:none}
+.supportSearchCard input:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(15,91,90,.1)}
+.supportSearchCard input::placeholder{color:#4f4b46;opacity:1}
+.supportSearchCard input::-webkit-search-cancel-button{cursor:pointer}
+.supportTopics{width:100%;min-width:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;direction:rtl}
+.supportTopic{min-width:0;min-height:78px;display:grid;align-content:center;gap:5px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--teal);text-align:right;text-decoration:none;transition:border-color .12s,background .12s}
+.supportTopic:hover{border-color:var(--teal);background:#f7fbfa}
+.supportTopic b{font-size:12px;font-weight:800;line-height:1.5}
+.supportTopic small{color:var(--ink);font-size:10px;line-height:1.6}
+.supportHistory{display:grid;gap:14px}
+.supportHistory h2{font-size:14px}
+.supportDivider{width:100%;height:1px;background:var(--line)}
+.supportTicketList{width:100%;display:grid;gap:10px}
+.supportTicket{min-height:25px;display:flex;align-items:center;justify-content:space-between;gap:14px;direction:ltr}
+.supportTicket p{min-width:0;margin:0;color:var(--ink);font-size:11px;line-height:1.7;text-align:right;direction:rtl}
+.supportTicketStatus{flex:0 0 auto;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;line-height:1.5;white-space:nowrap}
+.supportTicketAnswered{border:1px solid var(--teal);background:var(--cream);color:var(--teal)}
+.supportTicketReview{background:var(--sand);color:#4a4034}
+.supportEmpty{grid-column:1/-1;margin:0;padding:12px;border-radius:7px;background:var(--cream);color:var(--muted);font-size:11px;text-align:right}
+@media(max-width:900px){.supportTopics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.supportPage{gap:12px}.supportSearchCard,.supportHistory{padding:16px}.supportSearchCard h2{font-size:13px}.supportTopics{gap:10px}.supportTopic{min-height:72px;padding:12px}.supportTopic b{font-size:11px}.supportTopic small{font-size:9px}.supportHistory h2{font-size:12px}.supportTicket{align-items:flex-start;gap:8px}.supportTicket p{font-size:10px}.supportTicketStatus{font-size:9px}}
+
 /* Figma 386:161 organization profile sample */
 .profileGrid>.card{padding:24px}
 .profileStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#f7f3ed;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}

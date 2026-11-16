@@ -97,7 +97,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const data = usePortalData();
   const active: PortalKey = screen === "program-detail" ? "programs" : screen === "people-new" ? "people" : screen === "allocation-detail" ? "allocation" : screen;
   const titles: Record<typeof screen, string> = {
-    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها و تحلیل طرح‌ها", notifications: "اعلان‌های پرتال سازمانی", support: "پشتیبانی", settings: "تنظیمات سازمان",
+    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها و تحلیل طرح‌ها", notifications: "اعلان‌های پرتال سازمانی", support: "پشتیبانی و راهنمای پرتال", settings: "تنظیمات سازمان",
   };
   const title = titles[screen];
   if (screen === "api") return <OrganizationApiDataSources title={title} />;
@@ -241,11 +241,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
 
-  if (screen === "support") return <OrganizationPortalShell active="support" title={title}>
-    <Card title="جست‌وجو در راهنمای پرتال"><input className={styles.searchInput} placeholder="عبارت مورد نظر خود را تایپ کنید (مثلاً ثبت طرح، الگوی تخصیص)…" aria-label="جست‌وجو در راهنما"/></Card>
-    <div className={styles.supportCards}>{[["منابع داده و API","راهنمای اتصال API، منبع داده سازمان"],["تخصیص و مدل حنا","راهنمای طرح‌های تخصیص در پرتال سازمانی"],["افراد و مشمولان","نحوه مدیریت اطلاعات افراد و ارجاع خانوار"],["طرح‌ها و اعتبارها","راهنمای جامع ایجاد، ویرایش و مدیریت دوره‌های اعتباری سازمان"]].map(([heading,body])=><a key={heading} href="#support-topics"><b>{heading}</b><small>{body}</small></a>)}</div>
-    <Card title="تاریخچه تیکت‌های پشتیبانی سازمان"><div className={styles.emptyTable}><Icon name="help"/><b>تیکتی برای نمایش وجود ندارد</b><span>سوابق واقعی پس از اتصال سرویس پشتیبانی در این بخش قرار می‌گیرند.</span></div></Card>
-  </OrganizationPortalShell>;
+  if (screen === "support") return <OrganizationSupportPreview title={title} />;
 
   if (screen === "settings") return <OrganizationPortalShell active="settings" title={title}>
     <Notice>حریم خصوصی و دسترسی اعتباری: این سازمان فقط مجاز به مشاهده و مدیریت داده‌های مربوط به طرح‌های اعتبار و مشمولان تخصیص‌یافته به خود می‌باشد. دسترسی به تراکنش‌های شخصی خارج از چارچوب طرح‌های سازمانی امکان‌پذیر نیست.</Notice>
@@ -445,6 +441,58 @@ function OrganizationNotificationsPreview({ title }: { title: string }) {
         </div>
       </article>)}
     </section>
+  </OrganizationPortalShell>;
+}
+
+function OrganizationSupportPreview({ title }: { title: string }) {
+  const [query, setQuery] = useState("");
+  const topics = [
+    { heading: "منابع داده و API", body: "راهنمای اتصال API / منبع داده سازمان", href: "/organization/data-sources" },
+    { heading: "تخصیص و مدل حنا", body: "راهنمای روش‌های تخصیص در پرتال سازمانی", href: "/organization/allocation" },
+    { heading: "افراد و مشمولان", body: "نحوه مدیریت اطلاعات هویتی و افزودن مشمولان جدید به طرح‌ها", href: "/organization/people" },
+    { heading: "طرح‌ها و اعتبارها", body: "راهنمای جامع ایجاد، ویرایش و مدیریت دوره‌های اعتباری سازمان", href: "/organization/programs" },
+  ];
+  const tickets = [
+    { title: "درخواست پشتیبانی — بررسی تطبیق شناسه برخی مشمولان", status: "پاسخ داده شده", tone: "answered" },
+    { title: "درخواست پشتیبانی — بررسی وضعیت اتصال API", status: "در حال بررسی", tone: "review" },
+  ];
+  const normalizedQuery = query.trim().toLocaleLowerCase("fa-IR");
+  const visibleTopics = topics.filter((topic) => `${topic.heading} ${topic.body}`.toLocaleLowerCase("fa-IR").includes(normalizedQuery));
+  const visibleTickets = tickets.filter((ticket) => `${ticket.title} ${ticket.status}`.toLocaleLowerCase("fa-IR").includes(normalizedQuery));
+
+  return <OrganizationPortalShell active="support" title={title}>
+    <div className={styles.supportPage}>
+      <section className={styles.supportSearchCard} aria-labelledby="support-search-title">
+        <h2 id="support-search-title">جستجو در راهنمای پرتال حنا</h2>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="عبارت مورد نظر خود را تایپ کنید (مثلاً: ثبت طرح، الگوی تخصیص)..."
+          aria-label="جستجو در راهنمای پرتال حنا"
+        />
+      </section>
+
+      <section className={styles.supportTopics} aria-label="دسته‌های راهنمای پرتال">
+        {visibleTopics.map((topic) => <Link key={topic.heading} href={topic.href} className={styles.supportTopic}>
+          <b>{topic.heading}</b>
+          <small>{topic.body}</small>
+        </Link>)}
+        {visibleTopics.length === 0 && <p className={styles.supportEmpty}>دسته‌ای مطابق جست‌وجوی شما پیدا نشد.</p>}
+      </section>
+
+      <section className={styles.supportHistory} aria-labelledby="support-history-title">
+        <h2 id="support-history-title">تاریخچه تیکت‌های پشتیبانی سازمان</h2>
+        <div className={styles.supportDivider} />
+        <div className={styles.supportTicketList}>
+          {visibleTickets.map((ticket) => <article className={styles.supportTicket} key={ticket.title}>
+            <span className={`${styles.supportTicketStatus} ${ticket.tone === "answered" ? styles.supportTicketAnswered : styles.supportTicketReview}`}>{ticket.status}</span>
+            <p>{ticket.title}</p>
+          </article>)}
+          {visibleTickets.length === 0 && <p className={styles.supportEmpty}>تیکتی مطابق جست‌وجوی شما پیدا نشد.</p>}
+        </div>
+      </section>
+    </div>
   </OrganizationPortalShell>;
 }
 
