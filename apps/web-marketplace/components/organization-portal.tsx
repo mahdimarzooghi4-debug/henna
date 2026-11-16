@@ -97,12 +97,13 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const data = usePortalData();
   const active: PortalKey = screen === "program-detail" ? "programs" : screen === "people-new" ? "people" : screen === "allocation-detail" ? "allocation" : screen;
   const titles: Record<typeof screen, string> = {
-    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
+    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
   };
   const title = titles[screen];
   if (screen === "api") return <OrganizationApiDataSources title={title} />;
   if (screen === "allocation") return <OrganizationAllocationPreview title={title} />;
   if (screen === "allocation-detail") return <OrganizationAllocationDetailPreview title={title} />;
+  if (screen === "usage") return <OrganizationUsagePreview title={title} />;
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
@@ -238,11 +239,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
 
-  if (screen === "usage") return <OrganizationPortalShell active="usage" title={title}>
-    <div className={styles.statCards}>{[["اعتبار راکد یا استفاده‌نشده","دریافت نشده"],["اعتبار مصرف‌شده","دریافت نشده"],["اعتبار فعال در حال استفاده","دریافت نشده"],["کل اعتبارات تخصیص‌یافته","دریافت نشده"]].map(([label,value])=><Card key={label}><small>{label}</small><b>{value}</b></Card>)}</div>
-    <Card title="لیست وضعیت مصرف مشمولان"><div className={styles.tableWrap}><table><thead><tr><th>نام مشمول</th><th>شناسه مشمول</th><th>وضعیت مصرف</th><th>اعتبار تخصیص‌یافته</th><th>میزان استفاده</th><th>آخرین وضعیت ثبت‌شده</th></tr></thead><tbody><tr><td colSpan={6}><div className={styles.emptyTable}><b>داده‌ای برای نمایش وجود ندارد</b><span>اطلاعات مصرف هنوز از سرویس سازمان دریافت نشده است.</span></div></td></tr></tbody></table></div></Card>
-  </OrganizationPortalShell>;
-
   if (screen === "reports") return <OrganizationPortalShell active="reports" title={title}>
     <div className={styles.twoCards}><Card title="وضعیت مصرف طرح‌ها"><DataRows rows={[["بودجه استفاده‌شده", "دریافت نشده"], ["وضعیت استفاده", "داده‌ای ثبت نشده"]]}/><div className={styles.progress}><span style={{width:"0%"}}/></div></Card><Card title="وضعیت تطبیق افراد"><DataRows rows={[["کل مشمولان متصل", "دریافت نشده"], ["وضعیت تطبیق", "داده‌ای ثبت نشده"]]}/><div className={styles.progress}><span className={styles.progressTeal} style={{width:"0%"}}/></div></Card></div>
     <Card title="روند کلی تخصیص و توزیع طرح"><div className={styles.chartEmpty}><Icon name="chart"/><b>گزارشی برای نمایش وجود ندارد</b><span>نمودار پس از ثبت و دریافت داده‌های تخصیص، اینجا نمایش داده می‌شود.</span></div></Card>
@@ -340,6 +336,56 @@ function OrganizationAllocationDetailPreview({ title }: { title: string }) {
           </div>
         </Card>
       </div>
+    </div>
+  </OrganizationPortalShell>;
+}
+
+function OrganizationUsagePreview({ title }: { title: string }) {
+  const stats = [
+    { label: "کل اعتبارات تخصیص یافته", value: "مقدار نمونه", tone: "ink" },
+    { label: "اعتبار فعال در حال استفاده", value: "مقدار نمونه", tone: "teal" },
+    { label: "اعتبار مصرف شده", value: "مقدار نمونه", tone: "terracotta" },
+    { label: "اعتبار راکد یا استفاده نشده", value: "مقدار نمونه", tone: "ink" },
+  ] as const;
+  const rows = [
+    { name: "فرد نمونه ۱", id: "***۰۰۷۲۱۶", status: "استفاده شده", tone: "used", allocated: "مقدار نمونه", used: "مقدار نمونه", date: "تاریخ نمونه" },
+    { name: "فرد نمونه ۲", id: "***۰۱۲۵۴۴", status: "بخشی استفاده شده", tone: "partial", allocated: "مقدار نمونه", used: "مقدار نمونه", date: "تاریخ نمونه" },
+    { name: "فرد نمونه ۳", id: "***۰۴۳۹۸۱", status: "استفاده نشده", tone: "unused", allocated: "مقدار نمونه", used: "مقدار نمونه", date: "-" },
+    { name: "فرد نمونه ۴", id: "***۰۰۹۶۱۲", status: "پایان‌یافته / غیرفعال", tone: "inactive", allocated: "مقدار نمونه", used: "مقدار نمونه", date: "تاریخ نمونه" },
+  ] as const;
+
+  return <OrganizationPortalShell active="usage" title={title}>
+    <div className={styles.usagePage}>
+      <section className={styles.usageStats} aria-label="خلاصه اعتبارات">
+        {stats.map((stat) => <article className={styles.usageStatCard} key={stat.label}>
+          <span>{stat.label}</span>
+          <strong className={styles[`usageStat_${stat.tone}`]}>{stat.value}</strong>
+        </article>)}
+      </section>
+      <section className={styles.usageTableCard}>
+        <header className={styles.usageTableTitle}><h2>لیست وضعیت مصرف مشمولان</h2></header>
+        <div className={styles.usageTableScroll}>
+          <table className={styles.usageTable}>
+            <colgroup><col className={styles.usageDateCol}/><col className={styles.usageAmountCol}/><col className={styles.usageAmountCol}/><col className={styles.usageStatusCol}/><col className={styles.usageIdCol}/><col/></colgroup>
+            <thead><tr>
+              <th scope="col">آخرین وضعیت ثبت‌شده</th>
+              <th scope="col">میزان استفاده</th>
+              <th scope="col">اعتبار تخصیص یافته</th>
+              <th scope="col">وضعیت مصرف</th>
+              <th scope="col">شناسه مشمول</th>
+              <th scope="col">نام مشمول</th>
+            </tr></thead>
+            <tbody>{rows.map((row) => <tr key={row.id}>
+              <td>{row.date}</td>
+              <td>{row.used}</td>
+              <td>{row.allocated}</td>
+              <td><span className={`${styles.usageStatus} ${styles[`usageStatus_${row.tone}`]}`}>{row.status}</span></td>
+              <td dir="ltr">{row.id}</td>
+              <th scope="row">{row.name}</th>
+            </tr>)}</tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </OrganizationPortalShell>;
 }
