@@ -94,13 +94,9 @@ export default function App() {
     const current = ++epoch.current;
     setGate({ kind: "checking" }); // Never show stale private data during revalidation.
     setOrders({ kind: "idle" });
-    // A backend-free browser build is a visual product demo, so open the mock
-    // seller workspace directly instead of getting stuck at an unavailable API state.
-    if (sellerPreviewAllowed && !apiBase && Platform.OS === "web") {
-      setGate({ kind: "preview" });
-      return;
-    }
-    if (sellerPreviewAllowed) {
+    // The stage web app always starts on its login screen. Preview entry is an
+    // explicit action there; native demo sessions may still be remembered.
+    if (sellerPreviewAllowed && Platform.OS !== "web") {
       const flag = await SecureStore.getItemAsync(previewKey, secureOptions).catch(() => null);
       if (current !== epoch.current) return;
       if (flag === "v1") {
@@ -195,7 +191,8 @@ export default function App() {
     pending.current = true;
     setBusy(true);
     try {
-      await SecureStore.setItemAsync(previewKey, "v1", secureOptions);
+      if (Platform.OS !== "web")
+        await SecureStore.setItemAsync(previewKey, "v1", secureOptions);
       ++epoch.current;
       setGate({ kind: "preview" });
       setNotice("");
@@ -556,6 +553,12 @@ export default function App() {
                 </>
               : gate.kind === "unavailable" ? <>
                   <Text style={styles.error}>وضعیت نشست یا دسترسی فروشنده قابل تأیید نیست.</Text>
+                  {sellerPreviewAllowed ? <Pressable accessibilityRole="button"
+                    accessibilityLabel="ورود آزمایشی فروشنده بدون پیامک"
+                    style={styles.action} disabled={busy}
+                    onPress={() => void enterPreview()}>
+                    <Text style={styles.actionText}>ورود آزمایشی فروشنده بدون پیامک</Text>
+                  </Pressable> : null}
                   <Pressable style={styles.action} onPress={() => void refreshGate()}>
                     <Text style={styles.actionText}>بررسی دوباره</Text>
                   </Pressable>
