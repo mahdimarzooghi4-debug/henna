@@ -73,7 +73,6 @@ export function OrganizationPrograms() {
           : state.error ? <div className={styles.programFormNotice} role="alert">{state.error}</div>
           : state.programs.length === 0 ? <div className={styles.programFormNotice}>
             <p>هنوز طرحی ثبت نشده است</p>
-            <Link className={styles.primaryButton} href="/organization/programs/new">ایجاد پیش‌نویس</Link>
           </div>
           : <div className={styles.programTableWrap}>
             <table className={styles.programTable}>
