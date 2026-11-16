@@ -42,16 +42,41 @@ function Icon({ name }: { name: string }) {
     info: <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></>,
     help: <><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></>,
     settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4L7.9 15a8 8 0 0 1 0-2l-.2-.1-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2Z"/></>,
+    logout: <><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-6"/></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{path[name]}</svg>;
 }
 
 export function OrganizationPortalShell({ active, title, children }: { active: PortalKey; title: string; children: ReactNode }) {
+  const [leaving, setLeaving] = useState(false);
+  const [logoutNotice, setLogoutNotice] = useState("");
+
+  async function logout() {
+    if (leaving) return;
+    setLeaving(true);
+    setLogoutNotice("");
+    try {
+      const response = await fetch("/api/auth/session", { method: "DELETE", credentials: "same-origin", cache: "no-store" });
+      if (response.ok || response.status === 401) {
+        window.location.assign("/auth");
+        return;
+      }
+      setLogoutNotice("خروج از حساب تأیید نشد؛ دوباره تلاش کنید.");
+    } catch {
+      setLogoutNotice("ارتباط برقرار نشد؛ دوباره برای خروج تلاش کنید.");
+    }
+    setLeaving(false);
+  }
+
   return <main className={styles.shell} dir="rtl">
     <aside className={styles.sidebar}>
-      <Link href="/organization" className={styles.brand} aria-label="داشبورد پرتال سازمانی"><img src="/hana-logo.png" alt="حنا"/><b>پنل سازمان‌ها</b></Link>
+      <Link href="/organization" className={styles.brand} aria-label="داشبورد پرتال سازمانی"><img src="/hana-logo.png" alt="حنا"/></Link>
       <nav aria-label="منوی پرتال سازمانی">{navigation.map(item => <Link href={item.href} key={item.key} className={`${styles.navItem}${active === item.key ? ` ${styles.active}` : ""}`} aria-current={active === item.key ? "page" : undefined}><span className={styles.glyph}><Icon name={item.glyph}/></span><span>{item.label}</span></Link>)}</nav>
       <div className={styles.userFooter}><div><b>کد کاربری: ****۹۸۲</b><small>کاربر ارشد پرتال</small></div><span className={styles.avatar}>ن</span></div>
+      {logoutNotice && <p className={styles.logoutNotice} role="status">{logoutNotice}</p>}
+      <button type="button" className={styles.logoutButton} onClick={() => void logout()} disabled={leaving}>
+        <Icon name="logout"/><span>{leaving ? "در حال خروج…" : "خروج از حساب"}</span>
+      </button>
     </aside>
     <div className={styles.main}><header className={styles.topbar}>
       <h1>{title}</h1>
