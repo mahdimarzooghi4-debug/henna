@@ -106,6 +106,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   if (screen === "usage") return <OrganizationUsagePreview title={title} />;
   if (screen === "reports") return <OrganizationReportsPreview title={title} />;
   if (screen === "notifications") return <OrganizationNotificationsPreview title={title} />;
+  if (screen === "support") return <OrganizationSupportPreview title={title} />;
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
@@ -240,8 +241,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   if (screen === "people") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleDirectory/></OrganizationPortalShell>;
 
   if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
-
-  if (screen === "support") return <OrganizationSupportPreview title={title} />;
 
   if (screen === "settings") return <OrganizationPortalShell active="settings" title={title}>
     <Notice>حریم خصوصی و دسترسی اعتباری: این سازمان فقط مجاز به مشاهده و مدیریت داده‌های مربوط به طرح‌های اعتبار و مشمولان تخصیص‌یافته به خود می‌باشد. دسترسی به تراکنش‌های شخصی خارج از چارچوب طرح‌های سازمانی امکان‌پذیر نیست.</Notice>
