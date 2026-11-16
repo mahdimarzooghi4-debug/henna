@@ -84,7 +84,11 @@ export function OrganizationPrograms() {
                 <td>{modeNames[program.allocationMode]}</td>
                 <td><span className={`${styles.programStatus} ${styles.status2}`}>پیش‌نویس</span></td>
                 <td>{new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" }).format(new Date(program.createdAtUtc))}</td>
-                <td><Link className={styles.programDetailsLink} href={`/organization/programs/${program.programId}`}>مشاهده جزئیات</Link></td>
+                <td><div className={styles.programLinks}><div>
+                  <Link href={`/organization/programs/${program.programId}`}>مشاهده جزئیات</Link>
+                  <Link href={`/organization/programs/${program.programId}/funding-instruction`}>دستور تأمین</Link>
+                  <Link href={`/organization/programs/${program.programId}/household-referrals`}>ارجاع خانوار</Link>
+                </div></div></td>
               </tr>)}</tbody>
             </table>
           </div>}
