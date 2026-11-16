@@ -60,7 +60,7 @@ export default function DownloadAppPage() {
                 <p className={styles.platformHelp}>اندروید: APK یا نصب PWA از Chrome | آیفون: نصب PWA از Safari</p>
                 {app.role === "seller" && <a className={styles.previewLink} data-testid="open-seller-app-preview" href="/seller-app-preview">مشاهدهٔ کامل اپ فروشنده</a>}
                 {app.role === "buyer" && (
-                  <p className={styles.buyerHint}>نسخه جدید پیش‌نمایش فیگما برای خریدار (حدود ۷۹ مگابایت) شامل خانه، کاتالوگ و فیلترهای نمونه است. این اطلاعات واقعی نیستند و خرید یا پرداخت فعال نیست. اگر نسخه آزمایشی قبلی نصب است و خطای ناسازگاری امضا می‌گیرید، ابتدا همان نسخه قبلی را حذف کنید. در خطای «Problem parsing package»، کامل‌بودن دانلود و نسخه Android دستگاه را بررسی کنید.</p>
+                  <p className={styles.buyerHint}>نسخه جدید پیش‌نمایش فیگما برای خریدار (حدود ۷۹ مگابایت) شامل خانه، کاتالوگ و فیلترهای نمونه است. این اطلاعات واقعی نیستند و خرید یا پرداخت فعال نیست. اگر نسخه قبلی نصب است و خطای ناسازگاری امضا می‌گیرید، ابتدا همان نسخه قبلی را حذف کنید. در خطای «Problem parsing package»، کامل‌بودن دانلود و نسخه Android دستگاه را بررسی کنید.</p>
                 )}
               </article>
             ))}

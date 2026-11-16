@@ -1315,7 +1315,7 @@ async function main() {
     await page.goto(base + "/terms");
     await page.getByText("راهنمای عمومی، نه قرارداد لازم‌الاجرا",{exact:false}).waitFor();
   }
-  // The download screen has exactly two Android APK actions and two iOS PWA routes.
+  // The download screen has two Android APK actions and two direct PWA app installs.
   await page.goto(base + "/download");
   const downloadPage=page.getByTestId("download-app-page");
   await downloadPage.waitFor();
@@ -1323,20 +1323,20 @@ async function main() {
   assert.equal(await downloadPage.locator(".downloadLink").count(),0,
     "Legacy two-action download layout was removed");
   for (const [role,apk,manifest,start] of [
-    ["buyer","hana-buyer-figma-android-preview.apk","/pwa-buyer.webmanifest","/products"],
-    ["seller","hana-seller-preview.apk","/pwa-seller.webmanifest","/seller"]
+    ["buyer","hana-buyer-figma-android-preview.apk","/pwa-buyer.webmanifest","/pwa/buyer-app/index.html"],
+    ["seller","hana-seller-preview.apk","/pwa-seller.webmanifest","/pwa/seller-app/index.html"]
   ]) {
     const card=downloadPage.getByTestId("app-download-"+role);
     const android=card.getByTestId("download-android-"+role);
-    const ios=card.getByTestId("download-ios-"+role);
+    const pwa=card.getByTestId("install-pwa-"+role);
     assert.equal(await android.count(),1);
-    assert.equal(await ios.count(),1);
+    assert.equal(await pwa.count(),1);
     assert.ok((await android.getAttribute("href")).endsWith("/"+apk));
     assert.equal(await android.getAttribute("target"),null,"Direct APK download uses the current mobile tab");
-    assert.equal(await ios.getAttribute("href"),"/install/"+role);
-    await ios.click();
+    assert.equal(await pwa.getAttribute("href"),"/install/"+role);
+    await pwa.click();
     await page.waitForURL(base+"/install/"+role);
-    const install=page.getByTestId("install-ios-"+role);
+    const install=page.getByTestId("install-pwa-"+role);
     await install.getByRole("heading",{level:1}).waitFor();
     await install.getByText("افزودن به صفحه اصلی (Add to Home Screen)",{exact:false}).waitFor();
     assert.equal(await page.locator('link[rel="manifest"]').getAttribute("href"),manifest);
@@ -1345,7 +1345,7 @@ async function main() {
     const data=await manifestResponse.json();
     assert.equal(data.start_url,start);
     assert.equal(data.display,"standalone");
-    assert.equal(data.scope,"/");
+    assert.equal(data.scope,"/pwa/"+role+"-app/");
     assert.equal(data.id,"/pwa/"+role);
     assert.deepEqual(data.icons.map(x=>x.sizes),["192x192","512x512"]);
     for(const icon of data.icons){
@@ -1356,13 +1356,14 @@ async function main() {
       assert.equal(dataBuffer.subarray(0,8).toString("hex"),"89504e470d0a1a0a",
         "PWA asset is a valid PNG file");
     }
-    assert.equal(await install.getByRole("link",{name:"ورود به نسخه وب "+(role==="buyer"?"خریدار":"فروشنده")}).getAttribute("href"),start);
+    assert.equal(await install.getByRole("link",{name:"بازکردن اپ "+(role==="buyer"?"خریدار":"فروشنده")}).getAttribute("href"),start);
     await page.goto(base+"/download");
   }
-  assert.equal(await downloadPage.locator('[data-testid^="download-android-"],[data-testid^="download-ios-"]').count(),4,
+  assert.equal(await downloadPage.locator('[data-testid^="download-android-"],[data-testid^="install-pwa-"]').count(),4,
     "Exactly four primary download/install actions are visible");
   assert.equal(await downloadPage.locator('a[href*=".ipa"]').count(),0,"iOS is a PWA, not a fake native app");
-  assert.match(await downloadPage.innerText(),/آزمایشی/,"Debug-signed Preview APK must remain labelled as experimental");
+  assert.match(await downloadPage.innerText(),/نسخه‌های اندروید برای بررسی هستند/,
+    "Download page explains the Android package review status");
   assert.equal(await page.getByTestId("landing-footer-top").getByRole("link",{name:"دریافت اپلیکیشن حنا"}).getAttribute("href"),"/download");
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),
     "Download page does not overflow mobile viewport");
