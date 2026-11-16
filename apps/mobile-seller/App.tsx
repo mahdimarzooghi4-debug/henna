@@ -493,8 +493,8 @@ export default function App() {
         <View style={styles.header}>
           <Image source={logo} style={styles.logo} resizeMode="contain" />
           <View style={styles.brand}>
-          <Text style={styles.heading}>{gate.kind === "preview" ? ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی کالاها", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده", reports: "گزارش‌ها", business: "اطلاعات کسب‌وکار", activity: "محدوده فعالیت", support: "پشتیبانی" } as const)[previewTab] : ({ dashboard: "پیشخوان فروشنده حنا", orders: "سفارش‌های فروشگاه", products: "کالاهای فروشگاه", inventory: "موجودی و قیمت‌گذاری", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده", reports: "گزارش‌ها", business: "اطلاعات کسب‌وکار", activity: "محدوده فعالیت", support: "پشتیبانی" } as const)[tab]}</Text>
-            <Text style={styles.muted}>{gate.kind === "preview" ? ({ dashboard: "کسب‌وکار نمونه", orders: "پیگیری و مدیریت سفارش‌های روزانه", products: "مدیریت کالاها و دسترس‌پذیری کسب‌وکار", inventory: "مدیریت موجودی و قیمت کالاها", settlements: "گزارش فروش و تسویهٔ فروشگاه", notifications: "پیام‌ها و رویدادهای فروشگاه", account: "اطلاعات حساب و ابزارهای مدیریت فروشندگی", reports: "عملکرد نمونه فروشگاه", business: "اطلاعات نمایشی کسب‌وکار", activity: "محدوده نمونه فروشگاه", support: "تیکت‌های نمونه" } as const)[previewTab] : seller?.storeName ?? "ورود امن فروشنده"}</Text>
+          <Text style={styles.headerTitle}>{gate.kind === "preview" ? ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی کالاها", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده", reports: "گزارش‌ها", business: "اطلاعات کسب‌وکار", activity: "محدوده فعالیت", support: "پشتیبانی" } as const)[previewTab] : ({ dashboard: "پیشخوان فروشنده حنا", orders: "سفارش‌های فروشگاه", products: "کالاهای فروشگاه", inventory: "موجودی و قیمت‌گذاری", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده", reports: "گزارش‌ها", business: "اطلاعات کسب‌وکار", activity: "محدوده فعالیت", support: "پشتیبانی" } as const)[tab]}</Text>
+            <Text style={styles.headerSubtitle}>{gate.kind === "preview" ? ({ dashboard: "کسب‌وکار نمونه", orders: "پیگیری و مدیریت سفارش‌های روزانه", products: "مدیریت کالاها و دسترس‌پذیری کسب‌وکار", inventory: "مدیریت موجودی و قیمت کالاها", settlements: "گزارش فروش و تسویهٔ فروشگاه", notifications: "پیام‌ها و رویدادهای فروشگاه", account: "اطلاعات حساب و ابزارهای مدیریت فروشندگی", reports: "عملکرد نمونه فروشگاه", business: "اطلاعات نمایشی کسب‌وکار", activity: "محدوده نمونه فروشگاه", support: "تیکت‌های نمونه" } as const)[previewTab] : seller?.storeName ?? "ورود امن فروشنده"}</Text>
           </View>
           {gate.kind === "preview" ? <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>م</Text></View> : null}
         </View>
@@ -610,6 +610,8 @@ const styles = StyleSheet.create({
   heading: {
     fontFamily: "Vazirmatn_700Bold", fontSize: 16, color: "#1C3F3A", ...rtl,
   },
+  headerTitle: { fontFamily: "Vazirmatn_700Bold", fontSize: 14, color: "#1C3F3A", ...rtl },
+  headerSubtitle: { fontFamily: "Vazirmatn_400Regular", fontSize: 10, color: "#706963", ...rtl },
   cardTitle: {
     fontFamily: "Vazirmatn_700Bold", fontSize: 17, color: "#2D2D2D", ...rtl,
   },
