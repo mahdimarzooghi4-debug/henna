@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AppState, Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView,
+  AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView,
   StyleSheet, StatusBar, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -50,17 +50,18 @@ function FigmaIcon({ name, size = 20, color = "#706963" }: { name: FigmaIconName
 }
 
 const sellerPanelSections = [
-  { label: "سفارش‌ها", detail: "فهرست سفارش‌ها و مرجوعی‌ها", href: "/seller#seller-orders", capability: "orders" },
-  { label: "کالاهای فروشگاه", detail: "مدیریت کالاهای ثبت‌شده", href: "/seller#seller-offers", capability: "listings" },
-  { label: "موجودی و دسترس‌پذیری", detail: "وضعیت موجودی کالاها", href: "/seller#seller-offers", capability: "inventory" },
-  { label: "قیمت‌گذاری", detail: "مدیریت قیمت کالاها", href: "/seller#seller-offers", capability: "pricing" },
-  { label: "محدوده فعالیت", detail: "مشاهده اطلاعات ثبت‌شده کسب‌وکار", href: "/seller/register/status", capability: null },
-  { label: "تسویه‌حساب‌ها", detail: "تسویه‌های آماده‌شده", href: "/seller#seller-settlements", capability: "settlements" },
-  { label: "گزارش‌ها", detail: "گزارش عملیاتی فروشگاه", href: "/seller#seller-reports", capability: "reports" },
-  { label: "اعلان‌ها", detail: "اعلان‌های داخلی فروشگاه", href: "/seller#seller-notifications", capability: "orders" },
-  { label: "اطلاعات کسب‌وکار", detail: "مشاهده وضعیت و اطلاعات فروشندگی", href: "/seller/register/status", capability: null },
-  { label: "پشتیبانی", detail: "تیکت‌ها و پیگیری درخواست‌ها", href: "/seller#seller-support", capability: "orders" },
+  { label: "سفارش‌ها", detail: "فهرست سفارش‌ها و مرجوعی‌ها", tab: "orders", capability: "orders" },
+  { label: "کالاهای فروشگاه", detail: "مدیریت کالاهای ثبت‌شده", tab: "products", capability: "listings" },
+  { label: "موجودی و دسترس‌پذیری", detail: "وضعیت موجودی کالاها", tab: "inventory", capability: "inventory" },
+  { label: "قیمت‌گذاری", detail: "مدیریت قیمت کالاها", tab: "inventory", capability: "pricing" },
+  { label: "محدوده فعالیت", detail: "مشاهده اطلاعات ثبت‌شده کسب‌وکار", tab: "activity", capability: null },
+  { label: "تسویه‌حساب‌ها", detail: "تسویه‌های آماده‌شده", tab: "settlements", capability: "settlements" },
+  { label: "گزارش‌ها", detail: "گزارش عملیاتی فروشگاه", tab: "reports", capability: "reports" },
+  { label: "اعلان‌ها", detail: "اعلان‌های داخلی فروشگاه", tab: "notifications", capability: "orders" },
+  { label: "اطلاعات کسب‌وکار", detail: "مشاهده وضعیت و اطلاعات فروشندگی", tab: "business", capability: null },
+  { label: "پشتیبانی", detail: "تیکت‌ها و پیگیری درخواست‌ها", tab: "support", capability: "orders" },
 ] as const;
+type SellerTab = "dashboard" | "orders" | "products" | "inventory" | "settlements" | "notifications" | "account" | "reports" | "business" | "activity" | "support";
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -73,8 +74,8 @@ export default function App() {
   const [otpStep, setOtpStep] = useState<"phone" | "code">("phone");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"dashboard" | "orders" | "account">("dashboard");
-  const [previewTab, setPreviewTab] = useState<"dashboard" | "orders" | "products" | "inventory" | "settlements" | "notifications" | "account">("dashboard");
+  const [tab, setTab] = useState<SellerTab>("dashboard");
+  const [previewTab, setPreviewTab] = useState<SellerTab>("dashboard");
   const [orderStatusFilter, setOrderStatusFilter] = useState("همه");
   const [productCategoryFilter, setProductCategoryFilter] = useState("همه موارد");
   const [productSearch, setProductSearch] = useState("");
@@ -225,16 +226,6 @@ export default function App() {
     } finally { pending.current = false; setBusy(false); }
   }
 
-  async function openSellerPanel(path: string) {
-    const base = (process.env.EXPO_PUBLIC_HANA_WEB_BASE_URL ||
-      "https://henna-stage.onrender.com").replace(/\/+$/, "");
-    try {
-      await Linking.openURL(`${base}${path}`);
-    } catch {
-      setNotice("باز کردن پنل وب فروشنده ممکن نشد. اتصال اینترنت را بررسی کنید.");
-    }
-  }
-
   const seller = gate.kind === "ready" ? gate.seller : null;
 
   function accountPage(isPreview: boolean) {
@@ -256,7 +247,7 @@ export default function App() {
 
       <View style={styles.panel}>
         <Text style={styles.heading}>دسترسی‌های پنل فروشنده</Text>
-        <Text style={styles.hint}>برای دیدن و انجام عملیات متناظر، هر بخش پنل وب فروشنده را باز کنید.</Text>
+        <Text style={styles.hint}>هر بخش را انتخاب کنید تا داخل همین اپ باز شود.</Text>
         <View style={styles.accountLinks}>
           {sellerPanelSections.map((section) => {
             const enabled = capabilityIsReady(section.capability);
@@ -264,7 +255,12 @@ export default function App() {
               disabled={!enabled}
               accessibilityRole="button"
               accessibilityState={{ disabled: !enabled }}
-              onPress={() => void openSellerPanel(section.href)}>
+              onPress={() => {
+                setNotice("");
+                if (isPreview) setPreviewTab(section.tab);
+                else setTab(section.tab);
+                if (section.tab === "orders") setPage(1);
+              }}>
               <Text style={styles.accountChevron}>‹</Text>
               <View style={styles.accountLinkContent}>
                 <Text style={[styles.accountLinkTitle, !enabled && styles.accountLinkDisabled]}>{section.label}</Text>
@@ -277,12 +273,31 @@ export default function App() {
           })}
         </View>
       </View>
-      <Pressable style={styles.action} onPress={() => void openSellerPanel("/seller")}>
-        <Text style={styles.actionText}>بازکردن پنل وب فروشنده</Text>
-      </Pressable>
       {notice ? <Text style={styles.error} accessibilityRole="alert">{notice}</Text> : null}
       <Pressable style={styles.outlineAction} onPress={() => void signOut()}>
         <Text style={styles.outlineActionText}>خروج از حساب</Text>
+      </Pressable>
+    </View>;
+  }
+
+  function mobileSectionPage(section: SellerTab) {
+    if (!seller) return null;
+    const title = sellerPanelSections.find((item) => item.tab === section)?.label ?? "حساب فروشنده";
+    const capability = sellerPanelSections.find((item) => item.tab === section)?.capability;
+    return <View style={styles.body}>
+      <Text style={styles.heading}>{title}</Text>
+      {section === "business" || section === "activity" ? <View style={styles.panel}>
+        <Text style={styles.cardTitle}>{seller.businessName}</Text>
+        <Text style={styles.muted}>نام فروشگاه: {seller.storeName}</Text>
+        <Text style={styles.muted}>کد پیگیری: {seller.trackingCode}</Text>
+        <Text style={styles.muted}>وضعیت فروشندگی: فعال</Text>
+        <Text style={styles.muted}>زمان فعال‌سازی: {new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" }).format(new Date(seller.activatedAtUtc))}</Text>
+      </View> : <View style={styles.panel}>
+        <Text style={styles.kicker}>{capability && seller.capabilities[capability] ? "قابلیت پنل وب فعال است" : "این قابلیت متصل نشده است"}</Text>
+        <Text style={styles.hint}>این بخش داخل اپ باز شده است. عملیات واقعی این قسمت هنوز در نسخه موبایل پیاده‌سازی نشده؛ داده یا تغییر ساختگی نمایش داده نمی‌شود.</Text>
+      </View>}
+      <Pressable style={styles.outlineAction} onPress={() => setTab("account")}>
+        <Text style={styles.outlineActionText}>بازگشت به حساب فروشنده</Text>
       </Pressable>
     </View>;
   }
@@ -391,6 +406,7 @@ export default function App() {
       return matchesCategory && item.title.includes(productSearch.trim());
     });
     const nav = (next: typeof previewTab) => { setPreviewTab(next); setNotice(""); };
+    const accountSelected = ["account", "reports", "business", "activity", "support"].includes(previewTab);
     const navItems = [["account", "tabAccount", "حساب"], ["notifications", "tabNotifications", "اعلان‌ها"], ["products", "tabProducts", "کالاها"], ["orders", "tabOrders", "سفارش‌ها"], ["dashboard", "tabHome", "خانه"]] as const;
     return <>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
@@ -414,11 +430,21 @@ export default function App() {
           {previewTab === "inventory" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>موجودی و قیمت‌گذاری کالاها</Text><Text style={styles.infoText}>مقادیر برای نمایش رابط کاربری نمونه هستند.</Text></View>{products.map(item => <View key={item.code} style={styles.inventoryCard}><View style={styles.inventoryHead}><Text style={styles.productStatus}>{item.stock}</Text><Text style={styles.productName}>{item.title}</Text></View><Text style={styles.previewOrderDate}>{item.code} · قیمت فعلی: {item.price} تومان</Text><View style={styles.inventoryActions}><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر موجودی در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>تغییر موجودی</Text></Pressable><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر قیمت در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>ویرایش قیمت</Text></Pressable></View></View>)}</>}
           {previewTab === "settlements" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>خلاصهٔ مالی</Text></View>{[["در انتظار تسویه", "۱۸٬۴۰۰٬۰۰۰ تومان"], ["تسویه‌شده", "۱۰۶٬۴۶۰٬۰۰۰ تومان"], ["سفارش‌های تکمیل‌شده", "۲۳ سفارش"]].map(([label, value]) => <View key={label} style={styles.financeRow}><Text style={styles.financeValue}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}</>}
           {previewTab === "notifications" && <>{[["سفارش جدید دریافت شد", "سفارش HN-۴۰۹۱ ثبت شده و در انتظار تأیید شماست.", "۱۰:۲۵", "#F7ECE9"], ["موجودی کالا رو به اتمام است", "موجودی پنیر سفید به ۲ عدد رسیده است.", "دیروز · ۱۷:۴۰", "#FFF3D4"], ["تسویه با موفقیت انجام شد", "مبلغ ۱۲٬۶۰۰٬۰۰۰ تومان واریز شد.", "دیروز · ۱۲:۱۵", "#EAF3EC"]].map(([heading, body, time, color]) => <View key={heading} style={styles.notificationCard}><View style={[styles.notificationIcon, { backgroundColor: color }]}><Text style={styles.quickActionIcon}>•</Text></View><View style={styles.notificationContent}><Text style={styles.productName}>{heading}</Text><Text style={styles.infoText}>{body}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}</>}
+          {previewTab === "reports" && <>
+            <View style={styles.accountCard}><Text style={styles.sectionTitle}>گزارش عملیاتی فروشگاه</Text><Text style={styles.infoText}>ارقام زیر فقط برای نمایش پیش‌نمایش هستند.</Text></View>
+            {[["سفارش‌های تکمیل‌شده", "۲۳ سفارش"], ["فروش ناخالص نمونه", "۱۲۴٬۸۶۰٬۰۰۰ تومان"], ["میانگین مبلغ سفارش", "۵۴۲٬۰۰۰ تومان"]].map(([label, value]) => <View key={label} style={styles.financeRow}><Text style={styles.financeValue}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}
+          </>}
+          {previewTab === "business" && <View style={styles.accountCard}><Text style={styles.sectionTitle}>اطلاعات کسب‌وکار</Text><Text style={styles.accountValue}>نام فروشگاه: فروشگاه نمونه</Text><Text style={styles.accountValue}>نام کسب‌وکار: کسب‌وکار نمونه</Text><Text style={styles.accountValue}>وضعیت ثبت: نمونه</Text><Text style={styles.infoText}>اطلاعات هویتی واقعی در این پیش‌نمایش نمایش داده نمی‌شود.</Text></View>}
+          {previewTab === "activity" && <View style={styles.accountCard}><Text style={styles.sectionTitle}>محدوده فعالیت</Text><Text style={styles.accountValue}>شهر: تهران (نمونه)</Text><Text style={styles.accountValue}>محدوده ارسال: محدوده نمونه</Text><Text style={styles.infoText}>جزئیات محدوده در این پیش‌نمایش فقط نمونه است.</Text></View>}
+          {previewTab === "support" && <>
+            <View style={styles.accountCard}><Text style={styles.sectionTitle}>گفتگو و تیکت پشتیبانی</Text><Text style={styles.infoText}>فهرست زیر نمونه است و به تیکت واقعی دسترسی ندارد.</Text></View>
+            {[["پیگیری سفارش HN-۴۰۹۱", "در حال بررسی", "امروز · ۱۰:۳۰"], ["اصلاح اطلاعات کالا", "پاسخ داده شد", "دیروز · ۱۵:۲۰"]].map(([title, status, time]) => <View key={title} style={styles.notificationCard}><View style={styles.notificationContent}><Text style={styles.productName}>{title}</Text><Text style={styles.infoText}>{status}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}
+          </>}
           {previewTab === "account" && accountPage(true)}
           {notice ? <Pressable onPress={() => setNotice("")} style={styles.noticeBox}><Text style={styles.noticeText}>{notice}  ×</Text></Pressable> : null}
         </View>
       </ScrollView>
-      <View style={styles.figmaBottomNav}>{navItems.map(([key, icon, label]) => <Pressable key={key} onPress={() => nav(key)} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: previewTab === key }} style={styles.figmaNavItem}><FigmaIcon name={icon as FigmaIconName} size={20} color={previewTab === key ? "#B5523B" : "#706963"}/><Text style={previewTab === key ? styles.figmaNavLabelActive : styles.figmaNavLabel}>{label}</Text></Pressable>)}<View style={styles.gesturePill}/></View>
+      <View style={styles.figmaBottomNav}>{navItems.map(([key, icon, label]) => { const selected = key === "account" ? accountSelected : previewTab === key; return <Pressable key={key} onPress={() => nav(key)} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected }} style={styles.figmaNavItem}><FigmaIcon name={icon as FigmaIconName} size={20} color={selected ? "#B5523B" : "#706963"}/><Text style={selected ? styles.figmaNavLabelActive : styles.figmaNavLabel}>{label}</Text></Pressable>; })}<View style={styles.gesturePill}/></View>
     </>;
   }
 
@@ -429,14 +455,14 @@ export default function App() {
         <View style={styles.header}>
           <Image source={logo} style={styles.logo} resizeMode="contain" />
           <View style={styles.brand}>
-            <Text style={styles.heading}>{gate.kind === "preview" ? ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی کالاها", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده" } as const)[previewTab] : "پیشخوان فروشنده حنا"}</Text>
-            <Text style={styles.muted}>{gate.kind === "preview" ? ({ dashboard: "کسب‌وکار نمونه", orders: "پیگیری و مدیریت سفارش‌های روزانه", products: "مدیریت کالاها و دسترس‌پذیری کسب‌وکار", inventory: "مدیریت موجودی و قیمت کالاها", settlements: "گزارش فروش و تسویهٔ فروشگاه", notifications: "پیام‌ها و رویدادهای فروشگاه", account: "اطلاعات حساب و ابزارهای مدیریت فروشندگی" } as const)[previewTab] : seller?.storeName ?? "ورود امن فروشنده"}</Text>
+          <Text style={styles.heading}>{gate.kind === "preview" ? ({ dashboard: "پیشخوان مدیریت حنا", orders: "مدیریت سفارش‌ها", products: "کالاها", inventory: "موجودی کالاها", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده", reports: "گزارش‌ها", business: "اطلاعات کسب‌وکار", activity: "محدوده فعالیت", support: "پشتیبانی" } as const)[previewTab] : ({ dashboard: "پیشخوان فروشنده حنا", orders: "سفارش‌های فروشگاه", products: "کالاهای فروشگاه", inventory: "موجودی و قیمت‌گذاری", settlements: "تسویه‌حساب‌ها", notifications: "اعلان‌ها", account: "حساب فروشنده", reports: "گزارش‌ها", business: "اطلاعات کسب‌وکار", activity: "محدوده فعالیت", support: "پشتیبانی" } as const)[tab]}</Text>
+            <Text style={styles.muted}>{gate.kind === "preview" ? ({ dashboard: "کسب‌وکار نمونه", orders: "پیگیری و مدیریت سفارش‌های روزانه", products: "مدیریت کالاها و دسترس‌پذیری کسب‌وکار", inventory: "مدیریت موجودی و قیمت کالاها", settlements: "گزارش فروش و تسویهٔ فروشگاه", notifications: "پیام‌ها و رویدادهای فروشگاه", account: "اطلاعات حساب و ابزارهای مدیریت فروشندگی", reports: "عملکرد نمونه فروشگاه", business: "اطلاعات نمایشی کسب‌وکار", activity: "محدوده نمونه فروشگاه", support: "تیکت‌های نمونه" } as const)[previewTab] : seller?.storeName ?? "ورود امن فروشنده"}</Text>
           </View>
           {gate.kind === "preview" ? <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>م</Text></View> : null}
         </View>
         {gate.kind === "ready" ? <>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-          {tab === "dashboard" ? dashboard() : tab === "orders" ? ordersPage() : accountPage(false)}
+            {tab === "dashboard" ? dashboard() : tab === "orders" ? ordersPage() : tab === "account" ? accountPage(false) : mobileSectionPage(tab)}
           </ScrollView>
           <View style={styles.bottomNav}>
             <Pressable onPress={() => setTab("dashboard")} style={styles.navItem} accessibilityRole="button">
@@ -445,11 +471,11 @@ export default function App() {
             <Pressable onPress={() => { setTab("orders"); setPage(1); }} style={styles.navItem} accessibilityRole="button">
               <Text style={tab === "orders" ? styles.navSelected : styles.navLabel}>سفارش‌ها</Text>
             </Pressable>
-            <Pressable onPress={() => void openSellerPanel("/seller#seller-offers")} style={styles.navItem} accessibilityRole="button">
-              <Text style={styles.navLabel}>کالاها</Text>
+            <Pressable onPress={() => setTab("products")} style={styles.navItem} accessibilityRole="button">
+              <Text style={tab === "products" ? styles.navSelected : styles.navLabel}>کالاها</Text>
             </Pressable>
-            <Pressable onPress={() => void openSellerPanel("/seller#seller-notifications")} style={styles.navItem} accessibilityRole="button">
-              <Text style={styles.navLabel}>اعلان‌ها</Text>
+            <Pressable onPress={() => setTab("notifications")} style={styles.navItem} accessibilityRole="button">
+              <Text style={tab === "notifications" ? styles.navSelected : styles.navLabel}>اعلان‌ها</Text>
             </Pressable>
             <Pressable onPress={() => setTab("account")} style={styles.navItem} accessibilityRole="button">
               <Text style={tab === "account" ? styles.navSelected : styles.navLabel}>حساب</Text>
