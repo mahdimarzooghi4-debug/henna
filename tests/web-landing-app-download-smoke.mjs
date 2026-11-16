@@ -10,13 +10,15 @@ const footer=readFileSync("apps/web-marketplace/components/landing-chrome.tsx","
 const downloadCss=readFileSync("apps/web-marketplace/app/download/download.module.css","utf8");
 const chromeCss=readFileSync("apps/web-marketplace/components/henna-homepage.module.css","utf8");
 const expectedBuyer="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-buyer-figma-android-f0230c6/hana-buyer-figma-android-preview.apk";
-const expectedSeller="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1783-1/hana-seller-preview.apk";
+const expectedSeller="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-2049-1/hana-seller-preview.apk";
 test("landing footer routes phone visitors to /download, with separately pinned buyer and seller APKs",()=>{
  assert.match(footer,/<Link href="\/download">دریافت اپلیکیشن حنا<\/Link>/);
  assert.equal(buyerAndroidPreview.apk,expectedBuyer);
  assert.equal(sellerAndroidPreview.apk,expectedSeller);
  assert.equal(buyerAndroidPreview.sha,"f0230c6aab993c44be3f079d0093e4986b00a2ad");
  assert.equal(buyerAndroidPreview.digest,"sha256:6786bda798c54109b864062192edb90588638edb950acd272f100972f50d0a61d");
+ assert.equal(sellerAndroidPreview.sha,"7d72438b2be21de13f3303f4466bc5a4750d8c42");
+ assert.equal(sellerAndroidPreview.digest,"sha256:b6b4a3f99ba02ec210ba1d73bc9509e375c7f7ebc0463806866d7067638f3ccb");
  assert.notEqual(buyerAndroidPreview.apk,sellerAndroidPreview.apk);
  for(const app of [buyerAndroidPreview,sellerAndroidPreview]){
   const parsed=new URL(app.apk);
@@ -39,7 +41,7 @@ test("download APK directly in the current mobile tab, with visible preview warn
  assert.match(page,/Problem parsing package/);
  assert.match(page,/خانه، کاتالوگ و فیلترهای نمونه/);
  assert.match(page,/خرید یا پرداخت فعال نیست/);
- assert.match(page,/GitHub Releases/);
+ assert.match(page,/مشخصات نسخه فروشنده و اصالت فایل/);
  assert.match(page,/className=\{styles\.releaseLinks\}/);
 });
 

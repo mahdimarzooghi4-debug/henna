@@ -67,7 +67,7 @@ export default function DownloadAppPage() {
           </section>
           <aside className={styles.note} role="note">
             <strong>وضعیت دسترسی</strong>
-            <p>نسخه‌های اندروید برای بررسی هستند، نه نسخه نهایی بازارگاه. فایل فروشنده مستقیماً از hennamarket.ir دانلود می‌شود و پیش‌نمایش تعاملی و کامل آن هم در همین سایت در دسترس است. خرید، پرداخت یا فروش واقعی فعال نیست؛ نسخه آیفون PWA است و به اینترنت نیاز دارد.</p>
+            <p>نسخه‌های اندروید برای بررسی هستند، نه نسخه نهایی بازارگاه. فایل فروشنده مستقیماً از همین صفحه دریافت می‌شود و پیش‌نمایش تعاملی و کامل آن هم در همین سایت در دسترس است. خرید، پرداخت یا فروش واقعی فعال نیست؛ نسخه آیفون PWA است و به اینترنت نیاز دارد.</p>
             <div className={styles.releaseLinks}>
               <a href={buyerAndroidPreview.details}
                 target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
