@@ -259,6 +259,7 @@ export default function App() {
               accessibilityState={{ disabled: !enabled }}
               onPress={() => {
                 setNotice("");
+                setPreviewAction(null);
                 if (isPreview) setPreviewTab(section.tab);
                 else setTab(section.tab);
                 if (section.tab === "orders") setPage(1);
@@ -407,7 +408,7 @@ export default function App() {
         || (productCategoryFilter === "لبنیات" ? item.category === "لبنیات" : item.category !== "لبنیات");
       return matchesCategory && item.title.includes(productSearch.trim());
     });
-    const nav = (next: typeof previewTab) => { setPreviewTab(next); setNotice(""); };
+    const nav = (next: typeof previewTab) => { setPreviewAction(null); setPreviewTab(next); setNotice(""); };
     const openAction = (action: string, value = "") => {
       setPreviewAction(action);
       setPreviewActionValue(value);
