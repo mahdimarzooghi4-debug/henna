@@ -227,7 +227,9 @@ def main():
     execute("adb", "shell", "am", "force-stop", seller_package)
     execute("adb", "shell", "monkey", "-p", seller_package, "1", timeout=60)
     wait_screen("پیشخوان مدیریت حنا", "کسب‌وکار نمونه")
-    tap_text("خروج")
+    tap_text("حساب")
+    wait_screen("حساب فروشنده", "خلاصه حساب نمونه")
+    tap_text("خروج از حساب")
     wait_screen("ورود آزمایشی فروشنده بدون پیامک")
 
     print(
