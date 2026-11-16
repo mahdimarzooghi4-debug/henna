@@ -106,6 +106,27 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 @media(max-width:1050px){.usageStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
 @media(max-width:720px){.usagePage{gap:14px}.usageStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.usageStatCard{min-height:88px;padding:13px}.usageStatCard>span{font-size:11px}.usageStatCard>strong{font-size:17px}.usageTableTitle{min-height:52px;padding:12px 14px}.usageTableTitle h2{font-size:13px}.usageTable{min-width:900px}.usageTable th,.usageTable td{font-size:11px}}
 
+/* Figma 386:1690 organization reports and analytics */
+.reportsPage{width:100%;min-width:0;display:grid;align-content:start;gap:24px}
+.reportsGrid{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:start;direction:ltr}
+.reportsGrid>.card{min-width:0;display:grid;align-content:start;gap:16px;padding:24px;border-color:#e8e1d8;border-radius:12px;direction:rtl}
+.reportsGrid .cardTitle{margin:0;padding:0 0 14px;border-bottom:1px solid #e8e1d8;font-size:16px;line-height:1.6}
+.reportMetricRow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;direction:ltr;white-space:nowrap}
+.reportMetricRow>span{color:#2d2d2d;font-size:13px;direction:rtl}
+.reportMetricRow>strong{font-size:14px;font-weight:600;direction:rtl}
+.reportMetricTeal{color:#0f5b5a}.reportMetricTerracotta{color:#b5523b}
+.reportProgress{width:100%;height:10px;overflow:hidden;border-radius:5px;background:#f7f3ed;direction:ltr}
+.reportProgress>span{height:100%;display:block;border-radius:5px}
+.reportProgressTeal{width:64%;background:#0f5b5a}.reportProgressTerracotta{width:48%;background:#b5523b}
+.reportBarChart{width:100%;height:200px;display:flex;align-items:flex-end;justify-content:center;gap:40px;padding-top:20px;direction:ltr}
+.reportBarItem{display:flex;flex:0 0 auto;flex-direction:column;align-items:center;gap:8px}
+.reportBar{width:50px;flex:0 0 auto;border-radius:6px 6px 0 0;background:#0f5b5a}
+.reportBarLabel{color:#2d2d2d;font-size:12px;line-height:1.5;white-space:nowrap;direction:rtl}
+.reportsPage>.card{min-width:0;display:grid;align-content:start;gap:16px;padding:24px;border-color:#e8e1d8;border-radius:12px}
+.reportsPage>.card .cardTitle{margin:0;padding:0 0 14px;border-bottom:1px solid #e8e1d8;font-size:16px;line-height:1.6}
+@media(max-width:1050px){.reportsGrid{gap:14px}.reportsGrid>.card{padding:18px}.reportMetricRow{white-space:normal}.reportMetricRow>span,.reportMetricRow>strong{font-size:12px}}
+@media(max-width:720px){.reportsPage{gap:14px}.reportsGrid{grid-template-columns:1fr;gap:12px}.reportsGrid>.card,.reportsPage>.card{padding:16px}.reportsGrid .cardTitle,.reportsPage>.card .cardTitle{font-size:13px}.reportBarChart{gap:clamp(14px,5vw,32px);height:180px;overflow-x:auto;justify-content:flex-start;padding:20px 10px 0}.reportBar{width:38px}.reportBarLabel{font-size:10px}}
+
 /* Figma 386:161 organization profile sample */
 .profileGrid>.card{padding:24px}
 .profileStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#f7f3ed;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}

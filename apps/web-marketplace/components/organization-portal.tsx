@@ -97,13 +97,14 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const data = usePortalData();
   const active: PortalKey = screen === "program-detail" ? "programs" : screen === "people-new" ? "people" : screen === "allocation-detail" ? "allocation" : screen;
   const titles: Record<typeof screen, string> = {
-    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
+    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها و تحلیل طرح‌ها", notifications: "اعلان‌ها", support: "پشتیبانی", settings: "تنظیمات سازمان",
   };
   const title = titles[screen];
   if (screen === "api") return <OrganizationApiDataSources title={title} />;
   if (screen === "allocation") return <OrganizationAllocationPreview title={title} />;
   if (screen === "allocation-detail") return <OrganizationAllocationDetailPreview title={title} />;
   if (screen === "usage") return <OrganizationUsagePreview title={title} />;
+  if (screen === "reports") return <OrganizationReportsPreview title={title} />;
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
@@ -238,11 +239,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   if (screen === "people") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleDirectory/></OrganizationPortalShell>;
 
   if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
-
-  if (screen === "reports") return <OrganizationPortalShell active="reports" title={title}>
-    <div className={styles.twoCards}><Card title="وضعیت مصرف طرح‌ها"><DataRows rows={[["بودجه استفاده‌شده", "دریافت نشده"], ["وضعیت استفاده", "داده‌ای ثبت نشده"]]}/><div className={styles.progress}><span style={{width:"0%"}}/></div></Card><Card title="وضعیت تطبیق افراد"><DataRows rows={[["کل مشمولان متصل", "دریافت نشده"], ["وضعیت تطبیق", "داده‌ای ثبت نشده"]]}/><div className={styles.progress}><span className={styles.progressTeal} style={{width:"0%"}}/></div></Card></div>
-    <Card title="روند کلی تخصیص و توزیع طرح"><div className={styles.chartEmpty}><Icon name="chart"/><b>گزارشی برای نمایش وجود ندارد</b><span>نمودار پس از ثبت و دریافت داده‌های تخصیص، اینجا نمایش داده می‌شود.</span></div></Card>
-  </OrganizationPortalShell>;
 
   if (screen === "notifications") return <OrganizationPortalShell active="notifications" title={title}>
     <div className={styles.notificationList}>{[["همگام‌سازی منبع داده سازمان","اعلان‌های همگام‌سازی پس از اتصال منبع داده نمایش داده می‌شوند."],["ثبت یک طرح جدید","تغییرهای طرح و وضعیت بررسی آن در این فهرست قرار می‌گیرند."],["تغییر وضعیت طرح","اعلان‌های مربوط به وضعیت طرح پس از اتصال سرویس نمایش داده می‌شوند."]].map(([heading,body])=><article className={`${styles.notification} ${styles.notificationCard}`} key={heading}><div><b>{heading}</b><p>{body}</p></div><small>زمان ثبت نشده</small><span className={styles.dotSand}/></article>)}</div>
@@ -386,6 +382,48 @@ function OrganizationUsagePreview({ title }: { title: string }) {
           </table>
         </div>
       </section>
+    </div>
+  </OrganizationPortalShell>;
+}
+
+function OrganizationReportsPreview({ title }: { title: string }) {
+  const periods = [
+    { label: "دوره نمونه ۱", height: 140 },
+    { label: "دوره نمونه ۲", height: 110 },
+    { label: "دوره مرداد", height: 160 },
+    { label: "دوره تیر", height: 80 },
+  ];
+
+  return <OrganizationPortalShell active="reports" title={title}>
+    <div className={styles.reportsPage}>
+      <section className={styles.reportsGrid} aria-label="خلاصه گزارش‌های طرح">
+        <Card title="وضعیت تطبیق افراد">
+          <div className={styles.reportMetricRow}>
+            <strong className={styles.reportMetricTeal}>وضعیت تطبیق: داده نمونه</strong>
+            <span>کل مشمولان متصل</span>
+          </div>
+          <div className={styles.reportProgress} role="progressbar" aria-label="وضعیت تطبیق افراد" aria-valuemin={0} aria-valuemax={100} aria-valuenow={64}>
+            <span className={styles.reportProgressTeal}/>
+          </div>
+        </Card>
+        <Card title="وضعیت مصرف طرح‌ها">
+          <div className={styles.reportMetricRow}>
+            <strong className={styles.reportMetricTerracotta}>وضعیت استفاده: داده نمونه</strong>
+            <span>بودجه استفاده‌شده</span>
+          </div>
+          <div className={styles.reportProgress} role="progressbar" aria-label="وضعیت مصرف طرح‌ها" aria-valuemin={0} aria-valuemax={100} aria-valuenow={48}>
+            <span className={styles.reportProgressTerracotta}/>
+          </div>
+        </Card>
+      </section>
+      <Card title="روند کلی تخصیص و توزیع طرح">
+        <div className={styles.reportBarChart} aria-label="نمودار نمونه روند تخصیص">
+          {periods.map((period) => <div className={styles.reportBarItem} key={period.label}>
+            <span className={styles.reportBar} style={{ height: `${period.height}px` }}/>
+            <span className={styles.reportBarLabel}>{period.label}</span>
+          </div>)}
+        </div>
+      </Card>
     </div>
   </OrganizationPortalShell>;
 }
