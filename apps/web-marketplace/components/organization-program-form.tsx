@@ -69,7 +69,7 @@ export function OrganizationProgramForm() {
     <section className={styles.programFormPage} dir="rtl">
       <div className={styles.programFormCard}>
         <header className={styles.programFormHeader}>
-          <h2>ثبت طرح سازمانی</h2>
+          <h2>مشخصات اولیه طرح</h2>
           <p>مشخصات اولیه، الگوی تخصیص و دامنه افراد مشمول را مشخص نمایید.</p>
         </header>
         <div className={styles.programFormDivider}/>
