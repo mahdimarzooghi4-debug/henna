@@ -97,7 +97,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const data = usePortalData();
   const active: PortalKey = screen === "program-detail" ? "programs" : screen === "people-new" ? "people" : screen === "allocation-detail" ? "allocation" : screen;
   const titles: Record<typeof screen, string> = {
-    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها و تحلیل طرح‌ها", notifications: "اعلان‌های پرتال سازمانی", support: "پشتیبانی و راهنمای پرتال", settings: "تنظیمات سازمان",
+    dashboard: "داشبورد پرتال سازمانی", profile: "اطلاعات و پروفایل سازمان", "program-detail": "جزئیات طرح سازمانی", people: "افراد و مشمولان", "people-new": "ثبت و افزودن دستی مشمولان", api: "منابع داده و API", allocation: "مدیریت تخصیص اعتبار", "allocation-detail": "جزئیات تخصیص", usage: "وضعیت استفاده و عملکرد اعتبارات", reports: "گزارش‌ها و تحلیل طرح‌ها", notifications: "اعلان‌های پرتال سازمانی", support: "پشتیبانی و راهنمای پرتال", settings: "تنظیمات پورتال سازمانی",
   };
   const title = titles[screen];
   if (screen === "api") return <OrganizationApiDataSources title={title} />;
@@ -107,6 +107,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   if (screen === "reports") return <OrganizationReportsPreview title={title} />;
   if (screen === "notifications") return <OrganizationNotificationsPreview title={title} />;
   if (screen === "support") return <OrganizationSupportPreview title={title} />;
+  if (screen === "settings") return <OrganizationSettingsPreview title={title} />;
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
@@ -241,14 +242,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   if (screen === "people") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleDirectory/></OrganizationPortalShell>;
 
   if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
-
-  if (screen === "settings") return <OrganizationPortalShell active="settings" title={title}>
-    <Notice>حریم خصوصی و دسترسی اعتباری: این سازمان فقط مجاز به مشاهده و مدیریت داده‌های مربوط به طرح‌های اعتبار و مشمولان تخصیص‌یافته به خود می‌باشد. دسترسی به تراکنش‌های شخصی خارج از چارچوب طرح‌های سازمانی امکان‌پذیر نیست.</Notice>
-    <div className={styles.twoCards}>
-      <Card title="کاربران و دسترسی‌های مجاز سازمان"><div className={styles.emptyInline}><b>فهرست دسترسی‌ها دریافت نشده است</b><span>پس از اتصال سرویس مدیریت کاربران، نقش‌های مجاز در این بخش نمایش داده می‌شوند.</span></div></Card>
-      <Card title="تنظیمات دریافت اعلان‌ها"><div className={styles.emptyInline}><b>تنظیماتی برای نمایش وجود ندارد</b><span>امکان تغییر اعلان‌ها پس از فعال‌شدن سرویس فراهم می‌شود.</span></div></Card>
-    </div>
-  </OrganizationPortalShell>;
 
   return <OrganizationPortalShell active={active} title={title}><Notice>این بخش هنوز به سرویس سازمان متصل نشده است.</Notice></OrganizationPortalShell>;
 }
@@ -491,6 +484,61 @@ function OrganizationSupportPreview({ title }: { title: string }) {
           {visibleTickets.length === 0 && <p className={styles.supportEmpty}>تیکتی مطابق جست‌وجوی شما پیدا نشد.</p>}
         </div>
       </section>
+    </div>
+  </OrganizationPortalShell>;
+}
+
+function OrganizationSettingsPreview({ title }: { title: string }) {
+  const [notificationSettings, setNotificationSettings] = useState([true, true, false]);
+  const notificationOptions = [
+    "ارسال پیامک تایید تخصیص اعتبار به مشمولان",
+    "اعلام همگام‌سازی ناموفق مخزن داده در پرتال",
+    "ارسال گزارش هفتگی به ایمیل نماینده سازمان",
+  ];
+  const users = [
+    { id: "کد کاربری: ****۹۸۲", role: "نماینده رسمی سازمان", badge: "کاربر ارشد پرتال", lead: true },
+    { id: "کد کاربری: ****۴۱۲", role: "بخش فناوری اطلاعات", badge: "اپراتور فنی طرح", lead: false },
+  ];
+
+  return <OrganizationPortalShell active="settings" title={title}>
+    <div className={styles.organizationSettingsPage}>
+      <section className={styles.organizationPrivacyBanner} aria-labelledby="organization-privacy-title">
+        <h2 id="organization-privacy-title">حریم خصوصی و دسترسی اعتباری</h2>
+        <p>توجه: این سازمان صرفاً مجاز به مشاهده و مدیریت داده‌های مربوط به طرح‌ها، برنامه‌های اعتباری و مشمولان تعریف‌شده در پورتال خود می‌باشد. دسترسی به تراکنش‌های شخصی خارج از چهارچوب طرح‌های سازمان امکان‌پذیر نیست.</p>
+      </section>
+
+      <div className={styles.organizationSettingsGrid}>
+        <section className={styles.organizationSettingsCard} aria-labelledby="organization-users-title">
+          <h2 id="organization-users-title">کاربران و دسترسی‌های مجاز سازمان</h2>
+          <div className={styles.organizationSettingsDivider}/>
+          <div className={styles.organizationUserList}>
+            {users.map((user) => <article className={styles.organizationUser} key={user.id}>
+              <span className={`${styles.organizationUserBadge}${user.lead ? ` ${styles.organizationUserBadgeLead}` : ""}`}>{user.badge}</span>
+              <div className={styles.organizationUserIdentity}>
+                <strong>{user.id}</strong>
+                <small>{user.role}</small>
+              </div>
+            </article>)}
+          </div>
+        </section>
+
+        <section className={styles.organizationSettingsCard} aria-labelledby="organization-notification-settings-title">
+          <h2 id="organization-notification-settings-title">تنظیمات دریافت اعلان‌ها</h2>
+          <div className={styles.organizationSettingsDivider}/>
+          <div className={styles.organizationNotificationSettings}>
+            {notificationOptions.map((option, index) => <label className={styles.organizationNotificationOption} key={option}>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={option}
+                checked={notificationSettings[index]}
+                onChange={() => setNotificationSettings((current) => current.map((value, itemIndex) => itemIndex === index ? !value : value))}
+              />
+              <span>{option}</span>
+            </label>)}
+          </div>
+        </section>
+      </div>
     </div>
   </OrganizationPortalShell>;
 }

@@ -166,6 +166,33 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 @media(max-width:900px){.supportTopics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.supportPage{gap:12px}.supportSearchCard,.supportHistory{padding:16px}.supportSearchCard h2{font-size:13px}.supportTopics{gap:10px}.supportTopic{min-height:72px;padding:12px}.supportTopic b{font-size:11px}.supportTopic small{font-size:9px}.supportHistory h2{font-size:12px}.supportTicket{align-items:flex-start;gap:8px}.supportTicket p{font-size:10px}.supportTicketStatus{font-size:9px}}
 
+/* Figma 386:1994 organization portal settings */
+.organizationSettingsPage{width:100%;min-width:0;display:grid;align-content:start;gap:24px}
+.organizationPrivacyBanner{width:100%;display:grid;gap:8px;padding:20px;border:1px solid var(--teal);border-radius:12px;background:var(--cream);text-align:right}
+.organizationPrivacyBanner h2{margin:0;color:var(--teal);font-size:15px;font-weight:800;line-height:1.6}
+.organizationPrivacyBanner p{margin:0;color:var(--ink);font-size:12px;line-height:1.8}
+.organizationSettingsGrid{width:100%;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:24px;direction:rtl}
+.organizationSettingsCard{min-width:0;display:grid;align-content:start;gap:16px;padding:24px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.organizationSettingsCard h2{margin:0;color:var(--ink);font-size:15px;font-weight:800;line-height:1.6;text-align:right}
+.organizationSettingsDivider{width:100%;height:1px;background:var(--line)}
+.organizationNotificationSettings{display:grid;gap:10px}
+.organizationNotificationOption{min-width:0;min-height:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;direction:ltr;cursor:pointer}
+.organizationNotificationOption span{min-width:0;color:var(--ink);font-size:12px;line-height:1.7;text-align:right;direction:rtl}
+.organizationNotificationOption input{appearance:none;width:40px;height:20px;position:relative;flex:0 0 40px;margin:0;border:0;border-radius:999px;background:#e7e2db;cursor:pointer;transition:background .15s}
+.organizationNotificationOption input::before{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
+.organizationNotificationOption input:checked{background:var(--teal)}
+.organizationNotificationOption input:checked::before{transform:translateX(20px)}
+.organizationNotificationOption input:focus-visible{outline:2px solid var(--sand);outline-offset:3px}
+.organizationUserList{display:grid;gap:12px}
+.organizationUser{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;direction:ltr}
+.organizationUserBadge{flex:0 0 auto;padding:4px 9px;border-radius:6px;background:var(--cream);color:var(--ink);font-size:10px;font-weight:600;line-height:1.5;white-space:nowrap}
+.organizationUserBadgeLead{color:var(--teal)}
+.organizationUserIdentity{min-width:0;display:grid;gap:2px;text-align:right;direction:rtl}
+.organizationUserIdentity strong{color:var(--ink);font-size:12px;font-weight:700;line-height:1.6}
+.organizationUserIdentity small{color:var(--muted);font-size:10px;line-height:1.5}
+@media(max-width:900px){.organizationSettingsGrid{grid-template-columns:1fr;gap:14px}}
+@media(max-width:720px){.organizationSettingsPage{gap:14px}.organizationPrivacyBanner{gap:6px;padding:15px}.organizationPrivacyBanner h2{font-size:13px}.organizationPrivacyBanner p{font-size:10px}.organizationSettingsCard{gap:13px;padding:16px}.organizationSettingsCard h2{font-size:13px}.organizationNotificationSettings{gap:11px}.organizationNotificationOption{gap:10px}.organizationNotificationOption span{font-size:10px}.organizationUserIdentity strong{font-size:11px}.organizationUserBadge{font-size:9px}}
+
 /* Figma 386:161 organization profile sample */
 .profileGrid>.card{padding:24px}
 .profileStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#f7f3ed;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}
