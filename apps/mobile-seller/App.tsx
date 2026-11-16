@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  AppState, Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView,
   StyleSheet, StatusBar, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -49,6 +49,19 @@ function FigmaIcon({ name, size = 20, color = "#706963" }: { name: FigmaIconName
   return <SvgXml xml={xml} width={size} height={size} />;
 }
 
+const sellerPanelSections = [
+  { label: "سفارش‌ها", detail: "فهرست سفارش‌ها و مرجوعی‌ها", href: "/seller#seller-orders", capability: "orders" },
+  { label: "کالاهای فروشگاه", detail: "مدیریت کالاهای ثبت‌شده", href: "/seller#seller-offers", capability: "listings" },
+  { label: "موجودی و دسترس‌پذیری", detail: "وضعیت موجودی کالاها", href: "/seller#seller-offers", capability: "inventory" },
+  { label: "قیمت‌گذاری", detail: "مدیریت قیمت کالاها", href: "/seller#seller-offers", capability: "pricing" },
+  { label: "محدوده فعالیت", detail: "مشاهده اطلاعات ثبت‌شده کسب‌وکار", href: "/seller/register/status", capability: null },
+  { label: "تسویه‌حساب‌ها", detail: "تسویه‌های آماده‌شده", href: "/seller#seller-settlements", capability: "settlements" },
+  { label: "گزارش‌ها", detail: "گزارش عملیاتی فروشگاه", href: "/seller#seller-reports", capability: "reports" },
+  { label: "اعلان‌ها", detail: "اعلان‌های داخلی فروشگاه", href: "/seller#seller-notifications", capability: "orders" },
+  { label: "اطلاعات کسب‌وکار", detail: "مشاهده وضعیت و اطلاعات فروشندگی", href: "/seller/register/status", capability: null },
+  { label: "پشتیبانی", detail: "تیکت‌ها و پیگیری درخواست‌ها", href: "/seller#seller-support", capability: "orders" },
+] as const;
+
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     Vazirmatn_400Regular, Vazirmatn_700Bold,
@@ -60,7 +73,7 @@ export default function App() {
   const [otpStep, setOtpStep] = useState<"phone" | "code">("phone");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"dashboard" | "orders">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "orders" | "account">("dashboard");
   const [previewTab, setPreviewTab] = useState<"dashboard" | "orders" | "products" | "inventory" | "settlements" | "notifications" | "account">("dashboard");
   const [orderStatusFilter, setOrderStatusFilter] = useState("همه");
   const [productCategoryFilter, setProductCategoryFilter] = useState("همه موارد");
@@ -212,7 +225,67 @@ export default function App() {
     } finally { pending.current = false; setBusy(false); }
   }
 
+  async function openSellerPanel(path: string) {
+    const base = (process.env.EXPO_PUBLIC_HANA_WEB_BASE_URL ||
+      "https://henna-stage.onrender.com").replace(/\/+$/, "");
+    try {
+      await Linking.openURL(`${base}${path}`);
+    } catch {
+      setNotice("باز کردن پنل وب فروشنده ممکن نشد. اتصال اینترنت را بررسی کنید.");
+    }
+  }
+
   const seller = gate.kind === "ready" ? gate.seller : null;
+
+  function accountPage(isPreview: boolean) {
+    const capabilityIsReady = (capability: typeof sellerPanelSections[number]["capability"]) =>
+      isPreview || capability === null || seller?.capabilities[capability] === true;
+    return <View style={styles.body}>
+      <Text style={styles.heading}>حساب فروشنده</Text>
+      <View style={styles.panel}>
+        <Text style={styles.kicker}>حساب کسب‌وکار</Text>
+        <Text style={styles.cardTitle}>{seller?.businessName ?? "فروشگاه نمونه"}</Text>
+        <Text style={styles.muted}>{seller?.storeName ?? "اطلاعات نمایشی برای پیش‌نمایش"}</Text>
+        {seller ? <>
+          <Text style={styles.muted}>کد پیگیری: {seller.trackingCode}</Text>
+          <Text style={styles.muted}>نوع فعالیت: {seller.offeringType === "GOOD" ? "فروش کالا" : "فروشگاه"}</Text>
+          <Text style={styles.muted}>وضعیت فروشندگی: فعال</Text>
+          <Text style={styles.muted}>زمان فعال‌سازی: {new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" }).format(new Date(seller.activatedAtUtc))}</Text>
+        </> : <Text style={styles.hint}>این اطلاعات نمونه‌اند و وضعیت هویتی یا فروشندگی واقعی را نشان نمی‌دهند.</Text>}
+      </View>
+
+      <View style={styles.panel}>
+        <Text style={styles.heading}>دسترسی‌های پنل فروشنده</Text>
+        <Text style={styles.hint}>برای دیدن و انجام عملیات متناظر، هر بخش پنل وب فروشنده را باز کنید.</Text>
+        <View style={styles.accountLinks}>
+          {sellerPanelSections.map((section) => {
+            const enabled = capabilityIsReady(section.capability);
+            return <Pressable key={section.label} style={styles.accountLink}
+              disabled={!enabled}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !enabled }}
+              onPress={() => void openSellerPanel(section.href)}>
+              <Text style={styles.accountChevron}>‹</Text>
+              <View style={styles.accountLinkContent}>
+                <Text style={[styles.accountLinkTitle, !enabled && styles.accountLinkDisabled]}>{section.label}</Text>
+                <Text style={styles.accountLabel}>{section.detail}</Text>
+              </View>
+              <Text style={enabled ? styles.accountLinkState : styles.accountLinkStateDisabled}>
+                {enabled ? "فعال" : "متصل نشده"}
+              </Text>
+            </Pressable>;
+          })}
+        </View>
+      </View>
+      <Pressable style={styles.action} onPress={() => void openSellerPanel("/seller")}>
+        <Text style={styles.actionText}>بازکردن پنل وب فروشنده</Text>
+      </Pressable>
+      {notice ? <Text style={styles.error} accessibilityRole="alert">{notice}</Text> : null}
+      <Pressable style={styles.outlineAction} onPress={() => void signOut()}>
+        <Text style={styles.outlineActionText}>خروج از حساب</Text>
+      </Pressable>
+    </View>;
+  }
 
   function dashboard() {
     if (!seller) return null;
@@ -341,7 +414,7 @@ export default function App() {
           {previewTab === "inventory" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>موجودی و قیمت‌گذاری کالاها</Text><Text style={styles.infoText}>مقادیر برای نمایش رابط کاربری نمونه هستند.</Text></View>{products.map(item => <View key={item.code} style={styles.inventoryCard}><View style={styles.inventoryHead}><Text style={styles.productStatus}>{item.stock}</Text><Text style={styles.productName}>{item.title}</Text></View><Text style={styles.previewOrderDate}>{item.code} · قیمت فعلی: {item.price} تومان</Text><View style={styles.inventoryActions}><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر موجودی در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>تغییر موجودی</Text></Pressable><Pressable style={styles.smallAction} onPress={() => setNotice("تغییر قیمت در این پیش‌نمایش نمایشی است.")}><Text style={styles.smallActionText}>ویرایش قیمت</Text></Pressable></View></View>)}</>}
           {previewTab === "settlements" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>خلاصهٔ مالی</Text></View>{[["در انتظار تسویه", "۱۸٬۴۰۰٬۰۰۰ تومان"], ["تسویه‌شده", "۱۰۶٬۴۶۰٬۰۰۰ تومان"], ["سفارش‌های تکمیل‌شده", "۲۳ سفارش"]].map(([label, value]) => <View key={label} style={styles.financeRow}><Text style={styles.financeValue}>{value}</Text><Text style={styles.productName}>{label}</Text></View>)}</>}
           {previewTab === "notifications" && <>{[["سفارش جدید دریافت شد", "سفارش HN-۴۰۹۱ ثبت شده و در انتظار تأیید شماست.", "۱۰:۲۵", "#F7ECE9"], ["موجودی کالا رو به اتمام است", "موجودی پنیر سفید به ۲ عدد رسیده است.", "دیروز · ۱۷:۴۰", "#FFF3D4"], ["تسویه با موفقیت انجام شد", "مبلغ ۱۲٬۶۰۰٬۰۰۰ تومان واریز شد.", "دیروز · ۱۲:۱۵", "#EAF3EC"]].map(([heading, body, time, color]) => <View key={heading} style={styles.notificationCard}><View style={[styles.notificationIcon, { backgroundColor: color }]}><Text style={styles.quickActionIcon}>•</Text></View><View style={styles.notificationContent}><Text style={styles.productName}>{heading}</Text><Text style={styles.infoText}>{body}</Text><Text style={styles.previewOrderDate}>{time}</Text></View></View>)}</>}
-          {previewTab === "account" && <><View style={styles.accountCard}><Text style={styles.sectionTitle}>حساب کسب‌وکار</Text><View style={styles.accountLine}><Text style={styles.accountValue}>خلاصه حساب نمونه</Text><Text style={styles.accountLabel}>فروشنده نمونه</Text></View></View><View style={styles.accountCard}><Text style={styles.sectionTitle}>اطلاعات هویتی</Text>{[["نوع حساب", "شخص حقیقی"], ["وضعیت احراز هویت", "تأیید شده"], ["وضعیت فروشندگی", "فعال"], ["وضعیت حمایتی مرتبط", "شناسایی شده"]].map(([l, v]) => <View style={styles.accountLine} key={l}><Text style={styles.accountValue}>{v}</Text><Text style={styles.accountLabel}>{l}</Text></View>)}</View><View style={styles.accountLinks}>{[["اطلاعات کسب‌وکار", "نام، آدرس، صنف"], ["موجودی و دسترس‌پذیری", "وضعیت کالاها"], ["قیمت‌گذاری", "قیمت کالاها"], ["ارسال و محدوده فعالیت", "روش و محدوده ارسال"], ["طرح‌ها و اعتبارها", "طرح‌ها و اعتبارها"], ["تسویه‌حساب‌ها", "اطلاعات تسویه"], ["گزارش‌ها", "فروش و عملکرد"], ["پشتیبانی", "گفتگو و تیکت"], ["تنظیمات", "زبان، اعلان‌ها"]].map(([l, h]) => <Pressable key={l} style={styles.accountLink} onPress={() => nav(l.includes("تسویه") || l.includes("گزارش") ? "settlements" : "inventory")}><Text style={styles.accountChevron}>‹</Text><Text style={styles.accountValue}>{h}</Text><Text style={styles.accountLabel}>{l}</Text></Pressable>)}</View><Pressable style={styles.outlineAction} onPress={() => void signOut()}><Text style={styles.outlineActionText}>خروج از حساب</Text></Pressable></>}
+          {previewTab === "account" && accountPage(true)}
           {notice ? <Pressable onPress={() => setNotice("")} style={styles.noticeBox}><Text style={styles.noticeText}>{notice}  ×</Text></Pressable> : null}
         </View>
       </ScrollView>
@@ -363,7 +436,7 @@ export default function App() {
         </View>
         {gate.kind === "ready" ? <>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-            {tab === "dashboard" ? dashboard() : ordersPage()}
+          {tab === "dashboard" ? dashboard() : tab === "orders" ? ordersPage() : accountPage(false)}
           </ScrollView>
           <View style={styles.bottomNav}>
             <Pressable onPress={() => setTab("dashboard")} style={styles.navItem} accessibilityRole="button">
@@ -372,10 +445,14 @@ export default function App() {
             <Pressable onPress={() => { setTab("orders"); setPage(1); }} style={styles.navItem} accessibilityRole="button">
               <Text style={tab === "orders" ? styles.navSelected : styles.navLabel}>سفارش‌ها</Text>
             </Pressable>
-            <View style={styles.navItem}><Text style={styles.navDisabled}>کالاها</Text></View>
-            <View style={styles.navItem}><Text style={styles.navDisabled}>اعلان‌ها</Text></View>
-            <Pressable onPress={() => void signOut()} style={styles.navItem} disabled={busy}>
-              <Text style={styles.navLabel}>خروج</Text>
+            <Pressable onPress={() => void openSellerPanel("/seller#seller-offers")} style={styles.navItem} accessibilityRole="button">
+              <Text style={styles.navLabel}>کالاها</Text>
+            </Pressable>
+            <Pressable onPress={() => void openSellerPanel("/seller#seller-notifications")} style={styles.navItem} accessibilityRole="button">
+              <Text style={styles.navLabel}>اعلان‌ها</Text>
+            </Pressable>
+            <Pressable onPress={() => setTab("account")} style={styles.navItem} accessibilityRole="button">
+              <Text style={tab === "account" ? styles.navSelected : styles.navLabel}>حساب</Text>
             </Pressable>
           </View>
         </> : gate.kind === "preview" ? previewPage() : <KeyboardAvoidingView
@@ -626,5 +703,10 @@ const styles = StyleSheet.create({
   accountLabel: { fontFamily: "Vazirmatn_400Regular", fontSize: 10, color: "#746D66", ...rtl },
   accountLinks: { borderRadius: 15, overflow: "hidden", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EAE5DF" },
   accountLink: { minHeight: 48, flexDirection: "row-reverse", alignItems: "center", gap: 9, paddingHorizontal: 11, borderBottomWidth: 1, borderBottomColor: "#EEEAE5" },
+  accountLinkContent: { flex: 1, alignItems: "flex-end", gap: 2 },
+  accountLinkTitle: { color: "#393632", fontFamily: "Vazirmatn_700Bold", fontSize: 10, ...rtl },
+  accountLinkDisabled: { color: "#9A938C" },
+  accountLinkState: { color: "#407764", fontFamily: "Vazirmatn_700Bold", fontSize: 9, ...rtl },
+  accountLinkStateDisabled: { color: "#8B8278", fontFamily: "Vazirmatn_400Regular", fontSize: 9, ...rtl },
   accountChevron: { color: "#777069", fontSize: 20 },
 });
