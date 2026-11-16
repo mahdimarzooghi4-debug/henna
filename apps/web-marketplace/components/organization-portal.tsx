@@ -102,6 +102,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
   const title = titles[screen];
   if (screen === "api") return <OrganizationApiDataSources title={title} />;
   if (screen === "allocation") return <OrganizationAllocationPreview title={title} />;
+  if (screen === "allocation-detail") return <OrganizationAllocationDetailPreview title={title} />;
   // The dashboard is a public, read-only Figma sample. Keep organization data
   // and every other portal screen behind the existing authenticated APIs.
   if (data.loading && screen !== "dashboard" && screen !== "profile" && screen !== "program-detail" && screen !== "people" && screen !== "people-new") return <OrganizationPortalShell active={active} title={title}><p role="status">در حال دریافت اطلاعات از سامانه حنا…</p></OrganizationPortalShell>;
@@ -239,13 +240,6 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
 
   if (screen === "people-new") return <OrganizationPortalShell active="people" title={title}><OrganizationPeopleIntake/></OrganizationPortalShell>;
 
-  if (screen === "allocation-detail") return <OrganizationPortalShell active="allocation" title={title}>
-    <div className={styles.backRow}><Link className={styles.outlineButton} href="/organization/allocation">← بازگشت به مدیریت تخصیص‌ها</Link></div>
-    <div className={styles.detailTop}><span className={styles.status}>در انتظار داده</span><span>شناسه تخصیص: {allocationId ?? "—"}</span></div>
-    <Notice>پردازش بر اساس قواعد و الگوی تخصیص ثبت‌شده انجام می‌شود. نتیجه نهایی تخصیص نیازمند بررسی جداگانه است.</Notice>
-    <div className={`${styles.detailGrid} ${styles.allocationDetailGrid}`}><Card title="اطلاعات پایه تخصیص"><DataRows rows={[["طرح مرتبط", "در سرویس ثبت نشده"], ["روش تخصیص فعال", "الگوی تخصیص حنا"], ["تعداد رکوردهای ورودی", "داده‌ای ثبت نشده"], ["وضعیت پردازش", "در انتظار بررسی"]]}/></Card><div className={styles.stack}><Card title="نتیجه نهایی تخصیص"><DataRows rows={[["نتیجه تخصیص", "در انتظار بررسی نهایی"], ["کدهای تخصیص‌یافته", "داده‌ای ثبت نشده"], ["وضعیت تخصیص", "ثبت نشده"]]}/></Card><Card title="موارد نیازمند بررسی"><div className={styles.reviewItem}><b>اطلاعات حساب حنا تطبیق نشده است.</b><small>اطلاعات حساب از سرویس دریافت نشده است.</small></div></Card></div></div>
-  </OrganizationPortalShell>;
-
   if (screen === "usage") return <OrganizationPortalShell active="usage" title={title}>
     <div className={styles.statCards}>{[["اعتبار راکد یا استفاده‌نشده","دریافت نشده"],["اعتبار مصرف‌شده","دریافت نشده"],["اعتبار فعال در حال استفاده","دریافت نشده"],["کل اعتبارات تخصیص‌یافته","دریافت نشده"]].map(([label,value])=><Card key={label}><small>{label}</small><b>{value}</b></Card>)}</div>
     <Card title="لیست وضعیت مصرف مشمولان"><div className={styles.tableWrap}><table><thead><tr><th>نام مشمول</th><th>شناسه مشمول</th><th>وضعیت مصرف</th><th>اعتبار تخصیص‌یافته</th><th>میزان استفاده</th><th>آخرین وضعیت ثبت‌شده</th></tr></thead><tbody><tr><td colSpan={6}><div className={styles.emptyTable}><b>داده‌ای برای نمایش وجود ندارد</b><span>اطلاعات مصرف هنوز از سرویس سازمان دریافت نشده است.</span></div></td></tr></tbody></table></div></Card>
@@ -310,6 +304,44 @@ function OrganizationApiDataSources({ title }: { title: string }) {
           <article><time>زمان نمونه</time><strong>خطای موقت همگام‌سازی با منبع داده سازمان</strong></article>
         </div>
       </Card>
+    </div>
+  </OrganizationPortalShell>;
+}
+
+function OrganizationAllocationDetailPreview({ title }: { title: string }) {
+  return <OrganizationPortalShell active="allocation" title={title}>
+    <div className={styles.backRow} style={{ direction: "ltr" }}>
+      <Link className={styles.outlineButton} href="/organization/allocation">← بازگشت به مدیریت تخصیص‌ها</Link>
+    </div>
+    <div className={styles.detailTop} style={{ direction: "ltr" }}>
+      <span className={styles.allocationDetailStatus}>وضعیت پردازش: تکمیل‌شده</span>
+      <span dir="rtl">شناسه تخصیص: ALC-***۲۴</span>
+    </div>
+    <Notice>پردازش بر اساس قواعد و الگوی ثبت‌شده حنا انجام شده است. نتیجه نهایی تخصیص نیازمند بررسی جداگانه است.</Notice>
+    <div className={`${styles.detailGrid} ${styles.allocationDetailGrid}`}>
+      <Card title="اطلاعات پایه تخصیص">
+        <DataRows rows={[
+          ["طرح مرتبط", "طرح نمونه ۱"],
+          ["روش تخصیص فعال", "الگوی تخصیص حنا"],
+          ["تعداد رکوردهای ورودی", "داده نمونه"],
+          ["وضعیت پردازش", "پردازش‌شده"],
+        ]}/>
+      </Card>
+      <div className={styles.stack}>
+        <Card title="نتیجه نهایی تخصیص">
+          <DataRows rows={[
+            ["نتیجه تخصیص", "در انتظار بررسی نهایی"],
+            ["رکوردهای تخصیص‌یافته", "—"],
+            ["وضعیت تخصیص", "داده نمونه"],
+          ]}/>
+        </Card>
+        <Card title="موارد نیازمند بررسی">
+          <div className={styles.allocationReviewRows}>
+            <div><span>داده نمونه</span><strong>اطلاعات حساب حنا نیازمند تطبیق</strong></div>
+            <div><span>داده نمونه</span><strong>اطلاعات منبع نیازمند بررسی یا همگام‌سازی مجدد است.</strong></div>
+          </div>
+        </Card>
+      </div>
     </div>
   </OrganizationPortalShell>;
 }

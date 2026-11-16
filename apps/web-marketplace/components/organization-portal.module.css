@@ -244,3 +244,7 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 .peopleIntakeMessage{margin:0;padding:8px 10px;border-radius:6px;background:var(--cream);color:var(--teal);font-size:10px;line-height:1.7;text-align:right}
 @media(max-width:900px){.peopleFormsGrid{grid-template-columns:1fr}}
 @media(max-width:720px){.peopleIntakePage{gap:12px}.peopleBackLink{font-size:10px}.peopleFormsGrid{gap:12px}.peopleIntakeCard{gap:14px;padding:17px}.peopleIntakeHeader h2{font-size:13px}.peopleIntakeHeader p{font-size:9px}.peopleFileDrop{min-height:108px;padding:14px}.peopleBatchActions{flex-wrap:wrap}.peopleBatchActions>*{flex:1}}
+
+.allocationDetailStatus{display:inline-flex;align-items:center;min-height:22px;padding:3px 9px;border:1px solid var(--teal);border-radius:5px;background:#eaf3f1;color:var(--teal);font-size:10px;font-weight:700;white-space:nowrap}
+.allocationReviewRows{display:grid;gap:8px}.allocationReviewRows>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;border-radius:7px;background:#f5eadb;direction:ltr}.allocationReviewRows strong{max-width:78%;font-size:10px;text-align:right;direction:rtl}.allocationReviewRows span{flex:0 0 auto;padding:2px 7px;border-radius:4px;background:#e7d4bd;color:#65513a;font-size:9px;white-space:nowrap}
+@media(max-width:720px){.allocationReviewRows>div{align-items:flex-start;gap:7px}.allocationReviewRows strong{max-width:none}}
