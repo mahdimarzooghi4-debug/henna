@@ -45,7 +45,7 @@ async function main(){
  }
  for(const width of [320,390,760]){
   await page.setViewportSize({width,height:900});
-  await page.goto(base+"/",{waitUntil:"domcontentloaded"});
+  await page.goto(base+"/",{waitUntil:"commit"});
   const cta=page.getByRole("heading",{name:"حنا؛ بازارگاه گرم و عادلانه محله شما"});
   await cta.waitFor();
   assert.equal(await cta.isVisible(),true,"mobile home CTA visible at "+width);
