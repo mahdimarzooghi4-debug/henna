@@ -5,23 +5,23 @@
   "description": "بازارگاه خریدار حنا",
   "lang": "fa",
   "dir": "rtl",
-  "start_url": "/products",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f7f3ed",
-  "theme_color": "#1b413a",
+  "background_color": "#fff1e2",
+  "theme_color": "#b5523b",
   "icons": [
     {
-      "src": "/pwa/icon-192.png",
+      "src": "/pwa/buyer-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/pwa/icon-512.png",
+      "src": "/pwa/buyer-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }
