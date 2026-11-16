@@ -42,6 +42,7 @@ const stateLabel: Record<string, string> = {
   CANCELLED: "لغوشده",
 };
 const faNumber = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
+const parseFaNumber = (value: string) => Number(value.replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/[^0-9]/g, "")) || 0;
 const rtl = { writingDirection: "rtl" as const, textAlign: "right" as const };
 type FigmaIconName = keyof typeof figmaIcons;
 function FigmaIcon({ name, size = 20, color = "#706963" }: { name: FigmaIconName; size?: number; color?: string }) {
@@ -78,6 +79,8 @@ export default function App() {
   const [previewTab, setPreviewTab] = useState<SellerTab>("dashboard");
   const [previewAction, setPreviewAction] = useState<string | null>(null);
   const [previewActionValue, setPreviewActionValue] = useState("");
+  const [previewDiscountEnabled, setPreviewDiscountEnabled] = useState(false);
+  const [previewDiscountPercent, setPreviewDiscountPercent] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("همه");
   const [productCategoryFilter, setProductCategoryFilter] = useState("همه موارد");
   const [productSearch, setProductSearch] = useState("");
@@ -412,6 +415,8 @@ export default function App() {
     const openAction = (action: string, value = "") => {
       setPreviewAction(action);
       setPreviewActionValue(value);
+      setPreviewDiscountEnabled(false);
+      setPreviewDiscountPercent("");
       setNotice("");
     };
     const selectedOrder = previewAction?.startsWith("order:")
@@ -440,13 +445,30 @@ export default function App() {
               </> : <>
                 <Text style={styles.infoText}>{selectedProduct ? `${selectedProduct.code} · ${selectedProduct.category}` : "اطلاعات را وارد کنید؛ این فرم در حالت پیش‌نمایش محلی کار می‌کند."}</Text>
                 {previewAction !== "add" && selectedProduct ? <Text style={styles.accountValue}>مقدار فعلی: {previewAction.startsWith("stock:") ? selectedProduct.stock : `${selectedProduct.price} تومان`}</Text> : null}
-                <TextInput value={previewActionValue} onChangeText={setPreviewActionValue} placeholder={previewAction?.startsWith("stock:") ? "موجودی جدید" : previewAction?.startsWith("price:") ? "قیمت جدید (تومان)" : previewAction === "add" ? "نام کالا" : "نام کالا یا مقدار جدید"} placeholderTextColor="#827970" style={styles.previewActionInput} />
+                <TextInput value={previewActionValue} onChangeText={setPreviewActionValue} keyboardType={previewAction?.startsWith("price:") || previewAction?.startsWith("stock:") ? "number-pad" : "default"} placeholder={previewAction?.startsWith("stock:") ? "موجودی جدید" : previewAction?.startsWith("price:") ? "قیمت اصلی (تومان)" : previewAction === "add" ? "نام کالا" : "نام کالا یا مقدار جدید"} placeholderTextColor="#827970" style={styles.previewActionInput} />
+                {previewAction?.startsWith("price:") ? <>
+                  <Pressable style={styles.discountToggle} onPress={() => { setPreviewDiscountEnabled(value => !value); setPreviewDiscountPercent(""); }} accessibilityRole="checkbox" accessibilityState={{ checked: previewDiscountEnabled }}>
+                    <View style={[styles.discountCheckbox, previewDiscountEnabled && styles.discountCheckboxActive]}>{previewDiscountEnabled ? <Text style={styles.discountCheck}>✓</Text> : null}</View>
+                    <Text style={styles.discountToggleText}>اعمال تخفیف برای این کالا</Text>
+                  </Pressable>
+                  {previewDiscountEnabled ? <>
+                    <TextInput value={previewDiscountPercent} onChangeText={value => setPreviewDiscountPercent(value.replace(/[^۰-۹0-9]/g, ""))} keyboardType="number-pad" placeholder="درصد تخفیف (مثلاً ۱۰)" placeholderTextColor="#827970" style={styles.previewActionInput} />
+                    <View style={styles.discountSummary}>
+                      <Text style={styles.discountSummaryText}>قیمت پس از تخفیف: {faNumber(Math.round(parseFaNumber(previewActionValue) * (1 - Math.min(100, parseFaNumber(previewDiscountPercent)) / 100)))} تومان</Text>
+                    </View>
+                  </> : null}
+                </> : null}
                 {previewAction === "add" ? <TextInput placeholder="قیمت (تومان)" placeholderTextColor="#827970" style={styles.previewActionInput} /> : null}
               </>}
               <Pressable style={styles.figmaPrimaryButton} onPress={() => {
+                if (previewAction?.startsWith("price:") && previewDiscountEnabled && (parseFaNumber(previewDiscountPercent) < 1 || parseFaNumber(previewDiscountPercent) > 100)) {
+                  setNotice("درصد تخفیف باید بین ۱ تا ۱۰۰ باشد.");
+                  return;
+                }
                 setPreviewAction(null);
-                setNotice(selectedOrder?.status === "در حال آماده‌سازی" ? "سفارش نمونه برای آماده‌سازی تأیید شد." : selectedOrder ? "جزئیات سفارش نمونه نمایش داده شد." : previewAction === "add" ? "کالای نمونه به فهرست پیش‌نمایش افزوده شد." : "تغییر نمونه در پیش‌نمایش ثبت شد.");
+                setNotice(selectedOrder?.status === "در حال آماده‌سازی" ? "سفارش نمونه برای آماده‌سازی تأیید شد." : selectedOrder ? "جزئیات سفارش نمونه نمایش داده شد." : previewAction?.startsWith("price:") && previewDiscountEnabled ? `قیمت و تخفیف ${faNumber(parseFaNumber(previewDiscountPercent))}٪ برای کالای نمونه ثبت شد.` : previewAction === "add" ? "کالای نمونه به فهرست پیش‌نمایش افزوده شد." : "تغییر نمونه در پیش‌نمایش ثبت شد.");
               }}><Text style={styles.primaryActionText}>{selectedOrder?.status === "در حال آماده‌سازی" ? "تأیید سفارش" : selectedOrder ? "بستن جزئیات" : "ثبت در پیش‌نمایش"}</Text></Pressable>
+              {notice ? <Text style={styles.infoText}>{notice}</Text> : null}
             </View>
           </View> : null}
           {!previewAction && previewTab === "dashboard" && <>
@@ -602,6 +624,13 @@ const styles = StyleSheet.create({
   logo: { width: 54, height: 43 },
   previewActionPage: { padding: 16, gap: 12 },
   previewActionInput: { minHeight: 44, borderWidth: 1, borderColor: "#EAE5DF", borderRadius: 10, backgroundColor: "#FFFFFF", paddingHorizontal: 12, marginTop: 10, ...rtl },
+  discountToggle: { minHeight: 42, flexDirection: "row-reverse", alignItems: "center", gap: 9, marginTop: 8 },
+  discountCheckbox: { width: 20, height: 20, borderWidth: 1, borderColor: "#B9A99B", borderRadius: 5, alignItems: "center", justifyContent: "center" },
+  discountCheckboxActive: { backgroundColor: "#B94D35", borderColor: "#B94D35" },
+  discountCheck: { color: "#FFFFFF", fontSize: 13, fontFamily: "Vazirmatn_700Bold" },
+  discountToggleText: { color: "#393632", fontFamily: "Vazirmatn_700Bold", fontSize: 11, ...rtl },
+  discountSummary: { backgroundColor: "#EAF3EC", borderRadius: 9, padding: 10, marginTop: 8 },
+  discountSummaryText: { color: "#1C3F3A", fontFamily: "Vazirmatn_700Bold", fontSize: 11, ...rtl },
   brand: { flex: 1, alignItems: "flex-end" },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 24 },
