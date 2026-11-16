@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import styles from "./organization-portal.module.css";
 
 type PersonRow = {
@@ -38,7 +39,16 @@ export function OrganizationPeopleDirectory() {
   }, [allocation, source, program, match, query]);
 
   return <>
-    <section className={styles.peopleDirectory} aria-label="فهرست افراد و مشمولان">
+    <section className={styles.peopleDirectory} aria-label="فهرست افراد و مشمولان" dir="rtl">
+      <header className={styles.peopleDirectoryHeader}>
+        <div className={styles.peopleDirectoryTitle}>
+          <h2>افراد و مشمولان طرح‌ها</h2>
+          <p>تعریف افراد و افزودن مشمولان به طرح‌های سازمانی</p>
+        </div>
+        <Link className={styles.primaryButton} href="/organization/people/new">
+          <span aria-hidden="true">＋</span> تعریف و افزودن مشمول
+        </Link>
+      </header>
       <div className={styles.peopleBanner}>
         ثبت فرد در منبع داده سازمان به معنای تخصیص اعتبار نیست. در صورت وجود حساب حنا، اطلاعات فرد با همان حساب تطبیق داده می‌شود.
       </div>

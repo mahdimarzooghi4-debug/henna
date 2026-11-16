@@ -207,21 +207,22 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 /* Figma 386:280 organization programs list */
 .programPage{width:100%;min-width:0}
 .programCard{width:100%;overflow:visible;border:1px solid var(--line);border-radius:12px;background:#fff}
-.programHeader{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.programHeader{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);direction:rtl}
 .programHeader h2{margin:0;color:#2d2d2d;font-size:16px;font-weight:700;line-height:1.5}
+.programHeaderActions{display:flex;align-items:center;gap:10px;direction:rtl}
 .programFilter{position:relative;z-index:2}
 .programFilter>button{min-height:38px;display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid rgba(15,91,90,.2);border-radius:8px;background:#fff;color:var(--teal);font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
 .programFilter>button svg{width:14px;height:14px}
-.programFilterMenu{position:absolute;top:calc(100% + 6px);left:0;min-width:150px;display:grid;gap:2px;padding:5px;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 8px 24px rgba(45,45,45,.12)}
+.programFilterMenu{position:absolute;top:calc(100% + 6px);right:0;min-width:150px;display:grid;gap:2px;padding:5px;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 8px 24px rgba(45,45,45,.12)}
 .programFilterMenu button{padding:8px 10px;border:0;border-radius:5px;background:#fff;color:var(--ink);font:inherit;font-size:12px;text-align:right;cursor:pointer}
 .programFilterMenu button:hover,.programFilterMenu button[aria-pressed=true]{background:#eef2f1;color:var(--teal)}
 .programTableWrap{width:100%;overflow-x:auto}
-.programTable{width:100%;min-width:840px;border-collapse:collapse;table-layout:fixed;direction:ltr}
-.programTable col.operationCol{width:120px}.programTable col.dateCol{width:140px}.programTable col.statusCol{width:120px}.programTable col.allocationCol{width:180px}.programTable col.typeCol{width:160px}
+.programTable{width:100%;min-width:840px;border-collapse:collapse;table-layout:fixed;direction:rtl}
+.programTable col.nameCol{width:190px}.programTable col.operationCol{width:130px}.programTable col.dateCol{width:140px}.programTable col.statusCol{width:120px}.programTable col.allocationCol{width:180px}.programTable col.typeCol{width:160px}
 .programTable thead{background:#f7f3ed;color:#2d2d2d}
 .programTable th,.programTable td{height:52px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;font-weight:400;text-align:center;white-space:nowrap;direction:rtl}
 .programTable thead th{height:44px;padding:10px 12px;font-weight:600}
-.programTable thead th:last-child,.programTable tbody th[scope=row]{text-align:right}
+.programTable thead th:first-child,.programTable tbody th[scope=row]{text-align:right}
 .programTable tbody th[scope=row]{font-weight:600;font-size:14px}
 .programTable tbody tr:last-child td,.programTable tbody tr:last-child th{border-bottom:0}
 .programDetailsLink{padding:0;border:0;background:transparent;color:var(--teal);font:inherit;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer}
@@ -235,7 +236,7 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 .programDialog dl{display:grid;gap:0;margin:0}
 .programDialog dl>div{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}
 .programDialog dt{color:var(--muted)}.programDialog dd{margin:0;font-weight:600;text-align:left}
-@media(max-width:720px){.programHeader{min-height:58px;padding:11px 13px}.programHeader h2{font-size:13px}.programFilter>button{min-height:34px;padding:6px 9px;font-size:11px}.programTable{min-width:820px}}
+@media(max-width:720px){.programHeader{min-height:58px;align-items:flex-start;flex-direction:column;padding:11px 13px}.programHeader h2{font-size:13px}.programHeaderActions{width:100%;justify-content:flex-start;flex-wrap:wrap}.programHeaderActions .primaryButton{font-size:11px}.programFilter>button{min-height:34px;padding:6px 9px;font-size:11px}.programTable{min-width:820px}}
 
 /* Figma 386:419 organization program detail */
 .programDetailsLink{display:inline-flex;color:var(--teal);text-decoration:none}
@@ -264,7 +265,7 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 .programFormDivider{width:100%;height:1px;background:var(--sand)}
 .programForm{width:100%;display:grid;gap:16px;margin:0}
 .programFormGrid{width:100%;display:grid;gap:18px}
-.programFormRow{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;direction:ltr}
+.programFormRow{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;direction:rtl}
 .programFormField{min-width:0;display:grid;gap:7px;color:var(--ink);font-size:14px;font-weight:600;text-align:right;direction:rtl}
 .programFormField input,.programFormField select,.programFormField textarea{width:100%;min-width:0;min-height:42px;padding:9px 12px;border:1px solid var(--sand);border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-size:13px;font-weight:400;text-align:right;direction:rtl}
 .programFormField select{background-color:var(--cream);cursor:pointer}
@@ -290,8 +291,13 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 
 /* Figma 386:867 organization people and recipients */
 .peopleDirectory{width:100%;min-width:0;display:grid;gap:16px}
+.peopleDirectoryHeader{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;direction:rtl}
+.peopleDirectoryTitle{display:grid;gap:3px;text-align:right}
+.peopleDirectoryTitle h2{margin:0;color:var(--ink);font-size:16px;font-weight:800;line-height:1.6}
+.peopleDirectoryTitle p{margin:0;color:var(--muted);font-size:11px;line-height:1.7}
+.peopleDirectoryHeader .primaryButton{min-height:38px;font-size:12px}
 .peopleBanner{width:100%;padding:12px 16px;border:1px solid var(--teal);border-radius:9px;background:var(--cream);color:var(--ink);font-size:12px;line-height:1.8;text-align:right}
-.peopleFilters{width:100%;display:grid;grid-template-columns:minmax(130px,180px) minmax(130px,180px) minmax(140px,200px) minmax(130px,180px) minmax(190px,1fr);align-items:end;gap:14px;padding:16px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.peopleFilters{width:100%;display:grid;grid-template-columns:minmax(130px,180px) minmax(130px,180px) minmax(140px,200px) minmax(130px,180px) minmax(190px,1fr);align-items:end;gap:14px;padding:16px;border:1px solid var(--line);border-radius:10px;background:#fff;direction:rtl}
 .peopleFilters label{min-width:0;display:grid;gap:5px;color:#8a9a6b;font-size:11px;text-align:right}
 .peopleFilters select,.peopleFilters input{width:100%;min-width:0;height:36px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font:inherit;font-size:11px;text-align:right;direction:rtl}
 .peopleFilters input::placeholder{color:#8a9a6b;opacity:1}
@@ -330,14 +336,14 @@ button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
 .peopleModal dt{color:var(--muted)}
 .peopleModal dd{margin:0;font-weight:600;text-align:left}
 @media(max-width:1050px){.peopleFilters{grid-template-columns:repeat(3,minmax(130px,1fr))}.peopleSearch{grid-column:span 2}}
-@media(max-width:720px){.peopleDirectory{gap:12px}.peopleBanner{padding:11px 12px;font-size:11px}.peopleFilters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.peopleSearch{grid-column:1/-1}.peopleTable{min-width:950px}.peopleModal{padding:18px}.peopleModal dl>div{font-size:11px}}
+@media(max-width:720px){.peopleDirectory{gap:12px}.peopleDirectoryHeader{align-items:flex-start;flex-direction:column}.peopleDirectoryTitle h2{font-size:14px}.peopleDirectoryHeader .primaryButton{align-self:flex-start}.peopleBanner{padding:11px 12px;font-size:11px}.peopleFilters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.peopleSearch{grid-column:1/-1}.peopleTable{min-width:950px}.peopleModal{padding:18px}.peopleModal dl>div{font-size:11px}}
 
 /* Figma 386:1024 organization manual recipients intake */
 .peopleIntakePage{width:100%;min-width:0;display:grid;gap:16px}
 .peopleBackRow{width:100%;display:flex;justify-content:flex-start;direction:ltr}
 .peopleBackLink{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--sand);border-radius:7px;background:#fff;color:var(--teal);font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap}
 .peopleBackLink:hover{background:#f7f3ed}
-.peopleFormsGrid{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:18px;direction:ltr}
+.peopleFormsGrid{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:18px;direction:rtl}
 .peopleIntakeCard{min-width:0;display:grid;align-content:start;gap:18px;padding:24px;border:1px solid var(--sand);border-radius:11px;background:#fff;direction:rtl}
 .peopleIntakeHeader{display:grid;gap:4px;text-align:right}
 .peopleIntakeHeader h2{margin:0;color:var(--ink);font-size:15px;font-weight:800;line-height:1.6}

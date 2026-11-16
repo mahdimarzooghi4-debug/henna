@@ -54,7 +54,7 @@ export function OrganizationPeopleIntake() {
     setPersonMessage("اطلاعات واردشده ارسال یا ذخیره نشد؛ اتصال سرویس ثبت افراد هنوز آماده نیست.");
   }
 
-  return <section className={styles.peopleIntakePage} aria-label="ثبت و افزودن دستی مشمولان">
+  return <section className={styles.peopleIntakePage} aria-label="ثبت و افزودن دستی مشمولان" dir="rtl">
     <div className={styles.peopleBackRow}>
       <Link href="/organization/people" className={styles.peopleBackLink}><span aria-hidden="true">←</span>بازگشت به لیست مشمولان</Link>
     </div>

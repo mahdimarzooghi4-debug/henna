@@ -66,7 +66,7 @@ export function OrganizationProgramForm() {
   }
 
   return <OrganizationPortalShell active="programs" title="ثبت طرح سازمانی جدید">
-    <section className={styles.programFormPage}>
+    <section className={styles.programFormPage} dir="rtl">
       <div className={styles.programFormCard}>
         <header className={styles.programFormHeader}>
           <h2>فرم راه‌اندازی و پیکربندی طرح اعتباری</h2>
