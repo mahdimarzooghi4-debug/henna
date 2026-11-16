@@ -12,7 +12,7 @@ export const buyerAndroidPreview = {
 
 export const sellerAndroidPreview = {
   apk: "/download/seller-8f775b2.apk",
-  details: "https://github.com/mahdimarzooghi4-debug/henna/commit/8f775b2de780e8d69326cec6f721fa59012a02d3",
-  sha: "8f775b2de780e8d69326cec6f721fa59012a02d3",
-  digest: "sha256:21dd585c1ec45b481ac3b718d6d745636b833641736c16ea212ff73d330c2ba2",
+  details: "https://github.com/mahdimarzooghi4-debug/henna/releases/tag/hana-mobile-preview-2031-1",
+  sha: "76008507e05e5e4eecbabc6ce657596515faa7b6",
+  digest: "sha256:7a5c238b996b13c25c0acfed74c73a20c6eaaae177d369b34d52bb2d1dc624e2",
 } as const;
