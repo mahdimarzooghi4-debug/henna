@@ -104,6 +104,10 @@ export default function App() {
         return;
       }
     }
+    if (sellerPreviewAllowed && !apiBase && Platform.OS === "web") {
+      setGate({ kind: "guest" }); // Show the login screen and its explicit sample-entry button.
+      return;
+    }
     const session = await auth.session();
     if (current !== epoch.current) return;
     if (session.status === "guest") { setGate({ kind: "guest" }); return; }
