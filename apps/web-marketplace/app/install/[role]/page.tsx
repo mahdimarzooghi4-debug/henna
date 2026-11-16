@@ -7,8 +7,8 @@ import styles from "../install.module.css";
 
 type Props = { params: Promise<{role: string}> };
 const applications = {
-  buyer: { label: "خریدار", start: "/", name: "حنا خریدار", icon: "/pwa/buyer-icon-512.png" },
-  seller: { label: "فروشنده", start: "/seller", name: "حنا فروشنده", icon: "/pwa/seller-icon-512.png" },
+  buyer: { label: "خریدار", start: "/pwa/buyer-app/index.html", name: "حنا خریدار", icon: "/pwa/buyer-icon-512.png" },
+  seller: { label: "فروشنده", start: "/pwa/seller-app/index.html", name: "حنا فروشنده", icon: "/pwa/seller-icon-512.png" },
 } as const;
 function select(role: string) {
   return role === "buyer" || role === "seller" ? applications[role] : null;
@@ -36,7 +36,7 @@ export default async function InstallPwaPage({params}: Props) {
         <div className={styles.container}>
           <span className={styles.eyebrow}>نسخه وب قابل نصب (PWA)</span>
           <h1>نصب اپلیکیشن {app.label} حنا</h1>
-          <p className={styles.description}>نسخه وب‌اپ {app.label} حنا را با نام و آیکون اختصاصی به صفحه اصلی اضافه کنید. در اندروید و Chrome امکان نصب مستقیم وجود دارد؛ در آیفون، آن را از Safari به صفحه اصلی اضافه کنید.</p>
+          <p className={styles.description}>نسخه اپلیکیشن {app.label} حنا را با نام و آیکون اختصاصی نصب کنید. پس از باز کردن آیکون، خود اپ مستقیماً اجرا می‌شود. در اندروید و Chrome امکان نصب مستقیم وجود دارد؛ در آیفون، آن را از Safari به صفحه اصلی اضافه کنید.</p>
           <PwaActivation startUrl={app.start} label={app.label} />
           <section className={styles.steps} aria-label="مراحل نصب در اندروید و Chrome">
             <h2>نصب در اندروید و Chrome</h2>
@@ -55,9 +55,9 @@ export default async function InstallPwaPage({params}: Props) {
               <li>گزینه <strong>Open as Web App</strong> را روشن نگه دارید و روی <strong>افزودن (Add)</strong> بزنید.</li>
             </ol>
           </section>
-          <p className={styles.notice}>این نسخه به اینترنت نیاز دارد. نصب PWA فقط میان‌بری مستقل برای نسخه وب است؛ ورود، دسترسی‌ها و امکانات به حساب فروشنده یا خریدار وابسته‌اند. پرداخت و فروش واقعی در این پیش‌نمایش فعال نیست.</p>
+          <p className={styles.notice}>این اپ برای نمایش به اینترنت نیاز دارد. ورود نمایشی بدون ارسال پیامک انجام می‌شود؛ داده‌ها نمونه‌ای هستند و خرید، پرداخت یا فروش واقعی در این پیش‌نمایش فعال نیست.</p>
           <div className={styles.links}>
-            <Link href={app.start}>ورود به نسخه وب {app.label}</Link>
+            <Link href={app.start}>بازکردن اپ {app.label}</Link>
             <Link href="/download">بازگشت به دریافت اپلیکیشن</Link>
           </div>
         </div>
