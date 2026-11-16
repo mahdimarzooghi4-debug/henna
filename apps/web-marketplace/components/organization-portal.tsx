@@ -199,7 +199,7 @@ export function OrganizationPortalScreen({ screen, allocationId, programId }: { 
     {data.loading ? <p role="status">در حال دریافت اطلاعات سازمان…</p>
       : data.error ? <Notice tone="warning">{data.error}</Notice>
       : data.profiles.length === 0 ? <Notice>برای این حساب، پروفایل سازمانی در دسترس نیست.</Notice>
-      : <div className={styles.profileGrid}>{data.profiles.map(profile => <Card key={profile.membershipId} title="شناسه و اطلاعات هویتی سازمان">
+      : <div className={styles.profileGrid}>{data.profiles.map(profile => <Card key={profile.membershipId} title={profile.organizationName}>
         <DataRows rows={[
           ["عنوان سازمان", profile.organizationName],
           ["شناسه عضویت سازمانی", profile.membershipId],
