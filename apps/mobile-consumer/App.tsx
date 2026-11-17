@@ -6,7 +6,6 @@ import {
   Image,
   Linking,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StatusBar,
@@ -36,18 +35,15 @@ type ViewState = MobileAuthView;
 const logo = require("./assets/hana-app-logo.png");
 const backIcon = require("./assets/back.png");
 const tokenKey = "hana.consumer.session.v1";
-const secureOptions = {
-  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-};
 
-// Expo SecureStore uses iOS Keychain / Android Keystore-backed encrypted storage.
+// Android SecureStore encrypts the persisted bearer with the Android Keystore.
 // Keep the bearer OUT of React state, console, AsyncStorage and Expo public config.
 const auth = new MobileAuthClient(
   process.env.EXPO_PUBLIC_HANA_API_BASE_URL,
   {
-    read: () => SecureStore.getItemAsync(tokenKey, secureOptions),
-    write: (token) => SecureStore.setItemAsync(tokenKey, token, secureOptions),
-    remove: () => SecureStore.deleteItemAsync(tokenKey, secureOptions),
+    read: () => SecureStore.getItemAsync(tokenKey),
+    write: (token) => SecureStore.setItemAsync(tokenKey, token),
+    remove: () => SecureStore.deleteItemAsync(tokenKey),
   },
   fetch,
   Date.now,
@@ -219,10 +215,7 @@ function ConsumerAuthScreen({ onBrowse }: { onBrowse: () => void }) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.cream} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView style={styles.flex}>
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.content}
