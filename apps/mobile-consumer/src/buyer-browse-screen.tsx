@@ -14,6 +14,9 @@ import {
 } from "./buyer-browse-controller.ts";
 import { colors } from "./theme";
 import { FigmaIcon } from "./figma-icon";
+import { BuyerCatalogFilterSheet } from "./buyer-catalog-filter-sheet";
+import { BuyerCatalogState } from "./buyer-catalog-state";
+import { EMPTY_PREVIEW_CATALOG_FILTERS, passesPreviewCatalogFilters, previewCatalogFilterCount, type PreviewCatalogFilters } from "./buyer-catalog-preview-filters.ts";
 import { BuyerPreviewAccount, initialPreviewAccount, type PreviewAccountState, type PreviewAccountPage } from "./buyer-preview-account";
 import { BuyerPreviewPurchase, type PreviewPurchasePage, type PreviewOrder } from "./buyer-preview-purchase";
 import { changePreviewQuantity, previewCartCount, previewCartTotal, previewPrices, type PreviewCart, type PreviewProductKey } from "./preview-cart.ts";
@@ -92,6 +95,8 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const [accountReturn,setAccountReturn] = useState<"checkout"|null>(null);
   const [previewDetail, setPreviewDetail] = useState<PreviewProductKey | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [catalogFilterOpen,setCatalogFilterOpen] = useState(false);
+  const [appliedPreviewFilters,setAppliedPreviewFilters] = useState<PreviewCatalogFilters>(EMPTY_PREVIEW_CATALOG_FILTERS);
   const suggestionsY = useRef(0);
   const count = previewCartCount(previewCart);
   const changeQuantity = (key: PreviewProductKey, delta: number) => {
@@ -101,7 +106,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     if (designPreview) setPreviewPage(page); else actual();
   };
   useEffect(() => {
-    if (!designPreview) { setPreviewCart({}); setPreviewAccount(initialPreviewAccount); setPreviewOrders([]); setSelectedPreviewOrder(null); setLegalPreview(false); setAccountReturn(null); setPreviewPage(null); setPreviewDetail(null); setFilterOpen(false); setCatalogOpen(false); }
+    if (!designPreview) { setPreviewCart({}); setPreviewAccount(initialPreviewAccount); setPreviewOrders([]); setSelectedPreviewOrder(null); setLegalPreview(false); setAccountReturn(null); setPreviewPage(null); setPreviewDetail(null); setFilterOpen(false); setCatalogFilterOpen(false); setAppliedPreviewFilters(EMPTY_PREVIEW_CATALOG_FILTERS); setCatalogOpen(false); }
   }, [designPreview]);
   const designProducts = homeDesignProducts.filter(product =>
     (!designQuery || product.name.includes(designQuery) || product.category.includes(designQuery)) &&
@@ -109,18 +114,19 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     (!designBadge || product.badge === designBadge));
   const catalogProducts = (["oil","rice","yogurt","cheese","tea"] as const).flatMap(key => homeDesignProducts.filter(item => item.key === key)).filter(item =>
     (!designQuery || item.name.includes(designQuery) || item.category.includes(designQuery)) &&
-    (!designCategory || item.category === designCategory) && (!catalogOffers || item.badge === "طرح ویژه" || item.badge === "٪ تخفیف"));
+    (!designCategory || item.category === designCategory) && (!catalogOffers || item.badge === "طرح ویژه" || item.badge === "٪ تخفیف"))
+    .filter(item => passesPreviewCatalogFilters({priceToman:previewPrices[item.key],badge:item.badge},appliedPreviewFilters));
   const displayedCatalogProducts = catalogSort ? [...catalogProducts].sort((a,b)=>previewPrices[a.key]-previewPrices[b.key]) : catalogProducts;
   const scroll = useRef<ScrollView>(null);
   const scrollToSuggestions = () => scroll.current?.scrollTo({ y: suggestionsY.current, animated: true });
-  const resetFilters = () => { setDesignBadge(null); setDesignCategory(null); setDesignQuery(""); setDraftSearch(""); setSearchError(""); };
+  const resetFilters = () => { setDesignBadge(null); setDesignCategory(null); setDesignQuery(""); setDraftSearch(""); setSearchError(""); setAppliedPreviewFilters(EMPTY_PREVIEW_CATALOG_FILTERS); };
 
   const openCatalog = () => {
     resetFilters(); setCatalogPanel(false); setCatalogOffers(false); setCatalogSort(false);
     if (!designPreview) controller.restoreLocation({categoryId:null,search:"",page:1});
     setCatalogOpen(true); setPreviewPage(null); scroll.current?.scrollTo({y:0,animated:false});
   };
-  const returnHome = () => { setCatalogOpen(false); setPreviewPage(null); setAccountReturn(null); setCatalogPanel(false); setFilterOpen(false); scroll.current?.scrollTo({y:0,animated:false}); };
+  const returnHome = () => { setCatalogOpen(false); setPreviewPage(null); setAccountReturn(null); setCatalogPanel(false); setFilterOpen(false); setCatalogFilterOpen(false); scroll.current?.scrollTo({y:0,animated:false}); };
   const openPreviewDetail = (key:PreviewProductKey) => { setPreviewDetail(key); setDetailQuantity(1); setPreviewPage("detail"); };
   const openAccountAction = (action: () => void) => { setAccountMenuOpen(false); action(); };
   const onAccount = isSignedIn ? onLogout : onLogin;
@@ -256,7 +262,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
           {previewSession && !designPreview ? <Text style={styles.previewNotice}>ورود آزمایشی · کاتالوگ عمومی</Text> : null}
 
           <View style={styles.searchRow}>
-            <Pressable accessibilityRole="button" accessibilityLabel="فیلترهای جست‌وجو" onPress={() => { if (catalogOpen) setCatalogPanel(value=>!value); else if (designPreview) setFilterOpen(value=>!value); else scrollToSuggestions(); }} style={styles.searchTool}>
+            <Pressable accessibilityRole="button" accessibilityLabel="فیلترهای جست‌وجو" onPress={() => { if (catalogOpen) setCatalogFilterOpen(true); else if (designPreview) setFilterOpen(value=>!value); else scrollToSuggestions(); }} style={styles.searchTool}>
               <FigmaIcon name="sliders" size={18} color="#8E8E93" />
             </Pressable>
             <TextInput accessibilityLabel="جست‌وجو در نام کالاها" style={styles.searchInput}
@@ -271,19 +277,19 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
           {catalogOpen ? <>
             <View style={styles.filters}>
               {designPreview && <Pressable accessibilityRole="button" onPress={()=>{resetFilters();setCatalogOffers(false);}} style={styles.filterChip}><Text style={styles.filterText}>نمونه کالا</Text></Pressable>}
-              <Pressable accessibilityRole="button" accessibilityState={{expanded:catalogPanel}} onPress={()=>setCatalogPanel(v=>!v)} style={styles.filterChip}><Text style={styles.filterText}>دسته‌بندی‌ها</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityState={{expanded:catalogPanel}} onPress={()=>designPreview?setCatalogFilterOpen(true):setCatalogPanel(v=>!v)} style={styles.filterChip}><Text style={styles.filterText}>دسته‌بندی‌ها</Text></Pressable>
               {designPreview && <Pressable accessibilityRole="button" accessibilityState={{selected:catalogOffers}} onPress={()=>setCatalogOffers(v=>!v)} style={[styles.filterChip,catalogOffers&&styles.filterChipActive]}><Text style={[styles.filterText,catalogOffers&&styles.filterTextActive]}>پیشنهادها</Text></Pressable>}
             </View>
-            <View style={styles.catalogControls}><Pressable accessibilityRole="button" accessibilityLabel="مرتب‌سازی نمونه‌ها" disabled={!designPreview} onPress={()=>setCatalogSort(v=>!v)}><Text style={styles.emptyText}>{designPreview ? (catalogSort?"مرتب‌سازی: کمترین قیمت نمونه":"مرتب‌سازی: ترتیب طرح") : "ترتیب کاتالوگ"}</Text></Pressable><Pressable accessibilityRole="button" onPress={()=>setCatalogPanel(v=>!v)}><Text style={styles.designPrice}>فیلتر پیشرفته</Text></Pressable></View>
+            <View style={styles.catalogControls}><Pressable accessibilityRole="button" accessibilityLabel="مرتب‌سازی نمونه‌ها" disabled={!designPreview} onPress={()=>setCatalogSort(v=>!v)}><Text style={styles.emptyText}>{designPreview ? (catalogSort?"مرتب‌سازی: کمترین قیمت نمونه":"مرتب‌سازی: ترتیب طرح") : "ترتیب کاتالوگ"}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="فیلتر پیشرفته" onPress={()=>setCatalogFilterOpen(true)}><Text style={styles.designPrice}>فیلتر پیشرفته{designPreview&&previewCatalogFilterCount(designCategory,appliedPreviewFilters)>0?" ("+persianNumber(previewCatalogFilterCount(designCategory,appliedPreviewFilters))+")":""}</Text></Pressable></View>
             {catalogPanel && <View style={[styles.previewPanel,{marginHorizontal:20}]}><Text style={styles.emptyTitle}>دسته‌بندی‌ها</Text><View style={styles.catalogChips}>{designPreview ? homeDesignCategories.map(name=><Pressable key={name} accessibilityRole="button" accessibilityState={{selected:designCategory===name}} onPress={()=>setDesignCategory(v=>v===name?null:name)} style={[styles.filterChip,designCategory===name&&styles.filterChipActive]}><Text style={[styles.filterText,designCategory===name&&styles.filterTextActive]}>{name}</Text></Pressable>) : categories.status==="ok" ? categories.data.map(category=><Pressable key={category.id} accessibilityRole="button" accessibilityState={{selected:browse.categoryId===category.id}} onPress={()=>controller.chooseCategory(category.id)} style={[styles.filterChip,browse.categoryId===category.id&&styles.filterChipActive]}><Text style={[styles.filterText,browse.categoryId===category.id&&styles.filterTextActive]}>{category.name}</Text></Pressable>) : <Text style={styles.emptyText}>دسته‌بندی‌ها در دسترس نیستند.</Text>}</View><Pressable accessibilityRole="button" onPress={()=>{resetFilters();setCatalogOffers(false);if(!designPreview)controller.restoreLocation({categoryId:null,search:"",page:1});setCatalogPanel(false);}}><Text style={styles.sectionLink}>پاک کردن فیلترها</Text></Pressable></View>}
             {designPreview ? <>
               <Text style={styles.designNotice}>محصولات و قیمت‌ها نمونه‌اند؛ خرید واقعی فعال نیست</Text>
-              {displayedCatalogProducts.length===0 ? <View style={styles.emptyProducts}><Text style={styles.emptyTitle}>کالایی برای این جست‌وجو پیدا نشد</Text></View> : <View style={styles.catalogGrid}>{displayedCatalogProducts.map(product=><View key={product.key} style={styles.catalogCard}>
+              {displayedCatalogProducts.length===0 ? <BuyerCatalogState kind="no-results" onAction={()=>{resetFilters();setCatalogOffers(false);}} /> : <View style={styles.catalogGrid}>{displayedCatalogProducts.map(product=><View key={product.key} style={styles.catalogCard}>
                 <Pressable accessibilityRole="button" accessibilityLabel={"جزئیات "+product.name} onPress={()=>openPreviewDetail(product.key)} style={styles.catalogImageWrap}><Image source={product.image} resizeMode="cover" style={styles.catalogImage}/><View style={styles.designBadge}><Text style={styles.designBadgeText}>نمونه کالا</Text></View></Pressable>
                 <Text style={styles.designProductName} numberOfLines={2}>{product.key==="rice"?"برنج طارم ایرانی درجه یک":product.key==="yogurt"?"ماست کم‌چرب پاستوریزه":product.name}</Text><Text style={styles.emptyText}>{product.category}</Text><Text style={styles.catalogPrice}>{product.price}</Text>
                 <Pressable accessibilityRole="button" accessibilityLabel={"افزودن "+product.name} onPress={()=>changeQuantity(product.key,1)} style={styles.designAddButton}><FigmaIcon name="plus" size={12}/><Text style={styles.addButtonText}>افزودن{previewCart[product.key]?" ("+persianNumber(previewCart[product.key]??0)+")":""}</Text></Pressable>
               </View>)}</View>}
-            </> : products.status==="loading" ? <View style={styles.emptyProducts}><Text style={styles.emptyText}>در حال دریافت کالاها…</Text></View> : products.status==="unavailable" ? <View style={styles.emptyProducts}><Text style={styles.emptyText}>کاتالوگ در دسترس نیست.</Text><Pressable accessibilityRole="button" onPress={()=>void controller.refreshProducts()}><Text style={styles.sectionLink}>تلاش دوباره</Text></Pressable></View> : products.data.items.length===0 ? <View style={styles.emptyProducts}><Text style={styles.emptyTitle}>کالایی برای نمایش وجود ندارد</Text></View> : <><View style={styles.catalogGrid}>{products.data.items.map(product=><View key={product.id} style={styles.catalogCard}><Pressable accessibilityRole="button" accessibilityLabel={"جزئیات "+product.name} onPress={()=>setDetailId(product.id)} style={styles.productImagePlaceholder}><Text style={styles.productPlaceholderGlyph}>✿</Text></Pressable><Text style={styles.designProductName}>{product.name}</Text><Text style={styles.emptyText}>{product.kind==="SERVICE"?"خدمت":"کالا"}</Text><Pressable accessibilityRole="button" accessibilityLabel={"افزودن "+product.name} onPress={()=>onCart(product.id)} style={styles.designAddButton}><Text style={styles.addButtonText}>افزودن</Text></Pressable></View>)}</View><View style={styles.catalogControls}><Pressable accessibilityRole="button" disabled={browse.page<=1} onPress={()=>controller.previousPage()}><Text style={styles.sectionLink}>صفحه قبل</Text></Pressable><Text style={styles.emptyText}>{persianNumber(browse.page)}</Text><Pressable accessibilityRole="button" disabled={browse.page*BROWSE_PAGE_SIZE>=products.data.total} onPress={()=>controller.nextPage()}><Text style={styles.sectionLink}>صفحه بعد</Text></Pressable></View></>}
+            </> : products.status==="loading" ? <BuyerCatalogState kind="loading" /> : products.status==="unavailable" ? <BuyerCatalogState kind="error" onAction={()=>void controller.refreshProducts()} /> : products.data.items.length===0 ? <BuyerCatalogState kind={browse.search||browse.categoryId?"no-results":"empty"} onAction={()=>{controller.restoreLocation({categoryId:null,search:"",page:1});setDraftSearch("");}} /> : <><View style={styles.catalogGrid}>{products.data.items.map(product=><View key={product.id} style={styles.catalogCard}><Pressable accessibilityRole="button" accessibilityLabel={"جزئیات "+product.name} onPress={()=>setDetailId(product.id)} style={styles.productImagePlaceholder}><Text style={styles.productPlaceholderGlyph}>✿</Text></Pressable><Text style={styles.designProductName}>{product.name}</Text><Text style={styles.emptyText}>{product.kind==="SERVICE"?"خدمت":"کالا"}</Text><Pressable accessibilityRole="button" accessibilityLabel={"افزودن "+product.name} onPress={()=>onCart(product.id)} style={styles.designAddButton}><Text style={styles.addButtonText}>افزودن</Text></Pressable></View>)}</View><View style={styles.catalogControls}><Pressable accessibilityRole="button" disabled={browse.page<=1} onPress={()=>controller.previousPage()}><Text style={styles.sectionLink}>صفحه قبل</Text></Pressable><Text style={styles.emptyText}>{persianNumber(browse.page)}</Text><Pressable accessibilityRole="button" disabled={browse.page*BROWSE_PAGE_SIZE>=products.data.total} onPress={()=>controller.nextPage()}><Text style={styles.sectionLink}>صفحه بعد</Text></Pressable></View></>}
           </> : <>
           {designPreview && filterOpen && <View style={styles.previewPanel}><Text style={styles.emptyTitle}>فیلترهای جست‌وجو</Text><Text style={styles.emptyText}>دسته و نوع پیشنهاد را انتخاب کنید.</Text><Pressable accessibilityRole="button" onPress={() => { resetFilters(); setFilterOpen(false); }}><Text style={styles.sectionLink}>پاک کردن فیلترها</Text></Pressable></View>}
 
@@ -387,6 +393,14 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
         {bottomNavigation}
 
       </KeyboardAvoidingView>
+      <BuyerCatalogFilterSheet visible={catalogFilterOpen} preview={designPreview}
+       categories={designPreview?homeDesignCategories.map(name=>({id:name,label:name})):
+        categories.status==="ok"?categories.data.map(item=>({id:item.id,label:item.name})):[]}
+       selectedCategory={designPreview?designCategory:browse.categoryId}
+       applied={appliedPreviewFilters} onClose={()=>setCatalogFilterOpen(false)}
+       onApply={(category,filters)=>{if(designPreview){setDesignCategory(category);setAppliedPreviewFilters(filters);}
+        else if(categories.status==="ok")controller.chooseCategory(category);
+        setCatalogPanel(false);setCatalogFilterOpen(false);}}/>
     </SafeAreaView>
   );
 }
