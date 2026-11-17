@@ -3,11 +3,11 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import styles from "./orders/orders-review.module.css";
 const assets = "/seller-panel/";
-const menu = ["داشبورد", "سفارش‌ها", "کالاها", "کتابخانه تصاویر", "موجودی و دسترس‌پذیری", "قیمت‌گذاری", "طرح‌ها و اعتبارها", "ارسال و محدوده فعالیت", "تسویه‌حساب‌ها", "گزارش‌ها", "اعلان‌ها", "اطلاعات کسب‌وکار", "پشتیبانی", "تنظیمات"];
-const icons = ["imgIcon", "imgIcon1", "imgIcon2", "imgIcon3", "imgIcon4", "imgIcon5", "imgIcon6", "imgIcon7", "imgIcon8", "imgIcon9", "imgBell", "imgIcon10", "imgIcon11", "imgIcon12"];
+const menu = ["داشبورد", "سفارش‌ها", "کالاها", "کتابخانه تصاویر", "موجودی و دسترس‌پذیری", "قیمت‌گذاری", "ارسال و محدوده فعالیت", "تسویه‌حساب‌ها", "گزارش‌ها", "اعلان‌ها", "اطلاعات کسب‌وکار", "پشتیبانی", "تنظیمات"];
+const icons = ["imgIcon", "imgIcon1", "imgIcon2", "imgIcon3", "imgIcon4", "imgIcon5", "imgIcon7", "imgIcon8", "imgIcon9", "imgBell", "imgIcon10", "imgIcon11", "imgIcon12"];
 
 export function SellerPanelShell({ active, children }: {active: string; children: ReactNode}) {
- const sections = ["dashboard", "orders", "products", "images", "inventory", "pricing", "programs", "delivery", "settlements", "reports", "notifications", "business", "support", "settings"];
+ const sections = ["dashboard", "orders", "products", "images", "inventory", "pricing", "delivery", "settlements", "reports", "notifications", "business", "support", "settings"];
  const activeIndex = sections.indexOf(active === "listing" ? "products" : active === "order-detail" ? "orders" : active);
  const activeAssetBase = active === "dashboard" ? "/seller-panel/dashboard/" : assets;
  const [notice,setNotice] = useState("");
