@@ -238,7 +238,7 @@ async function main() {
   await page.goto(base + resumedBookmark);
   await page.getByRole("button", {
     name: "دستهٔ منتشرشدهٔ دو",
-  }).waitFor();
+  }).first().waitFor();
   publishedCategories = [categories[0]];
   await page.evaluate(() => window.dispatchEvent(
     new PageTransitionEvent("pageshow", { persisted: true }),
