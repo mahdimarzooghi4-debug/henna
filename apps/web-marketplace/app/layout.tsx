@@ -6,7 +6,7 @@ import "./globals.css";
 import "./buyer-offers.css";
 
 export const metadata: Metadata = {
-  title: "حنا | حمایت‌های نوآورانه اجتماعی",
+  title: "حنا(حمایت های نوآورانه اجتماعی)",
   description: "حنا، سامانه حمایت‌های نوآورانه اجتماعی",
 };
 
