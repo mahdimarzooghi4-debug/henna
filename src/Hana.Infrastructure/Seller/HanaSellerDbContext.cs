@@ -17,6 +17,8 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
         Set<SellerApplicationAmendmentRecord>();
     public DbSet<SellerActivationRecord> SellerActivations =>
         Set<SellerActivationRecord>();
+    public DbSet<SellerOfferDraftRecord> OfferDrafts =>
+        Set<SellerOfferDraftRecord>();
     public DbSet<SellerBusinessCategoryRecord> BusinessCategories =>
         Set<SellerBusinessCategoryRecord>();
     public DbSet<SellerBusinessCategoryImportReceipt> BusinessCategoryImportReceipts =>
@@ -323,6 +325,45 @@ public sealed class HanaSellerDbContext(DbContextOptions<HanaSellerDbContext> op
                 .HasForeignKey(x => x.ApplicationAccountId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_application_reviews_registration_drafts");
+        });
+
+        modelBuilder.Entity<SellerOfferDraftRecord>(entity =>
+        {
+            entity.ToTable("offer_drafts", table =>
+            {
+                table.HasCheckConstraint("ck_offer_drafts_status",
+                    "status = 'DRAFT'");
+                table.HasCheckConstraint("ck_offer_drafts_revision",
+                    "revision >= 1");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id")
+                .ValueGeneratedNever();
+            entity.Property(x => x.SellerAccountId)
+                .HasColumnName("seller_account_id").IsRequired();
+            entity.Property(x => x.CatalogProductId)
+                .HasColumnName("catalog_product_id").IsRequired();
+            entity.Property(x => x.Status).HasColumnName("status")
+                .HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Revision).HasColumnName("revision")
+                .IsRequired();
+            entity.Property(x => x.IdempotencyKey)
+                .HasColumnName("idempotency_key").IsRequired();
+            entity.Property(x => x.CreatedAtUtc)
+                .HasColumnName("created_at_utc").IsRequired();
+            entity.Property(x => x.UpdatedAtUtc)
+                .HasColumnName("updated_at_utc").IsRequired();
+            entity.HasIndex(x => new { x.SellerAccountId, x.IdempotencyKey })
+                .IsUnique()
+                .HasDatabaseName("ux_offer_drafts_seller_idempotency");
+            entity.HasIndex(x => new { x.SellerAccountId, x.CreatedAtUtc, x.Id })
+                .HasDatabaseName("ix_offer_drafts_seller_created");
+            entity.HasIndex(x => x.CatalogProductId)
+                .HasDatabaseName("ix_offer_drafts_catalog_product");
+            entity.HasOne<SellerRegistrationDraft>().WithMany()
+                .HasForeignKey(x => x.SellerAccountId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_offer_drafts_registration_drafts_seller");
         });
     }
 }
