@@ -102,8 +102,11 @@ async function main() {
   await page.getByRole("heading", { name: /با اثری فراتر از خرید/ }).waitFor();
 
   await page.goto(base + "/products");
-  // The current product-only catalog empty state is asserted by its heading below.
-  await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
+  // An empty live catalog deliberately falls back to the approved, clearly
+  // labeled Figma preview. It must not be mistaken for real catalog data.
+  await page.locator(".buyer-product").first().waitFor();
+  assert.ok(await page.getByText("نمونه فیگما").count() > 0);
+  assert.equal(await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).count(), 0);
   assert.equal(await page.getByRole("link", { name: "صفحه اصلی حنا" }).count(), 1);
   assert.equal(await page.getByText("عنوان واقعی API در تست 1").count(), 0);
 
