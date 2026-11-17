@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { parseBuyerProduct, validBuyerProductId, type BuyerProduct } from "../lib/buyer-catalog";
-import { parseCartOfferComparison, parseReferenceCart, type CartOfferComparison, type ReferenceCart } from "../lib/buyer-cart";
+import { parseCartOfferComparison, parsePurchaseDraft, parseReferenceCart, type CartOfferComparison, type PurchaseDraft, type ReferenceCart } from "../lib/buyer-cart";
 
 type CartState = { status: "loading" | "signed-out" | "error" } | { status: "ready"; cart: ReferenceCart };
 async function readCart(): Promise<ReferenceCart> {
@@ -181,12 +181,20 @@ type CartOfferState =
   | { status: "loading"; revision: number }
   | { status: "unavailable"; revision: number }
   | { status: "ready"; revision: number; data: CartOfferComparison };
+type PurchaseDraftState = { status: "loading" | "unavailable" } | { status: "ready"; data: PurchaseDraft };
 
 function BuyerCartOffers({ cart, products }: {
   cart: ReferenceCart; products: Record<string, ProductView>;
 }) {
   const [retry, setRetry] = useState(0);
+  const [draftRetry, setDraftRetry] = useState(0);
   const [state, setState] = useState<CartOfferState>({ status: "loading", revision: cart.revision });
+  const [draftState, setDraftState] = useState<PurchaseDraftState>({ status: "loading" });
+  const [editorSeller, setEditorSeller] = useState<string | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [confirmChangedPrice, setConfirmChangedPrice] = useState(false);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [draftMessage, setDraftMessage] = useState("");
   const current: CartOfferState = state.revision === cart.revision
     ? state : { status: "loading", revision: cart.revision };
   useEffect(() => {
@@ -210,10 +218,88 @@ function BuyerCartOffers({ cart, products }: {
     return () => { active = false; abort.abort(); };
   }, [cart.revision, retry]);
 
+  useEffect(() => {
+    const abort = new AbortController(); let active = true;
+    setDraftState({ status: "loading" });
+    void fetch("/api/buyer/cart/purchase-draft", { method: "GET", cache: "no-store", credentials: "same-origin", redirect: "error", headers: { Accept: "application/json", "Cache-Control": "no-store" }, signal: abort.signal })
+      .then(async response => {
+        if (response.status !== 200 || !response.headers.get("content-type")?.includes("application/json")) throw Error();
+        const data = parsePurchaseDraft(await response.json() as unknown); if (!data) throw Error();
+        if (active) {
+          setDraftState({ status: "ready", data });
+          if (data.sellerPublicId && data.lines.length) {
+            setEditorSeller(data.sellerPublicId);
+            setSelectedProducts(new Set(data.lines.map(line => line.productId)));
+          }
+        }
+      }).catch(() => { if (active) setDraftState({ status: "unavailable" }); });
+    return () => { active = false; abort.abort(); };
+  }, [cart.revision, draftRetry]);
+
   const title = (productId: string) => {
     const product = products[productId];
     return product?.status === "ok" ? product.product.name : "کالای سبد مرجع";
   };
+  const savedDraft = draftState.status === "ready" ? draftState.data : null;
+  const readyDraft = draftState.status === "ready" ? draftState.data : null;
+  const currentOfferFor = (sellerId: string, productId: string) => current.status === "ready"
+    ? current.data.sellers.find(seller => seller.sellerPublicId === sellerId)?.offers.find(offer => offer.productId === productId)
+    : undefined;
+  const priceNeedsConfirmation = !!savedDraft && savedDraft.sellerPublicId === editorSeller &&
+    savedDraft.lines.some(line => line.priceChanged && selectedProducts.has(line.productId));
+
+  function chooseSeller(sellerId: string) {
+    setEditorSeller(sellerId);
+    const existing = savedDraft?.sellerPublicId === sellerId ? savedDraft.lines.map(line => line.productId) : [];
+    setSelectedProducts(new Set(existing)); setConfirmChangedPrice(false); setDraftMessage("");
+  }
+  function toggleProduct(productId: string, checked: boolean) {
+    setSelectedProducts(previous => { const next = new Set(previous); if (checked) next.add(productId); else next.delete(productId); return next; });
+    setConfirmChangedPrice(false);
+  }
+  async function savePurchaseDraft() {
+    if (current.status !== "ready" || !editorSeller || selectedProducts.size === 0 || !savedDraft) return;
+    if (priceNeedsConfirmation && !confirmChangedPrice) { setDraftMessage("قیمت تغییرکرده را بررسی و تأیید کنید."); return; }
+    const seller = current.data.sellers.find(x => x.sellerPublicId === editorSeller);
+    const lines = seller?.offers.filter(offer => selectedProducts.has(offer.productId) && offer.coversRequestedQuantity) ?? [];
+    if (!seller || lines.length !== selectedProducts.size) { setDraftMessage("پیشنهاد فعلی برای همهٔ اقلام انتخاب‌شده کامل نیست؛ مقایسه را بازخوانی کنید."); return; }
+    setDraftBusy(true); setDraftMessage("");
+    try {
+      const response = await fetch("/api/buyer/cart/purchase-draft", {
+        method: "PUT", cache: "no-store", credentials: "same-origin", redirect: "error",
+        headers: { Accept: "application/json", "Content-Type": "application/json", "Cache-Control": "no-store", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ revision: savedDraft.revision, cartRevision: cart.revision, sellerPublicId: editorSeller, confirmCurrentPriceChanges: confirmChangedPrice,
+          lines: lines.map(line => ({ productId: line.productId, offerId: line.offerId, expectedPriceRials: line.priceRials })) }),
+      });
+      if (response.status === 409) {
+        const conflict = await response.json() as { code?: string };
+        setDraftMessage(conflict.code === "PRICE_CHANGED" || conflict.code === "PRICE_CONFIRMATION_REQUIRED" ? "قیمت تغییر کرده است؛ قیمت جدید را بررسی و صریحاً تأیید کنید." : conflict.code === "OFFER_UNAVAILABLE" ? "پیشنهاد دیگر منتشرشده یا برای مقدار کامل کافی نیست؛ مقایسه را بازخوانی کنید." : "سبد یا پیش‌نویس تغییر کرده است؛ وضعیت تازه دریافت شد.");
+        setRetry(n => n + 1); setDraftRetry(n => n + 1); return;
+      }
+      if (response.status !== 200) throw Error();
+      const next = parsePurchaseDraft(await response.json() as unknown); if (!next) throw Error();
+      setDraftState({ status: "ready", data: next }); setEditorSeller(next.sellerPublicId); setSelectedProducts(new Set(next.lines.map(line => line.productId)));
+      setConfirmChangedPrice(false); setDraftMessage("پیش‌نویس ذخیره شد؛ هنوز به فروشنده ارسال نشده و سفارش نیست.");
+    } catch { setDraftMessage("ذخیرهٔ پیش‌نویس تأیید نشد؛ دوباره تلاش کنید."); }
+    finally { setDraftBusy(false); }
+  }
+  async function clearPurchaseDraft() {
+    if (!savedDraft || !savedDraft.sellerPublicId) return;
+    setDraftBusy(true); setDraftMessage("");
+    try {
+      const response = await fetch("/api/buyer/cart/purchase-draft", {
+        method: "DELETE", cache: "no-store", credentials: "same-origin", redirect: "error",
+        headers: { Accept: "application/json", "Content-Type": "application/json", "Cache-Control": "no-store", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ revision: savedDraft.revision }),
+      });
+      if (response.status === 409) { setDraftMessage("پیش‌نویس تغییر کرده است؛ وضعیت تازه دریافت شد."); setDraftRetry(n => n + 1); return; }
+      if (response.status !== 200) throw Error();
+      const next = parsePurchaseDraft(await response.json() as unknown); if (!next) throw Error();
+      setDraftState({ status: "ready", data: next }); setEditorSeller(null); setSelectedProducts(new Set()); setConfirmChangedPrice(false);
+      setDraftMessage("پیش‌نویس حذف شد؛ سبد مرجع تغییری نکرد.");
+    } catch { setDraftMessage("حذف پیش‌نویس تأیید نشد."); }
+    finally { setDraftBusy(false); }
+  }
   return <section className="buyer-cart-comparison" aria-labelledby="buyer-cart-comparison-title">
     <div className="buyer-cart-comparison__head">
       <div><h2 id="buyer-cart-comparison-title">مقایسهٔ پیشنهادهای فروشندگان</h2>
@@ -233,6 +319,7 @@ function BuyerCartOffers({ cart, products }: {
           {current.data.sellers.length === 0 ? <p className="buyer-cart-comparison__status">برای اقلام قابل‌مقایسه، پیشنهاد منتشرشده‌ای دریافت نشد.</p> :
             <div className="buyer-cart-comparison__sellers">{current.data.sellers.map(seller => {
               const covered = seller.offers.length === current.data.items.length && seller.offers.every(offer => offer.coversRequestedQuantity);
+              const isEditing = editorSeller === seller.sellerPublicId;
               return <article className="buyer-cart-comparison__seller" key={seller.sellerPublicId}>
                 <div className="buyer-cart-comparison__seller-head"><h3>{seller.sellerName}</h3><span className={covered ? "is-covered" : "is-partial"}>{covered ? "پوشش کامل مقدار درخواستی" : "پوشش کامل ندارد"}</span></div>
                 <ul>{seller.offers.map(offer => <li key={offer.offerId}>
@@ -241,11 +328,25 @@ function BuyerCartOffers({ cart, products }: {
                   <span>مقدار اعلام‌شده: {formatQuantity(offer.sellableQuantity, offer.quantityScale)} {offer.unitName}</span>
                   <span>{offer.coversRequestedQuantity ? "برای مقدار درخواستی کافی است" : `برای مقدار درخواستی (${formatQuantity(offer.requestedQuantity, offer.quantityScale)} ${offer.unitName}) کافی نیست`}</span>
                   <small>به‌روزرسانی پیشنهاد: {new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(offer.updatedAtUtc))} UTC</small>
+                  {isEditing && <label className="buyer-purchase-draft__line"><input type="checkbox" disabled={!offer.coversRequestedQuantity || draftBusy} checked={selectedProducts.has(offer.productId)} onChange={event => toggleProduct(offer.productId, event.target.checked)} /> افزودن مقدار کامل این قلم به پیش‌نویس</label>}
                 </li>)}</ul>
+                <button className="buyer-purchase-draft__choose" type="button" disabled={draftBusy} onClick={() => isEditing ? (setEditorSeller(null), setSelectedProducts(new Set())) : chooseSeller(seller.sellerPublicId)}>{isEditing ? "بستن انتخاب این فروشنده" : savedDraft?.sellerPublicId === seller.sellerPublicId ? "ویرایش پیش‌نویس این فروشنده" : "انتخاب این فروشنده برای پیش‌نویس"}</button>
+                {isEditing && <div className="buyer-purchase-draft__editor">
+                  <p>اقلامی که این فروشنده پوشش نمی‌دهد یا انتخاب نمی‌کنید در سبد مرجع باقی می‌مانند. مقدارها خودکار کم یا تقسیم نمی‌شوند.</p>
+                  {priceNeedsConfirmation && <label className="buyer-purchase-draft__confirm"><input type="checkbox" checked={confirmChangedPrice} onChange={event => setConfirmChangedPrice(event.target.checked)} /> قیمت جدیدِ نمایش‌داده‌شده را بررسی و برای این پیش‌نویس تأیید می‌کنم.</label>}
+                  <button type="button" disabled={draftBusy || selectedProducts.size === 0} onClick={() => void savePurchaseDraft()}>{draftBusy ? "در حال ذخیره…" : "ذخیرهٔ پیش‌نویس"}</button>
+                </div>}
               </article>;
             })}</div>}
         </>}
-    <p className="buyer-cart-comparison__footnote">اگر بعداً سفارشی ساخته شود، به یک فروشنده محدود خواهد بود و اقلام تأمین‌نشده به انتخاب شما نگه داشته یا حذف می‌شوند. در این مرحله انتخابی ذخیره نمی‌شود.</p>
+    {draftState.status === "loading" ? <p className="buyer-cart-comparison__status" role="status">در حال دریافت پیش‌نویس انتخاب…</p> : draftState.status === "unavailable" ? <p className="buyer-cart-comparison__status" role="alert">وضعیت پیش‌نویس نامشخص است؛ دوباره تلاش کنید.</p> : readyDraft?.sellerPublicId && <section className="buyer-purchase-draft__saved" aria-label="پیش‌نویس انتخاب فروشنده">
+      <h3>پیش‌نویس ذخیره‌شده</h3>
+      <p>این پیش‌نویس به فروشنده ارسال نشده، سفارش یا رزرو نیست و سبد مرجع را تغییر نمی‌دهد.</p>
+      {readyDraft.lines.map(line => <p key={line.offerId}>{title(line.productId)} · {formatQuantity(line.quantity, line.quantityScale)} {line.unitName} · {formatRials(line.expectedPriceRials)} قیمت دیده‌شده{line.priceChanged && line.currentPriceRials !== null ? ` · قیمت فعلی ${formatRials(line.currentPriceRials)} — نیازمند تأیید` : ""}{!line.offerAvailable ? " · پیشنهاد دیگر در دسترس نیست" : !line.coversRequestedQuantity ? " · مقدار اعلامی دیگر کافی نیست" : ""}</p>)}
+      <button type="button" disabled={draftBusy} onClick={() => void clearPurchaseDraft()}>{draftBusy ? "در حال حذف…" : "حذف پیش‌نویس"}</button>
+    </section>}
+    {draftMessage && <p className="buyer-cart-comparison__status" role="status">{draftMessage}</p>}
+    <p className="buyer-cart-comparison__footnote">پیش‌نویس فقط انتخاب شما را ذخیره می‌کند؛ هنوز قیمت قطعی، تأیید موجودی، درخواست به فروشنده، سفارش، رزرو، پرداخت یا لجستیک ایجاد نمی‌شود.</p>
   </section>;
 }
 

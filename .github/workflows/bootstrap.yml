@@ -430,6 +430,8 @@ jobs:
         run: node --experimental-strip-types --test tests/web-buyer-navigation-smoke.mjs
       - name: Test reference cart offer comparison parsing and coverage rules
         run: node --experimental-strip-types --test tests/web-buyer-reference-cart-smoke.mjs
+      - name: Test Buyer purchase draft BFF cookie and response boundaries
+        run: node --experimental-strip-types --test tests/web-buyer-purchase-draft-bff-smoke.mjs
       - name: Install CI-only Chromium for actual frontend interactions
         shell: bash
         run: |

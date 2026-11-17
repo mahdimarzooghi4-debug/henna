@@ -11,7 +11,7 @@ const cart = { revision: 7, items: [
   { productId: PRODUCT_A, quantity: 2.5, unitName: "کیلوگرم", quantityScale: 1 },
   { productId: PRODUCT_B, quantity: 4, unitName: "عدد", quantityScale: 0 },
 ] };
-const comparison = {
+let comparison = {
   cartRevision: 7,
   items: cart.items.map(item => ({ ...item, status: "HAS_PUBLISHED_OFFERS" })),
   sellers: [
@@ -26,6 +26,8 @@ const comparison = {
   ],
 };
 const payload = (body, status = 200) => ({ status, contentType: "application/json; charset=utf-8", headers: { "Cache-Control": "no-store" }, body: JSON.stringify(body) });
+let draftPayload = { revision: 0, sellerPublicId: null, updatedAtUtc: null, lines: [] };
+const draftWrites = [];
 let web, browser, logs = "";
 async function startWeb() {
   web = spawn("npm", ["run", "start", "--workspace", "@hana/web-marketplace", "--", "-p", "3013", "-H", "127.0.0.1"], { detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" } });
@@ -50,6 +52,18 @@ async function main() {
   page.on("console", message => { if (message.type() === "error") consoleErrors.push(message.text()); });
   await page.route("**/api/buyer/cart", route => route.fulfill(payload(cart)));
   await page.route("**/api/buyer/cart/offers", route => route.fulfill(payload(comparison)));
+  await page.route("**/api/buyer/cart/purchase-draft", async route => {
+    const method = route.request().method();
+    if (method === "GET") return route.fulfill(payload(draftPayload));
+    const body = route.request().postDataJSON(); draftWrites.push({ method, body, key: route.request().headers()["idempotency-key"] });
+    if (method === "DELETE") { draftPayload = { revision: body.revision + 1, sellerPublicId: null, updatedAtUtc: null, lines: [] }; return route.fulfill(payload(draftPayload)); }
+    const seller = comparison.sellers.find(x => x.sellerPublicId === body.sellerPublicId);
+    draftPayload = { revision: body.revision + 1, sellerPublicId: body.sellerPublicId, updatedAtUtc: "2026-09-28T12:30:00Z", lines: body.lines.map(line => {
+      const offer = seller.offers.find(x => x.offerId === line.offerId);
+      return { productId: line.productId, offerId: line.offerId, quantity: offer.requestedQuantity, unitName: offer.unitName, quantityScale: offer.quantityScale, expectedPriceRials: line.expectedPriceRials, currentPriceRials: offer.priceRials, currentSellableQuantity: offer.sellableQuantity, priceChanged: false, offerAvailable: true, coversRequestedQuantity: true };
+    }) };
+    return route.fulfill(payload(draftPayload));
+  });
   await page.route("**/api/buyer/cart/items/**", route => { mutations.push(route.request().method()); return route.fulfill(payload(cart)); });
   await page.route("**/api/catalog/products/**", route => {
     const id = new URL(route.request().url()).pathname.split("/").at(-1);
@@ -68,12 +82,38 @@ async function main() {
   await page.getByText(/موجودی زنده/).waitFor();
   assert.equal(mutations.length, 0, "comparison must not mutate the reference cart");
 
+  await page.getByRole("button", { name: "انتخاب این فروشنده برای پیش‌نویس" }).first().click();
+  await page.getByLabel("افزودن مقدار کامل این قلم به پیش‌نویس").first().check();
+  await page.getByRole("button", { name: "ذخیرهٔ پیش‌نویس" }).click();
+  await page.getByRole("region", { name: "پیش‌نویس انتخاب فروشنده" }).waitFor();
+  assert.equal(draftWrites.length, 1, "draft is only written after explicit save");
+  assert.equal(draftWrites[0].method, "PUT");
+  assert.equal(draftWrites[0].body.lines.length, 1, "only the explicitly selected covered line is saved");
+  assert.equal(draftWrites[0].body.sellerPublicId, SELLER_A);
+  assert.equal(draftWrites[0].body.confirmCurrentPriceChanges, false);
+  assert.ok(draftWrites[0].key, "writes include an idempotency key");
+  assert.equal(mutations.length, 0, "saving a selection draft leaves the reference cart unchanged");
+
+  comparison = { ...comparison, sellers: comparison.sellers.map(seller => seller.sellerPublicId === SELLER_A
+    ? { ...seller, offers: seller.offers.map(offer => offer.offerId === "71000000-0000-4000-8000-000000000001" ? { ...offer, priceRials: 1_300_000 } : offer) }
+    : seller) };
+  draftPayload = { ...draftPayload, lines: draftPayload.lines.map(line => ({ ...line, currentPriceRials: 1_300_000, priceChanged: true })) };
+  await page.reload();
+  await page.getByText(/قیمت فعلی ۱٬۳۰۰٬۰۰۰ ریال — نیازمند تأیید/).waitFor();
+  await page.getByRole("button", { name: "ذخیرهٔ پیش‌نویس" }).click();
+  assert.equal(draftWrites.length, 1, "changed prices cannot be silently accepted");
+  await page.getByLabel("قیمت جدیدِ نمایش‌داده‌شده را بررسی و برای این پیش‌نویس تأیید می‌کنم.").check();
+  await page.getByRole("button", { name: "ذخیرهٔ پیش‌نویس" }).click();
+  assert.equal(draftWrites.length, 2);
+  assert.equal(draftWrites[1].body.lines[0].expectedPriceRials, 1_300_000, "explicit reconfirmation sends the displayed current price");
+  assert.equal(draftWrites[1].body.confirmCurrentPriceChanges, true, "the explicit confirmation reaches the server contract");
+
   await page.setViewportSize({ width: 390, height: 844 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   assert.equal(overflow, false, "mobile comparison must not overflow horizontally");
   assert.equal(await page.locator(".buyer-cart-comparison__sellers").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length), 1);
   assert.equal(consoleErrors.length, 0, "browser errors: " + consoleErrors.join("; "));
-  console.log("Buyer cart offer comparison browser smoke: opaque seller grouping, complete/insufficient declared quantity, no cart mutation, and mobile layout verified");
+  console.log("Buyer cart comparison and purchase draft browser smoke: explicit one-seller draft, uncovered cart preserved, price reconfirmation, no cart mutation, and mobile layout verified");
 }
 
 try { await main(); } finally { if (browser) await browser.close(); if (web?.pid) { try { process.kill(-web.pid, "SIGTERM"); } catch { } } }
