@@ -15,12 +15,12 @@ test("canonical navigation is always same-origin and carries only public state",
   assert.equal(query, new URLSearchParams({
     categoryId: category, search: "دستباف & کتان", page: "2",
   }).toString());
-  assert.equal(buyerBrowseHref(good), "/?" + query);
+  assert.equal(buyerBrowseHref(good), "/products?" + query);
   assert.equal(buyerDetailHref(product, good),
     "/products/" + product + "?" + query);
   assert.equal(buyerDetailHref("https://evil.test/", good), null);
   assert.deepEqual(parseBuyerBrowseLocation(new URLSearchParams(query)), good);
-  assert.equal(buyerBrowseHref({ categoryId: null, search: "", page: 1 }), "/");
+  assert.equal(buyerBrowseHref({ categoryId: null, search: "", page: 1 }), "/products");
 });
 
 test("invalid, oversized, duplicated and unknown URL fields cannot reach catalog", () => {
@@ -33,10 +33,10 @@ test("invalid, oversized, duplicated and unknown URL fields cannot reach catalog
   )), { categoryId: category, search: "", page: 1 });
   assert.equal(buyerBrowseHref({
     categoryId: "not-a-uuid", search: "x".repeat(81), page: -1,
-  }), "/");
+  }), "/products");
   assert.equal(buyerBrowseHref({
     categoryId: null, search: "", page: 10001,
-  }), "/");
+  }), "/products");
   const params = buyerParamsFromRecord({
     search: ["first", "second"], categoryId: category,
     page: "2", returnTo: "https://evil.test",

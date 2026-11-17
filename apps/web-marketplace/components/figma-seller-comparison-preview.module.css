@@ -1,0 +1,61 @@
+/* WEB / 04 Seller Comparison — Figma 227:1487.
+ * The same canvas and shared header/footer as WEB / 03 Basket. */
+.page{width:100%;margin:0;padding:40px 0 64px;background:#faf8f5;color:#1c3f3a}
+.container{width:min(1280px,calc(100% - 160px));margin-inline:auto;display:flex;flex-direction:column;gap:32px;min-width:0}
+.intro{text-align:right;display:grid;gap:12px}
+.intro h1{margin:0;font-size:28px;font-weight:800;line-height:1.4}
+.intro p{margin:0;color:#706963;font-size:16px;line-height:1.5}
+.filters{direction:rtl;display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:16px;padding:16px;border:1px solid #eae6e1;border-radius:12px;background:#fff}
+.filter,.activeFilter{border:0;padding:0;background:transparent;color:#706963;font:inherit;font-size:14px;line-height:1.5;cursor:pointer;white-space:nowrap}
+.activeFilter{color:#b5523b;font-weight:700}
+.filter:disabled{opacity:.45;cursor:not-allowed}
+.filter:not(:disabled):hover,.activeFilter:hover{text-decoration:underline}
+.list{display:grid;gap:20px;min-width:0}
+.card{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 220px 240px 254px;align-items:center;gap:24px;padding:24px;border:1px solid #eae6e1;border-radius:16px;background:#fff}
+.sellerIdentity{min-width:0;display:grid;gap:6px;text-align:right}
+.sellerIdentity h2{margin:0;color:#1c3f3a;font-size:18px;font-weight:700;line-height:1.5}
+.sellerIdentity p{margin:0;color:#706963;font-size:13px;line-height:1.5}
+.available{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:right}
+.available strong{max-width:100%;padding:4px 8px;border-radius:6px;background:#b5523b;color:#fff;font-size:12px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.available span,.offer span,.action span{color:#706963;font-size:12px;line-height:1.5}
+.available .missing{color:#b5523b}
+.offer{min-width:0;display:grid;gap:4px;text-align:right}
+.offer strong{color:#1c3f3a;font-size:20px;font-weight:800;line-height:1.5;white-space:nowrap}
+.action{min-width:0;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.action button{min-height:48px;padding:12px 24px;border:0;border-radius:10px;background:#1c3f3a;color:#fff;font:inherit;font-size:14px;font-weight:700;line-height:1.5;cursor:pointer}
+.action button:hover{background:#28534d}
+.action button[aria-pressed="true"]{outline:2px solid #1c3f3a;outline-offset:3px}
+.selection{display:grid;gap:12px}
+.selected{margin:0;padding:12px 16px;border-radius:10px;background:#e8f2f2;color:#0f5b5a}
+.continue{display:flex;min-height:48px;align-items:center;justify-content:center;border-radius:10px;background:#1c3f3a;color:#fff;font-size:14px;font-weight:700;text-decoration:none}
+.disclaimer{margin:0;color:#706963;font-size:12px;line-height:1.8}
+.empty{display:flex;flex-direction:column;gap:12px;padding:24px;border:1px solid #eae6e1;border-radius:16px;background:#fff;color:#706963}
+.empty a,.back{color:#b5523b;font-weight:700}
+.back{align-self:flex-start;text-decoration:none;font-size:14px}
+.back:hover{text-decoration:underline}
+@media(max-width:1250px){
+  .card{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 24px}
+  .sellerIdentity,.available,.offer,.action{min-width:0}
+  .action{align-items:flex-start;text-align:right}
+}
+@media(max-width:1100px){
+  .container{width:calc(100% - 48px)}
+}
+@media(max-width:800px){
+  .page{padding:28px 0 48px}
+  .container{gap:24px}
+  .intro h1{font-size:22px}
+  .intro p{font-size:14px}
+  .card{padding:16px}
+  .filters{gap:12px;padding:14px}
+}
+@media(max-width:640px){
+  .container{width:calc(100% - 28px)}
+}
+@media(max-width:520px){
+  .card{grid-template-columns:minmax(0,1fr);gap:16px}
+  .action{align-items:stretch}
+  .action span{text-align:center}
+  .filters{gap:10px;padding:12px}
+  .filter,.activeFilter{font-size:12px}
+}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { sellerPanelRedirectForStatus } from "../../lib/seller-panel-access-redirect";
 import { SellerCommerceOperations } from "./commerce-operations";
 import { SellerBusinessOperations } from "./business-operations";
 
@@ -70,6 +71,11 @@ export function SellerDashboardView() {
       if (controller.signal.aborted) return;
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok || !body || typeof body !== "object") {
+        const next = sellerPanelRedirectForStatus(response.status);
+        if (next) {
+          window.location.replace(next);
+          return;
+        }
         setState({
           kind: "denied",
           message: typeof (body as Record<string, unknown>).message === "string"
@@ -100,18 +106,15 @@ export function SellerDashboardView() {
   }
 
   if (state.kind === "denied") {
+    // Outage or unverifiable response must remain fail-closed, never
+    // mistaken for logout or seller activation.
     return (
-      <main className="seller-panel-gate">
-        <section className="seller-panel-denied">
-          <h1>پنل فروشنده</h1>
-          <p role="alert">{state.message}</p>
-          <Link className="primary-button" href="/seller/register/status">
-            مشاهده وضعیت درخواست
-          </Link>
-          <Link className="auth-card__secondary" href="/">
-            بازگشت به حنا
-          </Link>
-        </section>
+      <main className="seller-panel" aria-label="وضعیت دسترسی پذیرنده">
+        <p role="alert">{state.message}</p>
+        <button type="button" className="primary-button"
+          onClick={() => window.location.reload()}>
+          تلاش مجدد
+        </button>
       </main>
     );
   }

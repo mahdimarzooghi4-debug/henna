@@ -219,20 +219,21 @@ def main():
     )
     assert "پیشخوان کسب‌وکار" not in ui
     tap_text("ورود آزمایشی فروشنده بدون پیامک")
-    ui = wait_screen("پیش‌نمایش اپ فروشنده", "محیط نمایشی حنا")
+    ui = wait_screen("پیشخوان مدیریت حنا", "کسب‌وکار نمونه")
     assert "فروشنده فعال" not in ui
     assert "آمار عملیاتی" not in ui
     assert "فروشگاه واقعی" not in ui
     # Preview survives an app restart without OTP and still has no seller data.
     execute("adb", "shell", "am", "force-stop", seller_package)
     execute("adb", "shell", "monkey", "-p", seller_package, "1", timeout=60)
-    wait_screen("پیش‌نمایش اپ فروشنده", "محیط نمایشی حنا")
-    tap_text("خروج از پیش‌نمایش")
-    wait_screen("ورود آزمایشی فروشنده بدون پیامک")
+    wait_screen("پیشخوان مدیریت حنا", "کسب‌وکار نمونه")
+    tap_text("حساب")
+    account_ui = wait_screen("حساب فروشنده", "حساب کسب‌وکار", "فروشگاه نمونه")
+    assert "فروشگاه واقعی" not in account_ui
 
     print(
         "PASS: separate seller APK installed, preview entry without OTP, "
-        "local persistence and explicit logout; no private data exposed",
+        "local persistence and account preview; no private data exposed",
         flush=True,
     )
 
