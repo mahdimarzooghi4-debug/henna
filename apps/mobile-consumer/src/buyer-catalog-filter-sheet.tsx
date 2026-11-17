@@ -1,5 +1,6 @@
 import {useEffect,useState} from "react";
 import {Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {colors} from "./theme";
 import {
  EMPTY_PREVIEW_CATALOG_FILTERS,checkPreviewCatalogFilters,previewCatalogFilterCount,
@@ -10,6 +11,7 @@ export function BuyerCatalogFilterSheet({visible,preview,categories,selectedCate
  visible:boolean;preview:boolean;categories:readonly Category[];selectedCategory:string|null;
  applied:PreviewCatalogFilters;onApply:(id:string|null,f:PreviewCatalogFilters)=>void;onClose:()=>void;
 }){
+ const insets=useSafeAreaInsets();
  const [category,setCategory]=useState<string|null>(selectedCategory);
  const [draft,setDraft]=useState<PreviewCatalogFilters>(applied);
  const [error,setError]=useState("");
@@ -29,7 +31,7 @@ export function BuyerCatalogFilterSheet({visible,preview,categories,selectedCate
  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
   <View style={s.overlay} testID="buyer-catalog-filter-sheet-842-6377">
    <Pressable style={s.backdrop} onPress={onClose} accessibilityLabel="بستن فیلترها"/>
-   <View style={s.sheet}>
+   <View style={[s.sheet,{paddingBottom:Math.max(insets.bottom,24)+16}]}>
     <View style={s.handle}/>
     <View style={s.header}>
      <Pressable accessibilityRole="button" accessibilityLabel="بستن پنل فیلتر" onPress={onClose} style={s.close}><Text style={s.closeLabel}>×</Text></Pressable>

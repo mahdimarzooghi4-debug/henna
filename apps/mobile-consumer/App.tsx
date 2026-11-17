@@ -28,6 +28,7 @@ import { BuyerOrdersScreen } from "./src/buyer-orders-screen";
 import { BuyerCheckoutScreen } from "./src/buyer-checkout-screen";
 import { BuyerCartScreen } from "./src/buyer-cart-screen";
 import { colors, space } from "./src/theme";
+import { offlineAndroidFigmaPreview } from "./src/buyer-figma-preview-mode.ts";
 import { BuyerBrowseScreen } from "./src/buyer-browse-screen";
 import {
   parseBuyerLink, type BuyerLinkEvent, type BuyerLinkRoute,
@@ -49,6 +50,13 @@ const logo = require("./assets/hana-app-logo.png");
 const tokenKey = "hana.consumer.session.v1";
 const previewSessionKey = "hana.consumer.preview-session.v1";
 const previewLoginEnabled = __DEV__ || process.env.EXPO_PUBLIC_HANA_DEMO_LOGIN === "true";
+// The owner-visible Figma APK is a separate offline walkthrough, never a
+// production catalog build or authenticated commerce session.
+const androidFigmaPreview = offlineAndroidFigmaPreview(
+  Platform.OS,
+  process.env.EXPO_PUBLIC_HANA_FIGMA_ANDROID_PREVIEW,
+  process.env.EXPO_PUBLIC_HANA_API_BASE_URL,
+);
 const secureOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
@@ -574,6 +582,18 @@ export default function App() {
     let active = true;
     let stopIncomingLinks = () => {};
     let incomingSequence = 0;
+
+    // Only an explicitly flagged, API-less Android build may start in the
+    // offline Figma journey. No phone, SecureStore session, provider request,
+    // commerce retry, or implicit account authentication is performed here.
+    if (androidFigmaPreview) {
+      nativeBuyerLinkInbox.clear();
+      setIsPreviewSession(true);
+      setIsSignedIn(false);
+      setLink({ token: ++sequence.current, route: blankBrowseLink });
+      setScreen("browse");
+      return () => { active = false; };
+    }
 
     const apply = (url: string | null, incoming: boolean) => {
       const route = parseBuyerLink(url);

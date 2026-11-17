@@ -13,6 +13,7 @@ import {
   type BuyerBrowseState,
 } from "./buyer-browse-controller.ts";
 import { colors } from "./theme";
+import { offlineAndroidFigmaPreview } from "./buyer-figma-preview-mode.ts";
 import { FigmaIcon } from "./figma-icon";
 import { BuyerCatalogFilterSheet } from "./buyer-catalog-filter-sheet";
 import { BuyerCatalogState } from "./buyer-catalog-state";
@@ -81,8 +82,11 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const [draftSearch, setDraftSearch] = useState(link.route.browse.search);
   const [searchError, setSearchError] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const designPreview = Platform.OS === "web" && previewSession &&
-    process.env.EXPO_PUBLIC_HANA_DEMO_LOGIN === "true" && !process.env.EXPO_PUBLIC_HANA_API_BASE_URL;
+  const designPreview = previewSession && !process.env.EXPO_PUBLIC_HANA_API_BASE_URL &&
+    ((Platform.OS === "web" && process.env.EXPO_PUBLIC_HANA_DEMO_LOGIN === "true") ||
+     offlineAndroidFigmaPreview(Platform.OS,
+       process.env.EXPO_PUBLIC_HANA_FIGMA_ANDROID_PREVIEW,
+       process.env.EXPO_PUBLIC_HANA_API_BASE_URL));
   const [designQuery, setDesignQuery] = useState("");
   const [designCategory, setDesignCategory] = useState<string | null>(null);
   const [designBadge, setDesignBadge] = useState<string | null>(null);
@@ -118,6 +122,9 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     .filter(item => passesPreviewCatalogFilters({priceToman:previewPrices[item.key],badge:item.badge},appliedPreviewFilters));
   const displayedCatalogProducts = catalogSort ? [...catalogProducts].sort((a,b)=>previewPrices[a.key]-previewPrices[b.key]) : catalogProducts;
   const scroll = useRef<ScrollView>(null);
+  // Reset the offline walkthrough scroll on each new Figma screen so a short
+  // order-success page never opens at the scrolled position of checkout.
+  useEffect(() => { if(designPreview && previewPage) scroll.current?.scrollTo({y:0,animated:false}); },[designPreview,previewPage]);
   const scrollToSuggestions = () => scroll.current?.scrollTo({ y: suggestionsY.current, animated: true });
   const resetFilters = () => { setDesignBadge(null); setDesignCategory(null); setDesignQuery(""); setDraftSearch(""); setSearchError(""); setAppliedPreviewFilters(EMPTY_PREVIEW_CATALOG_FILTERS); };
 
@@ -132,10 +139,12 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
   const onAccount = isSignedIn ? onLogout : onLogin;
 
   useEffect(() => {
-    if (!active) { controller.stop(); return; }
+    // An offline Figma walkthrough must never call the public catalog API;
+    // mock cards are explicitly visual-only and cannot authorize commerce.
+    if (!active || designPreview) { controller.stop(); return; }
     controller.start();
     return () => controller.stop();
-  }, [active, controller]);
+  }, [active, controller, designPreview]);
 
   useEffect(() => {
     if (lastLink.current === link.token) return;
@@ -193,7 +202,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
     const back = () => {if(accountReturn && (previewPage==="company"||previewPage==="addresses")){setAccountReturn(null);setPreviewPage("checkout");return;}setPreviewPage(previewPage==="comparison"?"cart":previewPage==="review"?"comparison":previewPage==="checkout"?"review":previewPage==="tracking"?"orders":previewPage==="success"?"orders":previewPage==="profile"||previewPage==="company"||previewPage==="addresses"||previewPage==="wallet"||previewPage==="plans"||previewPage==="social"||previewPage==="support"||previewPage==="payments"||previewPage==="settings"||previewPage==="incidents"?"account":null);};
     return <SafeAreaView style={styles.safeArea} edges={["top","bottom"]}>
       <View style={styles.journeyHeader}><Pressable accessibilityRole="button" accessibilityLabel="بازگشت" onPress={back} style={styles.bellButton}><FigmaIcon name="arrow-left" size={20}/></Pressable><Text style={styles.journeyTitle}>{title}</Text><Image source={logo} resizeMode="contain" style={styles.journeyLogo}/></View>
-      <ScrollView style={styles.fill} contentContainerStyle={styles.previewBody}>
+      <ScrollView ref={scroll} style={styles.fill} contentContainerStyle={styles.previewBody}>
         <Text style={styles.designNotice}>نسخه آزمایشی · هیچ سفارش یا پرداخت واقعی ثبت نمی‌شود.</Text>
         {previewPage === "cart" ? <>
           {count === 0 ? <View style={styles.previewPanel}><Text style={styles.emptyTitle}>سبد خرید شما خالی است</Text><Text style={styles.emptyText}>از صفحه اصلی محصولات نمونه را انتخاب کنید.</Text></View> :
@@ -229,7 +238,7 @@ export function BuyerBrowseScreen({ onLogin, onLogout, onIssues, onOrders, onSup
           <View style={styles.previewPanel}><Text style={styles.emptyTitle}>مشخصات و ویژگی‌ها</Text><Text style={styles.emptyText}>دسته: {product.category}</Text>{product.key === "rice" && <Text style={styles.emptyText}>نوع محصول: برنج طارم · وزن: کیسه ۱۰ کیلوگرمی · بسته‌بندی: کیسه</Text>}</View>
           <View style={styles.previewPanel}><Text style={styles.emptyTitle}>توضیحات محصول</Text><Text style={styles.emptyText}>این کالا برای بررسی مسیر خرید در پیش‌نمایش طراحی نمایش داده شده است.</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="مشاهده سبد خرید" onPress={() => setPreviewPage("cart")} style={styles.previewPanel}><Text style={styles.sectionLink}>مشاهده سبد خرید ({persianNumber(count)})</Text></Pressable>
-        </> : previewPage === "review" || previewPage === "checkout" || previewPage === "success" || previewPage === "tracking" || previewPage === "orders" ? <BuyerPreviewPurchase key={previewPage} page={previewPage} cart={previewCart} items={homeDesignProducts} account={previewAccount} orders={previewOrders} selectedOrder={selectedPreviewOrder} legal={legalPreview} setLegal={setLegalPreview} onNavigate={setPreviewPage} onHome={returnHome} onCatalog={openCatalog} onAccountEdit={target=>{setAccountReturn("checkout");setPreviewPage(target);}} onSelectOrder={id=>{setSelectedPreviewOrder(id);setPreviewPage("tracking");}} onSubmit={()=>{const address=previewAccount.addresses.find(a=>a.id===previewAccount.defaultAddress);if(!address||count===0||(legalPreview&&!previewAccount.company))return;const next:PreviewOrder={id:(previewOrders.at(-1)?.id??0)+1,cart:{...previewCart},total:previewCartTotal(previewCart),recipient:address.recipient,company:legalPreview?previewAccount.company?.name??null:null};setPreviewOrders(v=>[...v,next]);setSelectedPreviewOrder(next.id);setPreviewCart({});setPreviewPage("success");}}/> : previewPage !== "detail" && <BuyerPreviewAccount key={previewPage} page={previewPage} state={previewAccount} setState={setPreviewAccount} onNavigate={page=>{if(accountReturn&&page==="account"){setAccountReturn(null);setPreviewPage("checkout");}else setPreviewPage(page);}} onLogout={onLogout} onCatalog={openCatalog}/>}
+        </> : previewPage === "review" || previewPage === "checkout" || previewPage === "success" || previewPage === "tracking" || previewPage === "orders" ? <BuyerPreviewPurchase key={previewPage} page={previewPage} cart={previewCart} items={homeDesignProducts} account={previewAccount} orders={previewOrders} selectedOrder={selectedPreviewOrder} legal={legalPreview} setLegal={setLegalPreview} onNavigate={setPreviewPage} onHome={returnHome} onCatalog={openCatalog} onAccountEdit={target=>{setAccountReturn("checkout");setPreviewPage(target);}} onSelectOrder={id=>{setSelectedPreviewOrder(id);setPreviewPage("tracking");}} onSubmit={(paymentMethod)=>{if(count===0)return;const address=previewAccount.addresses.find(a=>a.id===previewAccount.defaultAddress);const next:PreviewOrder={id:(previewOrders.at(-1)?.id??0)+1,cart:{...previewCart},total:previewCartTotal(previewCart),recipient:address?.recipient??"کاربر نمونه (بدون آدرس)",company:legalPreview?previewAccount.company?.name??null:null,paymentMethod};setPreviewOrders(v=>[...v,next]);setSelectedPreviewOrder(next.id);setPreviewCart({});setPreviewPage("success");}}/> : previewPage !== "detail" && <BuyerPreviewAccount key={previewPage} page={previewPage} state={previewAccount} setState={setPreviewAccount} onNavigate={page=>{if(accountReturn&&page==="account"){setAccountReturn(null);setPreviewPage("checkout");}else setPreviewPage(page);}} onLogout={onLogout} onCatalog={openCatalog}/>}
       </ScrollView>
       {bottomNavigation}
     </SafeAreaView>;

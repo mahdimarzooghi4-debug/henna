@@ -30,7 +30,14 @@ try{
  await button("آدرس‌های من").click();await button("افزودن آدرس جدید").click();await page.getByLabel("شهر",{exact:true}).fill("تهران");await page.getByLabel("نشانی دقیق پستی",{exact:true}).fill("نشانی نمونه");await page.getByLabel("نام تحویل‌گیرنده",{exact:true}).fill("گیرنده نمونه");await page.getByLabel("تلفن همراه تحویل‌گیرنده",{exact:true}).fill("09123456789");await button("ثبت آدرس و مشخصات").click();await page.getByText("آدرس پیش‌فرض",{exact:true}).waitFor();
  await button("خانه").click();await button("همه پیشنهادها").click();await page.getByTestId("buyer-products-227-8").waitFor();await button("سبد خرید").click();await page.getByText("۴۳۸٬۰۰۰ تومان",{exact:true}).first().waitFor();
  await button("مقایسه فروشگاه‌ها").click();await button("تمرین ادامه خرید با فروشگاه نمونه").click();await button("ادامه ثبت سفارش").click();
- await page.getByRole("checkbox",{name:"خرید حقوقی و دریافت فاکتور رسمی",exact:true}).click();await page.getByText("نام شرکت: شرکت نمونه CI",{exact:true}).waitFor();
- await button("ثبت سفارش نمونه (بدون پرداخت)").click();await page.getByText("سفارش نمونه در تمرین ثبت شد.",{exact:true}).waitFor();await button("پیگیری سفارش نمونه").click();await page.getByText("فقط تمرین ثبت شده",{exact:true}).waitFor();await button("سفارش‌های من").click();await button("مشاهده جزئیات").click();await page.getByText("فقط تمرین ثبت شده",{exact:true}).waitFor();
+ const gateway=page.getByRole("radio",{name:"درگاه آنلاین بانکی",exact:true});
+ const support=page.getByRole("radio",{name:"اعتبار حمایتی موجود",exact:true});
+ const personal=page.getByRole("radio",{name:"اعتبار شخصی تأمین‌شده توسط کاربر",exact:true});
+ await gateway.waitFor();await support.waitFor();await personal.waitFor();
+ await support.click();await personal.click();
+ await page.getByRole("checkbox",{name:"خرید حقوقی و دریافت فاکتور رسمی",exact:true}).click();
+ await page.getByText("نام شرکت: شرکت نمونه CI",{exact:true}).waitFor();
+ assert.equal(await support.isDisabled(),true,"Support credit is not available for legal orders");
+ await button("مشاهده نتیجه سفارش نمونه (بدون پرداخت)").click();await page.getByText("سفارش نمونه در تمرین ثبت شد.",{exact:true}).waitFor();await page.getByText("اعتبار شخصی تأمین‌شده توسط کاربر",{exact:true}).waitFor();await button("پیگیری سفارش نمونه").click();await page.getByText("فقط تمرین ثبت شده",{exact:true}).waitFor();await button("سفارش‌های من").click();await button("مشاهده جزئیات").click();await page.getByText("فقط تمرین ثبت شده",{exact:true}).waitFor();
  assert.deepEqual(writes,[]);console.log("PASS: buyer home both destinations, shared cart, quantity, comparison honest boundary, profile, company and address preview");
 }finally{await browser.close();}
