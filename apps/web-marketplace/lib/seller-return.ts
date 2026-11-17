@@ -5,6 +5,8 @@
 export const sellerRegistrationPath = "/seller/register" as const;
 export const sellerAccountRegistrationPath = "/seller/register/account" as const;
 export const sellerLoginHref = "/auth?returnTo=%2Fseller%2Fregister" as const;
+export const sellerPanelPath = "/seller" as const;
+export const sellerPanelLoginPath = "/seller/login" as const;
 export type AuthReturnTo = typeof sellerRegistrationPath | typeof sellerAccountRegistrationPath | "/buyer/cart" | "/checkout" | `/organization/${string}`;
 
 const buyerReturnPaths = new Set(["/buyer/cart", "/checkout"]);
