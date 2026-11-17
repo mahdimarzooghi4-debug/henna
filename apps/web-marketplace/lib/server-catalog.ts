@@ -6,6 +6,7 @@ export type PublicCategory = { id: string; name: string; slug: string };
 export type PublicProduct = {
   id: string; categoryId: string; name: string;
   kind: "GOOD" | "SERVICE"; description: string | null;
+  unitName?: string | null; quantityScale?: number | null;
 };
 export type PublicProductPage = {
   items: PublicProduct[]; page: number; pageSize: number; total: number;
@@ -42,11 +43,17 @@ export function parseProduct(value: unknown): PublicProduct | null {
     typeof x.categoryId !== "string" || !validCatalogId(x.categoryId) ||
     !text(x.name, 200) || (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
     (x.description !== null && x.description !== undefined &&
-      (typeof x.description !== "string" || x.description.length > 2000)))
+      (typeof x.description !== "string" || x.description.length > 2000)) ||
+    (Object.hasOwn(x, "unitName") && !(x.unitName === null || text(x.unitName, 40))) ||
+    (Object.hasOwn(x, "quantityScale") && !(x.quantityScale === null || boundedInteger(x.quantityScale, 0, 6))) ||
+    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")) ||
+    (x.kind === "SERVICE" && x.unitName != null))
     return null;
   return {
     id: x.id, categoryId: x.categoryId, name: x.name,
     kind: x.kind, description: typeof x.description === "string" ? x.description : null,
+    ...(Object.hasOwn(x, "unitName") ? { unitName: typeof x.unitName === "string" ? x.unitName : null } : {}),
+    ...(Object.hasOwn(x, "quantityScale") ? { quantityScale: typeof x.quantityScale === "number" ? x.quantityScale : null } : {}),
   };
 }
 

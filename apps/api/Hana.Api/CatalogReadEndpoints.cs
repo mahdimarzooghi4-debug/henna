@@ -84,7 +84,7 @@ internal static class CatalogReadEndpoints
                     .Select(p => new
                     {
                         p.Id, p.CategoryId, p.Name, p.Kind, p.Description,
-                        p.PrimaryMediaAssetId
+                        p.PrimaryMediaAssetId, p.UnitName, p.QuantityScale
                     })
                     .ToListAsync(cancellationToken);
                 return Results.Ok(new
@@ -92,6 +92,7 @@ internal static class CatalogReadEndpoints
                     items = items.Select(p => new
                     {
                         p.Id, p.CategoryId, p.Name, p.Kind, p.Description,
+                        unitName = p.UnitName, quantityScale = p.QuantityScale,
                         imageUrl = p.PrimaryMediaAssetId is { } mediaId
                             ? $"/api/v1/catalog/media/{mediaId:D}" : null
                     }),
@@ -125,13 +126,15 @@ internal static class CatalogReadEndpoints
                     .Select(p => new
                     {
                         p.Id, p.CategoryId, p.Name, p.Kind, p.Description,
-                        p.PrimaryMediaAssetId
+                        p.PrimaryMediaAssetId, p.UnitName, p.QuantityScale
                     })
                     .SingleOrDefaultAsync(cancellationToken);
                 return item is null ? Results.NotFound() : Results.Ok(new
                 {
                     item.Id, item.CategoryId, item.Name, item.Kind,
                     item.Description,
+                    unitName = item.UnitName,
+                    quantityScale = item.QuantityScale,
                     imageUrl = item.PrimaryMediaAssetId is { } mediaId
                         ? $"/api/v1/catalog/media/{mediaId:D}" : null
                 });
