@@ -64,7 +64,17 @@ public sealed record CreditProgramAllocationV1(
 /// </summary>
 public static class CreditFundingInstructionResolverV1
 {
-    public const string PolicyVersion = "HANA-CREDIT-FUNDING-POLICY-v1";
+    public const string PolicyVersion = "HANA-CREDIT-FUNDING-POLICY-v2";
+
+    public static CreditProgramAllocationV1 CalculateOrganizationDefined(
+        CreditFundingInstructionV1 instruction,
+        RialAmount beneficiaryAmount)
+    {
+        ValidateInstruction(instruction, CreditAllocationModeV1.OrganizationDefined);
+
+        var result = CreditAllocationModesV1.CalculateOrganizationDefined(beneficiaryAmount);
+        return CreateResult(instruction, result.Household, needsBasedQuote: null);
+    }
 
     public static CreditProgramAllocationV1 CalculateEqualWalletTopUp(
         CreditFundingInstructionV1 instruction,
@@ -113,13 +123,23 @@ public static class CreditFundingInstructionResolverV1
         if (instruction.AllocationMode != requiredMode)
             throw new InvalidOperationException("Funding instruction does not authorize this allocation path.");
 
-        if (requiredMode != CreditAllocationModeV1.NeedsBased)
-            return;
-
-        if (instruction.FundingSource == CreditFundingSourceV1.Organization)
+        if (requiredMode == CreditAllocationModeV1.OrganizationDefined &&
+            instruction.FundingSource != CreditFundingSourceV1.Organization)
             throw new InvalidOperationException(
-                "Needs-based allocation is not permitted for an organization-directed funding instruction.");
-        if (instruction.FundingSource == CreditFundingSourceV1.Donor &&
+                "Organization-defined allocation requires organization-provided resources.");
+
+        if (instruction.FundingSource == CreditFundingSourceV1.Organization &&
+            requiredMode == CreditAllocationModeV1.EqualWalletTopUp)
+            throw new InvalidOperationException(
+                "Organization-provided resources must use organization-defined or needs-based allocation.");
+
+        if (instruction.FundingSource == CreditFundingSourceV1.HanaCharityFund &&
+            requiredMode != CreditAllocationModeV1.NeedsBased)
+            throw new InvalidOperationException(
+                "Henna charity-fund resources must use needs-based allocation.");
+
+        if (requiredMode == CreditAllocationModeV1.NeedsBased &&
+            instruction.FundingSource == CreditFundingSourceV1.Donor &&
             instruction.NeedsBasedAuthorizationReference is null)
             throw new InvalidOperationException(
                 "Needs-based allocation requires an explicit donor authorization reference.");

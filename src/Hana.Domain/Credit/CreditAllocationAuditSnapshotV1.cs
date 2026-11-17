@@ -110,10 +110,24 @@ public sealed record CreditAllocationAuditSnapshotV1
             throw new ArgumentException("Unsupported source policy version.", nameof(allocation));
         ArgumentNullException.ThrowIfNull(allocation.HouseholdAllocation);
 
-        if (allocation.AllocationMode == CreditAllocationModeV1.EqualWalletTopUp)
+        if (allocation.FundingSource == CreditFundingSourceV1.Organization &&
+            allocation.AllocationMode == CreditAllocationModeV1.EqualWalletTopUp)
+            throw new ArgumentException("Organization resources require an explicit collaboration mode.", nameof(allocation));
+        if (allocation.FundingSource == CreditFundingSourceV1.HanaCharityFund &&
+            allocation.AllocationMode != CreditAllocationModeV1.NeedsBased)
+            throw new ArgumentException("Henna charity-fund resources require needs-based allocation.", nameof(allocation));
+        if (allocation.AllocationMode == CreditAllocationModeV1.OrganizationDefined &&
+            allocation.FundingSource != CreditFundingSourceV1.Organization)
+            throw new ArgumentException("Organization-defined amounts require organization resources.", nameof(allocation));
+        if (allocation.AllocationMode == CreditAllocationModeV1.NeedsBased &&
+            allocation.FundingSource == CreditFundingSourceV1.Donor &&
+            allocation.NeedsBasedAuthorizationReference is null)
+            throw new ArgumentException("Donor needs-based allocation requires authorization.", nameof(allocation));
+
+        if (allocation.AllocationMode is CreditAllocationModeV1.EqualWalletTopUp or CreditAllocationModeV1.OrganizationDefined)
         {
             if (allocation.NeedsBasedQuote is not null)
-                throw new ArgumentException("Equal top-ups cannot carry a needs-based quote.", nameof(allocation));
+                throw new ArgumentException("Non-needs-based allocations cannot carry a needs-based quote.", nameof(allocation));
 
             return new CreditAllocationAuditSnapshotV1(
                 calculationId: calculationId,

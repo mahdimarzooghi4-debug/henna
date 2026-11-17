@@ -10,6 +10,7 @@ public sealed class HouseholdNeedScoringV1Tests
         EconomicHardship = EconomicHardshipLevel.EssentialNeedsGenerallyMet,
         CareAndSupport = CareSupportLevel.EffectiveAdultOrPracticalSupportAvailable,
         Education = EducationAttainment.BachelorOrHigher,
+        HousingTenure = HousingTenureType.Owner,
         HouseholdSize = size,
         AgeComposition = ages
     };
@@ -62,6 +63,7 @@ public sealed class HouseholdNeedScoringV1Tests
             EconomicHardship = EconomicHardshipLevel.MultipleEssentialNeedsUnmetOrSevereInstability,
             CareAndSupport = CareSupportLevel.NoPracticalSupportWithMultipleDependentsOrHighCareBurden,
             Education = EducationAttainment.NoLiteracyOrFormalEducation,
+            HousingTenure = HousingTenureType.Tenant,
             HouseholdSize = 1,
             AgeComposition = new HouseholdAgeComposition(0, 0, 0, 1, 0, 0)
         });
@@ -69,7 +71,23 @@ public sealed class HouseholdNeedScoringV1Tests
         Assert.Equal(3, scores.EconomicHardship);
         Assert.Equal(3, scores.CareAndSupport);
         Assert.Equal(3, scores.Education);
+        Assert.Equal(2, scores.HousingTenure);
         Assert.Equal(0m, scores.HouseholdSize);
+    }
+
+    [Fact]
+    public void MapsOwnerAndTenantAsDifferentHousingNeedScores()
+    {
+        var owner = HouseholdNeedScoringV1.Map(Input(1,
+            new HouseholdAgeComposition(0, 0, 0, 1, 0, 0)));
+        var tenant = HouseholdNeedScoringV1.Map(Input(1,
+            new HouseholdAgeComposition(0, 0, 0, 1, 0, 0)) with
+        {
+            HousingTenure = HousingTenureType.Tenant
+        });
+
+        Assert.Equal(0, owner.HousingTenure);
+        Assert.Equal(2, tenant.HousingTenure);
     }
 
     [Fact]
@@ -79,6 +97,7 @@ public sealed class HouseholdNeedScoringV1Tests
             HouseholdNeedScoringV1.Map(new HouseholdNeedAssessmentInput()));
         Assert.Contains(nameof(HouseholdNeedAssessmentInput.HealthBurden), error.Message);
         Assert.Contains(nameof(HouseholdNeedAssessmentInput.AgeComposition), error.Message);
+        Assert.Contains(nameof(HouseholdNeedAssessmentInput.HousingTenure), error.Message);
     }
 
     [Fact]
@@ -101,6 +120,7 @@ public sealed class HouseholdNeedScoringV1Tests
                 EconomicHardship = EconomicHardshipLevel.EssentialNeedsGenerallyMet,
                 CareAndSupport = CareSupportLevel.EffectiveAdultOrPracticalSupportAvailable,
                 Education = EducationAttainment.BachelorOrHigher,
+                HousingTenure = (HousingTenureType)99,
                 HouseholdSize = 1,
                 AgeComposition = new HouseholdAgeComposition(0, 0, 0, 1, 0, 0)
             }));
@@ -109,6 +129,6 @@ public sealed class HouseholdNeedScoringV1Tests
     [Fact]
     public void ExposesVersion()
     {
-        Assert.Equal("1.0", HouseholdNeedScoringV1.Version);
+        Assert.Equal("1.1", HouseholdNeedScoringV1.Version);
     }
 }

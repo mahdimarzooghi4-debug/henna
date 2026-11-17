@@ -12,9 +12,9 @@ public sealed class CreditAllocationAuditSnapshotV1Tests
     public void EqualTopUpSnapshotCarriesSourceAndExactAmountWithoutNeedData()
     {
         var instruction = new CreditFundingInstructionV1(
-            CreditFundingSourceV1.Organization,
+            CreditFundingSourceV1.Donor,
             CreditAllocationModeV1.EqualWalletTopUp,
-            "org-program-17",
+            "donor-42",
             "instruction-2026-04");
         var allocation = CreditFundingInstructionResolverV1.CalculateEqualWalletTopUp(
             instruction, new RialAmount(10_000_000));
@@ -25,7 +25,7 @@ public sealed class CreditAllocationAuditSnapshotV1Tests
             allocation);
 
         Assert.Equal(CapturedAtUtc, snapshot.CapturedAtUtc);
-        Assert.Equal("org-program-17", snapshot.FundingSourceReference);
+        Assert.Equal("donor-42", snapshot.FundingSourceReference);
         Assert.Equal("instruction-2026-04", snapshot.InstructionReference);
         Assert.Equal(CreditAllocationModeV1.EqualWalletTopUp, snapshot.AllocationMode);
         Assert.Equal(new RialAmount(10_000_000), snapshot.BaseAmount);
@@ -34,6 +34,45 @@ public sealed class CreditAllocationAuditSnapshotV1Tests
         Assert.Null(snapshot.GeographyDatasetVersion);
         Assert.Null(snapshot.GeographicFactor);
         Assert.Null(snapshot.FormulaVersion);
+    }
+
+    [Fact]
+    public void OrganizationDefinedSnapshotCarriesSelectedAmountWithoutNeedData()
+    {
+        var instruction = new CreditFundingInstructionV1(
+            CreditFundingSourceV1.Organization,
+            CreditAllocationModeV1.OrganizationDefined,
+            "org-program-17",
+            "instruction-2026-05");
+        var allocation = CreditFundingInstructionResolverV1.CalculateOrganizationDefined(
+            instruction, new RialAmount(8_000_000));
+
+        var snapshot = CreditAllocationAuditSnapshotV1.Capture(
+            Guid.Parse("a996fbf9-10fa-4c2c-98f1-b85c9919ed60"), CapturedAtUtc, allocation);
+
+        Assert.Equal(CreditFundingSourceV1.Organization, snapshot.FundingSource);
+        Assert.Equal(CreditAllocationModeV1.OrganizationDefined, snapshot.AllocationMode);
+        Assert.Equal(new RialAmount(8_000_000), snapshot.PayableAmount);
+        Assert.Null(snapshot.HouseholdScores);
+        Assert.Null(snapshot.GeographyDatasetVersion);
+    }
+
+    [Fact]
+    public void SnapshotRejectsForgedHanaCharityEqualTopUp()
+    {
+        var equal = CreditAllocationModesV1.CalculateEqualWalletTopUp(new RialAmount(1));
+        var forged = new CreditProgramAllocationV1(
+            CreditFundingInstructionResolverV1.PolicyVersion,
+            CreditFundingSourceV1.HanaCharityFund,
+            "hana-charity-fund",
+            "fund-decision-26",
+            null,
+            CreditAllocationModeV1.EqualWalletTopUp,
+            equal.Household,
+            null);
+
+        Assert.Throws<ArgumentException>(() => CreditAllocationAuditSnapshotV1.Capture(
+            Guid.NewGuid(), CapturedAtUtc, forged));
     }
 
     [Fact]
@@ -68,6 +107,7 @@ public sealed class CreditAllocationAuditSnapshotV1Tests
         Assert.True(snapshot.IsUrban);
         Assert.True(snapshot.IsProvincialCapital);
         Assert.NotNull(snapshot.HouseholdScores);
+        Assert.Equal(2, snapshot.HouseholdScores!.HousingTenure);
         Assert.Equal(allocation.HouseholdAllocation.PayableAmount, snapshot.PayableAmount);
         Assert.Equal(allocation.HouseholdAllocation.UnusedFromBase, snapshot.UnusedFromBase);
     }
@@ -76,11 +116,11 @@ public sealed class CreditAllocationAuditSnapshotV1Tests
     public void RequiresNonEmptyCalculationIdAndUtcTimestamp()
     {
         var instruction = new CreditFundingInstructionV1(
-            CreditFundingSourceV1.HanaCharityFund,
-            CreditAllocationModeV1.EqualWalletTopUp,
-            "hana-charity-fund",
-            "fund-decision-23");
-        var allocation = CreditFundingInstructionResolverV1.CalculateEqualWalletTopUp(
+            CreditFundingSourceV1.Organization,
+            CreditAllocationModeV1.OrganizationDefined,
+            "org-program-17",
+            "instruction-2026-05");
+        var allocation = CreditFundingInstructionResolverV1.CalculateOrganizationDefined(
             instruction, new RialAmount(1));
 
         Assert.Throws<ArgumentException>(() =>
@@ -96,6 +136,7 @@ public sealed class CreditAllocationAuditSnapshotV1Tests
         EconomicHardship = EconomicHardshipLevel.OccasionalShortfallInOneEssentialNeed,
         CareAndSupport = CareSupportLevel.EffectiveAdultOrPracticalSupportAvailable,
         Education = EducationAttainment.DiplomaOrAssociate,
+        HousingTenure = HousingTenureType.Tenant,
         HouseholdSize = 1,
         AgeComposition = new HouseholdAgeComposition(0, 0, 0, 1, 0, 0)
     };
