@@ -410,7 +410,7 @@ jobs:
           grep -q "ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is not allowed" /tmp/hana-proxy-unsafe-switch.log
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
@@ -572,7 +572,7 @@ jobs:
         run: node tests/web-buyer-navigation-browser-smoke.mjs
 
   mobile:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EXPO_NO_TELEMETRY: '1'
       CI: '1'
