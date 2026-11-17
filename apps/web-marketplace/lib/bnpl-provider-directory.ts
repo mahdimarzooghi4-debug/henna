@@ -29,7 +29,7 @@ export const bnplProviderDirectory: readonly BnplDirectoryProvider[] = [
   },
 ];
 
-/** 
+/**
  * NO merchant payment adapter, order/payment/settlement contract or credentials
  * exist for these providers in Hana's Stage web checkout. Never turn a listing
  * into an enabled payment method merely by changing frontend configuration.

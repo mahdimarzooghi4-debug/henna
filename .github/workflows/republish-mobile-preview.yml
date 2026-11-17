@@ -1,0 +1,52 @@
+name: Republish Henna Android preview assets
+
+on:
+  push:
+    branches:
+      - feat/seller-mobile-001-access-orders
+    paths:
+      - .github/workflows/republish-mobile-preview.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  republish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the verified APKs from the successful Android run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source_run=42461626296
+          mkdir -p /tmp/hana-buyer /tmp/hana-seller dist
+          gh run download "$source_run" --repo "$GITHUB_REPOSITORY" \
+            --name hana-buyer-android-ci-debug-apk --dir /tmp/hana-buyer
+          gh run download "$source_run" --repo "$GITHUB_REPOSITORY" \
+            --name hana-seller-android-ci-debug-apk --dir /tmp/hana-seller
+          mapfile -t buyer_apks < <(find /tmp/hana-buyer -type f -name '*.apk' -print)
+          mapfile -t seller_apks < <(find /tmp/hana-seller -type f -name '*.apk' -print)
+          test "${#buyer_apks[@]}" -eq 1
+          test "${#seller_apks[@]}" -eq 1
+          cp "${buyer_apks[0]}" dist/hana-buyer-preview.apk
+          cp "${seller_apks[0]}" dist/hana-seller-preview.apk
+          sha256sum dist/*.apk
+          ls -lh dist/*.apk
+
+      - name: Publish fresh release asset URLs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create hana-mobile-preview-1630-2 \
+            dist/hana-buyer-preview.apk dist/hana-seller-preview.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Henna mobile preview 1630-2" \
+            --notes "Re-published the verified preview APKs to provide fresh download asset URLs. The APK contents match the successful Android validation run 42461626296."

@@ -29,7 +29,7 @@ export function FigmaBuyerServices({kind,previewCredits=false}:{kind:ServiceKind
     <section className={styles.tickets}><div className={styles.sectionHeading}><h2>درخواست‌های قبلی و پیگیری پیام‌ها</h2></div>{tickets.map(ticket=><article className={styles.ticket} key={ticket.id}><div className={styles.ticketMeta}><span className={styles.badge}>{ticket.status}</span><span>تاریخ ثبت: {ticket.date}</span></div><div><h3>{ticket.title}</h3><span className={styles.ticketId}>{ticket.id}</span><p>{ticket.detail}</p></div></article>)}<Link className={styles.call} href="tel:02100000000">تماس با پشتیبانی تلفنی</Link></section></>}
    {notice&&<p className={styles.notice} role="status">{notice}</p>}
   </section>
-  
+
  </div></main>;
 }
 

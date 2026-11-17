@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>بازبینی اپ‌های اندروید حنا — APK واقعی</title>
+<style>
+:root{color-scheme:light;--teal:#055247;--cream:#fff2e3;--text:#19382f;--muted:#66756f;--stroke:#deded6;--surface:#fff;--bg:#f8f6f1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:1.8}
+header{background:var(--teal);color:#fff;padding:18px max(24px,calc((100vw - 1160px)/2))}
+header strong{font-size:21px;display:block}header small{opacity:.85}
+main{max-width:1160px;margin:auto;padding:28px 20px 48px}
+h1{font-size:24px;margin:0 0 6px}h2{font-size:17px;margin:0 0 12px}
+p{margin:6px 0 15px}.sub{color:var(--muted)}
+.layout{display:grid;grid-template-columns:minmax(290px,385px) minmax(0,1fr);gap:18px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--stroke);border-radius:18px;padding:22px}
+.tabs{display:flex;gap:8px;margin-bottom:19px;flex-wrap:wrap}
+.tab{flex:1;min-width:110px}
+button,.action{font:inherit;font-weight:700;border-radius:10px;padding:10px 15px;border:1px solid var(--stroke);background:#fff;color:var(--text);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button[aria-selected="true"],.primary{background:var(--teal);border-color:var(--teal);color:white}
+button:hover,.action:hover{filter:brightness(.96)}
+small{font-size:12px}
+label{font-weight:700;display:block;margin-top:12px;margin-bottom:6px}
+input{width:100%;font:inherit;padding:12px;border:1px solid #b7c3bb;border-radius:10px;direction:ltr;text-align:left}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #e2ad71;outline-offset:2px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.actions>*{flex:1}
+.note{padding:12px 14px;background:#f8f1e6;border-radius:12px;color:#584a33;font-size:13px;margin-top:14px}
+.warning{border-right:3px solid #bf7a3b;padding:8px 12px;background:#fdf5e9;margin-top:14px;font-size:13px}
+.sr{position:absolute;height:1px;width:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.device-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.status{font-size:12px;color:var(--muted)}
+.viewer{margin-top:15px;min-height:600px;border-radius:17px;background:#e9eee9;display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto}
+.viewer iframe{width:390px;min-width:390px;height:810px;border:0;background:white;border-radius:15px;display:block}
+.empty{text-align:center;max-width:400px;padding:30px 15px;color:#426056}
+.empty strong{display:block;color:var(--text);font-size:17px}
+.steps{margin:10px 0;padding-right:24px}
+.steps li{margin-bottom:8px}
+a{color:var(--teal);text-underline-offset:3px}
+footer{padding:22px;text-align:center;font-size:12px;color:var(--muted)}
+@media(max-width:790px){.layout{grid-template-columns:1fr}main{padding:18px 12px}.panel{padding:17px}.viewer{min-height:500px;padding:6px}.viewer iframe{min-width:0;width:min(100%,390px);height:780px}}
+</style>
+</head>
+<body>
+<header><strong>حنا | بازبینی APK واقعی اندروید</strong><small>شبیه‌ساز Appetize در مرورگر · مخصوص بررسی صفحه‌به‌صفحه با فیگما</small></header>
+<main>
+<h1>همان اپ اندروید، نه نسخه تبدیل‌شده به وب</h1>
+<p class="sub">پس از بارگذاری APK آزمایشی در Appetize، تصویر و تعامل واقعی اجرای اندروید در همین صفحه نمایش داده می‌شود. در حالت فعلی ورود واقعی و داده‌های فروشندگان فعال نیست.</p>
+<div class="layout">
+<section class="panel" aria-labelledby="settings-title">
+<h2 id="settings-title">انتخاب اپ برای بازبینی</h2>
+<div class="tabs" role="tablist" aria-label="انتخاب اپ">
+<button class="tab" id="buyerTab" role="tab" aria-selected="true" aria-controls="viewer">اپ خریدار</button>
+<button class="tab" id="sellerTab" role="tab" aria-selected="false" aria-controls="viewer">اپ فروشنده</button>
+</div>
+<p id="appDescription" class="sub">خریدار حنا — APK پیش‌نمایش 1666، دارای آیکون بدون نوشته.</p>
+<h2>اتصال اجرای واقعی اپ</h2>
+<label for="shareInput">لینک Share / Embed از Appetize</label>
+<input id="shareInput" type="url" autocomplete="off" spellcheck="false" placeholder="https://appetize.io/app/b_...">
+<small class="sub">پس از آپلود APK، در Appetize دکمه Share را بزنید و لینک را اینجا قرار دهید.</small>
+<div class="actions">
+<button id="applyBtn" class="primary" type="button">نمایش APK</button>
+<button id="clearBtn" type="button">پاک‌کردن لینک</button>
+</div>
+<p id="message" role="status" aria-live="polite" class="status">لینک Appetize هنوز ثبت نشده است.</p>
+<div class="note">لینک هر اپ فقط در مرورگر شما ذخیره می‌شود؛ به GitHub یا سرویس Render ارسال نمی‌شود. توکن API و رمز عبور را در این فیلد وارد نکنید.</div>
+<h2 style="margin-top:24px">بارگذاری اولین نسخه</h2>
+<ol class="steps">
+<li>نسخه APK آزمایشی <a id="apkLink" target="_blank" rel="noopener noreferrer" href="https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1666-1/hana-buyer-preview.apk">خریدار حنا</a> را دانلود کنید.</li>
+<li>در <a href="https://appetize.io/upload" target="_blank" rel="noopener noreferrer">Appetize — Upload</a> با حساب خودتان وارد شوید و همان APK را بارگذاری کنید.</li>
+<li>از Appetize لینک <b>Share</b> را کپی و در فیلد بالا وارد کنید؛ سپس «نمایش APK» را بزنید.</li>
+</ol>
+<div class="warning">این اپ‌ها فقط نسخه‌های Debug/Preview برای بررسی طراحی‌اند، نه نسخه تولید. برای حفاظت بیشتر، در تنظیمات Appetize دسترسی Run را به کاربران مجاز محدود کنید؛ لینک Build به‌طور پیش‌فرض ممکن است برای هر فرد دارای لینک قابل اجرا باشد.</div>
+</section>
+<section class="panel" aria-labelledby="view-title">
+<div class="device-head">
+<h2 id="view-title" style="margin:0">شبیه‌ساز اندروید — <span id="appName">خریدار</span></h2>
+<a id="directLink" href="https://appetize.io/upload" target="_blank" rel="noopener noreferrer" hidden>بازکردن مستقیم در Appetize</a>
+</div>
+<div id="viewer" class="viewer" role="tabpanel" aria-labelledby="buyerTab">
+<div class="empty" id="empty">
+<strong>منتظر لینک APK در Appetize</strong>
+<p>تا قبل از بارگذاری APK، شبیه‌ساز واقعی در این صفحه فعال نمی‌شود. بعد از اتصال، با لمس صفحه می‌توانید تمام بخش‌های مجاز اپ را بررسی کنید.</p>
+</div>
+</div>
+<p class="status">مرجع بازبینی: انتشار آزمایشی 1666، Commit <code>df4c68b</code>. تفاوت‌های دستگاه، نسخه Android و شرایط شبکه را هنگام مقایسه با فیگما در نظر بگیرید.</p>
+</section>
+</div>
+</main>
+<footer>Henna Android Native Review · فقط کنترل بصری و رفتاری · هیچ پرداخت، پیامک واقعی، سفارش واقعی یا دسترسی خصوصی شبیه‌سازی نمی‌شود.</footer>
+<script>
+(function () {
+  "use strict";
+  var selected = new URLSearchParams(location.search).get("app") === "seller" ? "seller" : "buyer";
+  var ids = { buyer: "hana.native.review.buyer.build.v1", seller: "hana.native.review.seller.build.v1" };
+  var packages = {
+    buyer: "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1666-1/hana-buyer-preview.apk",
+    seller: "https://github.com/mahdimarzooghi4-debug/henna/releases/download/hana-mobile-preview-1666-1/hana-seller-preview.apk"
+  };
+  var buyerTab = document.getElementById("buyerTab");
+  var sellerTab = document.getElementById("sellerTab");
+  var shareInput = document.getElementById("shareInput");
+  var applyBtn = document.getElementById("applyBtn");
+  var clearBtn = document.getElementById("clearBtn");
+  var message = document.getElementById("message");
+  var viewer = document.getElementById("viewer");
+  var directLink = document.getElementById("directLink");
+  var appName = document.getElementById("appName");
+  var appDescription = document.getElementById("appDescription");
+  var apkLink = document.getElementById("apkLink");
+  var emptyTemplate = document.getElementById("empty").cloneNode(true);
+
+  function parseAppetizeBuildId(value) {
+    try {
+      var url = new URL(value.trim());
+      if (url.protocol !== "https:" || url.hostname !== "appetize.io") return null;
+      var match = /^\/(?:app|embed)\/([a-zA-Z0-9_-]{4,160})\/?$/.exec(url.pathname);
+      return match ? match[1] : null;
+    } catch (_) { return null; }
+  }
+  function readStored() {
+    try { return localStorage.getItem(ids[selected]) || ""; }
+    catch (_) { return ""; }
+  }
+  function writeStored(value) {
+    try { if (value) localStorage.setItem(ids[selected], value);
+      else localStorage.removeItem(ids[selected]); }
+    catch (_) { message.textContent = "مرورگر اجازه ذخیره لینک را نداد؛ نمایش فعلی همچنان قابل استفاده است."; }
+  }
+  function clearViewer() {
+    viewer.replaceChildren(emptyTemplate.cloneNode(true));
+    directLink.hidden = true;
+    directLink.removeAttribute("href");
+  }
+  function showBuild(buildId) {
+    clearViewer();
+    var frame = document.createElement("iframe");
+    frame.title = "شبیه‌ساز اندروید — " + (selected === "buyer" ? "اپ خریدار" : "اپ فروشنده");
+    frame.loading = "eager";
+    frame.referrerPolicy = "no-referrer";
+    frame.setAttribute("allow", "autoplay");
+    frame.src = "https://appetize.io/embed/" + encodeURIComponent(buildId);
+    viewer.replaceChildren(frame);
+    directLink.href = "https://appetize.io/app/" + encodeURIComponent(buildId);
+    directLink.hidden = false;
+    message.textContent = "شبیه‌ساز این نسخه متصل شد. اگر ورود اجرا نشد، مجوز Run در Appetize را بررسی کنید.";
+  }
+  function selectApp(next) {
+    selected = next;
+    buyerTab.setAttribute("aria-selected", String(next === "buyer"));
+    sellerTab.setAttribute("aria-selected", String(next === "seller"));
+    viewer.setAttribute("aria-labelledby", next === "buyer" ? "buyerTab" : "sellerTab");
+    appName.textContent = next === "buyer" ? "خریدار" : "فروشنده";
+    appDescription.textContent = next === "buyer"
+      ? "خریدار حنا — APK پیش‌نمایش 1666، دارای آیکون بدون نوشته."
+      : "فروشنده حنا — APK پیش‌نمایش 1666، دارای آیکون بدون نوشته.";
+    apkLink.href = packages[next];
+    apkLink.textContent = next === "buyer" ? "خریدار حنا" : "فروشنده حنا";
+    var id = readStored();
+    shareInput.value = id ? "https://appetize.io/app/" + id : "";
+    if (id) showBuild(id);
+    else { clearViewer(); message.textContent = "لینک Appetize برای این اپ هنوز ثبت نشده است."; }
+  }
+  applyBtn.addEventListener("click", function () {
+    var id = parseAppetizeBuildId(shareInput.value);
+    if (!id) {
+      message.textContent = "فقط لینک رسمی https://appetize.io/app/… یا https://appetize.io/embed/… پذیرفته می‌شود.";
+      shareInput.focus();
+      return;
+    }
+    writeStored(id);
+    showBuild(id);
+  });
+  clearBtn.addEventListener("click", function () {
+    writeStored("");
+    shareInput.value = "";
+    clearViewer();
+    message.textContent = "لینک این اپ پاک شد.";
+  });
+  buyerTab.addEventListener("click", function () { selectApp("buyer"); });
+  sellerTab.addEventListener("click", function () { selectApp("seller"); });
+  selectApp(selected);
+})();
+</script>
+</body>
+</html>

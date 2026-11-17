@@ -118,7 +118,7 @@ export function BuyerAddresses() {
           <p className={styles.disclaimer}>این مرحله فقط رابط و اعتبارسنجی فرم را آماده می‌کند؛ تا اتصال ذخیره‌سازی حساب کاربری، آدرسی ثبت یا برای سفارش استفاده نمی‌شود.</p>
         </form>}
       </section>
-      
+
     </div>
   </main>;
 }
