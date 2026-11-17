@@ -129,7 +129,7 @@ async function main() {
   assert.equal(calls.at(-1).params.categoryId, categoryA);
   assert.equal(await page.getByRole("button", {
     name: "دستهٔ منتشرشدهٔ یک",
-  }).getAttribute("aria-pressed"), "true");
+  }).first().getAttribute("aria-pressed"), "true");
   assert.equal(await page.getByRole("button", { name: "صفحهٔ بعد" }).isDisabled(), true);
   await page.getByRole("button", { name: "همه دسته‌ها" }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 2", exact: true }).waitFor();
