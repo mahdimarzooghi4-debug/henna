@@ -22,5 +22,4 @@ export const space = {
   xl: 32,
 } as const;
 
-// The Figma file uses Vazirmatn; local licensed font bytes are not yet
-// supplied. React Native uses the platform fallback rather than a fake font.
+// Vazirmatn 400/700 is bundled with its OFL notice under assets/fonts.

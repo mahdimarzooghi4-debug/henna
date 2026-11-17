@@ -102,14 +102,17 @@ async function main() {
   await page.getByRole("heading", { name: /با اثری فراتر از خرید/ }).waitFor();
 
   await page.goto(base + "/products");
-  await page.getByText("هنوز دسته‌بندی قابل نمایش در حنا ثبت نشده است.").waitFor();
-  await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
+  // An empty live catalog deliberately falls back to the approved, clearly
+  // labeled Figma preview. It must not be mistaken for real catalog data.
+  await page.locator(".buyer-product").first().waitFor();
+  assert.ok(await page.getByText("نمونه فیگما").count() > 0);
+  assert.equal(await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).count(), 0);
   assert.equal(await page.getByRole("link", { name: "صفحه اصلی حنا" }).count(), 1);
   assert.equal(await page.getByText("عنوان واقعی API در تست 1").count(), 0);
 
   mode = "rich";
   await page.reload();
-  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).waitFor();
+  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).first().waitFor();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 20);
   assert.equal(await page.getByText("SECRET").count(), 0);
@@ -120,20 +123,20 @@ async function main() {
   assert.equal(await page.locator(".buyer-product").count(), 1);
   assert.equal(calls.at(-1).params.page, "2");
 
-  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).click();
+  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).first().click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.page, "1");
   assert.equal(calls.at(-1).params.categoryId, categoryA);
   assert.equal(await page.getByRole("button", {
     name: "دستهٔ منتشرشدهٔ یک",
-  }).getAttribute("aria-pressed"), "true");
+  }).first().getAttribute("aria-pressed"), "true");
   assert.equal(await page.getByRole("button", { name: "صفحهٔ بعد" }).isDisabled(), true);
   await page.getByRole("button", { name: "همه دسته‌ها" }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 2", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.categoryId, undefined);
 
   await page.locator("#buyer-search").fill("عنوان واقعی API در تست 21");
-  await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
+  await page.locator('form[role="search"]').getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 21", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.search, "عنوان واقعی API در تست 21");
   assert.equal(calls.at(-1).params.page, "1");
@@ -141,7 +144,7 @@ async function main() {
 
   mode = "outage";
   await page.locator("#buyer-search").fill("قطعی کاتالوگ");
-  await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
+  await page.locator('form[role="search"]').getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "دریافت کالاها تأیید نشد" }).waitFor();
   assert.equal(await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).count(), 0);
   mode = "malformed";
@@ -158,7 +161,7 @@ async function main() {
   mode = "outage";
   publishedCategories = categories;
   await page.goto(base + oldBookmark);
-  await page.getByText("دریافت دسته‌بندی‌ها از سرور تأیید نشد.").waitFor();
+  await page.getByText("دریافت دسته‌بندی‌ها ممکن نشد.").waitFor();
   assert.equal(new URL(page.url()).searchParams.get("categoryId"),
     categoryB, "outage is not proof that a category was unpublished");
   assert.equal(new URL(page.url()).searchParams.get("page"), "2");
@@ -202,7 +205,7 @@ async function main() {
   await page.evaluate(() => document.dispatchEvent(
     new Event("visibilitychange"),
   ));
-  await page.getByText("دریافت دسته‌بندی‌ها از سرور تأیید نشد.").waitFor();
+  await page.getByText("دریافت دسته‌بندی‌ها ممکن نشد.").waitFor();
   await page.getByRole("heading", { name: "دریافت کالاها تأیید نشد" }).waitFor();
   assert.equal(await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 2", exact: true,
@@ -235,7 +238,7 @@ async function main() {
   await page.goto(base + resumedBookmark);
   await page.getByRole("button", {
     name: "دستهٔ منتشرشدهٔ دو",
-  }).waitFor();
+  }).first().waitFor();
   publishedCategories = [categories[0]];
   await page.evaluate(() => window.dispatchEvent(
     new PageTransitionEvent("pageshow", { persisted: true }),
@@ -328,7 +331,7 @@ async function main() {
   // On the approved 390px design, real content reflows and stays in viewport.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("#buyer-search").fill("");
-  await page.getByRole("button", { name: "جست‌وجو", exact: true }).click();
+  await page.locator('form[role="search"]').getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.evaluate(() =>
     document.documentElement.scrollWidth <= window.innerWidth), true);

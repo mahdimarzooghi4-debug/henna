@@ -15,7 +15,7 @@
       "edgeToEdgeEnabled": true
     },
     "extra": {
-      "implementationPhase": "Frontend 020 buyer public custom-scheme links; native E2E and real SMS adapter pending"
+      "implementationPhase": "Frontend 030 mobile buyer UX polish; real SMS adapter pending"
     }
   }
 }
