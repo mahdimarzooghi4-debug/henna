@@ -3,11 +3,26 @@ export type BuyerCategory = { id: string; name: string; slug: string };
 export type BuyerProduct = {
   id: string; categoryId: string; name: string;
   kind: "GOOD" | "SERVICE"; description: string | null;
+  unitName?: string | null; quantityScale?: number | null;
 };
 export type BuyerPage = {
   items: BuyerProduct[]; page: number; pageSize: number; total: number;
 };
 export const BUYER_PAGE_SIZE = 20;
+export const BUYER_OFFERS_PAGE_SIZE = 20;
+export type BuyerOffer = {
+  id: string;
+  sellerPublicId: string;
+  sellerName: string;
+  priceRials: number;
+  sellableQuantity: number;
+  unitName: string;
+  quantityScale: number;
+  updatedAtUtc: string;
+};
+export type BuyerOfferPage = {
+  items: BuyerOffer[]; page: number; pageSize: number; total: number;
+};
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const object = (x: unknown): Record<string, unknown> | null =>
   x !== null && typeof x === "object" && !Array.isArray(x)
@@ -97,15 +112,62 @@ export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage |
     if (!p || !id(p.id) || !id(p.categoryId) || !words(p.name, 200) ||
       (p.kind !== "GOOD" && p.kind !== "SERVICE") ||
       (p.description !== null && (typeof p.description !== "string" ||
-        p.description.length > 2000))) return null;
+        p.description.length > 2000)) ||
+      (Object.hasOwn(p, "unitName") && !(p.unitName === null || words(p.unitName, 40))) ||
+      (Object.hasOwn(p, "quantityScale") && !(p.quantityScale === null || integer(p.quantityScale, 0, 6))) ||
+      (Object.hasOwn(p, "unitName") !== Object.hasOwn(p, "quantityScale")) ||
+      (p.kind === "SERVICE" && p.unitName != null)) return null;
     items.push({
       id: p.id, categoryId: p.categoryId, name: p.name,
       kind: p.kind, description: p.description,
+      ...(Object.hasOwn(p, "unitName") ? { unitName: typeof p.unitName === "string" ? p.unitName : null } : {}),
+      ...(Object.hasOwn(p, "quantityScale") ? { quantityScale: typeof p.quantityScale === "number" ? p.quantityScale : null } : {}),
     });
   }
   return {
     items, page: requestedPage, pageSize: BUYER_PAGE_SIZE, total: x.total,
   };
+}
+
+/** Parse only the reviewed public offer fields; ignore no unknown additions. */
+export function parseBuyerOfferPage(
+  raw: unknown, requestedPage: number,
+  requestedSize = BUYER_OFFERS_PAGE_SIZE,
+): BuyerOfferPage | null {
+  const x = object(raw);
+  if (!x || !integer(requestedPage, 1, 10000) ||
+    !integer(requestedSize, 1, 50) || x.page !== requestedPage ||
+    x.pageSize !== requestedSize ||
+    !integer(x.total, 0, Number.MAX_SAFE_INTEGER) ||
+    !Array.isArray(x.items) || x.items.length > requestedSize ||
+    x.items.length > x.total) return null;
+  const items: BuyerOffer[] = [];
+  const allowed = ["id", "sellerPublicId", "sellerName", "priceRials", "sellableQuantity",
+    "unitName", "quantityScale", "updatedAtUtc"].sort().join("|");
+  for (const candidate of x.items) {
+    const offer = object(candidate);
+    if (!offer || Object.keys(offer).sort().join("|") !== allowed ||
+      !id(offer.id) || !id(offer.sellerPublicId) || !words(offer.sellerName, 160) ||
+      !integer(offer.priceRials, 1, Number.MAX_SAFE_INTEGER) ||
+      typeof offer.sellableQuantity !== "number" ||
+      !Number.isFinite(offer.sellableQuantity) ||
+      offer.sellableQuantity <= 0 || offer.sellableQuantity > 1_000_000_000_000 ||
+      !words(offer.unitName, 40) || !integer(offer.quantityScale, 0, 6) ||
+      typeof offer.updatedAtUtc !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?Z$/.test(offer.updatedAtUtc) ||
+      !Number.isFinite(Date.parse(offer.updatedAtUtc))) return null;
+    const quantityFactor = 10 ** offer.quantityScale;
+    if (Math.abs(offer.sellableQuantity * quantityFactor -
+      Math.round(offer.sellableQuantity * quantityFactor)) > 1e-7) return null;
+    items.push({
+      id: offer.id, sellerPublicId: offer.sellerPublicId, sellerName: offer.sellerName,
+      priceRials: offer.priceRials,
+      sellableQuantity: offer.sellableQuantity,
+      unitName: offer.unitName, quantityScale: offer.quantityScale,
+      updatedAtUtc: offer.updatedAtUtc,
+    });
+  }
+  return { items, page: requestedPage, pageSize: requestedSize, total: x.total };
 }
 
 /** A product identity is not a seller offer, price or stock claim. */
@@ -123,12 +185,18 @@ export function parseBuyerProduct(
     !id(x.categoryId) || !words(x.name, 200) ||
     (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
     (x.description !== null && x.description !== undefined &&
-      (typeof x.description !== "string" || x.description.length > 2000)))
+      (typeof x.description !== "string" || x.description.length > 2000)) ||
+    (Object.hasOwn(x, "unitName") && !(x.unitName === null || words(x.unitName, 40))) ||
+    (Object.hasOwn(x, "quantityScale") && !(x.quantityScale === null || integer(x.quantityScale, 0, 6))) ||
+    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")) ||
+    (x.kind === "SERVICE" && x.unitName != null))
     return null;
   return {
     id: x.id, categoryId: x.categoryId, name: x.name,
     kind: x.kind, description: typeof x.description === "string"
       ? x.description : null,
+    ...(Object.hasOwn(x, "unitName") ? { unitName: typeof x.unitName === "string" ? x.unitName : null } : {}),
+    ...(Object.hasOwn(x, "quantityScale") ? { quantityScale: typeof x.quantityScale === "number" ? x.quantityScale : null } : {}),
   };
 }
 
