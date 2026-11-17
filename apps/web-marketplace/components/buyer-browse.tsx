@@ -2,13 +2,33 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { LANDING_PREVIEW_PRODUCTS } from "../lib/landing-preview-products";
+import { LandingAddButton } from "./landing-add-button";
+import styles from "./buyer-marketplace.module.css";
+import { CATALOG_COLLECTIONS, parseCatalogFeatureSet, type CatalogCollection, type CatalogCollectionSelection } from "../lib/buyer-catalog-collections";
 import {
-  BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref,
+  BUYER_PAGE_SIZE, buyerCatalogPath, buyerBrowseHref, buyerCategorySetHref,
+  parseBuyerCategorySet, findLandingBuyerCategory,
   buyerDetailHref, parseBuyerBrowseLocation, parseBuyerCategories,
   parseBuyerPage, reconcilePublishedBuyerCategory,
   reconcilePublishedBuyerPage, validBuyerSearch,
   type BuyerBrowseLocation, type BuyerCategory, type BuyerPage,
 } from "../lib/buyer-catalog";
+
+type PreviewFilter = "dairy" | "pantry" | "honey";
+type PreviewSort = "cheapest" | "expensive" | "discounted" | null;
+
+// Only the eight fixed Figma demo prices may use this display-format parser.
+function previewPrice(value: string): number {
+  return Number(value.replace(/[۰-۹٠-٩]/g, (digit) => {
+    const code = digit.charCodeAt(0);
+    return String(code >= 0x6f0 ? code - 0x6f0 : code - 0x660);
+  }).replace(/[,٬\s]/g, ""));
+}
+// These IDs are the eight fixed Figma preview cards, not published catalog IDs.
+const previewFilterProducts: Record<PreviewFilter, readonly string[]> = {
+  dairy: ["cheese", "yogurt", "tea", "eggs"], pantry: ["rice", "oil"], honey: ["honey", "walnut"],
+};
 
 type Load<T> =
   | { status: "loading"; key: string }
@@ -29,7 +49,16 @@ async function publicJson(path: string, signal: AbortSignal): Promise<unknown> {
 }
 
 /** Figma 476:3/476:4 (empty) + 478:2/478:22 (API-backed); approved by owner. */
-export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
+export function BuyerBrowse({
+  initialQuery = "", initialCategoryName = "", initialCollection = null,
+  initialMultiCategoryIds = null, invalidMultiCategoryIds = false,
+  initialFeatures = [], invalidFeatures = false,
+}: {
+  initialQuery?: string; initialCategoryName?: string;
+  initialCollection?: CatalogCollectionSelection;
+  initialMultiCategoryIds?: string[] | null; invalidMultiCategoryIds?: boolean;
+  initialFeatures?: CatalogCollection[]; invalidFeatures?: boolean;
+}) {
   // Parse server-provided URL before the first paint or catalog request:
   // a directly shared /?page=2&search=... must not flash page 1 results.
   const initial = parseBuyerBrowseLocation(new URLSearchParams(initialQuery));
@@ -39,59 +68,114 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   const [categoryRetry, setCategoryRetry] = useState(0);
   const [categoryRecovery, setCategoryRecovery] = useState("");
   const [pageRecovery, setPageRecovery] = useState("");
-  const [selected, setSelected] = useState<string | null>(initial.categoryId);
-  const [draftSearch, setDraftSearch] = useState(initial.search);
+  const [selected, setSelected] = useState<string | null>(initialMultiCategoryIds?.[0] ?? initial.categoryId);
+  const [additionalCategories, setAdditionalCategories] = useState<string[]>(initialMultiCategoryIds?.slice(1) ?? []);
+  const [invalidMulti, setInvalidMulti] = useState(invalidMultiCategoryIds);
+  const [categoryName, setCategoryName] = useState(
+    initial.categoryId ? "" : initialCategoryName,
+  );
+  const [categoryNameStatus, setCategoryNameStatus] = useState<
+    "none" | "pending" | "unavailable" | "not-found"
+  >(initial.categoryId || !initialCategoryName ? "none" : "pending");
   const [search, setSearch] = useState(initial.search);
-  const [searchError, setSearchError] = useState("");
   const [page, setPage] = useState(initial.page);
   const [productRetry, setProductRetry] = useState(0);
+  const [previewFilters, setPreviewFilters] = useState<PreviewFilter[]>([]);
+  const [featureSelections, setFeatureSelections] = useState<CatalogCollection[]>(
+    initialFeatures.length ? initialFeatures :
+    initialCollection && initialCollection !== "invalid" ? [initialCollection] : []);
+  const [invalidFeatureSelection, setInvalidFeatureSelection] = useState(invalidFeatures);
+  const [previewSort, setPreviewSort] = useState<PreviewSort>(null);
   const [products, setProducts] = useState<Load<BuyerPage>>({
     status: "loading", key: "",
   });
-  const path = buyerCatalogPath(page, selected, search);
+  const [multiProducts, setMultiProducts] = useState<Load<BuyerPage[]>>({ status: "loading", key: "" });
+  const multiIds = selected && additionalCategories.length > 0 ? [selected,...additionalCategories] : [];
+  const multiKey = multiIds.length > 1 ? multiIds.join(",")+"|"+search : "";
+  // Do not fetch or show unfiltered products for a filter lacking an
+  // authoritative, source-qualified catalog read model.
+  const path = initialCollection === null && !invalidMulti && !invalidFeatureSelection &&
+    additionalCategories.length === 0 && featureSelections.length === 0 &&
+    categoryNameStatus === "none" ? buyerCatalogPath(page, selected, search) : "";
   const current = products.key === path && products.status !== "loading"
     ? products : { status: "loading" as const, key: path };
+  const showPreviewCategories = initialCollection === null && !search && !selected &&
+    !invalidMulti && !invalidFeatureSelection && categoryNameStatus === "none" &&
+    (current.status !== "ok" || current.data.items.length === 0);
+  const isPreview = showPreviewCategories && featureSelections.length === 0;
   const locationState: BuyerBrowseLocation = {
     categoryId: selected, search, page,
   };
 
   function setBrowseLocation(next: BuyerBrowseLocation) {
+    setPreviewFilters([]);
+    setPreviewSort(null);
+    setAdditionalCategories([]);
+    setInvalidMulti(false);
     setSelected(next.categoryId);
     setSearch(next.search);
-    setDraftSearch(next.search);
     setPage(next.page);
-    setSearchError("");
+    setCategoryName("");
+    setCategoryNameStatus("none");
     setCategoryRecovery("");
     setPageRecovery("");
     // Native browser Back/Forward and copied URLs restore the same approved
     // public catalog query. No arbitrary return URL or private state.
-    const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    const baseHref = buyerBrowseHref(next);
+    const href = featureSelections.length
+      ? baseHref + (baseHref.includes("?") ? "&" : "?") + "features=" + featureSelections.join(",")
+      : baseHref;
+    if (initialCollection !== null) {
+      // Switching out of a source-filtered view must discard that filter;
+      // keeping it in history would claim unrelated catalog items qualify.
+      window.location.assign(href);
+      return;
+    }
+    // A category landing must never keep an unrelated category in its URL
+    // after the buyer chooses a different taxonomy filter.
+    if (window.location.pathname.startsWith("/categories/")) {
+      window.location.assign(href);
+      return;
+    }
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.pushState(window.history.state, "", href);
   }
 
   useEffect(() => {
     function restore() {
-      if (window.location.pathname !== "/") return;
+      if (window.location.pathname !== "/products" || initialCollection !== null) return;
       const next = parseBuyerBrowseLocation(
         new URLSearchParams(window.location.search),
       );
-      setSelected(next.categoryId);
+      const params = new URLSearchParams(window.location.search);
+      const multi = params.has("categoryIds")
+        ? parseBuyerCategorySet(params.get("categoryIds")) : null;
+      const features = parseCatalogFeatureSet(params.get("features") ?? undefined);
+      setInvalidMulti(params.has("categoryIds") && multi === null);
+      setAdditionalCategories(multi?.slice(1) ?? []);
+      setFeatureSelections(features ?? []);
+      setInvalidFeatureSelection(features === null);
+      setSelected(multi?.[0] ?? next.categoryId);
       setSearch(next.search);
-      setDraftSearch(next.search);
       setPage(next.page);
-      setSearchError("");
-      setCategoryRecovery("");
-      setPageRecovery("");
-      const href = buyerBrowseHref(next);
-      if (window.location.pathname + window.location.search !== href)
+      const requestedName = next.categoryId
+        ? "" : new URLSearchParams(window.location.search).get("categoryName") ?? "";
+      setCategoryName(requestedName);
+    setCategoryNameStatus(requestedName ? "pending" : "none");
+    setCategoryRecovery("");
+    setPageRecovery("");
+    const href = requestedName
+      ? `/products?categoryName=${encodeURIComponent(requestedName)}${window.location.hash}`
+      : multi ? buyerCategorySetHref(multi, next.search) : buyerBrowseHref(next);
+      if (!params.has("features") && !params.has("categoryIds") &&
+        window.location.pathname + window.location.search !== href)
         window.history.replaceState(window.history.state, "", href);
     }
     restore();
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
-  }, [initialQuery]);
+  }, [initialQuery, initialCategoryName, initialCollection]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -114,6 +198,37 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   }, [categoryRetry]);
 
   useEffect(() => {
+    if (!categoryName || categoryNameStatus !== "pending" ||
+      categories.status === "loading") return;
+    if (categories.status === "unavailable") {
+      setCategoryNameStatus("unavailable");
+      return;
+    }
+    const category = findLandingBuyerCategory(categories.data, categoryName);
+    if (!category) {
+      setCategoryNameStatus("not-found");
+      return;
+    }
+    const next = { categoryId: category.id, search, page: 1 };
+    setSelected(category.id);
+    setPage(1);
+    setCategoryName("");
+    setCategoryNameStatus("none");
+    setCategoryRecovery("");
+    // Dedicated category pages must keep their stable shareable path.
+    // The regular /products listing still canonicalizes to a validated ID.
+    if (window.location.pathname === "/products") {
+      window.history.replaceState(
+        window.history.state, "", buyerBrowseHref(next) + window.location.hash,
+      );
+    }
+  }, [categoryName, categoryNameStatus, categories, search]);
+
+  useEffect(() => {
+    if (initialCollection !== null || categoryNameStatus !== "none" || !path) {
+      setProducts({ status: "loading", key: "" });
+      return;
+    }
     const abort = new AbortController();
     let active = true;
     setProducts({ status: "loading", key: path });
@@ -129,13 +244,42 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
         if (active) setProducts({ status: "unavailable", key: path });
       });
     return () => { active = false; abort.abort(); };
-  }, [path, page, productRetry]);
+  }, [path, page, productRetry, categoryNameStatus, initialCollection]);
+
+  useEffect(() => {
+    if (!multiKey || invalidMulti || featureSelections.length > 0 ||
+      categoryNameStatus !== "none") return;
+    if (categories.status === "loading") {
+      setMultiProducts({ status: "loading", key: multiKey });
+      return;
+    }
+    if (categories.status !== "ok" || !multiIds.every(id =>
+      categories.data.some(category => category.id.toLowerCase() === id.toLowerCase()))) {
+      setMultiProducts({ status: "unavailable", key: multiKey });
+      return;
+    }
+    const abort = new AbortController();
+    let active = true;
+    setMultiProducts({ status: "loading", key: multiKey });
+    void Promise.all(multiIds.map(async id => {
+      const data = await publicJson(buyerCatalogPath(1, id, search), abort.signal);
+      const parsed = parseBuyerPage(data, 1);
+      if (!parsed || parsed.items.some(item => item.categoryId.toLowerCase() !== id.toLowerCase()))
+        throw Error("unverified multi-category catalog data");
+      return parsed;
+    })).then(pages => {
+      if (active) setMultiProducts({ status: "ok", key: multiKey, data: pages });
+    }).catch(() => {
+      if (active) setMultiProducts({ status: "unavailable", key: multiKey });
+    });
+    return () => { active = false; abort.abort(); };
+  }, [multiKey, invalidMulti, featureSelections, categories, categoryNameStatus, productRetry]);
 
   useEffect(() => {
     // The published taxonomy is authoritative only after a valid 200. An
     // old bookmark can point to a category that is no longer published;
     // a 503 must NOT be mistaken for a removed category.
-    if (categories.status !== "ok") return;
+    if (categories.status !== "ok" || additionalCategories.length > 0) return;
     const next = reconcilePublishedBuyerCategory(
       { categoryId: selected, search, page }, categories.data,
     );
@@ -149,16 +293,16 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     // Correct this SAME history entry rather than creating a ghost "Back"
     // step that reinstates the removed category. Preserve public search.
     const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
-  }, [categories, selected, search, page]);
+  }, [categories, selected, search, page, additionalCategories]);
 
   useEffect(() => {
     // A real 200 may confirm that a saved page no longer exists after
     // unpublication. Do not mislabel it "no products" when page one still
     // contains published results; a 503/malformed response cannot repair it.
-    if (current.status !== "ok") return;
+    if (current.status !== "ok" || additionalCategories.length > 0) return;
     const next = reconcilePublishedBuyerPage(
       { categoryId: selected, search, page }, current.data,
     );
@@ -177,10 +321,10 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     );
     // Replace the SAME history entry; preserve category and Persian search.
     const href = buyerBrowseHref(next);
-    if (window.location.pathname === "/" &&
+    if (window.location.pathname === "/products" &&
       window.location.pathname + window.location.search !== href)
       window.history.replaceState(window.history.state, "", href);
-  }, [categories, current, selected, search, page]);
+  }, [categories, current, selected, search, page, additionalCategories]);
 
   useEffect(() => {
     // Mobile browsers can freeze this page for a long time and restore it
@@ -189,7 +333,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     let lastRefreshAt = -Infinity;
     function revalidateOnReturn() {
       if (document.visibilityState !== "visible" ||
-        window.location.pathname !== "/") return;
+        window.location.pathname !== "/products") return;
       // Safari can emit both visibilitychange and persisted pageshow on one
       // return. Treat them as one refresh rather than racing duplicate GETs.
       const now = performance.now();
@@ -212,16 +356,50 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
     };
   }, []);
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!validBuyerSearch(draftSearch)) {
-      setSearchError("جست‌وجو باید حداکثر ۸۰ نویسه و بدون نویسهٔ کنترلی باشد.");
+  function togglePreviewCategory(key: PreviewFilter) {
+    setPreviewFilters(previous => previous.includes(key)
+      ? previous.filter(value => value !== key) : [...previous, key]);
+  }
+  function toggleFeature(key: CatalogCollection) {
+    const next = featureSelections.includes(key)
+      ? featureSelections.filter(value => value !== key) : [...featureSelections, key];
+    const url = new URL(window.location.href);
+    url.searchParams.delete("collection");
+    if (next.length) url.searchParams.set("features", next.join(","));
+    else url.searchParams.delete("features");
+    if (initialCollection !== null || url.pathname.startsWith("/categories/")) {
+      window.location.assign("/products" + url.search);
       return;
     }
-    setSearchError("");
-    const term = draftSearch.trim();
-    if (term === search && page === 1) setProductRetry((n) => n + 1);
-    setBrowseLocation({ categoryId: selected, search: term, page: 1 });
+    setFeatureSelections(next);
+    setInvalidFeatureSelection(false);
+    window.history.pushState(window.history.state, "", url.pathname + url.search);
+  }
+  function togglePublishedCategory(id: string) {
+    if (categories.status !== "ok" || !categories.data.some(category => category.id === id)) return;
+    const currentIds = [selected,...additionalCategories].filter((value): value is string => value !== null);
+    const nextIds = currentIds.includes(id)
+      ? currentIds.filter(value => value !== id) : [...currentIds,id];
+    if (nextIds.length > 12) return; // Bound parallel public API reads.
+    const target = nextIds.length > 1
+      ? buyerCategorySetHref(nextIds, search)
+      : buyerBrowseHref({ categoryId: nextIds[0] ?? null, search, page: 1 });
+    const url = new URL(target, window.location.href);
+    if (featureSelections.length) url.searchParams.set("features",featureSelections.join(","));
+    const href = url.pathname+url.search;
+    if (initialCollection !== null || window.location.pathname !== "/products") {
+      window.location.assign(href);
+      return;
+    }
+    setSelected(nextIds[0] ?? null);
+    setAdditionalCategories(nextIds.slice(1));
+    setInvalidMulti(false);
+    setPage(1);
+    setPreviewFilters([]);
+    setPreviewSort(null);
+    setCategoryRecovery("");
+    setPageRecovery("");
+    window.history.pushState(window.history.state, "", href);
   }
 
   function chooseCategory(id: string | null) {
@@ -238,28 +416,33 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
   }
 
   return (
-    <main dir="rtl" className="buyer-main">
-      <div className="buyer-intro">
-        <p className="buyer-intro__eyebrow">مرور کاتالوگ حنا</p>
-        <h1>کالاها را در حنا مرور کنید</h1>
-        <p>دسته‌بندی‌ها و کالاها تنها در صورت تأیید و انتشار در کاتالوگ حنا نمایش داده می‌شوند.</p>
-      </div>
-
-      <form className="buyer-search" onSubmit={submitSearch} role="search">
-        <label className="buyer-visually-hidden" htmlFor="buyer-search">جست‌وجو در نام کالاها</label>
-        <input id="buyer-search" name="search" type="search" maxLength={80}
-          value={draftSearch} onChange={(event) => {
-            setDraftSearch(event.target.value);
-            setSearchError("");
-          }} placeholder="جست‌وجو در نام کالاها..."
-          aria-invalid={searchError ? true : undefined}
-          aria-describedby={searchError ? "buyer-search-error" : undefined} />
-        <button type="submit">جست‌وجو</button>
-      </form>
-      {searchError && <p id="buyer-search-error" className="buyer-error" role="alert">{searchError}</p>}
-
+    <main dir="rtl" className={`buyer-main ${styles.main}`}>
+      <h1 className={styles.visuallyHidden}>کالاهای منتشرشده در حنا</h1>
+      <div className={styles.layout}>
+        <aside className={styles.filters} aria-labelledby="buyer-filter-title">
+          <h2 id="buyer-filter-title">فیلترها</h2>
       <section className="buyer-section" aria-labelledby="buyer-categories-title">
         <h2 id="buyer-categories-title">دسته‌بندی‌ها</h2>
+        {categoryNameStatus === "pending" && (
+          <p className="buyer-panel" role="status">در حال تطبیق دسته با فهرست دسته‌بندی‌های حنا…</p>
+        )}
+        {categoryNameStatus === "unavailable" && (
+          <div className="buyer-panel buyer-panel--error" role="alert">
+            <p>دسته‌بندی‌ها در دسترس نیستند؛ برای اعمال فیلتر باید فهرست حنا دریافت شود.</p>
+            <button type="button" onClick={() => {
+              setCategoryNameStatus("pending");
+              setCategoryRetry((n) => n + 1);
+            }}>تلاش دوباره برای دسته‌بندی‌ها</button>
+          </div>
+        )}
+        {categoryNameStatus === "not-found" && (
+          <div className="buyer-panel" role="status">
+            <p>این دسته در فهرست دسته‌بندی‌های منتشرشدهٔ حنا وجود ندارد.</p>
+            <button type="button" onClick={() => setBrowseLocation({
+              categoryId: null, search, page: 1,
+            })}>نمایش همهٔ دسته‌ها</button>
+          </div>
+        )}
         {categories.status === "loading" ? (
           <p className="buyer-panel" role="status">در حال دریافت دسته‌بندی‌ها…</p>
         ) : categories.status === "unavailable" ? (
@@ -273,10 +456,30 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           <div className="buyer-panel buyer-categories" aria-label="فیلتر دسته‌بندی">
             <button className="buyer-chip" type="button" aria-pressed={selected === null}
               onClick={() => chooseCategory(null)}>همه دسته‌ها</button>
-            {categories.data.map((item) => (
-              <button key={item.id} className="buyer-chip" type="button"
-                aria-pressed={selected === item.id}
-                onClick={() => chooseCategory(item.id)}>{item.name}</button>
+            {categories.data.map(item => (
+              <label key={item.id} className={styles.checkOption}>
+                <input type="checkbox" checked={selected === item.id || additionalCategories.includes(item.id)}
+                  onChange={() => togglePublishedCategory(item.id)} />
+                {item.name}
+              </label>
+            ))}
+          </div>
+        )}
+        {showPreviewCategories && (
+          <div className={styles.previewCategoryFilters} aria-label="فیلتر محصولات نمایشی">
+            <p>دسته‌بندی کارت‌های نمونه (غیرواقعی) — انتخاب چندگانه</p>
+            <button type="button" aria-pressed={previewFilters.length === 0}
+              onClick={() => setPreviewFilters([])}>همه محصولات نمایشی</button>
+            {([
+              ["dairy","لبنیات محلی"],
+              ["pantry","روغن و خواربار"],
+              ["honey","عسل و خشکبار"],
+            ] as const).map(([id,label]) => (
+              <label key={id} className={styles.checkOption}>
+                <input type="checkbox" checked={previewFilters.includes(id)}
+                  onChange={() => togglePreviewCategory(id)} />
+                {label}
+              </label>
             ))}
           </div>
         )}
@@ -284,13 +487,106 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
           <p className="buyer-panel" role="status">{categoryRecovery}</p>
         )}
       </section>
-
+          <div className={styles.figmaFilterGroup}>
+            <h3>محدوده قیمت</h3>
+            <div className={styles.priceInputs}><span>از ۱۰,۰۰۰</span><span>تا ۵۰۰,۰۰۰</span></div>
+          </div>
+          <div className={styles.figmaFilterGroup}>
+            <h3>ویژگی‌ها</h3>
+            <div className={styles.featureLinks} role="group" aria-label="ویژگی‌های حنا">
+              {(["kalabarg","golden","henna"] as const).map(key => (
+                <label key={key} className={styles.checkOption}>
+                  <input type="checkbox" checked={featureSelections.includes(key)}
+                    onChange={() => toggleFeature(key)} />
+                  {CATALOG_COLLECTIONS[key].title}
+                </label>
+              ))}
+              <p className={styles.featureNotice}>نمایش کالاهای مشمول ویژگی‌ها پس از دریافت داده تأییدشده امکان‌پذیر است.</p>
+            </div>
+          </div>
+          <p className={styles.filterNote}>فهرست فقط کالاهای منتشرشده را نشان می‌دهد.</p>
+        </aside>
+        <div className={styles.results}>
+      <div className={styles.toolbar} dir="rtl" data-testid="products-filter-toolbar">
+        <div className={styles.sortOptions} aria-label="مرتب‌سازی و فیلتر کالاها">
+          <span>مرتب‌سازی براساس:</span>
+          <button type="button" aria-pressed={isPreview && previewSort === "cheapest"}
+            disabled={!isPreview} title={isPreview ? "مرتب‌سازی قیمت کارت‌های نمونه از کم به زیاد" : "قیمت تأییدشده برای مرتب‌سازی کاتالوگ در دسترس نیست"}
+            onClick={() => setPreviewSort(prev => prev === "cheapest" ? null : "cheapest")}>ارزان‌ترین</button>
+          <button type="button" aria-pressed={isPreview && previewSort === "expensive"}
+            disabled={!isPreview} title={isPreview ? "مرتب‌سازی قیمت کارت‌های نمونه از زیاد به کم" : "قیمت تأییدشده برای مرتب‌سازی کاتالوگ در دسترس نیست"}
+            onClick={() => setPreviewSort(prev => prev === "expensive" ? null : "expensive")}>گران‌ترین</button>
+          <button type="button" aria-pressed={isPreview && previewSort === "discounted"}
+            disabled={!isPreview} title={isPreview ? "فقط کارت‌های نمونه با قیمت قبلی بالاتر" : "تخفیف تأییدشده برای کاتالوگ در دسترس نیست"}
+            onClick={() => setPreviewSort(prev => prev === "discounted" ? null : "discounted")}>تخفیف‌دارها</button>
+        </div>
+      </div>
       <section className="buyer-section" aria-labelledby="buyer-products-title">
         <h2 id="buyer-products-title">کالاها</h2>
         {pageRecovery && (
           <p className="buyer-panel" role="status">{pageRecovery}</p>
         )}
-        {current.status === "loading" ? (
+        {invalidMulti || invalidFeatureSelection || initialCollection === "invalid" ? (
+          <div className="buyer-panel buyer-products-status" role="alert" data-testid="catalog-collection-status">
+            <h3>فیلتر انتخاب‌شده معتبر نیست</h3>
+            <p>برای جلوگیری از نمایش نتایج اشتباه، فیلتر نامعتبر اعمال نشد.</p>
+            <Link href="/products">نمایش همه کالاها بدون این فیلتر</Link>
+          </div>
+        ) : featureSelections.length > 0 || initialCollection !== null ? (
+          <div className="buyer-panel buyer-products-status" role="status" data-testid="catalog-collection-status">
+            <h3>{initialCollection !== null && featureSelections.length === 1
+              ? `فیلتر فعال: ${CATALOG_COLLECTIONS[initialCollection].title}`
+              : `ویژگی‌های انتخاب‌شده: ${featureSelections.map(key => CATALOG_COLLECTIONS[key].title).join("، ")}`}</h3>
+            {initialCollection !== null && featureSelections.length === 1 && (
+              <p>{CATALOG_COLLECTIONS[initialCollection].description}</p>
+            )}
+            <p>فهرست تأییدشده کالاهای مشمول این ویژگی‌ها هنوز از منبع معتبر به کاتالوگ متصل نشده است. تا آن زمان، کالای عمومی یا نمونهٔ طراحی را به‌اشتباه مشمول نمایش نمی‌دهیم.</p>
+            <button type="button" onClick={() => {
+              setFeatureSelections([]);
+              setInvalidFeatureSelection(false);
+              const url = new URL(window.location.href);
+              url.searchParams.delete("features");
+              url.searchParams.delete("collection");
+              if (initialCollection !== null) window.location.assign(url.pathname + url.search);
+              else window.history.pushState(window.history.state, "", url.pathname + url.search);
+            }}>پاک‌کردن ویژگی‌ها</button>
+          </div>
+        ) : additionalCategories.length > 0 ? (
+          <div className="buyer-panel buyer-product-wrap" data-testid="catalog-multi-category">
+            {multiProducts.key !== multiKey || multiProducts.status === "loading" ? (
+              <p role="status">در حال دریافت کالاهای دسته‌های انتخاب‌شده…</p>
+            ) : multiProducts.status === "unavailable" ? (
+              <div role="alert">
+                <p>تطبیق دسته‌ها با فهرست منتشرشده یا دریافت کالاها تأیید نشد. نتیجه‌ای نمایش نمی‌دهیم.</p>
+                <button type="button" onClick={() => setProductRetry(value => value + 1)}>تلاش دوباره</button>
+              </div>
+            ) : (
+              <>
+                <p className={styles.previewDisclosure}>نمایش حداکثر ۲۰ کالای صفحه اول از هر دسته منتشرشده؛ برای مشاهده کامل، یک دسته را انتخاب کنید.</p>
+                <ul className="buyer-products" aria-label="کالاهای دسته‌های انتخاب‌شده">
+                  {[...new Map(multiProducts.data.flatMap(result => result.items)
+                    .map(item => [item.id,item] as const)).values()].map(item => (
+                    <li className="buyer-product" key={item.id}>
+                      <div className={styles.productVisual} aria-hidden="true" />
+                      <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
+                      <p className="buyer-product__kind">کالا</p>
+                      {item.description && <p>{item.description}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        ) : categoryNameStatus === "pending" ? (
+          <p className="buyer-panel buyer-products-status" role="status">پس از تعیین دسته‌بندی، کالاهای همان دسته نمایش داده می‌شوند…</p>
+        ) : categoryNameStatus === "unavailable" || categoryNameStatus === "not-found" ? (
+          <div className="buyer-panel buyer-products-status" role="status">
+            <p>برای جلوگیری از نمایش دستهٔ اشتباه، کالاها بارگذاری نشدند.</p>
+            <Link href="/products">مشاهده صفحه همه کالاها</Link>
+          </div>
+        ) : !search && !selected && (current.status === "loading" || current.status === "unavailable" || current.data.items.length === 0) ? (
+          <FigmaCatalogPreview filters={previewFilters} sort={previewSort} />
+        ) : current.status === "loading" ? (
           <p className="buyer-panel buyer-products-status" role="status">در حال دریافت کالاها…</p>
         ) : current.status === "unavailable" ? (
           <div className="buyer-panel buyer-products-status buyer-panel--error" role="alert">
@@ -303,7 +599,7 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
             <h3>فعلاً کالایی برای نمایش نداریم</h3>
             <p>{search || selected
               ? "در این جست‌وجو یا دسته‌بندی کالای منتشرشده‌ای پیدا نشد."
-              : "فهرست واقعی پس از تأیید و انتشار کالاها اینجا ظاهر می‌شود."} برای کالاهای منتشرشده، مسیر سبد و خرید از صفحهٔ جزئیات در دسترس است؛ خدمات فقط اطلاعات ارائه‌دهنده و دسترس‌پذیری را نشان می‌دهند.</p>
+              : "فهرست واقعی پس از تأیید و انتشار کالاها اینجا ظاهر می‌شود."} نمایش قیمت، سبد خرید و ثبت سفارش در این نسخه فعال نیست.</p>
           </div>
         ) : (
           <>
@@ -311,8 +607,9 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
               <ul className="buyer-products" aria-label="فهرست کالاهای منتشرشده">
                 {current.data.items.map((item) => (
                   <li className="buyer-product" key={item.id}>
+                    <div className={styles.productVisual} aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M10 18h28l-2 22H12l-2-22Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M17 19v-4a7 7 0 0 1 14 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M20 27h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg></div>
                     <h3><Link className="buyer-product__link" href={buyerDetailHref(item.id, locationState) ?? "/"}>{item.name}</Link></h3>
-                    <p className="buyer-product__kind">{item.kind === "SERVICE" ? "خدمت" : "کالا"}</p>
+                    <p className="buyer-product__kind">کالا</p>
                     {item.description && <p>{item.description}</p>}
                   </li>
                 ))}
@@ -327,10 +624,53 @@ export function BuyerBrowse({ initialQuery = "" }: { initialQuery?: string }) {
                 page >= 10000 || page * BUYER_PAGE_SIZE >= current.data.total
               } onClick={() => choosePage(page + 1)}>صفحهٔ بعد</button>
             </nav>
-            <p className="buyer-not-commerce">قیمت و موجودی کالا از پیشنهادهای واقعی فروشندگان در صفحهٔ جزئیات/سبد بررسی می‌شود؛ ثبت خدمت به معنی رزرو زمان یا لجستیک نیست.</p>
+            <p className="buyer-not-commerce">این فهرست صرفاً برای مرور است؛ قیمت، موجودی و امکان خرید هنوز فعال نیست.</p>
           </>
         )}
       </section>
+        </div>
+      </div>
     </main>
+  );
+}
+
+
+function FigmaCatalogPreview({ filters, sort }: { filters: readonly PreviewFilter[]; sort: PreviewSort }) {
+  // OR across selected categories. No unverified feature labels are inferred from sample badges.
+  const filtered = LANDING_PREVIEW_PRODUCTS.filter(product =>
+    filters.length === 0 || filters.some(filter => previewFilterProducts[filter].includes(product.id)));
+  // Demo price/discount metadata must not be interpreted as public offers.
+  const visible = sort === "discounted"
+    ? filtered.filter((product) => product.oldPrice != null &&
+      previewPrice(product.oldPrice) > previewPrice(product.price))
+    : sort === "cheapest" || sort === "expensive"
+      ? [...filtered].sort((a, b) => (sort === "cheapest" ? 1 : -1) *
+        (previewPrice(a.price) - previewPrice(b.price)))
+      : filtered;
+  return (
+    <div className={styles.catalogPreview} aria-label="محصولات فروشگاه" dir="rtl">
+      <p className={styles.previewDisclosure}>نمایش نمونه طراحی — این کارت‌ها دسته‌بندی منتشرشده یا موجودی واقعی نیستند.</p>
+      <div className={styles.catalogGrid}>
+        {visible.length === 0 && <p role="status" className={styles.previewDisclosure}>در این دسته از کارت‌های نمونه، کالای تخفیف‌دار وجود ندارد.</p>}
+        {visible.map((product) => (
+          <article key={product.id} className={styles.catalogCard}>
+            <div className={styles.catalogImage}>
+              <img src={"/landing/" + product.image} alt={product.title} />
+              {product.badge && <span className={`${styles.catalogBadge} ${/عسل|خواربار/.test(product.badge) ? styles.catalogBadgeGreen : ""}`}>{product.badge}</span>}
+            </div>
+            <div className={styles.catalogInfo}>
+              <h3>{product.title}</h3><p>{product.detail}</p>
+            </div>
+            <div className={styles.catalogActions}>
+              <LandingAddButton stayOnPage productId={product.id} messageClassName={styles.catalogNotice} />
+              <div className={styles.catalogPrice}>
+                {product.oldPrice && <del>{product.oldPrice}</del>}
+                <strong>{product.price} تومان</strong>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }

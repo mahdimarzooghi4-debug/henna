@@ -3,17 +3,17 @@ import type { ReactNode } from "react";
 import "@fontsource/vazirmatn/400.css";
 import "@fontsource/vazirmatn/700.css";
 import "./globals.css";
-import { PublicFooter } from "../components/public-footer";
+import "./buyer-offers.css";
 
 export const metadata: Metadata = {
-  title: "حنا",
-  description: "سامانه حنا",
+  title: "حنا | حمایت‌های نوآورانه اجتماعی",
+  description: "حنا، سامانه حمایت‌های نوآورانه اجتماعی",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fa" dir="rtl">
-      <body>{children}<PublicFooter /></body>
+      <body>{children}</body>
     </html>
   );
 }

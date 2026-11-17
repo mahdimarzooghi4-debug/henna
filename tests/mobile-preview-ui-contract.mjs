@@ -29,7 +29,8 @@ test("seller preview never presents itself as authorized shop or shows private o
  assert.match(seller,/if \(flag === "v1"\)/);
  assert.match(seller,/setGate\(\{ kind: "preview" \}\); \/\/ Deliberately no identity/);
  assert.match(seller,/gate\.kind === "preview"/);
- assert.match(seller,/هیچ فروشنده‌ای احراز هویت نشده است/);
+ assert.match(seller,/این اطلاعات نمونه‌اند و وضعیت هویتی یا فروشندگی واقعی را نشان نمی‌دهند/);
+ assert.match(seller,/فهرست زیر نمونه است و به تیکت واقعی دسترسی ندارد/);
  assert.match(seller,/SecureStore\.deleteItemAsync\(previewKey/);
  assert.match(seller,/!sellerPreviewAllowed && \(otpStep === "phone"/);
 });
