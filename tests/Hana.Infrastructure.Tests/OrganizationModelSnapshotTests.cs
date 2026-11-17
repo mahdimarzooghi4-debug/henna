@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 
 namespace Hana.Infrastructure.Tests;
 
@@ -25,6 +26,8 @@ public sealed class OrganizationModelSnapshotTests
             current.GetRelationalModel());
         Assert.True(operations.Count == 0,
             "Organization model/snapshot drift: " +
-            string.Join(", ", operations.Select(x => x.GetType().Name)));
+            string.Join(", ", operations.Select(x => x is CreateIndexOperation index
+                ? $"CreateIndexOperation({index.Table}.{index.Name})"
+                : x.GetType().Name)));
     }
 }
