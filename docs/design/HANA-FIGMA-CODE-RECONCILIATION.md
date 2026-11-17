@@ -80,6 +80,10 @@ Target Figma frame names:
 - `480:6` → `APPROVED • Buyer product detail / desktop • unavailable`
 - `480:7` → `APPROVED • Buyer product detail / mobile • unavailable`
 
+## AI Admin Workspace — code-first draft (2026-10-09)
+
+The proposed Admin `/admin/allocation-ai` workspace is a **DRAFT UX**, not an approved Figma screen. It is traceable to `docs/design/HANA-ADMIN-AI-WORKSPACE-DRAFT.md` and the real Playwright allocation-browser test; no Figma node was invented or marked APPROVED. The existing Figma Starter-plan tool-call limit still prevents fetching the needed Admin page detail and creating an approved node. Approved buyer/auth nodes above and all out-of-scope/Draft nodes below remain unchanged. The proposed workspace differentiates the existing six-feature experimental pages from seven-feature v1.1 backend-only research, with no fictional model activation state or result. The visual design must be reviewed in Figma and assigned an immutable Figma node before claiming fidelity.
+
 ## Frames that must remain Draft / Not Approved
 
 The following are not authorized by the approvals above and must not be silently promoted:
@@ -115,6 +119,18 @@ Do not infer approval from:
 - old mock/sample values;
 - a historical DRAFT proposal;
 - a Figma frame name alone.
+
+## User-supplied node for AI design inspection
+
+The owner provided node `181:2` in `uREafnhmH5dDRwPraBOmuk`:
+https://www.figma.com/design/uREafnhmH5dDRwPraBOmuk/henna-platform?node-id=181-2&p=f&t=zTI08I3Zi2E2cb2T-0
+
+This is an **inspection target, not an approved visual implementation reference**.
+As of 2026-10-09, the attempt to retrieve its design context was blocked by
+the Figma MCP Starter-plan tool-call limit. Its node type, screen content,
+approval status and fidelity to `/admin/allocation-ai` have **not** been
+verified. Do not silently promote or modify it; see
+`docs/design/HANA-ADMIN-AI-WORKSPACE-DRAFT.md` for the follow-up.
 
 ## Current synchronization blocker
 

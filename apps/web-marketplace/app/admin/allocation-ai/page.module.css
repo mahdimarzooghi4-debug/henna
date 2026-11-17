@@ -1,0 +1,46 @@
+.page{max-width:1260px;margin:0 auto;padding:28px 24px 80px;color:var(--hana-charcoal);line-height:1.8}
+.breadcrumb{display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:13px;color:var(--hana-muted);margin-bottom:20px}
+.breadcrumb a{color:var(--hana-teal);text-decoration:none}.breadcrumb a:hover{text-decoration:underline}
+.hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(285px,1fr);gap:28px;padding:40px;background:linear-gradient(125deg,#073d3b 0%,#0d6460 74%,#227d70 100%);color:#fff;border-radius:28px;box-shadow:0 18px 44px #0f5b5a19;overflow:hidden}
+.heroCopy{align-self:center;min-width:0}.eyebrow{color:#bcdfcd;margin:0 0 12px;font-size:13px;letter-spacing:.015em}
+.hero h1{font-size:clamp(28px,3.6vw,44px);line-height:1.5;margin:0 0 12px;color:#fff}.lede{max-width:610px;margin:0 0 25px;color:#e4f2ee;font-size:16px}
+.heroLink{display:inline-flex;align-items:center;gap:14px;padding:11px 20px;background:#fff;border-radius:12px;color:#0c5751;font-weight:800;text-decoration:none}
+.heroLink:hover{background:#e7f3ec}.heroLink:focus-visible{outline:3px solid #ffd6ab}
+.heroState{align-self:center;min-width:0;border:1px solid #ffffff46;border-radius:20px;background:#ffffff13;padding:23px;backdrop-filter:blur(5px)}
+.stateTitle{font-size:14px;font-weight:800;margin:0 0 16px;color:#e8f8f1}
+.stateLine{display:grid;grid-template-columns:9px minmax(0,1fr);gap:6px 9px;padding:10px 0;border-bottom:1px solid #ffffff20;align-items:center}
+.stateLine strong{grid-column:2;font-size:12px;color:#def0ea;font-weight:500}
+.stateLine span:nth-child(2){font-size:14px;font-weight:700}
+.stateDot,.stateDotMuted{height:9px;width:9px;border-radius:50%;background:#a6df9f}
+.stateDotMuted{background:#efc892}.stateHelp{font-size:12px;color:#d8eae6;margin:16px 0 0}
+.sectionHeading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:18px}.sectionHeading h2{margin:0;font-size:26px;line-height:1.5;color:#163e3b}.sectionHeading>p{font-size:13px;color:#6e7975;margin:0 0 4px}
+.kicker{margin:0 0 4px;font-size:12px;color:#08776e;font-weight:800}
+.goals,.workflow,.library{margin-top:42px}.goalsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.goalCard{display:grid;align-content:start;grid-template-columns:42px minmax(0,1fr);column-gap:16px;row-gap:5px;background:#fff;border:1px solid #dce8df;border-radius:20px;padding:23px;min-width:0}
+.goalNumber{grid-row:1/4;display:grid;place-items:center;background:#eef6ed;color:#0e6358;border-radius:13px;width:42px;height:42px;font-weight:800;font-size:19px}
+.goalCard h3{margin:0;font-size:18px;color:#164a43}.goalCard p{margin:0;color:#53635e;font-size:14px}
+.goalCard .goalFoot{color:#9b513b;font-size:13px;font-weight:700}
+.textLink{display:inline-flex;align-items:center;gap:10px;justify-self:start;align-self:end;color:#0b7168;text-decoration:none;font-weight:800;font-size:14px}
+.textLink:hover{text-decoration:underline}
+.stepGrid{margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;list-style:none}
+.step{display:flex;flex-direction:column;align-items:stretch;min-width:0;min-height:230px;padding:22px;background:#fff;border:1px solid #d9e5df;border-radius:18px;box-shadow:0 4px 16px #11413908}
+.stepTop{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:15px}.stepNumber{font-size:27px;color:#0c7068;font-weight:800;line-height:1}.stepState{background:#f1f6f2;border-radius:40px;padding:4px 9px;font-size:11px;color:#496a5d;font-weight:700;text-align:center}
+.step h3{margin:0 0 7px;font-size:19px;color:#214640}.step p{margin:0 0 24px;color:#596962;font-size:14px}
+.cardLink{display:inline-flex;justify-content:space-between;align-items:center;gap:12px;margin-top:auto;padding:10px 0 0;border-top:1px solid #e5ebe7;text-decoration:none;color:#0c7167;font-size:14px;font-weight:800}.cardLink:hover{text-decoration:underline}
+.newContract{margin-top:42px;border-radius:22px;background:#f1ece4;border:1px solid #e3d6c5;padding:27px}
+.contractTag{display:inline-flex;background:#fff4e6;color:#8a532f;border:1px solid #edd7bb;border-radius:50px;font-weight:800;font-size:12px;padding:4px 12px;margin-bottom:12px}
+.newContract h2{font-size:24px;line-height:1.6;margin:0 0 8px;color:#523f32}.newContractHead>p{margin:0;max-width:940px;color:#624f43}
+.contractGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:22px 0}
+.contractGrid>div{display:flex;flex-direction:column;gap:6px;background:#ffffffb5;border:1px solid #e7ddcf;border-radius:13px;padding:15px}
+.contractGrid strong{color:#584534;font-size:14px}.contractGrid span{font-size:13px;color:#6a5f53}
+.contractWarning{font-size:13px;margin:0;color:#6c4d3e}
+.libraryGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.libraryCard{display:flex;flex-direction:column;gap:9px;min-width:0;background:#fff;border:1px solid #dce8df;border-radius:16px;padding:19px}
+.libraryCard h3{margin:0;font-size:16px;color:#22483e}.libraryCard p{margin:0 0 12px;flex:1;font-size:13px;color:#5c6d62}
+.guardrail{display:flex;align-items:start;gap:18px;padding:23px;margin-top:40px;background:#e7f1ef;border-inline-start:4px solid #0f5b5a;border-radius:15px}
+.guardrailIcon{display:grid;place-items:center;flex:none;width:33px;height:33px;border-radius:50%;background:#0f5b5a;color:white;font-size:20px;font-weight:800}
+.guardrail h2{font-size:18px;color:#0e4e47;margin:0 0 6px}.guardrail p{font-size:14px;color:#375b53;margin:0}
+@media(max-width:1000px){.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:30px;gap:18px}}
+@media(max-width:740px){.page{padding:16px 14px 56px}.hero{grid-template-columns:1fr;padding:24px;border-radius:20px}.hero h1{font-size:29px}.heroState{padding:17px}.sectionHeading{align-items:start;flex-direction:column;gap:5px}.sectionHeading h2{font-size:23px}.sectionHeading>p{font-size:12px}.goals,.workflow,.library,.newContract{margin-top:32px}.goalsGrid,.stepGrid,.contractGrid{grid-template-columns:1fr}.goalCard{padding:18px}.step{min-height:0}.newContract{padding:20px}}
+@media(max-width:420px){.libraryGrid{grid-template-columns:1fr}.stepTop{align-items:start;flex-wrap:wrap}.heroLink{max-width:100%}}
+@media(prefers-reduced-motion:no-preference){.step,.libraryCard{transition:transform .18s ease,border-color .18s ease}.step:hover,.libraryCard:hover{transform:translateY(-2px);border-color:#9dc5b5}}
