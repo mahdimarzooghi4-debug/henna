@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AddReferenceCartItem } from "./buyer-reference-cart";
 import {
   BUYER_OFFERS_PAGE_SIZE, parseBuyerOfferPage, parseBuyerProduct,
   validBuyerProductId, type BuyerOffer, type BuyerOfferPage, type BuyerProduct,
@@ -132,7 +133,10 @@ export function BuyerProductDetail({ id, backHref }: {
               <p className="buyer-detail-description">{current.product.description}</p>}
           </article>
           {current.product.kind === "GOOD" ? (
-            <BuyerOffers productId={current.product.id} reloadToken={retry} />
+            <>
+              <BuyerOffers productId={current.product.id} reloadToken={retry} />
+              <AddReferenceCartItem product={current.product} />
+            </>
           ) : (
             <p className="buyer-detail-disclosure">
               پیشنهاد فروش کالای فیزیکی برای این خدمت نمایش داده نمی‌شود.
@@ -146,6 +150,11 @@ export function BuyerProductDetail({ id, backHref }: {
       <Link href={backHref} className="buyer-detail-button buyer-detail-button--back">
         بازگشت به فهرست کالاها
       </Link>
+      {current.status === "ok" && current.product.kind === "SERVICE" && (
+        <Link href="/buyer/cart" className="buyer-detail-button buyer-detail-button--back">
+          مشاهدهٔ سبد مرجع
+        </Link>
+      )}
     </main>
   );
 }

@@ -3,6 +3,7 @@ export type BuyerCategory = { id: string; name: string; slug: string };
 export type BuyerProduct = {
   id: string; categoryId: string; name: string;
   kind: "GOOD" | "SERVICE"; description: string | null;
+  unitName?: string | null; quantityScale?: number | null;
 };
 export type BuyerPage = {
   items: BuyerProduct[]; page: number; pageSize: number; total: number;
@@ -11,6 +12,7 @@ export const BUYER_PAGE_SIZE = 20;
 export const BUYER_OFFERS_PAGE_SIZE = 20;
 export type BuyerOffer = {
   id: string;
+  sellerPublicId: string;
   sellerName: string;
   priceRials: number;
   sellableQuantity: number;
@@ -110,10 +112,16 @@ export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage |
     if (!p || !id(p.id) || !id(p.categoryId) || !words(p.name, 200) ||
       (p.kind !== "GOOD" && p.kind !== "SERVICE") ||
       (p.description !== null && (typeof p.description !== "string" ||
-        p.description.length > 2000))) return null;
+        p.description.length > 2000)) ||
+      (Object.hasOwn(p, "unitName") && !(p.unitName === null || words(p.unitName, 40))) ||
+      (Object.hasOwn(p, "quantityScale") && !(p.quantityScale === null || integer(p.quantityScale, 0, 6))) ||
+      (Object.hasOwn(p, "unitName") !== Object.hasOwn(p, "quantityScale")) ||
+      (p.kind === "SERVICE" && p.unitName != null)) return null;
     items.push({
       id: p.id, categoryId: p.categoryId, name: p.name,
       kind: p.kind, description: p.description,
+      ...(Object.hasOwn(p, "unitName") ? { unitName: typeof p.unitName === "string" ? p.unitName : null } : {}),
+      ...(Object.hasOwn(p, "quantityScale") ? { quantityScale: typeof p.quantityScale === "number" ? p.quantityScale : null } : {}),
     });
   }
   return {
@@ -134,12 +142,12 @@ export function parseBuyerOfferPage(
     !Array.isArray(x.items) || x.items.length > requestedSize ||
     x.items.length > x.total) return null;
   const items: BuyerOffer[] = [];
-  const allowed = ["id", "sellerName", "priceRials", "sellableQuantity",
+  const allowed = ["id", "sellerPublicId", "sellerName", "priceRials", "sellableQuantity",
     "unitName", "quantityScale", "updatedAtUtc"].sort().join("|");
   for (const candidate of x.items) {
     const offer = object(candidate);
     if (!offer || Object.keys(offer).sort().join("|") !== allowed ||
-      !id(offer.id) || !words(offer.sellerName, 160) ||
+      !id(offer.id) || !id(offer.sellerPublicId) || !words(offer.sellerName, 160) ||
       !integer(offer.priceRials, 1, Number.MAX_SAFE_INTEGER) ||
       typeof offer.sellableQuantity !== "number" ||
       !Number.isFinite(offer.sellableQuantity) ||
@@ -152,7 +160,7 @@ export function parseBuyerOfferPage(
     if (Math.abs(offer.sellableQuantity * quantityFactor -
       Math.round(offer.sellableQuantity * quantityFactor)) > 1e-7) return null;
     items.push({
-      id: offer.id, sellerName: offer.sellerName,
+      id: offer.id, sellerPublicId: offer.sellerPublicId, sellerName: offer.sellerName,
       priceRials: offer.priceRials,
       sellableQuantity: offer.sellableQuantity,
       unitName: offer.unitName, quantityScale: offer.quantityScale,
@@ -177,12 +185,18 @@ export function parseBuyerProduct(
     !id(x.categoryId) || !words(x.name, 200) ||
     (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
     (x.description !== null && x.description !== undefined &&
-      (typeof x.description !== "string" || x.description.length > 2000)))
+      (typeof x.description !== "string" || x.description.length > 2000)) ||
+    (Object.hasOwn(x, "unitName") && !(x.unitName === null || words(x.unitName, 40))) ||
+    (Object.hasOwn(x, "quantityScale") && !(x.quantityScale === null || integer(x.quantityScale, 0, 6))) ||
+    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")) ||
+    (x.kind === "SERVICE" && x.unitName != null))
     return null;
   return {
     id: x.id, categoryId: x.categoryId, name: x.name,
     kind: x.kind, description: typeof x.description === "string"
       ? x.description : null,
+    ...(Object.hasOwn(x, "unitName") ? { unitName: typeof x.unitName === "string" ? x.unitName : null } : {}),
+    ...(Object.hasOwn(x, "quantityScale") ? { quantityScale: typeof x.quantityScale === "number" ? x.quantityScale : null } : {}),
   };
 }
 

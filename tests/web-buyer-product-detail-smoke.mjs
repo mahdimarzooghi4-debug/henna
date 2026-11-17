@@ -34,6 +34,7 @@ test("detail fails closed on mismatch and malformed fields", () => {
 
 const offer = {
   id: "70000000-0000-4000-8000-000000000001",
+  sellerPublicId: "70000000-0000-4000-8000-000000000002",
   sellerName: "فروشگاه تأییدشده",
   priceRials: 1250000,
   sellableQuantity: 2.5,

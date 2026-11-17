@@ -59,7 +59,8 @@ internal static class PublicOfferReadEndpoints
                             application.OfferingType == "BOTH")
                     orderby application.StoreName, offer.Id
                     select new PublicOfferRow(
-                        offer.Id, application.StoreName, offer.PriceRials!.Value,
+                        offer.Id, application.PublicSellerId, application.StoreName,
+                        offer.PriceRials!.Value,
                         offer.SellableQuantity!.Value, offer.UpdatedAtUtc);
 
                 var total = await offers.CountAsync(cancellationToken);
@@ -68,6 +69,7 @@ internal static class PublicOfferReadEndpoints
                     .Select(x => new
                     {
                         id = x.Id,
+                        sellerPublicId = x.SellerPublicId,
                         sellerName = x.StoreName,
                         priceRials = x.PriceRials,
                         sellableQuantity = x.SellableQuantity,
@@ -91,6 +93,6 @@ internal static class PublicOfferReadEndpoints
 
     private sealed record PublicOfferProduct(string UnitName, short QuantityScale);
     private sealed record PublicOfferRow(
-        Guid Id, string StoreName, long PriceRials,
+        Guid Id, Guid SellerPublicId, string StoreName, long PriceRials,
         decimal SellableQuantity, DateTimeOffset UpdatedAtUtc);
 }
