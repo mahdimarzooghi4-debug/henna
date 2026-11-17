@@ -6,6 +6,20 @@ namespace Hana.Domain.Tests;
 public sealed class CreditAllocationModesV1Tests
 {
     [Fact]
+    public void OrganizationDefinedModePreservesTheExplicitBeneficiaryAmount()
+    {
+        var amount = new RialAmount(8_000_000);
+
+        var result = CreditAllocationModesV1.CalculateOrganizationDefined(amount);
+
+        Assert.Equal(CreditAllocationModeV1.OrganizationDefined, result.Mode);
+        Assert.Equal(amount, result.Household.CalculatedAmount);
+        Assert.Equal(amount, result.Household.PayableAmount);
+        Assert.Equal(1m, result.Household.GeographicFactor);
+        Assert.Equal(1m, result.Household.HouseholdFactor);
+    }
+
+    [Fact]
     public void EqualWalletTopUpReturnsTheSameAmountWithoutNeedFactors()
     {
         var amount = new RialAmount(10_000_000);
@@ -25,7 +39,7 @@ public sealed class CreditAllocationModesV1Tests
     {
         var scores = new HouseholdNeedScores(
             health: 0, economicHardship: 0, ageAndDependency: 0m,
-            householdSize: 0m, careAndSupport: 0, education: 0);
+            householdSize: 0m, careAndSupport: 0, education: 0, housingTenure: 0);
 
         var result = CreditAllocationModesV1.CalculateNeedsBased(
             new RialAmount(10_000_000),
@@ -47,11 +61,18 @@ public sealed class CreditAllocationModesV1Tests
     }
 
     [Fact]
+    public void OrganizationDefinedModeRejectsZeroBeneficiaryAmount()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            CreditAllocationModesV1.CalculateOrganizationDefined(new RialAmount(0)));
+    }
+
+    [Fact]
     public void NeedsBasedModePreservesExistingInputValidation()
     {
         var scores = new HouseholdNeedScores(
             health: 0, economicHardship: 0, ageAndDependency: 0m,
-            householdSize: 0m, careAndSupport: 0, education: 0);
+            householdSize: 0m, careAndSupport: 0, education: 0, housingTenure: 0);
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             CreditAllocationModesV1.CalculateNeedsBased(

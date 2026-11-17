@@ -5,7 +5,8 @@ namespace Hana.Domain.Credit;
 public enum CreditAllocationModeV1
 {
     EqualWalletTopUp = 1,
-    NeedsBased = 2
+    NeedsBased = 2,
+    OrganizationDefined = 3
 }
 
 public sealed record CreditAllocationModeResultV1(
@@ -20,6 +21,25 @@ public sealed record CreditAllocationModeResultV1(
 /// </summary>
 public static class CreditAllocationModesV1
 {
+    public static CreditAllocationModeResultV1 CalculateOrganizationDefined(RialAmount beneficiaryAmount)
+    {
+        if (beneficiaryAmount.Value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(beneficiaryAmount),
+                "An organization-defined beneficiary amount must be greater than zero.");
+        }
+
+        var household = new HouseholdAllocationResult(
+            HouseholdFactor: 1m,
+            GeographicFactor: 1m,
+            CalculatedAmount: beneficiaryAmount,
+            PayableAmount: beneficiaryAmount,
+            UnusedFromBase: new RialAmount(0));
+
+        return new CreditAllocationModeResultV1(
+            CreditAllocationModeV1.OrganizationDefined, household);
+    }
+
     public static CreditAllocationModeResultV1 CalculateEqualWalletTopUp(RialAmount amount)
     {
         if (amount.Value <= 0)

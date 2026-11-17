@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       # Ephemeral CI-only credential. Never reuse in any deployment.
       ConnectionStrings__IdentityDb: Host=localhost;Port=5432;Database=hana_ci;Username=hana_ci;Password=hana_ci_only
@@ -296,7 +296,7 @@ jobs:
           grep -q "ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is not allowed" /tmp/hana-proxy-unsafe-switch.log
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
@@ -414,7 +414,7 @@ jobs:
         run: node tests/web-buyer-navigation-browser-smoke.mjs
 
   mobile:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EXPO_NO_TELEMETRY: '1'
       CI: '1'
@@ -454,7 +454,7 @@ jobs:
   android-native-links:
     # An installed, offline, CI-only Expo APK in Android Emulator.
     # This is not Expo Go or a production-signed / store-ready release.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 50
     env:
       EXPO_NO_TELEMETRY: '1'
