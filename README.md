@@ -10,7 +10,7 @@
 
 **تصمیم مصوب پشته فناوری:** [ADR-045 — بک‌اند C# / ASP.NET Core / .NET 10 LTS، وب Next.js و اپ React Native/Expo](docs/adr/ADR-045-HANA-TECHNOLOGY-STACK-ASPNET-CORE-DOTNET-10-LTS.md). بک‌اند Modular Monolith با PostgreSQL، EF Core، Workerهای .NET و Redis فقط برای cache/coordination ساخته خواهد شد. **نسخه NestJS در اسناد قدیمی صرفاً پیشنهاد جایگزین‌شده است.**
 
-**اولویت مصوب تجربهٔ خریدار:** [ADR-047 — تقدم وب واکنش‌گرای خریدار در ایران و تعویق توسعهٔ بومی iOS](docs/adr/ADR-047-BUYER-WEB-FIRST-IRAN-IOS-NATIVE-DEFERRED.md). وب مناسب موبایل/آیفون و دسکتاپ جلوتر از قابلیت جدید بومی iOS است؛ اندروید در مسیر می‌ماند، تست‌های موجود خودبه‌خود حذف نمی‌شوند و طرح DRAFT فروشنده هنوز تأیید نشده است.
+**دامنهٔ پلتفرم خریدار:** [ADR-048 — حذف اپ بومی iOS و ادامهٔ Android و وب](docs/adr/ADR-048-ANDROID-AND-WEB-ONLY.md). اپ native مصرف‌کننده فقط Android است؛ خریداران آیفون از وب واکنش‌گرا استفاده می‌کنند. گیت‌های CI شامل backend، web، mobile و Android هستند؛ iOS gate و پشتیبانی اپ بومی iOS نداریم.
 
 [سند اولیه معماری — V0.1 (آرشیو)](docs/architecture/HANA-TECHNICAL-ARCHITECTURE-v0.1.md)
 
@@ -22,7 +22,7 @@
 
 **[Frontend 001 — پیاده‌سازی فریم‌های ورود و ثبت‌نام فروشگاه از فیگما](docs/implementation/HANA-FRONTEND-001.md).** صفحه‌های اولیه وب در `/auth` و `/seller/register` قرار دارند؛ در این مرحله ارسال OTP و ثبت فروشگاه واقعی هنوز فعال نیست.
 
-**[Frontend 002 — آغاز اپ موبایل مصرف‌کننده با Expo و صفحه ورود از فیگما](docs/implementation/HANA-FRONTEND-002.md).** اپ موبایل فقط برای خریدار/مصرف‌کننده است و ثبت‌نام فروشگاه همچنان صرفاً وب می‌ماند. خروجی Android در CI بررسی می‌شود؛ APK/iOS release هنوز ساخته نشده است.
+**[Frontend 002 — آغاز اپ موبایل مصرف‌کننده با Expo و صفحه ورود از فیگما](docs/implementation/HANA-FRONTEND-002.md).** اپ native فقط برای خریدار/مصرف‌کنندهٔ Android است و ثبت‌نام فروشگاه همچنان صرفاً وب می‌ماند. خروجی Android در CI بررسی می‌شود؛ کاربران iPhone از وب واکنش‌گرا استفاده می‌کنند.
 
 **[Frontend 003 — ذخیره و بازیابی پیش‌نویس شش فیلد فروشگاه وب از Figma](docs/implementation/HANA-FRONTEND-003.md).** جدول و migration مستقل Seller، API مالک‌محور و درگاه HttpOnly Next.js اضافه شدند؛ فقط با نشست OTP واقعی می‌توان داده ثبت کرد و **ثبت‌نام نهایی/فعال‌سازی فروشگاه انجام نمی‌شود**.
 
@@ -68,7 +68,6 @@
 
 **[Frontend 021 — نصب APK و آزمون پیوندهای خریدار در شبیه‌ساز واقعی Android](docs/implementation/HANA-FRONTEND-021.md).** علاوه بر خروجی JavaScript Expo، CI پروژهٔ native را از app.json تولید، APK با JS درون‌گذاری‌شده می‌سازد و روی Android Emulator نصب می‌کند؛ intent scheme واقعی `hana://` را برای cold/warm detail، back به مرور، ورودی نامعتبر و cold browse از UI native می‌آزماید. این آزمون **شبیه‌ساز Android** است، نه دستگاه فیزیکی، iOS، امضای انتشار یا HTTPS Verified App Links.
 
-**[Frontend 022 — آزمون نصب‌شدهٔ لینک خریدار در شبیه‌ساز iOS](docs/implementation/HANA-FRONTEND-022.md).** CI مستقل macOS/Xcode از Expo پروژهٔ native می‌سازد، `.app` بدون امضای انتشار را روی iPhone Simulator نصب و `hana://` را با سیستم‌عامل باز می‌کند؛ Maestro با رابط دسترس‌پذیری، جزئیات/اختلال واقعیِ بدون API، برگشت به جست‌وجوی فارسی، لینک گرم/سرد و مسیر نامعتبر را بررسی می‌کند. پاپ‌آپ امنیتی اولین بازشدن scheme نیز به‌عنوان رفتار خود iOS آزمایش می‌شود. دستگاه فیزیکی، iOS App Store و لینک HTTPS تأییدشده هنوز خارج از شواهد هستند.
 
 **[Seller 018 — Seller Offers Foundation Backlog](docs/implementation/HANA-SELLER-018.md).** Captures the selected published-Catalog product policy and operator-reviewed imagery; seller offers remain blocked on Catalog media, durable image hosting, unit/availability contracts, and publication policy.
 

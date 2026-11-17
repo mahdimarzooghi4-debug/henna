@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Image, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  Image, KeyboardAvoidingView, Pressable, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -76,8 +76,7 @@ export function BuyerBrowseScreen({ onLogin, link }: {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <KeyboardAvoidingView style={styles.fill}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.fill}>
         <ScrollView ref={scroll} style={styles.fill}
           contentContainerStyle={styles.scrollBody}
           keyboardShouldPersistTaps="handled"
