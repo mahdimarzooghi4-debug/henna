@@ -20,6 +20,8 @@ type OfferDraft = {
     categoryName: string;
     description: string | null;
     primaryMediaRoute: string | null;
+    unitName: string | null;
+    quantityScale: number | null;
   } | null;
 };
 
@@ -47,13 +49,20 @@ function parseCatalogProduct(value: unknown, productId: string): OfferDraft["cat
     (value.primaryMediaRoute !== null &&
       (typeof value.primaryMediaRoute !== "string" ||
         !/^\/api\/v1\/catalog\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-          .test(value.primaryMediaRoute))))
+          .test(value.primaryMediaRoute))) ||
+    !(value.unitName === null || boundedText(value.unitName, 40)) ||
+    !(value.quantityScale === null || (typeof value.quantityScale === "number" &&
+      Number.isInteger(value.quantityScale) && value.quantityScale >= 0 &&
+      value.quantityScale <= 6)))
     return undefined;
   return {
     id: value.id, name: value.name, categoryName: value.categoryName,
     description: typeof value.description === "string" ? value.description : null,
     primaryMediaRoute: typeof value.primaryMediaRoute === "string"
       ? value.primaryMediaRoute : null,
+    unitName: typeof value.unitName === "string" ? value.unitName : null,
+    quantityScale: typeof value.quantityScale === "number"
+      ? value.quantityScale : null,
   };
 }
 

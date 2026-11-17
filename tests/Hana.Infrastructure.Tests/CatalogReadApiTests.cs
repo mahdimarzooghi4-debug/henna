@@ -69,7 +69,8 @@ public sealed class CatalogReadApiTests
             });
         db.Products.AddRange(
             NewProduct(liveProduct, liveCategory, "آزمون کالا ۵۰% ویژه",
-                CatalogProductKinds.Good, PublicationStates.Published, now),
+                CatalogProductKinds.Good, PublicationStates.Published, now,
+                "کیلوگرم", 1),
             NewProduct(serviceProduct, liveCategory, "آزمون خدمت حنا",
                 CatalogProductKinds.Service, PublicationStates.Published, now),
             NewProduct(hiddenProduct, liveCategory, "آزمون کالای پیش‌نویس",
@@ -97,6 +98,10 @@ public sealed class CatalogReadApiTests
             x => x.GetProperty("id").GetGuid() == hiddenProduct);
         Assert.DoesNotContain(listing.GetProperty("items").EnumerateArray(),
             x => x.GetProperty("id").GetGuid() == hiddenByCategoryProduct);
+        var publicGood = listing.GetProperty("items").EnumerateArray()
+            .Single(x => x.GetProperty("id").GetGuid() == liveProduct);
+        Assert.Equal("کیلوگرم", publicGood.GetProperty("unitName").GetString());
+        Assert.Equal(1, publicGood.GetProperty("quantityScale").GetInt16());
         Assert.All(listing.GetProperty("items").EnumerateArray(), x =>
         {
             Assert.False(x.TryGetProperty("price", out _));
@@ -109,6 +114,8 @@ public sealed class CatalogReadApiTests
             productsUrl + "/" + liveProduct);
         Assert.Equal(liveProduct, exact.GetProperty("id").GetGuid());
         Assert.Equal("GOOD", exact.GetProperty("kind").GetString());
+        Assert.Equal("کیلوگرم", exact.GetProperty("unitName").GetString());
+        Assert.Equal(1, exact.GetProperty("quantityScale").GetInt16());
         Assert.False(exact.TryGetProperty("price", out _));
 
         Assert.Equal(HttpStatusCode.NotFound,
@@ -154,10 +161,12 @@ public sealed class CatalogReadApiTests
 
     private static ProductRecord NewProduct(
         Guid id, Guid categoryId, string name, string kind,
-        string state, DateTimeOffset created) => new()
+        string state, DateTimeOffset created, string? unitName = null,
+        short? quantityScale = null) => new()
     {
         Id = id, CategoryId = categoryId, Name = name,
         Description = "شرح آزمایشی بدون قیمت و پیشنهاد فروشنده",
-        Kind = kind, State = state, CreatedAtUtc = created
+        Kind = kind, State = state, CreatedAtUtc = created,
+        UnitName = unitName, QuantityScale = quantityScale
     };
 }

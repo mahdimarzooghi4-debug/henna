@@ -57,7 +57,8 @@ try {
           createdAtUtc:at,updatedAtUtc:at,
           catalogProduct:{id:productId,name:"کالای آزمون",
             categoryName:"دسته آزمون",description:null,
-            primaryMediaRoute:"/api/v1/catalog/media/"+mediaId}
+            primaryMediaRoute:"/api/v1/catalog/media/"+mediaId,
+            unitName:"کیلوگرم",quantityScale:3}
         }]}));
         return;
       }
@@ -123,7 +124,8 @@ try {
   assert.equal(list.items.length,1);
   assert.deepEqual(list.items[0].catalogProduct,{
     id:productId,name:"کالای آزمون",categoryName:"دسته آزمون",
-    description:null,primaryMediaRoute:"/api/v1/catalog/media/"+mediaId});
+    description:null,primaryMediaRoute:"/api/v1/catalog/media/"+mediaId,
+    unitName:"کیلوگرم",quantityScale:3});
   const candidates=await fetch(base+"/api/seller/catalog/goods?page=2&pageSize=10&categoryId="+categoryId+"&search="+encodeURIComponent("milk & bread"),{headers:{Cookie:cookie}});
   assert.equal(candidates.status,200);
   assert.equal(candidates.headers.get("cache-control"),"no-store");

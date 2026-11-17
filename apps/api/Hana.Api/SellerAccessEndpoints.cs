@@ -82,7 +82,7 @@ internal static class SellerAccessEndpoints
                     {
                         dashboard = true,
                         orders = false,
-                        listings = false,
+                        listings = activation.OfferingType is "GOOD" or "BOTH",
                         inventory = false,
                         pricing = false,
                         settlements = false,
