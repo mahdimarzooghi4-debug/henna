@@ -3,14 +3,12 @@
     "name": "حنا",
     "slug": "hana-consumer",
     "scheme": "hana",
+    "platforms": ["android"],
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "version": "0.1.0",
     "newArchEnabled": true,
     "plugins": ["expo-secure-store"],
-    "ios": {
-      "supportsTablet": false
-    },
     "android": {
       "edgeToEdgeEnabled": true
     },

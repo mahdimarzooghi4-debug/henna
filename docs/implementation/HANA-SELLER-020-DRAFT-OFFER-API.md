@@ -6,7 +6,7 @@ A seller can persist a seller-owned `DRAFT` reference to a currently published s
 
 ## API
 
-- `GET /api/v1/seller/offers` returns the authenticated seller's own draft IDs and state.
+- `GET /api/v1/seller/offers` returns the authenticated seller's own drafts and a nested read-only projection of each currently eligible Catalog GOOD (ID, name, category name, description, and the current approved media route when present). The projection is read from Catalog on each request and is not persisted in Seller. If the Catalog identity is no longer a published GOOD in a published category, `catalogProduct` is `null`; the Seller draft remains intact.
 - `POST /api/v1/seller/offers` accepts only `catalogProductId` and a required UUID `Idempotency-Key`.
 - Creation validates the current Catalog product is a published `GOOD` in a published category.
 - Identity session, current `SELLER` role, and approved/activated application are resolved from server databases on every request.
