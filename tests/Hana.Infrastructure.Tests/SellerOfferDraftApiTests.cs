@@ -396,7 +396,7 @@ public sealed class SellerOfferDraftApiTests
         Assert.Empty(secondList.GetProperty("items").EnumerateArray());
 
         var stored = await seller.OfferDrafts.AsNoTracking().ToListAsync();
-        var only = Assert.Single(stored);
+        var only = Assert.Single(stored.Where(x => x.Id == offerId));
         Assert.Equal(ownerId, only.SellerAccountId);
         Assert.Equal(goodId, only.CatalogProductId);
         Assert.Equal(SellerOfferDraftStates.Published, only.Status);
@@ -415,6 +415,67 @@ public sealed class SellerOfferDraftApiTests
         Assert.False(publicProduct.TryGetProperty("sellerAccountId", out _));
         Assert.False(publicProduct.TryGetProperty("price", out _));
         Assert.False(publicProduct.TryGetProperty("stock", out _));
+
+        seller.OfferDrafts.AddRange(
+            new SellerOfferDraftRecord
+            {
+                Id = Guid.NewGuid(), SellerAccountId = secondSellerId,
+                CatalogProductId = goodId, Status = SellerOfferDraftStates.Paused,
+                Revision = 3, IdempotencyKey = Guid.NewGuid(),
+                PriceRials = 1_100_000, SellableQuantity = 1,
+                CreatedAtUtc = now, UpdatedAtUtc = now
+            },
+            new SellerOfferDraftRecord
+            {
+                Id = Guid.NewGuid(), SellerAccountId = serviceOnlySellerId,
+                CatalogProductId = goodId, Status = SellerOfferDraftStates.Published,
+                Revision = 3, IdempotencyKey = Guid.NewGuid(),
+                PriceRials = 1_300_000, SellableQuantity = 1,
+                CreatedAtUtc = now, UpdatedAtUtc = now
+            },
+            new SellerOfferDraftRecord
+            {
+                Id = Guid.NewGuid(), SellerAccountId = unactivatedId,
+                CatalogProductId = goodId, Status = SellerOfferDraftStates.Published,
+                Revision = 3, IdempotencyKey = Guid.NewGuid(),
+                PriceRials = 1_400_000, SellableQuantity = 1,
+                CreatedAtUtc = now, UpdatedAtUtc = now
+            });
+        await seller.SaveChangesAsync();
+
+        using (var publicOffersResponse = await anonymous.GetAsync(
+            "/api/v1/catalog/products/" + goodId + "/offers?page=1&pageSize=10"))
+        {
+            Assert.Equal(HttpStatusCode.OK, publicOffersResponse.StatusCode);
+            Assert.Equal("no-store",
+                publicOffersResponse.Headers.CacheControl?.ToString());
+            using var publicOffersJson = JsonDocument.Parse(
+                await publicOffersResponse.Content.ReadAsStringAsync());
+            var publicOffersRoot = publicOffersJson.RootElement;
+            Assert.Equal(1, publicOffersRoot.GetProperty("total").GetInt32());
+            var publicOffer = Assert.Single(
+                publicOffersRoot.GetProperty("items").EnumerateArray());
+            Assert.Equal(offerId, publicOffer.GetProperty("id").GetGuid());
+            Assert.Equal("فروشگاه آزمون",
+                publicOffer.GetProperty("sellerName").GetString());
+            Assert.Equal(1_250_000,
+                publicOffer.GetProperty("priceRials").GetInt64());
+            Assert.Equal(2.125m,
+                publicOffer.GetProperty("sellableQuantity").GetDecimal());
+            Assert.Equal("کیلوگرم",
+                publicOffer.GetProperty("unitName").GetString());
+            Assert.Equal(3,
+                publicOffer.GetProperty("quantityScale").GetInt32());
+            Assert.False(publicOffer.TryGetProperty("sellerAccountId", out _));
+            Assert.False(publicOffer.TryGetProperty("status", out _));
+        }
+
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await anonymous.GetAsync("/api/v1/catalog/products/" +
+                serviceId + "/offers")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await anonymous.GetAsync("/api/v1/catalog/products/" +
+                goodId + "/offers?pageSize=51")).StatusCode);
 
         // A draft reference survives Catalog unpublication, while the live
         // Catalog projection is omitted rather than serving stale identity.
