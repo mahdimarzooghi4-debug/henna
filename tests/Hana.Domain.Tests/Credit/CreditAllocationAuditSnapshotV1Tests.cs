@@ -107,6 +107,7 @@ public sealed class CreditAllocationAuditSnapshotV1Tests
         Assert.True(snapshot.IsUrban);
         Assert.True(snapshot.IsProvincialCapital);
         Assert.NotNull(snapshot.HouseholdScores);
+        Assert.Equal(2, snapshot.HouseholdScores!.HousingTenure);
         Assert.Equal(allocation.HouseholdAllocation.PayableAmount, snapshot.PayableAmount);
         Assert.Equal(allocation.HouseholdAllocation.UnusedFromBase, snapshot.UnusedFromBase);
     }
@@ -135,6 +136,7 @@ public sealed class CreditAllocationAuditSnapshotV1Tests
         EconomicHardship = EconomicHardshipLevel.OccasionalShortfallInOneEssentialNeed,
         CareAndSupport = CareSupportLevel.EffectiveAdultOrPracticalSupportAvailable,
         Education = EducationAttainment.DiplomaOrAssociate,
+        HousingTenure = HousingTenureType.Tenant,
         HouseholdSize = 1,
         AgeComposition = new HouseholdAgeComposition(0, 0, 0, 1, 0, 0)
     };

@@ -8,9 +8,10 @@ public sealed record HouseholdNeedScores
     public decimal HouseholdSize { get; }
     public int CareAndSupport { get; }
     public int Education { get; }
+    public int HousingTenure { get; }
 
     public HouseholdNeedScores(int health, int economicHardship, decimal ageAndDependency,
-        decimal householdSize, int careAndSupport, int education)
+        decimal householdSize, int careAndSupport, int education, int housingTenure)
     {
         Check(health, nameof(health));
         Check(economicHardship, nameof(economicHardship));
@@ -18,12 +19,14 @@ public sealed record HouseholdNeedScores
         Check(householdSize, nameof(householdSize));
         Check(careAndSupport, nameof(careAndSupport));
         Check(education, nameof(education));
+        Check(housingTenure, nameof(housingTenure));
         Health = health;
         EconomicHardship = economicHardship;
         AgeAndDependency = ageAndDependency;
         HouseholdSize = householdSize;
         CareAndSupport = careAndSupport;
         Education = education;
+        HousingTenure = housingTenure;
     }
 
     private static void Check(decimal score, string name)

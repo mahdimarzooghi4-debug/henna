@@ -18,7 +18,7 @@ public sealed class NeedsBasedHouseholdQuoteCalculatorV1Tests
             "زنجان",
             assessment);
 
-        Assert.Equal("HANA-NEEDS-BASED-ALLOCATION-v1", quote.FormulaVersion);
+        Assert.Equal("HANA-NEEDS-BASED-ALLOCATION-v1.1", quote.FormulaVersion);
         Assert.Equal(HouseholdNeedScoringV1.Version, quote.HouseholdScoringVersion);
         Assert.Equal(GeographicAllocationDatasetV1.Version, quote.GeographyDatasetVersion);
         Assert.Equal(quote.Geography.Factor, quote.Allocation.GeographicFactor);
@@ -84,6 +84,7 @@ public sealed class NeedsBasedHouseholdQuoteCalculatorV1Tests
         EconomicHardship = EconomicHardshipLevel.EssentialNeedsGenerallyMet,
         CareAndSupport = CareSupportLevel.EffectiveAdultOrPracticalSupportAvailable,
         Education = EducationAttainment.BachelorOrHigher,
+        HousingTenure = HousingTenureType.Owner,
         HouseholdSize = householdSize,
         AgeComposition = ageComposition
     };
