@@ -112,7 +112,7 @@ async function main() {
 
   mode = "rich";
   await page.reload();
-  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).waitFor();
+  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).first().waitFor();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(await page.locator(".buyer-product").count(), 20);
   assert.equal(await page.getByText("SECRET").count(), 0);
@@ -123,7 +123,7 @@ async function main() {
   assert.equal(await page.locator(".buyer-product").count(), 1);
   assert.equal(calls.at(-1).params.page, "2");
 
-  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).click();
+  await page.getByRole("button", { name: "دستهٔ منتشرشدهٔ یک" }).first().click();
   await page.getByRole("heading", { name: "عنوان واقعی API در تست 1", exact: true }).waitFor();
   assert.equal(calls.at(-1).params.page, "1");
   assert.equal(calls.at(-1).params.categoryId, categoryA);
