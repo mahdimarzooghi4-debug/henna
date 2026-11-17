@@ -161,7 +161,7 @@ async function main() {
   mode = "outage";
   publishedCategories = categories;
   await page.goto(base + oldBookmark);
-  await page.getByText("دریافت دسته‌بندی‌ها از سرور تأیید نشد.").waitFor();
+  await page.getByText("دریافت دسته‌بندی‌ها ممکن نشد.").waitFor();
   assert.equal(new URL(page.url()).searchParams.get("categoryId"),
     categoryB, "outage is not proof that a category was unpublished");
   assert.equal(new URL(page.url()).searchParams.get("page"), "2");
@@ -205,7 +205,7 @@ async function main() {
   await page.evaluate(() => document.dispatchEvent(
     new Event("visibilitychange"),
   ));
-  await page.getByText("دریافت دسته‌بندی‌ها از سرور تأیید نشد.").waitFor();
+  await page.getByText("دریافت دسته‌بندی‌ها ممکن نشد.").waitFor();
   await page.getByRole("heading", { name: "دریافت کالاها تأیید نشد" }).waitFor();
   assert.equal(await page.getByRole("heading", {
     name: "عنوان واقعی API در تست 2", exact: true,
