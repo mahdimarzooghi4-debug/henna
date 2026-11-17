@@ -25,6 +25,10 @@ import type {
 import type {
   OrganizationUsageStatusState,
 } from "../lib/organization-usage";
+import type {
+  OrganizationReportsOverviewState,
+} from "../lib/organization-reports";
+import type { OrganizationNotificationsState } from "../lib/organization-notifications";
 import {
   defaultProgramListQuery,
   organizationProgramStatusLabels,
@@ -1217,28 +1221,171 @@ function Usage({
   );
 }
 
-function Reports() {
+function ReportsAccessState({
+  state,
+}: {
+  state: Exclude<OrganizationReportsOverviewState, { status: "ready" }>;
+}) {
+  const content = state.status === "unauthenticated"
+    ? {
+        title: "برای مشاهده گزارش‌ها وارد شوید",
+        body: "نشست معتبر سازمانی پیدا نشد.",
+        action: (
+          <Link className="org-button org-button--primary" href="/auth">
+            ورود به حنا
+          </Link>
+        ),
+      }
+    : state.status === "forbidden"
+      ? {
+          title: "دسترسی سازمانی فعال نیست",
+          body: "این حساب عضویت فعال برای مشاهده گزارش‌های سازمان ندارد.",
+          action: null,
+        }
+      : {
+          title: "گزارش‌های سازمان موقتاً در دسترس نیست",
+          body: "برای جلوگیری از نمایش KPI یا نمودار ساختگی، داده نمونه جایگزین پاسخ واقعی نمی‌شود.",
+          action: (
+            <Link className="org-button" href="/organization/reports">
+              تلاش مجدد
+            </Link>
+          ),
+        };
+
+  return (
+    <Card className="org-access-state">
+      <h2>{content.title}</h2>
+      <p>{content.body}</p>
+      {content.action}
+    </Card>
+  );
+}
+
+function Reports({
+  state,
+}: {
+  state: OrganizationReportsOverviewState;
+}) {
+  if (state.status !== "ready")
+    return <ReportsAccessState state={state} />;
+
+  const data = state.data;
+  const rate = data.matching.matchRatePercent;
+
   return (
     <>
-      <div className="org-stats org-stats--3">
-        <Card><strong>وضعیت تطبیق: داده نمونه</strong><span>کل مشمولان متصل</span></Card>
-        <Card><strong>وضعیت استفاده: داده نمونه</strong><span>بودجه استفاده‌شده</span></Card>
-        <Card><strong>داده نمونه</strong><span>وضعیت مصرف طرح‌ها</span></Card>
+      <div className="org-reports-context">
+        <Badge tone="neutral">{data.organizationType}</Badge>
+        <span>
+          آخرین همگام‌سازی ثبت‌شده:{" "}
+          <strong>هنوز پیکربندی نشده</strong>
+        </span>
       </div>
-      <Card title="روند کلی تخصیص و توزیع طرح">
-        <div className="org-chart" aria-label="نمودار نمونه روند تخصیص"><span style={{height:"42%"}}>دوره تیر</span><span style={{height:"65%"}}>دوره مرداد</span><span style={{height:"55%"}}>دوره نمونه ۱</span><span style={{height:"78%"}}>دوره نمونه ۲</span></div>
+
+      <div className="org-grid org-grid--2 org-reports-grid">
+        <Card title="وضعیت تطبیق افراد" className="org-report-card">
+          <div className="org-report-metric">
+            <span>کل رکوردهای مشمول طرح‌های مجاز</span>
+            <strong className="org-report-real">
+              {data.matching.totalEnrollmentRecordCount.toLocaleString("fa-IR")} رکورد
+            </strong>
+          </div>
+          <div className="org-report-metric org-report-metric--secondary">
+            <span>
+              {data.matching.matchedRecordCount.toLocaleString("fa-IR")} تطبیق‌شده ·{" "}
+              {data.matching.needsReviewRecordCount.toLocaleString("fa-IR")} نیازمند بررسی
+            </span>
+            <strong>
+              {rate === null
+                ? "نرخ قابل محاسبه نیست"
+                : rate.toLocaleString("fa-IR", {
+                    maximumFractionDigits: 2,
+                  }) + "٪ تطبیق"}
+            </strong>
+          </div>
+          <div
+            className="org-report-progress"
+            role="progressbar"
+            aria-label="نرخ تطبیق رکوردهای مشمول"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={rate ?? undefined}
+            aria-valuetext={
+              rate === null
+                ? "بدون رکورد ورودی"
+                : rate.toLocaleString("fa-IR", {
+                    maximumFractionDigits: 2,
+                  }) + " درصد"
+            }
+          >
+            <span style={{ width: (rate ?? 0) + "%" }} />
+          </div>
+          <small>
+            دامنه: رکوردهای مشمول طرح‌های ثبت‌شده و فعال ·{" "}
+            {data.matching.eligibleProgramCount.toLocaleString("fa-IR")} طرح
+          </small>
+        </Card>
+
+        <Card title="وضعیت مصرف طرح‌ها" className="org-report-card">
+          <div className="org-report-metric">
+            <span>بودجه استفاده‌شده</span>
+            <strong className="org-report-unavailable">
+              در دسترس نیست
+            </strong>
+          </div>
+          <div className="org-report-unavailable-bar" aria-hidden="true" />
+          <p className="org-note">
+            مدل مالی مصرف و بودجه هنوز پیکربندی نشده است؛ مقدار null به
+            معنی صفر درصد یا صفر ریال نیست.
+          </p>
+        </Card>
+      </div>
+
+      <Card
+        title="روند کلی تخصیص و توزیع طرح"
+        className="org-report-trend-card"
+      >
+        <div className="org-report-trend-empty">
+          <div className="org-report-axis" aria-hidden="true">
+            <span /><span /><span /><span />
+          </div>
+          <Badge tone="neutral">روند مالی در دسترس نیست</Badge>
+          <strong>هیچ ستون یا دوره نمونه‌ای نمایش داده نمی‌شود.</strong>
+          <p>
+            تا زمانی که اجرای واقعی تخصیص و تاریخچه توزیع تعریف نشود،
+            این نمودار از داده enrollment یا readiness استنتاج نمی‌شود.
+          </p>
+        </div>
       </Card>
+
+      <div className="org-reports-capability" role="status">
+        <span>
+          financial reporting: unavailable · allocation/distribution trend: unavailable
+        </span>
+      </div>
     </>
   );
 }
 
-function Notifications() {
-  const items = [
-    ["همگام‌سازی منبع داده سازمان", "اطلاعات منبع داده سازمان همگام‌سازی شد."],
-    ["ثبت یک طرح نمونه", "یک طرح نمونه در پرتال ثبت شد."],
-    ["وضعیت یک طرح ثبت‌شده تغییر کرده است.", "جزئیات وضعیت در صفحه همان طرح قابل مشاهده است."],
-  ];
-  return <Card>{items.map(([t,d]) => <article className="org-notification" key={t}><div><h2>{t}</h2><p>{d}</p></div><small>زمان نمونه</small></article>)}</Card>;
+function Notifications({ state }: { state: OrganizationNotificationsState }) {
+  if (state.status !== "ready") {
+    const message = state.status === "unauthenticated"
+      ? "برای مشاهده اعلان‌ها وارد شوید."
+      : state.status === "forbidden"
+        ? "دسترسی سازمانی فعال نیست."
+        : "اعلان‌های سازمان فعلاً در دسترس نیستند.";
+    return <Card><p role="status">{message}</p></Card>;
+  }
+  if (state.notifications.length === 0)
+    return <Card><p role="status">هنوز اعلانی برای سازمان ثبت نشده است.</p></Card>;
+  return <Card>{state.notifications.map(item => (
+    <article className="org-notification" key={item.id}>
+      <div><h2>{item.title}</h2><p>{item.message}</p></div>
+      <small>{item.readState === "UNREAD" ? "خوانده‌نشده · " : "خوانده‌شده · "}
+        <time dateTime={item.createdAtUtc}>{new Date(item.createdAtUtc).toLocaleString("fa-IR")}</time>
+      </small>
+    </article>
+  ))}</Card>;
 }
 
 function Support() {
@@ -1294,6 +1441,8 @@ function Screen({
   allocationReadinessState,
   allocationProgramState,
   usageStatusState,
+  reportsOverviewState,
+  notificationsState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -1306,6 +1455,8 @@ function Screen({
   allocationReadinessState?: OrganizationAllocationReadinessState;
   allocationProgramState?: OrganizationAllocationProgramState;
   usageStatusState?: OrganizationUsageStatusState;
+  reportsOverviewState?: OrganizationReportsOverviewState;
+  notificationsState?: OrganizationNotificationsState;
 }) {
   const profile = profileState.status === "ready"
     ? profileState.profile : null;
@@ -1356,8 +1507,12 @@ function Screen({
         state={usageStatusState ?? { status: "unavailable" }}
       />
     );
-    case "reports": return <Reports />;
-    case "notifications": return <Notifications />;
+    case "reports": return (
+      <Reports
+        state={reportsOverviewState ?? { status: "unavailable" }}
+      />
+    );
+    case "notifications": return <Notifications state={notificationsState ?? { status: "unavailable" }} />;
     case "support": return <Support />;
     case "settings": return <Settings />;
   }
@@ -1382,6 +1537,8 @@ export function OrganizationPortal({
   allocationReadinessState,
   allocationProgramState,
   usageStatusState,
+  reportsOverviewState,
+  notificationsState,
 }: {
   screen: OrgScreenKey;
   profileState: OrganizationProfileState;
@@ -1394,6 +1551,8 @@ export function OrganizationPortal({
   allocationReadinessState?: OrganizationAllocationReadinessState;
   allocationProgramState?: OrganizationAllocationProgramState;
   usageStatusState?: OrganizationUsageStatusState;
+  reportsOverviewState?: OrganizationReportsOverviewState;
+  notificationsState?: OrganizationNotificationsState;
 }) {
   const active = activeNav(screen);
   const profile = profileState.status === "ready"
@@ -1431,6 +1590,8 @@ export function OrganizationPortal({
             allocationReadinessState={allocationReadinessState}
             allocationProgramState={allocationProgramState}
             usageStatusState={usageStatusState}
+            reportsOverviewState={reportsOverviewState}
+            notificationsState={notificationsState}
           />
         </div>
       </section>
