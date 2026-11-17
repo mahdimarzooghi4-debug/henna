@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./figma-checkout-preview.module.css";
 import { readPreviewCompany, type PreviewCompany } from "../lib/preview-company";
-import { BnplCheckoutGate } from "./bnpl-checkout-gate";
+import { bnplCheckoutConnected, bnplProviderDirectory } from "../lib/bnpl-provider-directory";
 import { LANDING_PREVIEW_CART_EVENT, LANDING_PREVIEW_PRODUCTS, readLandingPreviewCart, saveLandingPreviewCart, type LandingPreviewCartItem } from "../lib/landing-preview-products";
 
 const selectedSellerKey = "henna:figma-preview-selected-seller:v1";
@@ -24,6 +24,27 @@ export function FigmaCheckoutPreview() {
   const [items, setItems] = useState<LandingPreviewCartItem[]>([]);
   const [sellerId, setSellerId] = useState("store-1");
   const [payment, setPayment] = useState("online");
+  // No BNPL merchant authorization, provider-credit proof, coupon validator or
+  // official Kalabarg validation exists in the current checkout contract.
+  // These codes stay in component memory; they are never sent or persisted.
+  const [discountCode, setDiscountCode] = useState("");
+  const [kalabargCode, setKalabargCode] = useState("");
+  const [discountFeedback, setDiscountFeedback] = useState("");
+  const [kalabargFeedback, setKalabargFeedback] = useState("");
+  const verifiedBnplCredit = false;
+  const bnplSelectable = bnplCheckoutConnected && verifiedBnplCredit;
+
+  function checkCode(kind: "discount" | "kalabarg") {
+    const code = kind === "discount" ? discountCode : kalabargCode;
+    const show = kind === "discount" ? setDiscountFeedback : setKalabargFeedback;
+    if (!code.trim()) {
+      show(kind === "discount" ? "کد تخفیف را وارد کنید." : "کد کالابرگ را وارد کنید.");
+      return;
+    }
+    show(kind === "discount"
+      ? "استعلام کد تخفیف هنوز فعال نیست؛ کد تأیید یا اعمال نشده و مبلغ سفارش تغییر نکرده است."
+      : "استعلام رسمی کالابرگ هنوز متصل نیست؛ کد تأیید یا اعمال نشده و موجودی یا مشمولیت بررسی نشده است.");
+  }
   // Preview only: pickup has no courier fee; courier quotes are not available.
   const [delivery, setDelivery] = useState<"pickup" | "courier">("pickup");
   const [legal, setLegal] = useState(false);
@@ -48,6 +69,14 @@ export function FigmaCheckoutPreview() {
   const selectedSeller = sellers[sellerId] ?? sellers["store-1"];
 
   function placePreviewOrder() {
+    if (discountCode.trim() || kalabargCode.trim()) {
+      setNotice("کدهای واردشده هنوز قابل تأیید نیستند. برای ادامه پیش‌نمایش بدون تخفیف یا کالابرگ، کدها را پاک کنید.");
+      return;
+    }
+    if (payment !== "online") {
+      setNotice("این روش پرداخت تأیید و به درگاه متصل نشده است.");
+      return;
+    }
     if(legal&&!readPreviewCompany()){setNotice("ابتدا مشخصات شرکت نمونه را در حساب کاربری ثبت کنید.");return;}
     if (delivery === "courier") {
       setNotice("هزینه پیک هنوز مشخص نشده است؛ ثبت سفارش با پیک امکان‌پذیر نیست.");
@@ -145,13 +174,64 @@ export function FigmaCheckoutPreview() {
 
         <section className={styles.card}>
           <h2>۴. روش پرداخت</h2>
-          <div className={styles.paymentOptions}>
-            {[["online", "پرداخت آنلاین با کارت بانکی (نمایشی)"], ["credit", "اعتبار حمایتی (نمایشی؛ در صورت موجود بودن)"]].map(([key, label]) =>
-              <label className={`${styles.payment} ${payment === key ? styles.paymentActive : ""}`} key={key}>
-                <input type="radio" name="payment" value={key} checked={payment === key} onChange={() => setPayment(key)} />{label}
-              </label>)}
+          <div className={styles.paymentOptions} role="group" aria-label="انتخاب روش پرداخت">
+            <label className={`${styles.payment} ${payment === "online" ? styles.paymentActive : ""}`}>
+              <input type="radio" name="payment" value="online" checked={payment === "online"} onChange={() => setPayment("online")} />
+              پرداخت آنلاین با کارت بانکی (فقط پیش‌نمایش؛ بدون تراکنش واقعی)
+            </label>
+            <label className={styles.payment}>
+              <input type="radio" name="payment" value="support-credit" disabled
+                aria-label="پرداخت با اعتبار حمایتی" />
+              اعتبار حمایتی — نیازمند اعتبار قابل‌استفاده و تأیید سفارش
+            </label>
+            <div className={styles.bnplGroup} data-testid="preview-bnpl-choices">
+              <h3>پرداخت اعتباری</h3>
+              <p className={styles.description} id="bnpl-selection-status">
+                برای درخواست فعال‌سازی اعتبار به سایت رسمی شرکت بروید. بازکردن سایت شرکت به معنای تأیید اعتبار نیست؛ پرداخت اعتباری در حنا تا تأیید اعتبار و اتصال درگاه غیرفعال می‌ماند.
+              </p>
+              {bnplProviderDirectory.map(provider => (
+                <div className={styles.providerPaymentRow} key={provider.id}>
+                  <label className={styles.payment}>
+                    <input type="radio" name="payment" value={"bnpl-"+provider.id}
+                      aria-label={"پرداخت با "+provider.name}
+                      disabled={!bnplSelectable}
+                      checked={payment === "bnpl-"+provider.id}
+                      onChange={() => { if (bnplSelectable) setPayment("bnpl-"+provider.id); }}
+                      aria-describedby="bnpl-selection-status" />
+                    {provider.name} — {bnplSelectable ? "اعتبار تأییدشده" : "در انتظار تأیید اعتبار و اتصال درگاه"}
+                  </label>
+                  <a className={styles.providerActivation} href={provider.website}
+                    target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
+                    aria-label={"فعال‌سازی اعتبار در سایت "+provider.name}>
+                    فعال‌سازی
+                  </a>
+                </div>
+              ))}
+            </div>
           </div>
-          <BnplCheckoutGate/>
+          <div className={styles.codeForms} aria-label="کدهای تخفیف و کالابرگ">
+            <div className={styles.codePanel} data-testid="preview-discount-code">
+              <label htmlFor="checkout-discount-code">کد تخفیف</label>
+              <div className={styles.codeRow}>
+                <input id="checkout-discount-code" value={discountCode}
+                  onChange={event => {setDiscountCode(event.target.value);setDiscountFeedback("");setNotice("");}}
+                  placeholder="کد تخفیف را وارد کنید" maxLength={40} autoComplete="off" spellCheck={false} />
+                <button type="button" onClick={() => checkCode("discount")}>بررسی کد تخفیف</button>
+              </div>
+              {discountFeedback && <p role="status" className={styles.codeFeedback}>{discountFeedback}</p>}
+            </div>
+            <div className={styles.codePanel} data-testid="preview-kalabarg-code">
+              <label htmlFor="checkout-kalabarg-code">کد کالابرگ</label>
+              <div className={styles.codeRow}>
+                <input id="checkout-kalabarg-code" value={kalabargCode}
+                  onChange={event => {setKalabargCode(event.target.value);setKalabargFeedback("");setNotice("");}}
+                  placeholder="کد کالابرگ را وارد کنید" maxLength={40} autoComplete="off" spellCheck={false} />
+                <button type="button" onClick={() => checkCode("kalabarg")}>بررسی کد کالابرگ</button>
+              </div>
+              {kalabargFeedback && <p role="status" className={styles.codeFeedback}>{kalabargFeedback}</p>}
+            </div>
+            <p className={styles.codeDisclosure}>ورود کد به معنای تأیید یا استفاده از آن نیست. هیچ کدی به سرور ارسال یا در سفارش ذخیره نمی‌شود.</p>
+          </div>
         </section>
         <p className={styles.disclosure}>اطلاعات این صفحه نمونه است و پرداخت یا سفارش واقعی انجام نمی‌شود. پرداخت هنگام تحویل در حنا وجود ندارد.</p>
         <Link className={styles.back} href="/buyer/review?mode=preview">بازگشت به بررسی سبد</Link>

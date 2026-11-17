@@ -7,7 +7,7 @@ import { safeApiBaseUrl } from "./api-base.ts";
 export type CatalogCategory = { id: string; name: string; slug: string };
 export type CatalogProduct = {
   id: string; categoryId: string; name: string;
-  kind: "GOOD" | "SERVICE"; description: string | null;
+  kind: "GOOD"; description: string | null;
 };
 export type CatalogPage = {
   items: CatalogProduct[]; page: number; pageSize: number; total: number;
@@ -45,7 +45,7 @@ function product(raw: unknown): CatalogProduct | null {
   const value = record(raw);
   if (!value || !validId(value.id) || !validId(value.categoryId) ||
     !boundedText(value.name, 200) ||
-    (value.kind !== "GOOD" && value.kind !== "SERVICE") ||
+    value.kind !== "GOOD" ||
     (value.description !== null &&
       (typeof value.description !== "string" ||
         value.description.length > 2000)))

@@ -3,33 +3,96 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { OrganizationPortalShell } from "./organization-portal";
+import styles from "./organization-portal.module.css";
 
 type AllocationMode = "HENNA_NEEDS_BASED" | "ORGANIZATION_DEFINED";
-type Program = { programId: string; organizationId: string; organizationName: string; name: string; allocationMode: AllocationMode; description: string; state: "DRAFT"; revision: 1; createdAtUtc: string };
-const modeLabels: Record<AllocationMode, string> = { HENNA_NEEDS_BASED: "مدل نیازمحور حنا", ORGANIZATION_DEFINED: "تعریف‌شده توسط سازمان" };
+type Program = {
+  programId: string;
+  organizationId: string;
+  organizationName?: string;
+  name: string;
+  allocationMode: AllocationMode;
+  description: string;
+  state: "DRAFT";
+  revision: number;
+  createdAtUtc: string;
+};
+type LoadState = { loading: boolean; programs: Program[]; error?: string };
+const modeNames: Record<AllocationMode, string> = {
+  HENNA_NEEDS_BASED: "نیازمحور حنا",
+  ORGANIZATION_DEFINED: "تعریف‌شده توسط سازمان",
+};
+
+function errorMessage(value: unknown) {
+  return value && typeof value === "object" && "message" in value && typeof value.message === "string"
+    ? value.message
+    : "دریافت طرح‌های سازمانی انجام نشد.";
+}
 
 export function OrganizationPrograms() {
-  const [state, setState] = useState<{ loading: boolean; programs: Program[]; message?: string; status?: number }>({ loading: true, programs: [] });
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [state, setState] = useState<LoadState>({ loading: true, programs: [] });
+  const [filterOpen, setFilterOpen] = useState(false);
+
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/organization/programs", { cache: "no-store", signal: controller.signal }).then(async (response) => {
-      const body: unknown = await response.json().catch(() => null);
-      if (controller.signal.aborted) return;
-      if (!response.ok || !body || typeof body !== "object" || !("programs" in body) || !Array.isArray(body.programs)) {
-        setState({ loading: false, programs: [], status: response.status, message: body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : "فهرست طرح‌ها در دسترس نیست." });
-        return;
-      }
-      setState({ loading: false, programs: body.programs as Program[] });
-    }).catch(() => { if (!controller.signal.aborted) setState({ loading: false, programs: [], message: "ارتباط با سرویس سازمان برقرار نشد." }); });
+    void fetch("/api/organization/programs", { cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        const body: unknown = await response.json().catch(() => null);
+        if (!response.ok || !body || typeof body !== "object" || !("programs" in body) || !Array.isArray(body.programs)) {
+          throw new Error(errorMessage(body));
+        }
+        if (!controller.signal.aborted) setState({ loading: false, programs: body.programs as Program[] });
+      })
+      .catch(error => {
+        if (!controller.signal.aborted) setState({ loading: false, programs: [], error: error instanceof Error ? error.message : "ارتباط با سرویس سازمان برقرار نشد." });
+      });
     return () => controller.abort();
   }, []);
 
   return <OrganizationPortalShell active="programs" title="مدیریت طرح‌ها و اعتبارها">
-      <section className="organization-programs-content" aria-live="polite">
-        <div className="organization-section-head"><h2>لیست طرح‌های سازمانی</h2><div className="organization-program-actions"><label>فیلتر وضعیت<select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="ALL">همه وضعیت‌ها</option><option value="DRAFT">پیش‌نویس</option></select></label><Link className="organization-primary-button" href="/organization/programs/new">ثبت طرح جدید</Link></div></div>
-        {state.loading ? <p role="status">در حال دریافت طرح‌ها…</p> : state.message ? state.status === 401 ? <div className="organization-empty"><h3>برای دیدن طرح‌های سازمان وارد شوید</h3><p>پس از ورود، دوباره به همین فهرست برمی‌گردید و طرح‌ها از سرویس سازمان دریافت می‌شوند.</p><Link className="organization-primary-button" href="/auth?returnTo=%2Forganization%2Fprograms">ورود / ثبت‌نام با شماره موبایل</Link></div> : state.status === 403 ? <div className="organization-empty"><h3>عضویت سازمانی فعال نیست</h3><p>این حساب وارد شده است، اما دسترسی سازمانی برای آن ثبت نشده.</p></div> : <div className="organization-notice">{state.message}<p>دادهٔ نمایشی جایگزین اطلاعات واقعی نیست. بعداً دوباره تلاش کنید.</p></div> : state.programs.length === 0 ? <div className="organization-empty"><h3>هنوز طرحی ثبت نشده است</h3><p>برای شروع، یک پیش‌نویس بسازید و روش همکاری را انتخاب کنید.</p><Link className="organization-outline-button" href="/organization/programs/new">ایجاد پیش‌نویس</Link></div> : <div className="organization-table-wrap"><table className="organization-table"><thead><tr><th>نام طرح</th><th>سازمان</th><th>روش تخصیص ثبت‌شده</th><th>وضعیت</th><th>تاریخ ثبت</th><th>عملیات</th></tr></thead><tbody>{state.programs.filter(program => statusFilter === "ALL" || program.state === "DRAFT").map((program) => <tr key={program.programId}><td>{program.name}</td><td>{program.organizationName}</td><td>{modeLabels[program.allocationMode]}</td><td><span className="organization-draft-badge">پیش‌نویس</span></td><td>{new Intl.DateTimeFormat("fa-IR", { dateStyle: "short", timeZone: "Asia/Tehran" }).format(new Date(program.createdAtUtc))}</td><td><Link className="organization-muted-action" href={`/organization/programs/${program.programId}`}>جزئیات طرح</Link> · <Link className="organization-muted-action" href={`/organization/programs/${program.programId}/funding-instruction`}>دستور تأمین</Link> · <Link className="organization-muted-action" href={`/organization/programs/${program.programId}/household-referrals`}>ارجاع خانوار</Link></td></tr>)}</tbody></table></div>}
-        <div className="organization-finance-boundary"><strong>پیش‌نویس، تخصیص مالی ایجاد نمی‌کند</strong><p>انتخاب مدل برای منبع سازمانی است. منابع صندوق نیکوکاری حنا فقط با مدل حنا تخصیص می‌یابند و مالکیت منبع از اطلاعات سازمان استنباط نمی‌شود. دستور منبع باید روش مجاز را جداگانه بررسی کند؛ ثبت آن هم به‌تنهایی وصول وجه یا تخصیص نیست.</p></div>
-      </section>
+    <section className={styles.programPage} aria-label="لیست طرح‌های سازمانی" dir="rtl">
+      <div className={styles.programCard}>
+        <header className={styles.programHeader}>
+          <h2>لیست طرح‌های سازمانی</h2>
+          <div className={styles.programHeaderActions}>
+            <Link className={styles.primaryButton} href="/organization/programs/new">
+              <span aria-hidden="true">＋</span> ایجاد پیش‌نویس
+            </Link>
+            <div className={styles.programFilter}>
+              <button type="button" aria-expanded={filterOpen} onClick={() => setFilterOpen(value => !value)}>
+                <span>فیلتر وضعیت</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16l-6.5 7.4v5.1l-3 1.5v-6.6L4 5Z"/></svg>
+              </button>
+              {filterOpen && <div className={styles.programFilterMenu} role="group" aria-label="وضعیت طرح">
+                <span>پیش‌نویس</span>
+              </div>}
+            </div>
+          </div>
+        </header>
+        {state.loading ? <p className={styles.programFormState} role="status">در حال دریافت طرح‌های سازمانی…</p>
+          : state.error ? <div className={styles.programFormNotice} role="alert">{state.error}</div>
+          : state.programs.length === 0 ? <div className={styles.programFormNotice}>
+            <p>هنوز طرحی ثبت نشده است</p>
+          </div>
+          : <div className={styles.programTableWrap}>
+            <table className={styles.programTable}>
+              <colgroup><col className={styles.nameCol}/><col className={styles.typeCol}/><col className={styles.allocationCol}/><col className={styles.statusCol}/><col className={styles.dateCol}/><col className={styles.operationCol}/></colgroup>
+              <thead><tr><th scope="col">نام طرح</th><th scope="col">نوع طرح</th><th scope="col">روش تخصیص</th><th scope="col">وضعیت</th><th scope="col">تاریخ ثبت</th><th scope="col">عملیات</th></tr></thead>
+              <tbody>{state.programs.map(program => <tr key={program.programId}>
+                <th scope="row">{program.name}</th>
+                <td>طرح حمایتی</td>
+                <td>{modeNames[program.allocationMode]}</td>
+                <td><span className={`${styles.programStatus} ${styles.status2}`}>پیش‌نویس</span></td>
+                <td>{new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" }).format(new Date(program.createdAtUtc))}</td>
+                <td><div className={styles.programLinks}><div>
+                  <Link href={`/organization/programs/${program.programId}`}>مشاهده جزئیات</Link>
+                  <Link href={`/organization/programs/${program.programId}/funding-instruction`}>دستور تأمین</Link>
+                  <Link href={`/organization/programs/${program.programId}/household-referrals`}>ارجاع خانوار</Link>
+                </div></div></td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
+      </div>
+    </section>
   </OrganizationPortalShell>;
 }

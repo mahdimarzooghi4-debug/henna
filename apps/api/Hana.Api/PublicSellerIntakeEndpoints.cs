@@ -146,7 +146,7 @@ internal static class PublicSellerIntakeEndpoints
             input.PostalCode, out var fields) ||
             fields is null || input.Confirmed != true ||
             input.ApplicantType is not ("NATURAL" or "LEGAL") ||
-            input.OfferingType is not ("GOOD" or "SERVICE" or "BOTH") ||
+            input.OfferingType != "GOOD" ||
             !ValidText(input.BusinessName, 180) ||
             !ValidText(input.BusinessDescription, 500) ||
             !ValidText(input.ActivityAddress, 500) ||

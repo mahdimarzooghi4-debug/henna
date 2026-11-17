@@ -5,7 +5,9 @@
 export const sellerRegistrationPath = "/seller/register" as const;
 export const sellerAccountRegistrationPath = "/seller/register/account" as const;
 export const sellerLoginHref = "/auth?returnTo=%2Fseller%2Fregister%2Faccount" as const;
-export type AuthReturnTo = typeof sellerRegistrationPath | typeof sellerAccountRegistrationPath | "/buyer/cart" | "/checkout" | `/organization/${string}`;
+export const sellerPanelPath = "/seller" as const;
+export const sellerPanelLoginPath = "/seller/login" as const;
+export type AuthReturnTo = typeof sellerRegistrationPath | typeof sellerAccountRegistrationPath | typeof sellerPanelPath | "/buyer/cart" | "/checkout" | `/organization/${string}`;
 
 const buyerReturnPaths = new Set(["/buyer/cart", "/checkout"]);
 const organizationReturnPaths = new Set([
@@ -37,6 +39,7 @@ export function safeSellerReturnTo(value: unknown): typeof sellerRegistrationPat
 export function safeAuthReturnTo(value: unknown): AuthReturnTo | null {
   if (safeSellerReturnTo(value)) return sellerRegistrationPath;
   if (value === sellerAccountRegistrationPath) return sellerAccountRegistrationPath;
+  if (value === sellerPanelPath) return sellerPanelPath;
   if (typeof value !== "string") return null;
   if (buyerReturnPaths.has(value)) return value as AuthReturnTo;
   if (organizationReturnPaths.has(value) ||

@@ -25,3 +25,350 @@
 .supportCards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.supportCards a{min-height:86px;display:grid;align-content:center;gap:5px;padding:14px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--teal);text-align:right;text-decoration:none}.supportCards b{font-size:11px}.supportCards small{color:var(--muted);font-size:9px;line-height:1.7}.ticketList>div{background:#fff}.accessList>div span{display:grid;gap:3px}.accessList b{font-size:10px}.toggleList label{padding:8px 0;border:0;background:transparent}.toggleList input{appearance:none;width:38px;height:20px;position:relative;border-radius:20px;background:#e4dfd7;cursor:pointer;transition:background .15s}.toggleList input:before{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}.toggleList input:checked{background:var(--teal)}.toggleList input:checked:before{transform:translateX(18px)}
 @media(max-width:1050px){.sidebar{width:230px;flex-basis:230px}.content{padding:24px}.topbar{padding-inline:24px}.toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}.supportCards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.shell{display:block}.sidebar{width:100%;min-height:unset;padding:9px 12px;border-left:0;border-bottom:1px solid var(--line)}.brand{height:42px;margin-bottom:7px}.brand img{width:65px;height:31px}.sidebar nav{display:flex;overflow:auto;gap:5px;padding-bottom:3px}.navItem{flex:0 0 auto;min-height:34px;font-size:10px}.glyph{width:16px;height:16px;flex-basis:16px}.topbar{height:auto;min-height:52px;padding:9px 14px}.topbar h1{font-size:14px}.content{gap:12px;padding:14px}.dashboardGrid,.profileGrid,.twoCards,.detailGrid,.actionCards{grid-template-columns:1fr;gap:12px}.card{padding:15px}.dataRows dd{max-width:65%}}
+
+/* Figma 386:9 organization portal dashboard */
+.sidebar{width:260px;flex-basis:260px;padding:20px 12px;background:#fff;border-left:0;border-right:1px solid var(--line)}
+.brand{width:100%;height:38px;margin:4px 4px 32px;gap:8px;padding:0 4px;justify-content:center}
+.brand b{font-size:15px}
+.brand img{width:82px;height:38px;object-fit:contain}
+.sidebar nav{gap:4px}
+.navItem{position:relative;min-height:38px;padding:7px 12px;border:1px solid transparent;border-radius:8px;font-size:12px}
+.navItem:hover,.active{border-color:var(--teal);background:#eef2f1;color:var(--teal)}
+.active:after{position:absolute;top:7px;bottom:7px;right:-1px;width:3px;border-radius:4px;background:var(--teal);content:""}
+.userFooter{margin-top:32px;padding:16px 4px 5px;direction:rtl}
+.userFooter>div{flex:1}
+.avatar{background:#e9f0ef;color:var(--teal)}
+.logoutButton{width:100%;min-height:38px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:8px 12px;border:1px solid #e7d1c9;border-radius:8px;background:#fff;color:#a74634;font:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .12s,border-color .12s}
+.logoutButton:hover{border-color:#c77763;background:#fff8f6}
+.logoutButton:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.logoutButton:disabled{cursor:wait;opacity:.65}
+.logoutButton svg{width:16px;height:16px;flex:0 0 16px}
+.logoutNotice{margin:8px 2px 0;color:#a74634;font-size:10px;line-height:1.6;text-align:right}
+.topbar{height:56px;padding:0 32px;flex-direction:row;}
+.topbar h1{font-size:20px;line-height:1.2}
+.headerMeta{display:flex;align-items:center;gap:16px;direction:ltr;white-space:nowrap}
+.organizationChip{padding:3px 10px;border-radius:6px;background:var(--sand);color:var(--ink);font-size:12px;font-weight:700;direction:rtl}
+.syncTime{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:12px;direction:rtl}
+.syncTime svg{width:14px;height:14px}
+.content{gap:24px;padding:32px}
+.orgBanner{display:grid;gap:8px;width:100%;padding:16px 20px;border:1px solid var(--teal);border-radius:12px;background:var(--cream);text-align:right}
+.orgBanner strong{display:flex;align-items:center;justify-content:flex-start;gap:8px;color:var(--teal);font-size:15px}
+.orgBanner strong svg{width:18px;height:18px;flex:0 0 18px}
+.orgBanner p{margin:0;color:var(--ink);font-size:13px}
+.dashboardGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:stretch;direction:ltr}
+.dashboardGrid>.stack{direction:rtl;min-width:0}
+.dashboardGrid .card{padding:20px 24px;border-color:var(--sand);border-radius:12px}
+.dashboardGrid .cardTitle{margin:0;padding:0 0 15px;border-bottom:1px solid var(--line);font-size:16px}
+.dashboardGrid .rowBetween{padding:0;font-size:14px}
+.dashboardGrid .statSplit{padding-top:12px}
+.dashboardGrid .statSplit b{font-size:20px}
+.dashboardGrid .activityList{gap:12px}
+.dashboardGrid .activityList li{grid-template-columns:minmax(0,1fr) 6px auto;gap:8px;font-size:13px}
+.dashboardGrid .activityList li>span:nth-child(2){text-align:right}
+.dashboardGrid .activityList small{font-size:12px}
+.dashboardGrid .programMiniList>a,.dashboardGrid .programMiniList>div{min-height:58px;padding:10px 12px;border-color:var(--sand);background:var(--cream)}
+.dashboardGrid .programMiniList>div{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--sand);border-radius:8px;color:var(--ink)}
+.dashboardGrid .programMiniList>div>span:first-child{display:grid;gap:2px}
+.profileGrid{grid-template-columns:1fr 1fr;direction:rtl;align-items:start}.profileGrid>*{direction:rtl}.profileGrid .stack{min-width:0}
+.allocationDetailGrid{direction:rtl}.allocationDetailGrid>*{direction:rtl}
+.detailGrid{grid-template-columns:1.05fr .95fr;align-items:start}.descriptionBlock{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}.descriptionBlock b{font-size:12px}.descriptionBlock p{margin:6px 0 0}
+.toolbar{grid-template-columns:repeat(3,minmax(125px,1fr)) minmax(150px,1.4fr) auto;align-items:center;direction:rtl}.toolbarCaption{color:var(--muted);font-size:11px;white-space:nowrap}
+.allocationGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:stretch}.allocationGrid>.card{display:flex;flex-direction:column;min-height:175px}.allocationGrid>.card>p{margin-top:auto}.allocationGrid .workflow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:18px 2px 12px;color:var(--teal);font-size:10px}.allocationGrid .workflow i{height:1px;flex:1;background:var(--sand)}
+.emptyTable,.chartEmpty{min-height:140px;display:grid;place-content:center;justify-items:center;gap:7px;padding:22px;color:var(--muted);text-align:center}.emptyTable svg,.chartEmpty svg{width:25px;height:25px;color:var(--teal)}.emptyTable b,.chartEmpty b{color:var(--teal);font-size:12px}.emptyTable span,.chartEmpty span{max-width:420px;font-size:10px}.tableWrap .emptyTable{min-height:105px}
+.connectionState{display:grid;gap:13px}.connectionState>.status{justify-self:start}.notificationCard{min-height:68px;border:1px solid var(--sand);border-radius:9px;background:#fff}.notificationCard>span{order:-1}.notificationCard>div{margin-inline-start:auto}
+.emptyInline{display:grid;gap:5px;padding:13px 15px;border-radius:7px;background:var(--cream);font-size:11px}.emptyInline b{color:var(--teal)}.emptyInline span,.mutedNote{color:var(--muted);font-size:10px}.mutedNote{margin:12px 0 0!important}.searchInput{min-height:40px;font-size:11px}.supportCards a{min-height:86px}.ticketList>div{background:#fff}
+button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.6}
+.apiInfoBanner{display:grid;gap:5px;width:100%;padding:13px 18px;border:1px solid var(--teal);border-radius:10px;background:var(--cream);text-align:right}.apiInfoBanner strong{color:var(--teal);font-size:13px}.apiInfoBanner p{margin:0;font-size:11px;line-height:1.7}.apiInfoBanner small{color:var(--muted);font-size:10px}.apiGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;direction:rtl}.apiGrid>.card{display:grid;gap:14px;padding:18px 20px;border-color:var(--line);border-radius:10px}.apiCardHeader{display:flex;align-items:center;justify-content:space-between;gap:12px}.apiCardHeader h2{margin:0;font-size:14px;font-weight:800}.apiDivider{width:100%;height:1px;background:var(--line)}.apiDetails{display:grid;gap:11px;margin:0}.apiDetails>div{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px}.apiDetails dt{color:var(--muted)}.apiDetails dd{margin:0;text-align:left;font-weight:700}.apiDetails .status{font-size:9px}.apiActions{display:flex;justify-content:flex-start;gap:8px;direction:ltr}.apiActions button{font-size:10px}.apiMessage{margin:0;padding:8px 10px;border-radius:6px;background:#f7f3ed;color:var(--teal);font-size:10px}.apiErrorList{display:grid;gap:9px}.apiErrorList article{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border-radius:7px;background:var(--cream)}.apiErrorList time{flex:0 0 auto;color:#8a9a6b;font-size:9px}.apiErrorList strong{color:#b5523b;font-size:10px;text-align:right}
+.allocationContext{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:#fff;direction:ltr}.allocationContextBadge{padding:3px 9px;border-radius:6px;background:var(--cream);color:#8a9a6b;font-size:10px;direction:rtl;white-space:nowrap}.allocationContext strong{font-size:12px;text-align:right;direction:rtl}.allocationPreviewBoard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;width:100%;align-items:start;direction:ltr}.allocationPreviewColumn{display:grid;gap:20px;min-width:0;direction:rtl}.allocationPreviewColumn>.card{display:grid;gap:15px;padding:22px 24px;border-color:var(--line);border-radius:12px}.allocationPreviewColumn>.card .cardTitle{margin:0;padding:0 0 13px;border-bottom:1px solid var(--line);font-size:14px}.allocationRule{display:grid;gap:3px;text-align:right}.allocationRule strong{font-size:12px}.allocationRule span{color:#8a9a6b;font-size:10px}.allocationControl{display:grid;gap:13px;padding:20px 22px;border:1px solid var(--teal);border-radius:11px;background:var(--cream);text-align:right}.allocationControl h2{margin:0;color:var(--teal);font-size:14px}.allocationControl>p{margin:0;font-size:11px;line-height:1.8}.allocationControlDivider{height:1px;background:var(--teal)}.allocationControlActions{display:flex;gap:8px;direction:ltr}.allocationControlActions button{font-size:10px}.allocationMessage{margin:0;padding:8px 10px;border-radius:6px;background:#fff;color:var(--teal);font-size:10px}.allocationPopulation{display:grid;gap:13px}.allocationPopulation>div{display:flex;align-items:center;justify-content:space-between;gap:12px;direction:ltr}.allocationPopulation strong{font-size:12px;text-align:left;color:var(--ink);direction:rtl}.allocationPopulation>div:nth-child(2) strong{color:var(--teal)}.allocationPopulation>div:nth-child(3) strong{color:#b5523b}.allocationPopulation span{font-size:10px;color:#8a9a6b;text-align:right;direction:rtl}.allocationHistory{display:grid;gap:12px}.allocationHistory>div{display:flex;align-items:center;justify-content:space-between;gap:12px;direction:ltr}.allocationHistory>div>span:last-child{font-size:11px;text-align:right;direction:rtl}.allocationHistory .status{font-size:9px}
+@media(max-width:1050px){.dashboardGrid{grid-template-columns:1fr}}
+@media(max-width:1050px){.allocationGrid{grid-template-columns:1fr}.toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.profileGrid,.detailGrid{grid-template-columns:1fr}}
+@media(max-width:720px){.sidebar{width:100%;min-height:unset;padding:9px 12px;border:0;border-bottom:1px solid var(--line)}.brand{height:38px;margin:0 4px 8px}.sidebar nav{gap:5px}.navItem{min-height:34px}.active:after{top:5px;bottom:5px;right:-1px}.userFooter{display:none}.logoutButton{width:auto;min-height:32px;align-self:flex-start;margin-top:8px;padding:5px 10px;font-size:10px}.logoutNotice{align-self:flex-start}.topbar{gap:8px;padding:9px 14px}.headerMeta{gap:7px;white-space:normal}.syncTime{font-size:9px}.organizationChip{font-size:9px}.content{gap:12px;padding:14px}.orgBanner{padding:14px}.orgBanner strong{font-size:12px}.orgBanner p{font-size:11px}}
+@media(max-width:720px){.toolbar{grid-template-columns:1fr 1fr;padding:9px}.toolbar .primaryButton{grid-column:1/-1}.allocationGrid{gap:12px}.profileGrid,.detailGrid{grid-template-columns:1fr}.workflow{font-size:9px!important}.detailTop{flex-wrap:wrap}.statCards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+@media(max-width:1050px){.apiGrid{grid-template-columns:1fr}}
+@media(max-width:720px){.apiInfoBanner{padding:12px}.apiGrid{gap:12px}.apiGrid>.card{padding:15px}.apiActions{flex-wrap:wrap}.apiErrorList article{align-items:flex-start;flex-direction:column;gap:4px}}
+@media(max-width:1050px){.allocationPreviewBoard{grid-template-columns:1fr}}
+@media(max-width:720px){.allocationContext{align-items:flex-start;flex-direction:column;gap:8px}.allocationContext strong{font-size:11px}.allocationPreviewBoard,.allocationPreviewColumn{gap:12px}.allocationPreviewColumn>.card{padding:16px}.allocationControl{padding:16px}.allocationControlActions{flex-wrap:wrap}.allocationPopulation>div{align-items:flex-start;flex-direction:column;gap:3px}}
+
+/* Figma 386:1557 organization usage and credit performance */
+.usagePage{width:100%;min-width:0;display:grid;align-content:start;gap:24px}
+.usageStats{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;direction:ltr}
+.usageStatCard{min-width:0;min-height:106px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:8px;padding:20px;border:1px solid #e8e1d8;border-radius:12px;background:#fff;direction:rtl;color:#2d2d2d;text-align:right}
+.usageStatCard>span{font-size:13px;font-weight:400;line-height:1.6}
+.usageStatCard>strong{font-size:22px;font-weight:700;line-height:1.5}
+.usageStat_teal{color:#0f5b5a}.usageStat_terracotta{color:#b5523b}.usageStat_ink{color:#2d2d2d}
+.usageTableCard{width:100%;min-width:0;overflow:hidden;border:1px solid #e8e1d8;border-radius:12px;background:#fff}
+.usageTableTitle{min-height:64px;display:flex;align-items:center;justify-content:flex-start;padding:16px 20px;border-bottom:1px solid #e8e1d8}
+.usageTableTitle h2{margin:0;color:#2d2d2d;font-size:16px;font-weight:700;line-height:1.6;text-align:right}
+.usageTableScroll{width:100%;overflow-x:auto}
+.usageTable{width:100%;min-width:920px;border-collapse:collapse;table-layout:fixed;direction:ltr;color:#2d2d2d;text-align:right}
+.usageTable col.usageDateCol{width:120px}.usageTable col.usageAmountCol{width:150px}.usageTable col.usageStatusCol{width:140px}.usageTable col.usageIdCol{width:160px}
+.usageTable thead{background:#f7f3ed}
+.usageTable th,.usageTable td{height:59px;padding:12px 12px;border-bottom:1px solid #e8e1d8;vertical-align:middle;font-size:13px;font-weight:400;line-height:1.6;text-align:center;white-space:nowrap}
+.usageTable thead th{height:52px;padding:14px 12px;font-size:13px;font-weight:600}
+.usageTable thead th:last-child,.usageTable tbody th[scope="row"]{text-align:right}
+.usageTable tbody th[scope="row"]{font-size:14px;font-weight:600}
+.usageTable tbody tr:last-child td,.usageTable tbody tr:last-child th{border-bottom:0}
+.usageStatus{display:inline-flex;min-height:24px;align-items:center;justify-content:center;padding:4px 10px;border-radius:6px;background:#f7f3ed;font-size:12px;font-weight:600;line-height:1.3;white-space:nowrap}
+.usageStatus_used{color:#0f5b5a}.usageStatus_partial{color:#8a9a6b}.usageStatus_unused{color:#2d2d2d}.usageStatus_inactive{color:#b5523b}
+@media(max-width:1050px){.usageStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
+@media(max-width:720px){.usagePage{gap:14px}.usageStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.usageStatCard{min-height:88px;padding:13px}.usageStatCard>span{font-size:11px}.usageStatCard>strong{font-size:17px}.usageTableTitle{min-height:52px;padding:12px 14px}.usageTableTitle h2{font-size:13px}.usageTable{min-width:900px}.usageTable th,.usageTable td{font-size:11px}}
+
+/* Figma 386:1690 organization reports and analytics */
+.reportsPage{width:100%;min-width:0;display:grid;align-content:start;gap:24px}
+.reportsGrid{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:start;direction:ltr}
+.reportsGrid>.card{min-width:0;display:grid;align-content:start;gap:16px;padding:24px;border-color:#e8e1d8;border-radius:12px;direction:rtl}
+.reportsGrid .cardTitle{margin:0;padding:0 0 14px;border-bottom:1px solid #e8e1d8;font-size:16px;line-height:1.6}
+.reportMetricRow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;direction:ltr;white-space:nowrap}
+.reportMetricRow>span{color:#2d2d2d;font-size:13px;direction:rtl}
+.reportMetricRow>strong{font-size:14px;font-weight:600;direction:rtl}
+.reportMetricTeal{color:#0f5b5a}.reportMetricTerracotta{color:#b5523b}
+.reportProgress{width:100%;height:10px;overflow:hidden;border-radius:5px;background:#f7f3ed;direction:ltr}
+.reportProgress>span{height:100%;display:block;border-radius:5px}
+.reportProgressTeal{width:64%;background:#0f5b5a}.reportProgressTerracotta{width:48%;background:#b5523b}
+.reportBarChart{width:100%;height:200px;display:flex;align-items:flex-end;justify-content:center;gap:40px;padding-top:20px;direction:ltr}
+.reportBarItem{display:flex;flex:0 0 auto;flex-direction:column;align-items:center;gap:8px}
+.reportBar{width:50px;flex:0 0 auto;border-radius:6px 6px 0 0;background:#0f5b5a}
+.reportBarLabel{color:#2d2d2d;font-size:12px;line-height:1.5;white-space:nowrap;direction:rtl}
+.reportsPage>.card{min-width:0;display:grid;align-content:start;gap:16px;padding:24px;border-color:#e8e1d8;border-radius:12px}
+.reportsPage>.card .cardTitle{margin:0;padding:0 0 14px;border-bottom:1px solid #e8e1d8;font-size:16px;line-height:1.6}
+@media(max-width:1050px){.reportsGrid{gap:14px}.reportsGrid>.card{padding:18px}.reportMetricRow{white-space:normal}.reportMetricRow>span,.reportMetricRow>strong{font-size:12px}}
+@media(max-width:720px){.reportsPage{gap:14px}.reportsGrid{grid-template-columns:1fr;gap:12px}.reportsGrid>.card,.reportsPage>.card{padding:16px}.reportsGrid .cardTitle,.reportsPage>.card .cardTitle{font-size:13px}.reportBarChart{gap:clamp(14px,5vw,32px);height:180px;overflow-x:auto;justify-content:flex-start;padding:20px 10px 0}.reportBar{width:38px}.reportBarLabel{font-size:10px}}
+
+/* Figma 386:1798 organization notifications */
+.portalNotifications{width:100%;min-width:0;display:grid;align-content:start;gap:16px}
+.portalNotificationItem{width:100%;min-height:84px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px;border:1px solid #d7b895;border-radius:12px;background:#fff;direction:ltr}
+.portalNotificationItem time{flex:0 0 auto;color:#2d2d2d;font-size:12px;line-height:1.6;direction:rtl}
+.portalNotificationMain{min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:12px;direction:ltr}
+.portalNotificationCopy{min-width:0;display:grid;gap:4px;text-align:right;direction:rtl}
+.portalNotificationCopy strong{color:#0f5b5a;font-size:14px;font-weight:700;line-height:1.5}
+.portalNotificationCopy p{margin:0;color:#2d2d2d;font-size:13px;line-height:1.5}
+.portalNotificationDot{width:8px;height:8px;flex:0 0 8px;border-radius:4px}
+.portalNotificationDot_teal{background:#0f5b5a}.portalNotificationDot_sand{background:#d7b895}
+@media(max-width:720px){.portalNotifications{gap:12px}.portalNotificationItem{min-height:76px;align-items:flex-start;gap:12px;padding:14px}.portalNotificationItem time{font-size:10px}.portalNotificationMain{gap:9px}.portalNotificationCopy strong{font-size:12px}.portalNotificationCopy p{font-size:11px}}
+
+/* Figma 386:1892 organization support and portal guide */
+.supportPage{width:100%;min-width:0;display:grid;align-content:start;gap:16px}
+.supportSearchCard,.supportHistory{width:100%;min-width:0;padding:20px 24px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.supportSearchCard{display:grid;gap:14px;justify-items:stretch}
+.supportSearchCard h2,.supportHistory h2{margin:0;color:var(--teal);font-size:15px;font-weight:800;line-height:1.6;text-align:right}
+.supportSearchCard input{width:100%;min-width:0;height:36px;padding:8px 12px;border:1px solid var(--line);border-radius:7px;background:var(--cream);color:var(--ink);font:inherit;font-size:11px;text-align:right;direction:rtl;outline:none}
+.supportSearchCard input:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(15,91,90,.1)}
+.supportSearchCard input::placeholder{color:#4f4b46;opacity:1}
+.supportSearchCard input::-webkit-search-cancel-button{cursor:pointer}
+.supportTopics{width:100%;min-width:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;direction:rtl}
+.supportTopic{min-width:0;min-height:78px;display:grid;align-content:center;gap:5px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--teal);text-align:right;text-decoration:none;transition:border-color .12s,background .12s}
+.supportTopic:hover{border-color:var(--teal);background:#f7fbfa}
+.supportTopic b{font-size:12px;font-weight:800;line-height:1.5}
+.supportTopic small{color:var(--ink);font-size:10px;line-height:1.6}
+.supportHistory{display:grid;gap:14px}
+.supportHistory h2{font-size:14px}
+.supportDivider{width:100%;height:1px;background:var(--line)}
+.supportTicketList{width:100%;display:grid;gap:10px}
+.supportTicket{min-height:25px;display:flex;align-items:center;justify-content:space-between;gap:14px;direction:ltr}
+.supportTicket p{min-width:0;margin:0;color:var(--ink);font-size:11px;line-height:1.7;text-align:right;direction:rtl}
+.supportTicketStatus{flex:0 0 auto;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;line-height:1.5;white-space:nowrap}
+.supportTicketAnswered{border:1px solid var(--teal);background:var(--cream);color:var(--teal)}
+.supportTicketReview{background:var(--sand);color:#4a4034}
+.supportEmpty{grid-column:1/-1;margin:0;padding:12px;border-radius:7px;background:var(--cream);color:var(--muted);font-size:11px;text-align:right}
+@media(max-width:900px){.supportTopics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.supportPage{gap:12px}.supportSearchCard,.supportHistory{padding:16px}.supportSearchCard h2{font-size:13px}.supportTopics{gap:10px}.supportTopic{min-height:72px;padding:12px}.supportTopic b{font-size:11px}.supportTopic small{font-size:9px}.supportHistory h2{font-size:12px}.supportTicket{align-items:flex-start;gap:8px}.supportTicket p{font-size:10px}.supportTicketStatus{font-size:9px}}
+
+/* Figma 386:1994 organization portal settings */
+.organizationSettingsPage{width:100%;min-width:0;display:grid;align-content:start;gap:24px}
+.organizationPrivacyBanner{width:100%;display:grid;gap:8px;padding:20px;border:1px solid var(--teal);border-radius:12px;background:var(--cream);text-align:right}
+.organizationPrivacyBanner h2{margin:0;color:var(--teal);font-size:15px;font-weight:800;line-height:1.6}
+.organizationPrivacyBanner p{margin:0;color:var(--ink);font-size:12px;line-height:1.8}
+.organizationSettingsGrid{width:100%;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:24px;direction:rtl}
+.organizationSettingsCard{min-width:0;display:grid;align-content:start;gap:16px;padding:24px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.organizationSettingsCard h2{margin:0;color:var(--ink);font-size:15px;font-weight:800;line-height:1.6;text-align:right}
+.organizationSettingsDivider{width:100%;height:1px;background:var(--line)}
+.organizationNotificationSettings{display:grid;gap:10px}
+.organizationNotificationOption{min-width:0;min-height:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;direction:ltr;cursor:pointer}
+.organizationNotificationOption span{min-width:0;color:var(--ink);font-size:12px;line-height:1.7;text-align:right;direction:rtl}
+.organizationNotificationOption input{appearance:none;width:40px;height:20px;position:relative;flex:0 0 40px;margin:0;border:0;border-radius:999px;background:#e7e2db;cursor:pointer;transition:background .15s}
+.organizationNotificationOption input::before{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
+.organizationNotificationOption input:checked{background:var(--teal)}
+.organizationNotificationOption input:checked::before{transform:translateX(20px)}
+.organizationNotificationOption input:focus-visible{outline:2px solid var(--sand);outline-offset:3px}
+.organizationUserList{display:grid;gap:12px}
+.organizationUser{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;direction:ltr}
+.organizationUserBadge{flex:0 0 auto;padding:4px 9px;border-radius:6px;background:var(--cream);color:var(--ink);font-size:10px;font-weight:600;line-height:1.5;white-space:nowrap}
+.organizationUserBadgeLead{color:var(--teal)}
+.organizationUserIdentity{min-width:0;display:grid;gap:2px;text-align:right;direction:rtl}
+.organizationUserIdentity strong{color:var(--ink);font-size:12px;font-weight:700;line-height:1.6}
+.organizationUserIdentity small{color:var(--muted);font-size:10px;line-height:1.5}
+@media(max-width:900px){.organizationSettingsGrid{grid-template-columns:1fr;gap:14px}}
+@media(max-width:720px){.organizationSettingsPage{gap:14px}.organizationPrivacyBanner{gap:6px;padding:15px}.organizationPrivacyBanner h2{font-size:13px}.organizationPrivacyBanner p{font-size:10px}.organizationSettingsCard{gap:13px;padding:16px}.organizationSettingsCard h2{font-size:13px}.organizationNotificationSettings{gap:11px}.organizationNotificationOption{gap:10px}.organizationNotificationOption span{font-size:10px}.organizationUserIdentity strong{font-size:11px}.organizationUserBadge{font-size:9px}}
+
+/* Figma 386:161 organization profile sample */
+.profileGrid>.card{padding:24px}
+.profileStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#f7f3ed;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}
+
+/* Figma 386:280 organization programs list */
+.programPage{width:100%;min-width:0}
+.programCard{width:100%;overflow:visible;border:1px solid var(--line);border-radius:12px;background:#fff}
+.programHeader{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);direction:rtl}
+.programHeader h2{margin:0;color:#2d2d2d;font-size:16px;font-weight:700;line-height:1.5}
+.programHeaderActions{display:flex;align-items:center;gap:10px;direction:rtl}
+.programFilter{position:relative;z-index:2}
+.programFilter>button{min-height:38px;display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid rgba(15,91,90,.2);border-radius:8px;background:#fff;color:var(--teal);font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
+.programFilter>button svg{width:14px;height:14px}
+.programFilterMenu{position:absolute;top:calc(100% + 6px);right:0;min-width:150px;display:grid;gap:2px;padding:5px;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 8px 24px rgba(45,45,45,.12)}
+.programFilterMenu button{padding:8px 10px;border:0;border-radius:5px;background:#fff;color:var(--ink);font:inherit;font-size:12px;text-align:right;cursor:pointer}
+.programFilterMenu button:hover,.programFilterMenu button[aria-pressed=true]{background:#eef2f1;color:var(--teal)}
+.programTableWrap{width:100%;overflow-x:auto}
+.programTable{width:100%;min-width:840px;border-collapse:collapse;table-layout:fixed;direction:rtl}
+.programTable col.nameCol{width:190px}.programTable col.operationCol{width:130px}.programTable col.dateCol{width:140px}.programTable col.statusCol{width:120px}.programTable col.allocationCol{width:180px}.programTable col.typeCol{width:160px}
+.programTable thead{background:#f7f3ed;color:#2d2d2d}
+.programTable th,.programTable td{height:52px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;font-weight:400;text-align:center;white-space:nowrap;direction:rtl}
+.programTable thead th{height:44px;padding:10px 12px;font-weight:600}
+.programTable thead th:first-child,.programTable tbody th[scope=row]{text-align:right}
+.programTable tbody th[scope=row]{font-weight:600;font-size:14px}
+.programTable tbody tr:last-child td,.programTable tbody tr:last-child th{border-bottom:0}
+.programDetailsLink{padding:0;border:0;background:transparent;color:var(--teal);font:inherit;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer}
+.programDetailsLink:hover{text-decoration:underline}
+.programStatus{display:inline-flex;align-items:center;justify-content:center;min-width:50px;padding:4px 9px;border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;line-height:1.3}
+.status1{background:#d7b895}.status2{background:#d7b895}.status3{background:#f7f3ed}.status4{background:#b5523b;color:#fff}.status5{background:#f7f3ed}
+.programDialogBackdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(25,35,33,.35)}
+.programDialog{position:relative;width:min(480px,100%);padding:26px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 18px 55px rgba(20,30,28,.18)}
+.programDialog h2{margin:0 32px 20px 0;color:var(--teal);font-size:18px}
+.programDialogClose{position:absolute;top:13px;left:14px;width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:20px;line-height:1;cursor:pointer}
+.programDialog dl{display:grid;gap:0;margin:0}
+.programDialog dl>div{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}
+.programDialog dt{color:var(--muted)}.programDialog dd{margin:0;font-weight:600;text-align:left}
+@media(max-width:720px){.programHeader{min-height:58px;align-items:flex-start;flex-direction:column;padding:11px 13px}.programHeader h2{font-size:13px}.programHeaderActions{width:100%;justify-content:flex-start;flex-wrap:wrap}.programHeaderActions .primaryButton{font-size:11px}.programFilter>button{min-height:34px;padding:6px 9px;font-size:11px}.programTable{min-width:820px}}
+
+/* Figma 386:419 organization program detail */
+.programDetailsLink{display:inline-flex;color:var(--teal);text-decoration:none}
+.programDetailsLink:hover{text-decoration:underline}
+.programDetailPage{width:100%;display:grid;gap:24px}
+.programDetailBackRow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;direction:rtl}
+.programDetailIdentity{display:flex;align-items:center;gap:8px;color:#2d2d2d;font-size:13px}
+.programDetailStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;background:#d7b895;color:#0f5b5a;font-size:12px;font-weight:600;white-space:nowrap}
+.programDetailBackLink{display:inline-flex;align-items:center;gap:8px;direction:ltr;border:1px solid var(--teal);background:#fff;color:var(--teal);font-size:13px;font-weight:600}
+.programDetailBackLink span{direction:rtl}
+.programDetailGrid{display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:24px;direction:rtl}
+.programDetailGrid>*{min-width:0;direction:rtl}
+.programDetailGrid>.card{padding:24px}
+.programDescription{width:100%;padding-top:16px;border-top:1px solid var(--line)}
+.programDescription b{display:block;margin-bottom:7px;color:#2d2d2d;font-size:13px}
+.programDescription p{margin:0;color:#4f4b46;font-size:11px;line-height:1.9}
+@media(max-width:1050px){.programDetailGrid{grid-template-columns:1fr}}
+@media(max-width:720px){.programDetailBackRow{align-items:flex-start;flex-direction:column}.programDetailIdentity{align-self:stretch;justify-content:flex-start}.programDetailGrid{gap:12px}}
+
+/* Figma 386:551 organization program creation */
+.programFormPage{width:100%;min-width:0}
+.programFormCard{width:100%;display:grid;gap:20px;padding:28px 32px;border:1px solid var(--sand);border-radius:12px;background:#fff}
+.programFormHeader{display:grid;gap:4px;width:100%;text-align:right}
+.programFormHeader h2{margin:0;color:var(--ink);font-size:18px;font-weight:800;line-height:1.55}
+.programFormHeader p{margin:0;color:#4f4b46;font-size:13px;line-height:1.7}
+.programFormDivider{width:100%;height:1px;background:var(--sand)}
+.programForm{width:100%;display:grid;gap:16px;margin:0}
+.programFormGrid{width:100%;display:grid;gap:18px}
+.programFormRow{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;direction:rtl}
+.programFormField{min-width:0;display:grid;gap:7px;color:var(--ink);font-size:14px;font-weight:600;text-align:right;direction:rtl}
+.programFormField input,.programFormField select,.programFormField textarea{width:100%;min-width:0;min-height:42px;padding:9px 12px;border:1px solid var(--sand);border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-size:13px;font-weight:400;text-align:right;direction:rtl}
+.programFormField select{background-color:var(--cream);cursor:pointer}
+.programFormField input::placeholder,.programFormField textarea::placeholder{color:#726c65;opacity:1}
+.programFormField textarea{height:100px;resize:vertical;line-height:1.8}
+.programFormNote{margin:0;color:var(--muted);font-size:11px;line-height:1.7;text-align:right}
+.programFormActions{display:flex;justify-content:flex-end;gap:10px;direction:ltr}
+.programFormActions .primaryButton,.programFormActions .outlineButton{min-height:40px;padding:8px 20px;border-radius:7px;font-size:13px}
+.programFinanceBoundary{padding:10px 12px;border:1px solid #e8e1d8;border-radius:7px;background:#faf8f5;color:#62594e;font-size:10px;line-height:1.7;text-align:right}
+.programFinanceBoundary b{color:var(--teal)}
+.programFormNotice,.programFormState{margin:0;padding:14px;border:1px solid var(--sand);border-radius:8px;background:var(--cream);color:var(--ink);font-size:13px;text-align:right}
+.programFormMessage{margin:0;color:#a33e30;font-size:12px;text-align:right}
+@media(max-width:720px){
+ .programFormCard{gap:16px;padding:18px}
+ .programFormHeader h2{font-size:15px}
+ .programFormHeader p{font-size:11px}
+ .programFormRow{grid-template-columns:1fr;gap:14px}
+ .programFormField{font-size:12px}
+ .programFormField input,.programFormField select,.programFormField textarea{font-size:12px}
+ .programFormActions{width:100%;justify-content:stretch}
+ .programFormActions>*{flex:1}
+}
+
+/* Figma 386:867 organization people and recipients */
+.peopleDirectory{width:100%;min-width:0;display:grid;gap:16px}
+.peopleDirectoryHeader{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;direction:rtl}
+.peopleDirectoryTitle{display:grid;gap:3px;text-align:right}
+.peopleDirectoryTitle h2{margin:0;color:var(--ink);font-size:16px;font-weight:800;line-height:1.6}
+.peopleDirectoryTitle p{margin:0;color:var(--muted);font-size:11px;line-height:1.7}
+.peopleDirectoryHeader .primaryButton{min-height:38px;font-size:12px}
+.peopleBanner{width:100%;padding:12px 16px;border:1px solid var(--teal);border-radius:9px;background:var(--cream);color:var(--ink);font-size:12px;line-height:1.8;text-align:right}
+.peopleFilters{width:100%;display:grid;grid-template-columns:minmax(130px,180px) minmax(130px,180px) minmax(140px,200px) minmax(130px,180px) minmax(190px,1fr);align-items:end;gap:14px;padding:16px;border:1px solid var(--line);border-radius:10px;background:#fff;direction:rtl}
+.peopleFilters label{min-width:0;display:grid;gap:5px;color:#8a9a6b;font-size:11px;text-align:right}
+.peopleFilters select,.peopleFilters input{width:100%;min-width:0;height:36px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font:inherit;font-size:11px;text-align:right;direction:rtl}
+.peopleFilters input::placeholder{color:#8a9a6b;opacity:1}
+.peopleTableCard{width:100%;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#fff}
+.peopleTableWrap{width:100%;overflow-x:auto}
+.peopleTable{width:100%;min-width:990px;border-collapse:collapse;table-layout:fixed;direction:rtl;text-align:right}
+.peopleTable th,.peopleTable td{height:59px;padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink);font-size:11px;font-weight:400;text-align:center;vertical-align:middle}
+.peopleTable th{height:42px;background:var(--cream);color:#8a9a6b;font-size:11px;font-weight:600;white-space:nowrap}
+.peopleTable th:first-child,.peopleTable td:first-child{width:180px;text-align:right}
+.peopleTable th:nth-child(2),.peopleTable td:nth-child(2){width:180px}
+.peopleTable th:nth-child(3),.peopleTable td:nth-child(3){width:120px}
+.peopleTable th:nth-child(4),.peopleTable td:nth-child(4){width:140px}
+.peopleTable th:nth-child(5),.peopleTable td:nth-child(5){width:120px}
+.peopleTable th:nth-child(6),.peopleTable td:nth-child(6){width:120px}
+.peopleTable th:last-child,.peopleTable td:last-child{width:100px}
+.peopleTable tbody tr:last-child td{border-bottom:0}
+.peopleTable td:first-child strong,.peopleTable td:first-child small{display:block}
+.peopleTable td:first-child strong{font-size:12px;font-weight:700}
+.peopleTable td:first-child small{margin-top:2px;color:#6b665f;font-size:10px}
+.peopleBadge{display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap}
+.peopleBadgeTeal{border:1px solid var(--teal);background:var(--cream);color:var(--teal)}
+.peopleBadgeSand{background:var(--sand);color:var(--ink)}
+.peopleBadgeMuted{border:1px solid var(--line);background:var(--cream);color:#8a9a6b}
+.peopleTealText{color:var(--teal)!important}
+.peoplePending{color:var(--terracotta,#b5523b)!important}
+.peopleMutedText{color:#8a847c!important}
+.peopleView{padding:4px 9px;border:0;background:transparent;color:var(--teal);font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.peopleView:hover{text-decoration:underline}
+.peopleEmpty{padding:28px;text-align:center;color:var(--muted);font-size:12px}
+.peopleModalBackdrop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(25,35,33,.35)}
+.peopleModal{position:relative;width:min(500px,100%);padding:24px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 18px 55px rgba(20,30,28,.18)}
+.peopleModal h2{margin:0 36px 16px 0;color:var(--teal);font-size:17px}
+.peopleModalClose{position:absolute;top:12px;left:12px;width:32px;height:32px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font-size:20px;line-height:1;cursor:pointer}
+.peopleModal dl{display:grid;gap:0;margin:0}
+.peopleModal dl>div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:12px}
+.peopleModal dt{color:var(--muted)}
+.peopleModal dd{margin:0;font-weight:600;text-align:left}
+@media(max-width:1050px){.peopleFilters{grid-template-columns:repeat(3,minmax(130px,1fr))}.peopleSearch{grid-column:span 2}}
+@media(max-width:720px){.peopleDirectory{gap:12px}.peopleDirectoryHeader{align-items:flex-start;flex-direction:column}.peopleDirectoryTitle h2{font-size:14px}.peopleDirectoryHeader .primaryButton{align-self:flex-start}.peopleBanner{padding:11px 12px;font-size:11px}.peopleFilters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.peopleSearch{grid-column:1/-1}.peopleTable{min-width:950px}.peopleModal{padding:18px}.peopleModal dl>div{font-size:11px}}
+
+/* Figma 386:1024 organization manual recipients intake */
+.peopleIntakePage{width:100%;min-width:0;display:grid;gap:16px}
+.peopleBackRow{width:100%;display:flex;justify-content:flex-start;direction:ltr}
+.peopleBackLink{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--sand);border-radius:7px;background:#fff;color:var(--teal);font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap}
+.peopleBackLink:hover{background:#f7f3ed}
+.peopleFormsGrid{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:18px;direction:rtl}
+.peopleIntakeCard{min-width:0;display:grid;align-content:start;gap:18px;padding:24px;border:1px solid var(--sand);border-radius:11px;background:#fff;direction:rtl}
+.peopleIntakeHeader{display:grid;gap:4px;text-align:right}
+.peopleIntakeHeader h2{margin:0;color:var(--ink);font-size:15px;font-weight:800;line-height:1.6}
+.peopleIntakeHeader p{margin:0;color:#6b665f;font-size:10px;line-height:1.7}
+.peopleIntakeDivider{width:100%;height:1px;background:var(--line)}
+.peopleFileDrop{min-height:116px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px;border:1px dashed var(--sand);border-radius:8px;background:var(--cream);text-align:center;cursor:pointer;transition:border-color .12s,background .12s}
+.peopleFileDropActive,.peopleFileDrop:hover{border-color:var(--teal);background:#f2f7f6}
+.peopleFileDrop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.peopleUploadIcon{width:30px;height:30px;display:grid;place-items:center;color:var(--teal)}
+.peopleUploadIcon svg{width:28px;height:28px}
+.peopleFileDrop strong{max-width:100%;overflow:hidden;color:var(--ink);font-size:11px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.peopleFileDrop small{color:#8a9a6b;font-size:9px;line-height:1.6}
+.peopleBatchActions{display:flex;align-items:center;justify-content:flex-start;gap:8px;direction:ltr}
+.peopleBatchActions .primaryButton,.peopleBatchActions .outlineButton,.peopleSingleActions .primaryButton,.peopleSingleActions .outlineButton{min-height:34px;padding:6px 13px;border-radius:6px;font-size:11px}
+.peopleSingleForm{display:grid;gap:14px}
+.peopleSingleForm>label{display:grid;gap:5px;color:var(--ink);font-size:11px;font-weight:600;text-align:right}
+.peopleSingleForm input,.peopleSingleForm select{width:100%;min-width:0;height:36px;padding:7px 10px;border:1px solid var(--sand);border-radius:7px;background:#fff;color:var(--ink);font:inherit;font-size:11px;font-weight:400;text-align:right;direction:rtl}
+.peopleSingleForm input::placeholder{color:#8a9a6b;opacity:1}
+.peopleSingleForm select{background:var(--cream);cursor:pointer}
+.peopleSingleForm .peoplePhone{direction:ltr;text-align:right}
+.peopleSingleActions{display:flex;justify-content:flex-end;gap:8px;direction:ltr}
+.peopleIntakeMessage{margin:0;padding:8px 10px;border-radius:6px;background:var(--cream);color:var(--teal);font-size:10px;line-height:1.7;text-align:right}
+@media(max-width:900px){.peopleFormsGrid{grid-template-columns:1fr}}
+@media(max-width:720px){.peopleIntakePage{gap:12px}.peopleBackLink{font-size:10px}.peopleFormsGrid{gap:12px}.peopleIntakeCard{gap:14px;padding:17px}.peopleIntakeHeader h2{font-size:13px}.peopleIntakeHeader p{font-size:9px}.peopleFileDrop{min-height:108px;padding:14px}.peopleBatchActions{flex-wrap:wrap}.peopleBatchActions>*{flex:1}}
+
+.allocationDetailStatus{display:inline-flex;align-items:center;min-height:22px;padding:3px 9px;border:1px solid var(--teal);border-radius:5px;background:#eaf3f1;color:var(--teal);font-size:10px;font-weight:700;white-space:nowrap}
+.allocationReviewRows{display:grid;gap:8px}.allocationReviewRows>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;border-radius:7px;background:#f5eadb;direction:ltr}.allocationReviewRows strong{max-width:78%;font-size:10px;text-align:right;direction:rtl}.allocationReviewRows span{flex:0 0 auto;padding:2px 7px;border-radius:4px;background:#e7d4bd;color:#65513a;font-size:9px;white-space:nowrap}
+@media(max-width:720px){.allocationReviewRows>div{align-items:flex-start;gap:7px}.allocationReviewRows strong{max-width:none}}

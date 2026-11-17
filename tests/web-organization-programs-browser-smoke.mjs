@@ -49,7 +49,7 @@ async function main() {
   await page.getByText("هنوز طرحی ثبت نشده است").waitFor();
   await page.getByRole("link", { name: "ایجاد پیش‌نویس" }).click();
   await page.getByRole("heading", { name: "ثبت طرح سازمانی" }).waitFor();
-  await page.getByText(/صندوق نیکوکاری حنا فقط با روش نیازمحور حنا کار می‌کند/).waitFor();
+  await page.getByText(/در ثبت اولیه، فقط نام طرح، روش تخصیص و توضیحات ذخیره می‌شود/).waitFor();
   await page.getByLabel("نام طرح").fill("طرح آزمایشی سازمان");
   await page.getByLabel("توضیحات و اهداف طرح").fill("خانوارهای معرفی‌شده");
   await page.getByLabel("روش ثبت‌شده").selectOption("ORGANIZATION_DEFINED");

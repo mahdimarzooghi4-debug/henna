@@ -2,6 +2,7 @@ import { BuyerAccountNav } from "./buyer-account-nav";
 import { bnplProviderDirectory } from "../lib/bnpl-provider-directory";
 import account from "./figma-buyer-account.module.css";
 import styles from "./buyer-bnpl-payments.module.css";
+import { toPersianDigits } from "../lib/normalize-digits";
 
 export function BuyerBnplPayments() {
   return (
@@ -32,7 +33,7 @@ export function BuyerBnplPayments() {
                 <article key={provider.id} className={styles.card} data-testid="bnpl-provider-card">
                   <div className={styles.cardTop}>
                     <span className={styles.providerMark} aria-hidden="true">{provider.shortName}</span>
-                    <span className={styles.cardCount}>{new Intl.NumberFormat("fa-IR").format(index+1)} / ۳</span>
+                    <span className={styles.cardCount}>{toPersianDigits(index+1)} / ۳</span>
                   </div>
                   <h3>{provider.name}</h3>
                   <p>{provider.description}</p>
@@ -49,9 +50,17 @@ export function BuyerBnplPayments() {
           <section className={styles.steps} aria-labelledby="bnpl-steps-title">
             <h2 id="bnpl-steps-title">مراحل دریافت و استفاده از اعتبار</h2>
             <ol>
-              <li><strong>انتخاب ارائه‌دهنده</strong><span>شرایط، هزینه‌ها، اقساط و مدارک لازم را در سایت رسمی شرکت بررسی کنید.</span></li>
-              <li><strong>درخواست و ارزیابی</strong><span>فرآیند اعتبارسنجی و تأیید یا رد درخواست توسط شرکت اعتباردهنده انجام می‌شود، نه حنا.</span></li>
-              <li><strong>پرداخت صورتحساب حنا</strong><span>تنها پس از قرارداد پذیرندگی و اتصال فنی تأییدشده، گزینه شرکت مربوطه در تسویه سفارش قابل انتخاب می‌شود. این قابلیت هنوز فعال نیست.</span></li>
+              {[
+                ["انتخاب ارائه‌دهنده","شرایط، هزینه‌ها، اقساط و مدارک لازم را در سایت رسمی شرکت بررسی کنید."],
+                ["درخواست و ارزیابی","فرآیند اعتبارسنجی و تأیید یا رد درخواست توسط شرکت اعتباردهنده انجام می‌شود، نه حنا."],
+                ["پرداخت صورتحساب حنا","تنها پس از قرارداد پذیرندگی و اتصال فنی تأییدشده، گزینه شرکت مربوطه در تسویه سفارش قابل انتخاب می‌شود. این قابلیت هنوز فعال نیست."],
+              ].map(([title,description],index)=>(
+                <li key={title}>
+                  <div className={styles.stepNumber} data-testid="bnpl-step-number" aria-hidden="true">{toPersianDigits(index+1)}</div>
+                  <strong>{title}</strong>
+                  <span>{description}</span>
+                </li>
+              ))}
             </ol>
           </section>
         </section>

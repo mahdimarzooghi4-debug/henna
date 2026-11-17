@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { sellerPanelRedirectForStatus } from "../../lib/seller-panel-access-redirect";
 
 type SellerAccess = {
   sellerAccess: true;
@@ -32,12 +33,6 @@ const capabilityCards = [
   ["گزارش‌ها", "reports"],
 ] as const;
 
-function offeringLabel(value: SellerAccess["offeringType"]) {
-  if (value === "GOOD") return "کالا";
-  if (value === "SERVICE") return "خدمت";
-  return "کالا و خدمت";
-}
-
 export function SellerDashboardView() {
   const [state, setState] = useState<
     | { kind: "loading" }
@@ -54,6 +49,13 @@ export function SellerDashboardView() {
       if (controller.signal.aborted) return;
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok || !body || typeof body !== "object") {
+        // No intermediate access-denied landing page. 401 → OTP login,
+        // 403 → registration status. Unknown failures remain fail-closed.
+        const next = sellerPanelRedirectForStatus(response.status);
+        if (next) {
+          window.location.replace(next);
+          return;
+        }
         setState({
           kind: "denied",
           message: typeof (body as Record<string, unknown>).message === "string"
@@ -84,18 +86,15 @@ export function SellerDashboardView() {
   }
 
   if (state.kind === "denied") {
+    // For 503/network/invalid payload, do not mistake outage for logout
+    // or send the user around an authentication redirect loop.
     return (
-      <main className="seller-panel-gate">
-        <section className="seller-panel-denied">
-          <h1>پنل فروشنده</h1>
-          <p role="alert">{state.message}</p>
-          <Link className="primary-button" href="/seller/register/status">
-            مشاهده وضعیت درخواست
-          </Link>
-          <Link className="auth-card__secondary" href="/">
-            بازگشت به حنا
-          </Link>
-        </section>
+      <main className="seller-panel" aria-label="وضعیت دسترسی پذیرنده">
+        <p role="alert">{state.message}</p>
+        <button type="button" className="primary-button"
+          onClick={() => window.location.reload()}>
+          تلاش مجدد
+        </button>
       </main>
     );
   }
@@ -147,7 +146,7 @@ export function SellerDashboardView() {
         <header className="seller-panel__header">
           <div>
             <p className="seller-panel__eyebrow">
-              پنل فروشندگان و ارائه‌دهندگان
+              پنل فروشندگان
             </p>
             <h1>پیشخوان مدیریت کسب‌وکار</h1>
             <p>
@@ -168,10 +167,6 @@ export function SellerDashboardView() {
             <p>{seller.storeName}</p>
           </div>
           <dl>
-            <div>
-              <dt>نوع ارائه</dt>
-              <dd>{offeringLabel(seller.offeringType)}</dd>
-            </div>
             <div>
               <dt>وضعیت فروشندگی</dt>
               <dd className="seller-panel__active">فعال</dd>

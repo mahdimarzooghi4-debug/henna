@@ -765,9 +765,7 @@ export function RegistrationForm() {
       !nextName || nextName.length > 180 ||
       !nextDescription || nextDescription.length > 500 ||
       !/^0\d{10}$/.test(normalizedPhone) ||
-      (offeringType !== "GOOD" &&
-        offeringType !== "SERVICE" &&
-        offeringType !== "BOTH")) {
+      offeringType !== "GOOD") {
       setBusinessFeedback({
         kind: "error",
         text: "اطلاعات کسب‌وکار کامل یا معتبر نیست.",
@@ -1224,7 +1222,7 @@ export function RegistrationForm() {
                   hasAnyUnsavedChanges || completedStep >= 3}
                 onClick={() => void saveApplicantType("NATURAL")}>
                 <strong>شخص حقیقی</strong>
-                <span>ثبت‌نام به نام یک فرد با کدملی شخصی؛ مناسب کسب‌وکارهای خانگی، ارائه‌دهندگان محلی، آزادکاران و تولیدکنندگان انفرادی.</span>
+                <span>ثبت‌نام به نام یک فرد با کدملی شخصی؛ مناسب کسب‌وکارهای خانگی، فروشگاه‌های محلی و تولیدکنندگان کالا.</span>
               </button>
               <button type="button"
                 className={applicantType === "LEGAL"
@@ -1439,7 +1437,7 @@ export function RegistrationForm() {
                 )}
 
                 <FormField id="seller-business-name"
-                  label="نام فروشگاه / کسب‌وکار / عنوان ارائه‌دهنده"
+                  label="نام فروشگاه / کسب‌وکار"
                   placeholder="کسب‌وکار نمونه"
                   maxLength={180}
                   value={businessName}
@@ -1459,7 +1457,7 @@ export function RegistrationForm() {
                     value={businessDescription}
                     required
                     disabled={busy || access !== "signedIn"}
-                    placeholder="توضیح دهید چه کالا یا خدماتی ارائه می‌دهید..."
+                    placeholder="توضیح دهید چه کالاهایی می‌فروشید..."
                     onChange={(event) => {
                       setBusinessDescription(event.target.value);
                       setBusinessFeedback(null);
@@ -1482,27 +1480,20 @@ export function RegistrationForm() {
                   }} />
 
                 <fieldset className="seller-business__offering">
-                  <legend>نوع ارائه / محصول اصلی</legend>
+                  <legend>نوع فعالیت در حنا</legend>
                   <div className="seller-business__offering-options">
-                    {([
-                      ["GOOD", "کالا"],
-                      ["SERVICE", "خدمت"],
-                      ["BOTH", "کالا و خدمت"],
-                    ] as const).map(([value, label]) => (
-                      <button type="button"
-                        key={value}
-                        className={offeringType === value
-                          ? "seller-business__offering-option seller-business__offering-option--selected"
-                          : "seller-business__offering-option"}
-                        aria-pressed={offeringType === value}
-                        disabled={busy || access !== "signedIn"}
-                        onClick={() => {
-                          setOfferingType(value);
-                          setBusinessFeedback(null);
-                        }}>
-                        {label}
-                      </button>
-                    ))}
+                    <button type="button"
+                      className={offeringType === "GOOD"
+                        ? "seller-business__offering-option seller-business__offering-option--selected"
+                        : "seller-business__offering-option"}
+                      aria-pressed={offeringType === "GOOD"}
+                      disabled={busy || access !== "signedIn"}
+                      onClick={() => {
+                        setOfferingType("GOOD");
+                        setBusinessFeedback(null);
+                      }}>
+                      فروش کالا
+                    </button>
                   </div>
                 </fieldset>
 
@@ -1538,12 +1529,8 @@ export function RegistrationForm() {
                     <dd dir="ltr">{businessPhone}</dd>
                   </div>
                   <div>
-                    <dt>نوع ارائه</dt>
-                    <dd>{offeringType === "GOOD"
-                      ? "کالا"
-                      : offeringType === "SERVICE"
-                        ? "خدمت"
-                        : "کالا و خدمت"}</dd>
+                    <dt>نوع فعالیت</dt>
+                    <dd>{offeringType === "GOOD" ? "فروش کالا" : "نیازمند بازنگری"}</dd>
                   </div>
                 </dl>
                 <p>{businessDescription}</p>
@@ -1685,7 +1672,7 @@ export function RegistrationForm() {
                 </fieldset>
 
                 <FormField id="seller-service-area"
-                  label="محدوده ارائه خدمت"
+                  label="محدوده فروش و فعالیت"
                   placeholder="مثال: کل شهر، محدوده منطقه ۶"
                   maxLength={240}
                   value={serviceArea}
@@ -1980,13 +1967,7 @@ export function RegistrationForm() {
                 <dl>
                   <div><dt>نام کسب‌وکار</dt><dd>{businessName}</dd></div>
                   <div><dt>دسته‌بندی</dt><dd>{businessCategoryName ?? "—"}</dd></div>
-                  <div><dt>نوع ارائه اصلی</dt><dd>
-                    {offeringType === "GOOD"
-                      ? "کالا"
-                      : offeringType === "SERVICE"
-                        ? "خدمت"
-                        : "کالا و خدمت"}
-                  </dd></div>
+                  <div><dt>نوع فعالیت</dt><dd>{offeringType === "GOOD" ? "فروش کالا" : "نیازمند بازنگری"}</dd></div>
                   <div><dt>تلفن کسب‌وکار</dt><dd dir="ltr">
                     {businessPhone.length === 11
                       ? businessPhone.slice(0, 3) + "********"
@@ -2053,7 +2034,7 @@ export function RegistrationForm() {
             aria-labelledby="seller-status-heading">
             <h3 id="seller-status-heading">درخواست ثبت شد</h3>
             <p role="status">
-              درخواست ثبت‌نام فروشنده / ارائه‌دهنده شما دریافت شد و
+              درخواست ثبت‌نام فروشنده شما دریافت شد و
               وضعیت آن از همین حساب قابل پیگیری است.
             </p>
             {trackingCode && (

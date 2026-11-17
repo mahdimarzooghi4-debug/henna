@@ -19,8 +19,9 @@ type FormStatus = "idle" | "loading" | "invalid" | "limited" | "unavailable";
 const challengeIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export function AuthForm({ returnTo }: {
+export function AuthForm({ returnTo, audience = "buyer" }: {
   returnTo: AuthReturnTo | null;
+  audience?: "buyer" | "seller";
 }) {
   const [stage, setStage] = useState<Stage>("checking");
   const [phone, setPhone] = useState("");
@@ -207,10 +208,10 @@ export function AuthForm({ returnTo }: {
         ? "کد یا اطلاعات تأیید معتبر نیست."
         : response.status === 429
           ? "تعداد تلاش‌ها زیاد است؛ کمی بعد تلاش کنید."
-          : "خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+          : "فرایند تأیید کد در دسترس نیست؛ ورود انجام نشد.");
     } catch {
       setStatus("unavailable");
-      setMessage("خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+      setMessage("فرایند تأیید کد در دسترس نیست؛ ورود انجام نشد.");
     } finally {
       pending.current = false;
     }
@@ -247,8 +248,8 @@ export function AuthForm({ returnTo }: {
 
   return (
     <section className="surface-card auth-card" aria-labelledby="auth-heading">
-      <h2 id="auth-heading">ورود یا ثبت‌نام در حنا</h2>
-      <p className="auth-card__hint">برای دسترسی به کالاها، خدمات هوشمند محله و اعتبارات حمایتی خود، شماره موبایل خود را وارد کنید.</p>
+      <h2 id="auth-heading">{audience === "seller" ? "ورود به پنل پذیرندگان" : "ورود یا ثبت‌نام در حنا"}</h2>
+      <p className="auth-card__hint">{audience === "seller" ? "با شماره موبایل حساب خود وارد شوید. فقط پذیرندگان تأییدشده و فعال به پنل فروشندگی دسترسی دارند." : "برای دسترسی به کالاهای بازارگاه و اعتبارات حمایتی خود، شماره موبایل خود را وارد کنید."}</p>
       {stage === "checking" && <p role="status">در حال بررسی وضعیت ورود…</p>}
       {stage === "session-unavailable" && (
         <div role="status">

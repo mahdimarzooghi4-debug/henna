@@ -36,3 +36,13 @@ export function parseCatalogCollection(raw: unknown): CatalogCollectionSelection
     return raw as CatalogCollection;
   return "invalid";
 }
+
+/** Source-backed feature selection requires authoritative data before products are shown. */
+export function parseCatalogFeatureSet(raw: unknown): CatalogCollection[] | null {
+  if (raw === undefined) return [];
+  if (typeof raw !== "string" || raw.length > 64) return null;
+  const values = raw.split(",");
+  if (!values.length || values.length > 3 || new Set(values).size !== values.length ||
+    !values.every(value => Object.hasOwn(CATALOG_COLLECTIONS, value))) return null;
+  return values as CatalogCollection[];
+}

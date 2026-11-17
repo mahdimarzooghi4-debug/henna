@@ -37,7 +37,7 @@ async function main() {
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto(base + "/organization/profile");
-  await page.getByRole("heading", { name: "اطلاعات سازمان" }).waitFor();
+  await page.getByRole("heading", { name: "اطلاعات و پروفایل سازمان" }).waitFor();
   await page.getByRole("heading", { name: "سازمان پایدار" }).waitFor();
   await page.getByText("نماینده سازمان", { exact: true }).waitFor();
   await page.getByText("در سرویس فعلی ثبت نشده است", { exact: true }).waitFor();

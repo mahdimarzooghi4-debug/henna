@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { parseCatalogCollection } from "../../lib/buyer-catalog-collections";
+import { parseCatalogCollection, parseCatalogFeatureSet } from "../../lib/buyer-catalog-collections";
 import { MarketplaceChrome } from "../../components/marketplace-chrome";
 import { BuyerBrowse } from "../../components/buyer-browse";
 import {
-  buyerBrowseQuery,
+  buyerBrowseQuery, parseBuyerCategorySet,
   buyerParamsFromRecord,
   parseBuyerBrowseLocation,
   validBuyerSearch,
@@ -26,11 +26,17 @@ export default async function ProductsPage({
     ? params.categoryName.trim() : "";
   const query = buyerBrowseQuery(browseState);
   const collection = parseCatalogCollection(params.collection);
+  const multiCategoryIds = parseBuyerCategorySet(params.categoryIds);
+  const invalidMultiCategoryIds = params.categoryIds !== undefined &&
+    (multiCategoryIds === null || browseState.categoryId !== null || Boolean(categoryName));
+  const selectedFeatures = parseCatalogFeatureSet(params.features);
 
   return (
     <>
       <MarketplaceChrome initialSearch={browseState.search} activeCollection={collection} />
-      <BuyerBrowse initialQuery={query} initialCategoryName={categoryName} initialCollection={collection} />
+      <BuyerBrowse initialQuery={query} initialCategoryName={categoryName} initialCollection={collection}
+        initialMultiCategoryIds={multiCategoryIds} invalidMultiCategoryIds={invalidMultiCategoryIds}
+        initialFeatures={selectedFeatures ?? []} invalidFeatures={selectedFeatures === null} />
       <MarketplaceChrome footerOnly />
     </>
   );

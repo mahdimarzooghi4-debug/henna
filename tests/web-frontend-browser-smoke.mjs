@@ -138,9 +138,9 @@ async function fakeApi(route) {
     const body = req.postDataJSON();
     assert.equal(body.categoryId, businessCategoryId);
     assert.equal(body.businessName, "کسب‌وکار مرورگر");
-    assert.equal(body.description, "ارائه کالا و خدمات محلی در مرورگر CI");
+    assert.equal(body.description, "فروش کالاهای محلی در مرورگر CI");
     assert.equal(body.businessPhone, "02112345678");
-    assert.equal(body.offeringType, "BOTH");
+    assert.equal(body.offeringType, "GOOD");
     assert.equal(body.revision, draft?.revision);
     assert.equal(draft?.completedStep, 3);
     draft = {
@@ -298,7 +298,10 @@ async function fakeApi(route) {
     }));
   }
   if (path === "/api/seller/access" && req.method() === "GET") {
-    assert.ok(signedIn);
+    if (!signedIn)
+      return route.fulfill(json({
+        message: "برای ورود به پنل فروشنده ابتدا وارد شوید.",
+      }, 401));
     if (!draft?.activatedAtUtc || draft.reviewStatus !== "APPROVED")
       return route.fulfill(json({
         message: "دسترسی فروشندگی برای این حساب فعال نیست.",
@@ -371,6 +374,31 @@ async function main() {
   page.setDefaultTimeout(10000);
   const pageErrors = [];
   page.on("pageerror", err => { pageErrors.push(err.message); });
+
+  // The public footer must lead to a dedicated seller login using the real
+  // OTP gateway, not to a Figma-only seller demo or a buyer registration flow.
+  await page.goto(base + "/");
+  const sellerPortalLink = page.getByRole("link", {
+    name: "پنل پذیرندگان", exact: true,
+  });
+  assert.equal(await sellerPortalLink.getAttribute("href"), "/seller/login");
+  await sellerPortalLink.click();
+  await page.waitForURL("**/seller/login");
+  await page.getByRole("heading", {
+    name: "ورود به پنل پذیرندگان",
+  }).waitFor();
+  await page.locator("#auth-phone").waitFor();
+  assert.equal(await page.getByRole("link", {
+    name: "ثبت‌نام پذیرنده جدید",
+  }).getAttribute("href"), "/seller/register");
+  assert.equal(writes, 0, "seller login screen must have no commerce writes");
+
+  // Direct /seller visits cannot reveal the removed 401 access-gate card.
+  await page.goto(base + "/seller");
+  await page.waitForURL("**/seller/login");
+  await page.getByRole("heading", { name: "ورود به پنل پذیرندگان" }).waitFor();
+  assert.equal(await page.locator(".seller-panel-denied").count(), 0);
+  assert.equal(writes, 0);
 
   // Signed-out seller must redirect to the EXACT approved web auth flow;
   // it cannot edit a draft, guess revision zero or invent an authenticated UI.
@@ -567,11 +595,11 @@ async function main() {
   await otherTab.locator("#seller-business-name")
     .fill("کسب‌وکار مرورگر");
   await otherTab.locator("#seller-business-description")
-    .fill("ارائه کالا و خدمات محلی در مرورگر CI");
+    .fill("فروش کالاهای محلی در مرورگر CI");
   await otherTab.locator("#seller-business-phone")
     .fill("۰۲۱۱۲۳۴۵۶۷۸");
   await otherTab.getByRole("button", {
-    name: "کالا و خدمت", exact: true,
+    name: "فروش کالا", exact: true,
   }).click();
 
   await otherTab.getByRole("button", {
@@ -582,7 +610,7 @@ async function main() {
   }).waitFor();
   assert.equal(draft.businessCategoryId, businessCategoryId);
   assert.equal(draft.businessPhone, "02112345678");
-  assert.equal(draft.offeringType, "BOTH");
+  assert.equal(draft.offeringType, "GOOD");
   assert.equal(draft.completedStep, 4);
   assert.equal(draft.revision, 6);
   await otherTab.locator(".seller-business__completed").getByText("دسته‌بندی مرورگر CI", { exact: true }).waitFor();
@@ -700,6 +728,13 @@ async function main() {
     name: "ورود به پنل فروشنده",
   }).count(), 0, "under-review accounts must not receive seller panel access");
 
+  // Authenticated users without activated seller access must not be sent
+  // back to login (which would loop); show actual registration status.
+  await otherTab.goto(base + "/seller");
+  await otherTab.waitForURL("**/seller/register/status");
+  await otherTab.locator(".seller-status-actual").waitFor();
+  assert.equal(await otherTab.locator(".seller-panel-denied").count(), 0);
+
   await otherTab.reload();
   const refreshedStatus = otherTab.locator(".seller-status-actual");
   await refreshedStatus.locator("summary").click();
@@ -741,6 +776,14 @@ async function main() {
   }).count(), 5);
   await otherTab.getByText("دسترسی فروشندگی فعال است.", {
     exact: true,
+  }).waitFor();
+
+  // An already signed-in, activated seller goes through the dedicated
+  // login gate and reaches the protected operational panel, not a preview.
+  await otherTab.goto(base + "/seller/login");
+  await otherTab.waitForURL("**/seller");
+  await otherTab.getByRole("heading", {
+    name: "پیشخوان مدیریت کسب‌وکار",
   }).waitFor();
 
   assert.deepEqual(pageErrors, []);
