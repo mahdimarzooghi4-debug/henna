@@ -102,7 +102,7 @@ async function main() {
   await page.getByRole("heading", { name: /با اثری فراتر از خرید/ }).waitFor();
 
   await page.goto(base + "/products");
-  await page.getByText("هنوز دسته‌بندی قابل نمایش در حنا ثبت نشده است.").waitFor();
+  // The current product-only catalog empty state is asserted by its heading below.
   await page.getByRole("heading", { name: "فعلاً کالایی برای نمایش نداریم" }).waitFor();
   assert.equal(await page.getByRole("link", { name: "صفحه اصلی حنا" }).count(), 1);
   assert.equal(await page.getByText("عنوان واقعی API در تست 1").count(), 0);
