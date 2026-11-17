@@ -378,6 +378,8 @@ app.MapAdminSellerActivation(hasIdentityDb);
 app.MapCatalogRead(hasIdentityDb);
 app.MapPublicOfferReads(hasIdentityDb);
 app.MapBuyerReferenceCart(hasIdentityDb);
+app.MapBuyerCartOfferComparison(hasIdentityDb);
+app.MapBuyerPurchaseDraft(hasIdentityDb);
 app.MapCatalogMedia(hasIdentityDb);
 app.MapGeographyRead(hasIdentityDb);
 app.MapOrganization(hasIdentityDb);

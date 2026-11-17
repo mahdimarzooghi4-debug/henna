@@ -105,6 +105,11 @@ public sealed class HanaSellerDbContextModelSnapshot : ModelSnapshot
             entity.HasKey(x => x.AccountId);
             entity.Property(x => x.AccountId).HasColumnName("account_id")
                 .ValueGeneratedNever();
+            entity.Property(x => x.PublicSellerId)
+                .HasColumnName("public_seller_id")
+                .HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
+            entity.HasIndex(x => x.PublicSellerId).IsUnique()
+                .HasDatabaseName("ux_registration_drafts_public_seller_id");
             entity.Property(x => x.StoreName).HasColumnName("store_name")
                 .HasMaxLength(120).IsRequired();
             entity.Property(x => x.OwnerName).HasColumnName("owner_name")

@@ -174,7 +174,7 @@ internal static class BuyerReferenceCartEndpoints
         }).WithName("RemoveBuyerReferenceCartItem");
     }
 
-    private static async Task<Guid?> ResolveAccount(IServiceProvider services,
+    internal static async Task<Guid?> ResolveAccount(IServiceProvider services,
         HttpContext context, CancellationToken cancellationToken)
     {
         var authorization = context.Request.Headers.Authorization.ToString();
@@ -205,7 +205,7 @@ internal static class BuyerReferenceCartEndpoints
         return Results.Ok(new BuyerCartResponse(current.Revision, items));
     }
 
-    private static IReadOnlyList<BuyerCartItemResponse> Deserialize(string json) =>
+    internal static IReadOnlyList<BuyerCartItemResponse> Deserialize(string json) =>
         JsonSerializer.Deserialize<List<BuyerCartItemResponse>>(json, JsonOptions) ?? [];
 
     private static IResult RevisionConflict() => Results.Conflict(new
