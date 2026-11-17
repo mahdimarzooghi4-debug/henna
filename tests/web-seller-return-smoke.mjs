@@ -3,12 +3,13 @@
  * Mocked fetch below is CI-only; no fake SMS or authenticated account ships.
  */
 import assert from "node:assert/strict";
+import { sellerPanelRedirectForStatus } from "../apps/web-marketplace/lib/seller-panel-access-redirect.ts";
 import { test } from "node:test";
 import {
   emptySellerFields, loadSellerDraft,
 } from "../apps/web-marketplace/lib/seller-draft-preflight.ts";
 import {
-  safeSellerReturnTo, sellerLoginHref, sellerRegistrationPath,
+  safeAuthReturnTo, safeSellerReturnTo, sellerLoginHref, sellerPanelPath, sellerPanelLoginPath, sellerRegistrationPath,
 } from "../apps/web-marketplace/lib/seller-return.ts";
 
 const fields = {
@@ -36,8 +37,8 @@ function harness(responses) {
   return { calls, fetchFn };
 }
 
-test("the only return destination is the exact existing seller registration path", () => {
-  assert.equal(sellerLoginHref, "/auth?returnTo=%2Fseller%2Fregister");
+test("seller return destination remains exact and same-origin", () => {
+  assert.equal(sellerLoginHref, "/auth?returnTo=%2Fseller%2Fregister%2Faccount");
   assert.equal(safeSellerReturnTo(sellerRegistrationPath),
     sellerRegistrationPath);
   for (const value of [
@@ -56,6 +57,45 @@ test("the only return destination is the exact existing seller registration path
   }
 });
 
+test("401/403 leave the removed intermediate gate, but outages never redirect", () => {
+  assert.equal(sellerPanelRedirectForStatus(401), "/seller/login");
+  assert.equal(sellerPanelRedirectForStatus(403), "/seller/register/status");
+  for (const status of [0, 200, 204, 302, 400, 404, 409, 429, 500, 502, 503, 504]) {
+    assert.equal(sellerPanelRedirectForStatus(status), null, String(status));
+  }
+});
+
+test("seller portal entry is distinct and auth may return only to the exact panel path", () => {
+  assert.equal(sellerPanelPath, "/seller");
+  assert.equal(sellerPanelLoginPath, "/seller/login");
+  assert.equal(safeAuthReturnTo(sellerPanelPath), sellerPanelPath);
+  for (const attempt of [
+    "/seller/", "/seller/login", "/seller/orders", "/seller?preview=1",
+    "/seller#anything", "/seller/../admin", "/seller/%2e%2e/admin",
+    "%2Fseller", "//evil.example/seller", "https://evil.example/seller",
+    ["/seller"], { toString: () => "/seller" },
+  ]) assert.equal(safeAuthReturnTo(attempt), null, String(attempt));
+});
+
+test("organization portal auth returns only to known same-origin routes", () => {
+  for (const path of [
+    "/buyer/cart", "/checkout",
+    "/organization", "/organization/programs", "/organization/programs/new",
+    "/organization/people", "/organization/people/new", "/organization/allocation",
+    "/organization/usage", "/organization/data-sources", "/organization/reports",
+    "/organization/notifications", "/organization/profile", "/organization/support",
+    "/organization/settings",
+    "/organization/programs/123e4567-e89b-42d3-a456-426614174000",
+    "/organization/programs/123e4567-e89b-42d3-a456-426614174000/funding-instruction",
+    "/organization/programs/123e4567-e89b-42d3-a456-426614174000/household-referrals",
+    "/organization/allocation/123e4567-e89b-42d3-a456-426614174000",
+  ]) assert.equal(safeAuthReturnTo(path), path);
+  for (const path of [
+    null, undefined, "/", "/checkout?next=https://evil.test", "/buyer/cart/../checkout", "/organization/unknown", "/organization?next=/",
+    "/organization/programs/../auth", "/organization/programs/%2f%2fevil.test",
+    "//evil.test", "https://evil.test",
+  ]) assert.equal(safeAuthReturnTo(path), null);
+});
 test("401 requires login and 404 is the ONLY absence proof", async () => {
   const { calls, fetchFn } = harness([
     reply(401, {}), reply(404, {}),

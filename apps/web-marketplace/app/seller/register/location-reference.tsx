@@ -143,7 +143,7 @@ export function SellerLocationReference({
                   {citiesFor === province.id &&
                     cities.status === "unavailable" && (
                     <div role="status">
-                      <p>شهرهای مرجع این استان دریافت نشدند؛ به معنی نبود شهر یا نبود خدمت نیست.</p>
+                      <p>شهرهای مرجع این استان دریافت نشدند؛ این خطا به معنی نبود شهر یا محدودیت فروش کالا در آن نیست.</p>
                       <button type="button" disabled={!enabled}
                         onClick={() => {
                           setSelectedCityId("");

@@ -1,7 +1,7 @@
-import { OrganizationProfile } from "../../components/organization-profile";
+import { OrganizationPortalScreen } from "../../components/organization-portal";
 
 export const dynamic = "force-dynamic";
 
 export default function OrganizationPage() {
-  return <OrganizationProfile />;
+  return <OrganizationPortalScreen screen="dashboard" />;
 }

@@ -62,6 +62,7 @@ internal static class CatalogReadEndpoints
                 var db = services.GetRequiredService<HanaCatalogDbContext>();
                 var query = db.Products.AsNoTracking()
                     .Where(p => p.State == PublicationStates.Published &&
+                        p.Kind == CatalogProductKinds.Good &&
                         p.Category.State == PublicationStates.Published);
                 if (categoryId is { } id)
                     query = query.Where(p => p.CategoryId == id);
@@ -122,6 +123,7 @@ internal static class CatalogReadEndpoints
                 var item = await db.Products.AsNoTracking()
                     .Where(p => p.Id == id &&
                         p.State == PublicationStates.Published &&
+                        p.Kind == CatalogProductKinds.Good &&
                         p.Category.State == PublicationStates.Published)
                     .Select(p => new
                     {

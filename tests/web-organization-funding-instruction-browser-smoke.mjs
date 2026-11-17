@@ -37,8 +37,8 @@ async function main() {
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto(base + "/organization/programs");
-  await page.getByRole("link", { name: "جزئیات و دستور منبع" }).click();
-  await page.getByRole("heading", { name: "جزئیات دستور منبع" }).waitFor();
+  await page.getByRole("link", { name: "دستور تأمین", exact: true }).click();
+  await page.getByRole("heading", { name: "دستور تأمین طرح" }).waitFor();
   await page.getByText("مرجع دستور تأمین مالی را ثبت یا پیگیری کنید.").waitFor();
   await page.getByLabel("شماره یا مرجع دستور منبع").fill("نامه سازمانی ۱۴۰۵/الف");
   await page.getByRole("button", { name: "ثبت برای بررسی" }).click();

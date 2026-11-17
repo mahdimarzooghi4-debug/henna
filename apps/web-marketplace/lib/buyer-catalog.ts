@@ -2,7 +2,7 @@
 export type BuyerCategory = { id: string; name: string; slug: string };
 export type BuyerProduct = {
   id: string; categoryId: string; name: string;
-  kind: "GOOD" | "SERVICE"; description: string | null;
+  kind: "GOOD"; description: string | null;
   unitName?: string | null; quantityScale?: number | null;
 };
 export type BuyerPage = {
@@ -76,6 +76,20 @@ export function reconcilePublishedBuyerPage(
   return { ...location, page: 1 };
 }
 
+/** Validated shareable category UUIDs; each category has its own public catalog request. */
+export function parseBuyerCategorySet(raw: unknown): string[] | null {
+  if (typeof raw !== "string" || raw.length > 800) return null;
+  const ids = raw.split(",").map(item => item.toLowerCase());
+  if (ids.length < 2 || ids.length > 12 || !ids.every(validBuyerProductId) ||
+    new Set(ids).size !== ids.length) return null;
+  return ids;
+}
+export function buyerCategorySetHref(ids: readonly string[], search: string): string {
+  const params = new URLSearchParams({ categoryIds: ids.join(",") });
+  if (search && validBuyerSearch(search)) params.set("search", search);
+  return "/products?" + params.toString();
+}
+
 export function buyerCatalogPath(
   page: number, categoryId: string | null, search: string,
 ): string {
@@ -100,6 +114,35 @@ export function parseBuyerCategories(raw: unknown): BuyerCategory[] | null {
   return items;
 }
 
+function normalizeCategoryLabel(value: string): string {
+  return value.normalize("NFKC").replace(/[يى]/g, "ی").replace(/ك/g, "ک")
+    .replace(/[\s\u200cـ]+/g, "").trim();
+}
+
+/** Resolve the Figma landing label only against the currently published taxonomy. */
+export function findLandingBuyerCategory(
+  categories: BuyerCategory[], label: string,
+): BuyerCategory | null {
+  const normalized = normalizeCategoryLabel(label);
+  const exact = categories.filter((category) =>
+    normalizeCategoryLabel(category.name) === normalized ||
+    normalizeCategoryLabel(category.slug) === normalized);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return null;
+
+  const aliases: Record<string, string[]> = {
+    [normalizeCategoryLabel("میوه و صیفی")]: ["میوه و سبزیجات"],
+    [normalizeCategoryLabel("میوه و سبزیجات")]: ["میوه و صیفی"],
+    [normalizeCategoryLabel("لبنیات محلی")]: ["لبنیات و تخم مرغ", "لبنیات و تخم‌مرغ"],
+    [normalizeCategoryLabel("لبنیات و تخم مرغ")]: ["لبنیات محلی"],
+    [normalizeCategoryLabel("لبنیات و تخم‌مرغ")]: ["لبنیات محلی"],
+  };
+  const names = aliases[normalized] ?? [];
+  const matches = categories.filter((category) =>
+    names.some((name) => normalizeCategoryLabel(name) === normalizeCategoryLabel(category.name)));
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage | null {
   const x = object(raw);
   if (!x || x.page !== requestedPage || x.pageSize !== BUYER_PAGE_SIZE ||
@@ -110,13 +153,12 @@ export function parseBuyerPage(raw: unknown, requestedPage: number): BuyerPage |
   for (const candidate of x.items) {
     const p = object(candidate);
     if (!p || !id(p.id) || !id(p.categoryId) || !words(p.name, 200) ||
-      (p.kind !== "GOOD" && p.kind !== "SERVICE") ||
+      p.kind !== "GOOD" ||
       (p.description !== null && (typeof p.description !== "string" ||
         p.description.length > 2000)) ||
       (Object.hasOwn(p, "unitName") && !(p.unitName === null || words(p.unitName, 40))) ||
       (Object.hasOwn(p, "quantityScale") && !(p.quantityScale === null || integer(p.quantityScale, 0, 6))) ||
-      (Object.hasOwn(p, "unitName") !== Object.hasOwn(p, "quantityScale")) ||
-      (p.kind === "SERVICE" && p.unitName != null)) return null;
+      (Object.hasOwn(p, "unitName") !== Object.hasOwn(p, "quantityScale"))) return null;
     items.push({
       id: p.id, categoryId: p.categoryId, name: p.name,
       kind: p.kind, description: p.description,
@@ -183,13 +225,12 @@ export function parseBuyerProduct(
   if (!validBuyerProductId(requestedId) || !x ||
     !id(x.id) || x.id.toLowerCase() !== requestedId.toLowerCase() ||
     !id(x.categoryId) || !words(x.name, 200) ||
-    (x.kind !== "GOOD" && x.kind !== "SERVICE") ||
+    x.kind !== "GOOD" ||
     (x.description !== null && x.description !== undefined &&
       (typeof x.description !== "string" || x.description.length > 2000)) ||
     (Object.hasOwn(x, "unitName") && !(x.unitName === null || words(x.unitName, 40))) ||
     (Object.hasOwn(x, "quantityScale") && !(x.quantityScale === null || integer(x.quantityScale, 0, 6))) ||
-    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")) ||
-    (x.kind === "SERVICE" && x.unitName != null))
+    (Object.hasOwn(x, "unitName") !== Object.hasOwn(x, "quantityScale")))
     return null;
   return {
     id: x.id, categoryId: x.categoryId, name: x.name,
@@ -244,7 +285,7 @@ export function buyerBrowseQuery(state: BuyerBrowseLocation): string {
 
 export function buyerBrowseHref(state: BuyerBrowseLocation): string {
   const query = buyerBrowseQuery(state);
-  return "/" + (query ? "?" + query : "");
+  return "/products" + (query ? "?" + query : "");
 }
 
 export function buyerDetailHref(

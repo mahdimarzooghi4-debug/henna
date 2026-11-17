@@ -1,0 +1,87 @@
+import type { Metadata } from "next";
+import { LandingFooter, LandingHeader } from "../../components/landing-chrome";
+import styles from "./download.module.css";
+import { buyerAndroidPreview, sellerAndroidPreview } from "../../lib/landing-android-preview";
+
+const entries = [
+  {
+    role: "buyer",
+    label: "خریدار",
+    title: "اپلیکیشن خریدار حنا",
+    description: "دسترسی به بازارگاه و بخش‌های خرید حنا از تلفن همراه.",
+    android: buyerAndroidPreview.apk,
+    details: buyerAndroidPreview.details,
+    pwa: "/install/buyer",
+  },
+  {
+    role: "seller",
+    label: "فروشنده",
+    title: "اپلیکیشن فروشنده حنا",
+    description: "دسترسی به پیشخوان و امکانات فروشندگی حنا از تلفن همراه.",
+    android: sellerAndroidPreview.apk,
+    details: sellerAndroidPreview.details,
+    pwa: "/install/seller",
+  },
+] as const;
+
+export const metadata: Metadata = {
+  title: "دریافت اپلیکیشن حنا | اندروید و آیفون",
+  description: "دریافت اپلیکیشن اندروید و نصب نسخه وب‌اپ حنا برای خریدار و فروشنده.",
+};
+
+export default function DownloadAppPage() {
+  return (
+    <>
+      <LandingHeader />
+      <main className={styles.page} dir="rtl" data-testid="download-app-page">
+        <div className={styles.container}>
+          <header className={styles.intro}>
+            <span className={styles.eyebrow}>حنا در تلفن همراه</span>
+            <h1>دریافت اپلیکیشن حنا</h1>
+            <p>اپلیکیشن اندروید را دریافت کنید یا نسخه PWA خریدار و فروشنده را از مرورگر به صفحه اصلی دستگاه اضافه کنید.</p>
+          </header>
+          <section className={styles.cards} aria-label="انتخاب نسخه اپلیکیشن">
+            {entries.map(app => (
+              <article className={styles.card} key={app.role} data-testid={"app-download-"+app.role}>
+                <span className={styles.role}>{app.label}</span>
+                <h2>{app.title}</h2>
+                <p>{app.description}</p>
+                <div className={styles.actions}>
+                  <a className={styles.primary} data-testid={"download-android-"+app.role}
+                    aria-label={"دانلود فایل APK اندروید " + app.label}
+                    href={app.android} referrerPolicy="no-referrer">
+                    دانلود مستقیم APK اندروید
+                  </a>
+                  <a className={styles.secondary} data-testid={"install-pwa-"+app.role}
+                    href={app.pwa}>
+                    نصب نسخه وب (PWA)
+                  </a>
+                </div>
+                <p className={styles.platformHelp}>اندروید: APK یا نصب PWA از Chrome | آیفون: نصب PWA از Safari</p>
+                {app.role === "seller" && <a className={styles.previewLink} data-testid="open-seller-app-preview" href="/seller-app-preview">مشاهدهٔ کامل اپ فروشنده</a>}
+                {app.role === "buyer" && (
+                  <p className={styles.buyerHint}>نسخه جدید پیش‌نمایش فیگما برای خریدار (حدود ۷۹ مگابایت) شامل خانه، کاتالوگ و فیلترهای نمونه است. این اطلاعات واقعی نیستند و خرید یا پرداخت فعال نیست. اگر نسخه قبلی نصب است و خطای ناسازگاری امضا می‌گیرید، ابتدا همان نسخه قبلی را حذف کنید. در خطای «Problem parsing package»، کامل‌بودن دانلود و نسخه Android دستگاه را بررسی کنید.</p>
+                )}
+              </article>
+            ))}
+          </section>
+          <aside className={styles.note} role="note">
+            <strong>وضعیت دسترسی</strong>
+            <p>نسخه‌های اندروید برای بررسی هستند، نه نسخه نهایی بازارگاه. فایل فروشنده مستقیماً از همین صفحه دریافت می‌شود و پیش‌نمایش تعاملی و کامل آن هم در همین سایت در دسترس است. خرید، پرداخت یا فروش واقعی فعال نیست؛ نسخه‌های PWA خریدار و فروشنده به اینترنت نیاز دارند.</p>
+            <div className={styles.releaseLinks}>
+              <a href={buyerAndroidPreview.details}
+                target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                مشخصات نسخه خریدار و اصالت فایل
+              </a>
+              <a href={sellerAndroidPreview.details}
+                target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                مشخصات نسخه فروشنده و اصالت فایل
+              </a>
+            </div>
+          </aside>
+        </div>
+      </main>
+      <LandingFooter />
+    </>
+  );
+}

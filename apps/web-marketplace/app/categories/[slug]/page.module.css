@@ -1,0 +1,12 @@
+.page{min-height:100vh;background:#faf8f5;color:#1c3f3a;font-family:var(--hana-font-family)}
+.intro{width:min(1280px,calc(100% - 64px));margin:36px auto 20px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;gap:28px;background:#fff;border:1px solid #eae6e1;border-radius:18px}
+.introText{min-width:0;flex:1;text-align:right}
+.breadcrumb{display:flex;align-items:center;flex-wrap:wrap;gap:9px;color:#706963;font-size:12px}
+.breadcrumb a{color:#1c3f3a;text-decoration:none}
+.intro h1{font-size:28px;line-height:1.5;margin:12px 0 8px}
+.intro p{font-size:14px;line-height:1.9;margin:0 0 10px;color:#554f49}
+.intro .notice{font-size:12px;color:#766960}
+.allProducts{display:inline-flex;align-items:center;min-height:40px;border-radius:9px;background:#1c3f3a;color:#fff;text-decoration:none;padding:6px 16px;font-size:13px;font-weight:700;margin-top:8px}
+.image{width:148px;height:148px;flex:0 0 148px;border-radius:50%;object-fit:cover}
+@media(max-width:1000px){.intro{width:min(760px,calc(100% - 40px))}}
+@media(max-width:640px){.intro{width:calc(100% - 32px);padding:18px;gap:15px;align-items:flex-start}.intro h1{font-size:22px}.intro p{font-size:12px}.image{width:82px;height:82px;flex-basis:82px}.allProducts{font-size:12px}}
