@@ -13,6 +13,10 @@ public sealed class ProductRecord
     public string? Description { get; set; }
     public string State { get; set; } = PublicationStates.Draft;
     public DateTimeOffset CreatedAtUtc { get; set; }
+    /// <summary>Canonical display unit assigned by Catalog operators.</summary>
+    public string? UnitName { get; set; }
+    /// <summary>Maximum fractional digits accepted for quantities.</summary>
+    public short? QuantityScale { get; set; }
 }
 
 public static class PublicationStates

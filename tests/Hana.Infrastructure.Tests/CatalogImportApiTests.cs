@@ -103,6 +103,10 @@ public sealed class CatalogImportApiTests
                 x => x.Id == categoryId || x.Id == hiddenCategoryId));
             Assert.Equal(2, await db.Products.AsNoTracking().CountAsync(
                 x => x.Id == productId || x.Id == hiddenProductId));
+            var importedGood = await db.Products.AsNoTracking()
+                .SingleAsync(x => x.Id == productId);
+            Assert.Equal("کیلوگرم", importedGood.UnitName);
+            Assert.Equal((short)3, importedGood.QuantityScale);
             var receipts = await db.ImportReceipts.AsNoTracking()
                 .Where(x => x.ContentSha256 == initialDigest)
                 .OrderBy(x => x.AppliedAtUtc).ThenBy(x => x.Id)
@@ -244,7 +248,12 @@ public sealed class CatalogImportApiTests
 
     private static object Product(Guid id, Guid categoryId, string name,
         string kind, string state, string? description) =>
-        new { id, categoryId, name, kind, state, description };
+        new
+        {
+            id, categoryId, name, kind, state, description,
+            unitName = kind == "GOOD" ? "کیلوگرم" : null,
+            quantityScale = kind == "GOOD" ? (short?)3 : null
+        };
 
     private static string Document(
         object[] categories, object[] products) =>
