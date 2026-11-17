@@ -12,7 +12,7 @@ const ID = "60000000-0000-4000-8000-000000000001";
 const OTHER = "60000000-0000-4000-8000-000000000002";
 const published = {
   id: ID, categoryId: A, name: "عنوان معتبر CI",
-  kind: "SERVICE", description: "توضیح منتشرشده CI",
+  kind: "GOOD", description: "توضیح منتشرشده CI",
 };
 const response = (status, body) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json" },
@@ -65,6 +65,7 @@ test("404 and malformed ID are missing, but 503 and invalid data are unavailable
     [404, {}, "missing"],
     [503, {}, "unavailable"],
     [200, { ...published, id: OTHER }, "unavailable"],
+    [200, { ...published, kind: "SERVICE" }, "unavailable"],
     [200, { ...published, kind: "PRICED_OFFER" }, "unavailable"],
     [200, { ...published, name: "" }, "unavailable"],
   ]) {

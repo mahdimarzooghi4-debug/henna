@@ -90,10 +90,12 @@ public sealed class CatalogReadApiTests
 
         var listing = await client.GetFromJsonAsync<JsonElement>(
             productsUrl + "?categoryId=" + liveCategory);
-        Assert.Equal(2, listing.GetProperty("total").GetInt32());
-        Assert.Equal(2, listing.GetProperty("items").GetArrayLength());
+        Assert.Equal(1, listing.GetProperty("total").GetInt32());
+        Assert.Equal(1, listing.GetProperty("items").GetArrayLength());
         Assert.Equal(1, listing.GetProperty("page").GetInt32());
         Assert.Equal(20, listing.GetProperty("pageSize").GetInt32());
+        Assert.DoesNotContain(listing.GetProperty("items").EnumerateArray(),
+            x => x.GetProperty("id").GetGuid() == serviceProduct);
         Assert.DoesNotContain(listing.GetProperty("items").EnumerateArray(),
             x => x.GetProperty("id").GetGuid() == hiddenProduct);
         Assert.DoesNotContain(listing.GetProperty("items").EnumerateArray(),
@@ -119,6 +121,8 @@ public sealed class CatalogReadApiTests
         Assert.False(exact.TryGetProperty("price", out _));
 
         Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync(productsUrl + "/" + serviceProduct)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
             (await client.GetAsync(productsUrl + "/" + hiddenProduct)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,
             (await client.GetAsync(productsUrl + "/" + hiddenByCategoryProduct)).StatusCode);
@@ -134,8 +138,8 @@ public sealed class CatalogReadApiTests
             .GetProperty("id").GetGuid());
         var pageTwo = await client.GetFromJsonAsync<JsonElement>(
             productsUrl + "?categoryId=" + liveCategory + "&page=2&pageSize=1");
-        Assert.Equal(2, pageTwo.GetProperty("total").GetInt32());
-        Assert.Equal(1, pageTwo.GetProperty("items").GetArrayLength());
+        Assert.Equal(1, pageTwo.GetProperty("total").GetInt32());
+        Assert.Equal(0, pageTwo.GetProperty("items").GetArrayLength());
         Assert.Equal(2, pageTwo.GetProperty("page").GetInt32());
 
         Assert.Equal(HttpStatusCode.BadRequest,

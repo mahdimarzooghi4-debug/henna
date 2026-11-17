@@ -12,7 +12,7 @@ const ID = "60000000-0000-4000-8000-000000000001";
 const OTHER = "60000000-0000-4000-8000-000000000002";
 const published = {
   id: ID, categoryId: A, name: "نام تأییدشدهٔ جزئیات CI",
-  kind: "SERVICE", description: "شرح منتشرشدهٔ CI",
+  kind: "GOOD", description: "شرح منتشرشدهٔ CI",
 };
 const good = {
   ...published, id: OTHER, name: "کالای قابل خرید آیندهٔ CI", kind: "GOOD",
@@ -77,6 +77,8 @@ async function main() {
       }));
     if (url.pathname === "/api/catalog/products/" + OTHER)
       return route.fulfill(json(good));
+    if (url.pathname === "/api/catalog/products/" + ID + "/offers")
+      return route.fulfill(json({ items: [], page: 1, pageSize: 20, total: 0 }));
     if (url.pathname === "/api/catalog/products/" + OTHER + "/offers") {
       assert.equal(url.searchParams.get("page"), "1");
       assert.equal(url.searchParams.get("pageSize"), "20");
@@ -122,7 +124,7 @@ async function main() {
   page.setDefaultTimeout(10000);
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
-  await page.goto(base);
+  await page.goto(base + "/products");
   await page.getByRole("link", { name: published.name, exact: true }).click();
   await page.waitForURL(base + "/products/" + ID);
   await page.getByRole("heading", { name: published.name }).waitFor();
@@ -133,7 +135,7 @@ async function main() {
   assert.equal(await page.getByRole("button", { name: /سبد|خرید/ }).count(), 0);
   await page.getByRole("link", { name: "بازگشت به فهرست کالاها" }).click();
   await page.getByRole("link", { name: published.name, exact: true }).waitFor();
-  assert.equal(new URL(page.url()).pathname, "/");
+  assert.equal(new URL(page.url()).pathname, "/products");
 
   await page.goto(base + "/products/" + OTHER);
   await page.getByRole("heading", { name: good.name }).waitFor();
@@ -154,7 +156,7 @@ async function main() {
   await page.getByRole("link", { name: "مشاهدهٔ سبد مرجع" }).click();
   await page.waitForURL(base + "/buyer/cart");
   await page.getByRole("heading", { name: good.name }).waitFor();
-  await page.getByText("2.5 کیلوگرم · مقدار درخواستی").waitFor();
+  await page.getByText("۲.۵ کیلوگرم · مقدار درخواستی").waitFor();
   await page.getByRole("button", { name: "حذف از سبد" }).click();
   await page.getByRole("heading", { name: "سبد مرجع خالی است" }).waitFor();
   assert.deepEqual(cart, { revision: 2, items: [] });
@@ -176,7 +178,7 @@ async function main() {
 
   mode = "404";
   await page.goto(base + "/products/" + ID);
-  await page.getByRole("heading", { name: "این کالا یا خدمت پیدا نشد" }).waitFor();
+  await page.getByRole("heading", { name: "این کالا پیدا نشد" }).waitFor();
   assert.equal(await page.getByRole("button", { name: "تلاش دوباره برای دریافت جزئیات" }).count(), 0);
   assert.equal(await page.getByText(published.name).count(), 0);
 
@@ -195,7 +197,7 @@ async function main() {
   await page.getByRole("heading", { name: published.name }).waitFor();
   const beforeInvalid = calls.filter(x => x.startsWith("/api/catalog/products/")).length;
   await page.goto(base + "/products/not-a-uuid");
-  await page.getByRole("heading", { name: "این کالا یا خدمت پیدا نشد" }).waitFor();
+  await page.getByRole("heading", { name: "این کالا پیدا نشد" }).waitFor();
   assert.equal(calls.filter(x => x.startsWith("/api/catalog/products/")).length,
     beforeInvalid);
 
@@ -237,7 +239,7 @@ async function main() {
   }).getAttribute("href");
   const backLocation = new URL(backHref, base);
   assert.equal(backLocation.origin, base);
-  assert.equal(backLocation.pathname, "/");
+  assert.equal(backLocation.pathname, "/products");
   assert.equal(backLocation.searchParams.get("search"), "جست‌وجوی فارسی");
   assert.equal(backLocation.searchParams.get("page"), "2");
   assert.deepEqual([...backLocation.searchParams.keys()].sort(),
@@ -258,7 +260,7 @@ async function main() {
     new PageTransitionEvent("pageshow", { persisted: true }),
   ));
   await page.getByRole("heading", {
-    name: "این کالا یا خدمت پیدا نشد",
+    name: "این کالا پیدا نشد",
   }).waitFor();
   assert.equal(await page.getByText(published.name).count(), 0);
   assert.equal(await page.getByText("شرح منتشرشدهٔ CI").count(), 0);

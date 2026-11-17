@@ -8,7 +8,7 @@ type Props = { value: SelectedMapPoint | null; onChange: (point: SelectedMapPoin
 type MapCenter = SelectedMapPoint;
 
 const TILE_SIZE = 256;
-const DEFAULT_CENTER: MapCenter = { latitude: 32.4279, longitude: 53.6880 };
+const DEFAULT_CENTER: MapCenter = { latitude: 35.7000, longitude: 51.4200 };
 const MIN_ZOOM = 4;
 const MAX_ZOOM = 18;
 const TILE_URL = process.env.NEXT_PUBLIC_HANA_MAP_TILE_URL ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png";

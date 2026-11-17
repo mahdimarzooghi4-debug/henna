@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LandingHeader, LandingFooter } from "../../../components/landing-chrome";
 import { BuyerAddresses } from "../../../components/buyer-addresses";
 
 export const metadata: Metadata = {
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AddressesPage() {
-  return <BuyerAddresses />;
+  return <><LandingHeader/><BuyerAddresses/><LandingFooter accountPage/></>;
 }

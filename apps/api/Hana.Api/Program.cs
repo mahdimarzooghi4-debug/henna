@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Hana.Domain.Identity;
 using Hana.Api;
 using Microsoft.AspNetCore.HttpOverrides;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,18 @@ var builder = WebApplication.CreateBuilder(args);
 // or independent logistics provider are ready.
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("public-seller-intake", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions {
+                PermitLimit = 5, Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0, AutoReplenishment = true
+            }));
+});
+
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
     options.MultipartBodyLengthLimit = 5_308_576);
 builder.Services.AddOpenApi();
@@ -118,6 +131,7 @@ var app = builder.Build();
 if (trustedForwarding is not null)
     app.UseForwardedHeaders();
 app.UseExceptionHandler();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
@@ -364,6 +378,7 @@ app.MapDelete("/api/v1/auth/session", async (
     .Produces(StatusCodes.Status503ServiceUnavailable);
 
 app.MapSellerRegistration(hasIdentityDb);
+app.MapPublicSellerIntake(hasIdentityDb);
 app.MapSellerBusinessInformation(hasIdentityDb);
 app.MapSellerActivityArea(hasIdentityDb);
 app.MapSellerAdditionalInformation(hasIdentityDb);

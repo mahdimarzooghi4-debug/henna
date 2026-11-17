@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { FormField } from "../../components/form-field";
-import { normalizeDigits } from "../../lib/normalize-digits";
-import { sellerRegistrationPath } from "../../lib/seller-return";
+import { normalizeDigits, toPersianDigits } from "../../lib/normalize-digits";
+import { sellerRegistrationPath, sellerAccountRegistrationPath, type AuthReturnTo } from "../../lib/seller-return";
 import {
   otpRequestTransition, type OtpRequestOutcome,
 } from "../../lib/otp-request-transition";
@@ -19,8 +19,9 @@ type FormStatus = "idle" | "loading" | "invalid" | "limited" | "unavailable";
 const challengeIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export function AuthForm({ returnTo }: {
-  returnTo: typeof sellerRegistrationPath | null;
+export function AuthForm({ returnTo, audience = "buyer" }: {
+  returnTo: AuthReturnTo | null;
+  audience?: "buyer" | "seller";
 }) {
   const [stage, setStage] = useState<Stage>("checking");
   const [phone, setPhone] = useState("");
@@ -72,9 +73,9 @@ export function AuthForm({ returnTo }: {
         setStage("session-unavailable");
         return;
       }
-      if (returnTo === sellerRegistrationPath) {
-        // Only the existing compile-time allowlisted destination is valid.
-        window.location.replace(sellerRegistrationPath);
+      if (returnTo) {
+        // The server allowlists same-origin destinations before this component receives them.
+        window.location.replace(returnTo);
         return;
       }
       setStage("authenticated");
@@ -197,8 +198,7 @@ export function AuthForm({ returnTo }: {
           setCode("");
           setChallengeId("");
           setStatus("idle");
-          if (returnTo === sellerRegistrationPath)
-            window.location.replace(sellerRegistrationPath);
+          if (returnTo) window.location.replace(returnTo);
           return;
         }
       }
@@ -208,10 +208,10 @@ export function AuthForm({ returnTo }: {
         ? "کد یا اطلاعات تأیید معتبر نیست."
         : response.status === 429
           ? "تعداد تلاش‌ها زیاد است؛ کمی بعد تلاش کنید."
-          : "خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+          : "فرایند تأیید کد در دسترس نیست؛ ورود انجام نشد.");
     } catch {
       setStatus("unavailable");
-      setMessage("خدمت تأیید کد در دسترس نیست؛ ورود انجام نشد.");
+      setMessage("فرایند تأیید کد در دسترس نیست؛ ورود انجام نشد.");
     } finally {
       pending.current = false;
     }
@@ -248,7 +248,8 @@ export function AuthForm({ returnTo }: {
 
   return (
     <section className="surface-card auth-card" aria-labelledby="auth-heading">
-      <h2 id="auth-heading">ورود / ثبت‌نام</h2>
+      <h2 id="auth-heading">{audience === "seller" ? "ورود به پنل پذیرندگان" : "ورود یا ثبت‌نام در حنا"}</h2>
+      <p className="auth-card__hint">{audience === "seller" ? "با شماره موبایل حساب خود وارد شوید. فقط پذیرندگان تأییدشده و فعال به پنل فروشندگی دسترسی دارند." : "برای دسترسی به کالاهای بازارگاه و اعتبارات حمایتی خود، شماره موبایل خود را وارد کنید."}</p>
       {stage === "checking" && <p role="status">در حال بررسی وضعیت ورود…</p>}
       {stage === "session-unavailable" && (
         <div role="status">
@@ -264,13 +265,13 @@ export function AuthForm({ returnTo }: {
         }}>
           <FormField id="auth-phone" label="شماره موبایل" type="tel"
             autoComplete="tel-national" inputMode="numeric"
-            className="field__input--phone" placeholder="09xxxxxxxxx"
-            maxLength={11} value={phone} required
+            className="field__input--phone" placeholder="۰۹xxxxxxxxx"
+            maxLength={11} value={toPersianDigits(phone)} required
             inputRef={phoneInput} disabled={busy}
             aria-describedby={status === "invalid" ? "auth-feedback" : undefined}
             error={status === "invalid"}
             onChange={(event) => {
-              setPhone(event.target.value);
+              setPhone(normalizeDigits(event.target.value));
               setStatus("idle");
               setMessage("");
             }}
@@ -283,23 +284,23 @@ export function AuthForm({ returnTo }: {
       {stage === "code" && (
         <form noValidate onSubmit={verifyCode}>
           <p className="auth-card__hint">
-            اگر پیامک را دریافت کرده‌اید، کد آن را وارد کنید.
+            کد تأیید ارسال شد. شماره {toPersianDigits(phone)} را بررسی کنید.
           </p>
           <FormField id="auth-code" label="کد تأیید" type="text"
             autoComplete="one-time-code" inputMode="numeric"
-            className="field__input--phone" placeholder="کد شش‌رقمی"
-            maxLength={6} value={code} required
+            className="field__input--phone auth-card__code-input" placeholder="کد شش‌رقمی"
+            maxLength={6} value={toPersianDigits(code)} required
             inputRef={codeInput} disabled={busy}
             aria-describedby={status === "invalid" ? "auth-feedback" : undefined}
             error={status === "invalid"}
             onChange={(event) => {
-              setCode(event.target.value);
+              setCode(normalizeDigits(event.target.value));
               setStatus("idle");
               setMessage("");
             }}
           />
           <button className="primary-button" type="submit" disabled={busy}>
-            {busy ? "در حال تأیید…" : "تأیید کد و ورود"}
+            {busy ? "در حال تأیید…" : "ورود و ادامه"}
           </button>
           <button className="auth-card__secondary" type="button" disabled={busy}
             onClick={() => {
@@ -309,10 +310,10 @@ export function AuthForm({ returnTo }: {
               setChallengeId("");
               setStatus("idle");
               setMessage("");
-            }}>اصلاح شماره موبایل</button>
+            }}>ویرایش شماره</button>
           <button className="auth-card__secondary" type="button" disabled={busy}
             onClick={() => void requestCode(true)}>
-            درخواست کد جدید
+            دریافت مجدد کد
           </button>
         </form>
       )}
@@ -321,9 +322,19 @@ export function AuthForm({ returnTo }: {
           <p className="form-status" role="status">
             ورود انجام شده است. حساب پایه شما فعال است.
           </p>
-          {returnTo === sellerRegistrationPath && (
+          {(returnTo === sellerRegistrationPath || returnTo === sellerAccountRegistrationPath) && (
             <Link href={sellerRegistrationPath} className="auth-card__secondary">
               ادامه ثبت‌نام فروشگاه
+            </Link>
+          )}
+          {returnTo?.startsWith("/organization") && (
+            <Link href={returnTo} className="auth-card__secondary">
+              ادامه به پنل سازمان
+            </Link>
+          )}
+          {(returnTo === "/buyer/cart" || returnTo === "/checkout") && (
+            <Link href={returnTo} className="auth-card__secondary">
+              بازگشت به ادامهٔ خرید
             </Link>
           )}
           <button className="auth-card__secondary" type="button" disabled={busy}
@@ -342,14 +353,7 @@ export function AuthForm({ returnTo }: {
           role={status === "invalid" ? "alert" : "status"}
           aria-live="polite">{message}</p>
       )}
-      <aside className="account-note">
-        <strong>یک حساب برای خرید، مشارکت و اعتبار</strong>
-        <p>نوع حساب فقط حقیقی یا حقوقی است. در صورت فعال شدن حمایت، اعتبار به همین حساب اضافه می‌شود.</p>
-      </aside>
-      <div className="auth-card__footer">
-        <p>فروشگاه دارید؟</p>
-        <Link href="/seller/register">ثبت‌نام فروشگاه در حنا</Link>
-      </div>
+      <p className="auth-legal">ورود به معنای پذیرش قوانین و مقررات حریم خصوصی حنا است.</p>
     </section>
   );
 }

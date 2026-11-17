@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import {
   BackHandler, Image, Pressable, ScrollView, StatusBar,
-  StyleSheet, Text, View,
+  StyleSheet, View
 } from "react-native";
+import { Text } from "./typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BuyerDetailController, type BuyerDetailState } from "./buyer-detail-controller.ts";
@@ -52,7 +53,7 @@ export function BuyerProductDetailScreen({
         <View style={styles.content}>
           <Text style={styles.eyebrow}>جزئیات کاتالوگ عمومی حنا</Text>
           <Text style={styles.title} accessibilityRole="header">
-            جزئیات کالا یا خدمت
+            جزئیات کالا
           </Text>
           <Text style={styles.subtitle}>
             فقط اطلاعات منتشرشده از API حنا؛ خرید در این مرحله فعال نیست.
@@ -67,7 +68,7 @@ export function BuyerProductDetailScreen({
           ) : detail.status === "missing" ? (
             <View style={styles.card}>
               <Text style={styles.cardTitle} accessibilityRole="header">
-                این کالا یا خدمت پیدا نشد
+                این کالا پیدا نشد
               </Text>
               <Text style={styles.text}>
                 این شناسه در کاتالوگ منتشرشدهٔ حنا قابل مشاهده نیست.
@@ -101,9 +102,6 @@ export function BuyerProductDetailScreen({
                 </Text>
                 <Text style={styles.cardTitle} accessibilityRole="header">
                   {detail.product.name}
-                </Text>
-                <Text style={styles.text}>
-                  نوع: {detail.product.kind === "SERVICE" ? "خدمت" : "کالا"}
                 </Text>
                 <Text style={styles.category} selectable>
                   شناسهٔ دسته‌بندی: {detail.product.categoryId}
